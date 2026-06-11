@@ -244,7 +244,7 @@ export async function readSupabasePolicy(ctx: ApiContext, wallet: Wallet | null)
   }
 
   const rows = await selectRows(ctx, "doctrines", {
-    filters: { wallet_address: wallet.address.toLowerCase() },
+    filters: { governed_wallet_id: wallet.id },
     order: "updated_at.desc",
     limit: 1,
   });
@@ -258,7 +258,7 @@ export async function readSupabasePolicies(ctx: ApiContext, wallet: Wallet | nul
   }
 
   const rows = await selectRows(ctx, "doctrines", {
-    filters: { wallet_address: wallet.address.toLowerCase() },
+    filters: { governed_wallet_id: wallet.id },
     order: "updated_at.desc",
   });
 
@@ -266,10 +266,21 @@ export async function readSupabasePolicies(ctx: ApiContext, wallet: Wallet | nul
 }
 
 export async function readSupabaseVendors(ctx: ApiContext, wallet?: Wallet | null) {
-  const filters = wallet ? { wallet_address: wallet.address.toLowerCase() } : undefined;
-  const rows = await selectRows(ctx, "vendors", { filters, order: "created_at.desc" });
-  const visibleRows = wallet ? rows : scopedRows(ctx, rows);
-  return visibleRows.map((row) => vendorFromRow(row, wallet));
+  if (wallet) {
+    const rows = await selectRows(ctx, "vendors", {
+      filters: { organization_id: wallet.orgId },
+      order: "created_at.desc",
+    });
+    return rows.map((row) => vendorFromRow(row, wallet));
+  }
+
+  const wallets = await readSupabaseWallets(ctx);
+  if (wallets.length === 0) {
+    return [];
+  }
+
+  const rows = await selectRows(ctx, "vendors", { order: "created_at.desc" });
+  return rowsForWallets(rows, wallets).map((row) => vendorFromRow(row, walletForRow(row, wallets)));
 }
 
 export async function writeSupabaseVendor(
@@ -289,22 +300,27 @@ export async function writeSupabaseVendor(
     return unconfiguredWrite("vendor");
   }
 
+  const now = new Date().toISOString();
   const row = {
-    wallet_address: wallet.address.toLowerCase(),
-    owner_address: wallet.ownerAddress.toLowerCase(),
-    address: input.address.toLowerCase(),
+    organization_id: wallet.orgId,
+    vendor_address: input.address.toLowerCase(),
     name: input.name,
     category: input.category,
     status: "allowed",
-    per_vendor_cap: Math.round(input.perVendorCap * 1_000_000),
-    kyc_status: input.kycStatus,
-    data_source: "supabase",
-    added_by: ctx.session?.walletAddress ?? wallet.ownerAddress,
-    created_at: new Date().toISOString(),
+    data_source: "live",
+    source: "supabase",
+    updated_at: now,
   };
 
   try {
-    const [written] = await client.upsertRows("vendors", [row], "wallet_address,address");
+    const [existing] = await client.selectRows("vendors", {
+      filters: { organization_id: wallet.orgId, vendor_address: input.address.toLowerCase() },
+      limit: 1,
+    });
+    const existingId = stringField(existing, ["id"], "");
+    const [written] = existingId
+      ? await client.patchRows("vendors", row, { id: existingId })
+      : await client.upsertRows("vendors", [{ ...row, created_at: now }]);
     return {
       ok: true,
       data: vendorFromRow(written ?? row, wallet),
@@ -316,9 +332,7 @@ export async function writeSupabaseVendor(
 }
 
 export async function readSupabaseTransfers(ctx: ApiContext) {
-  const rows = await selectFirstAvailableTable(ctx, ["ledger_events", "transfers"], {
-    order: "block_number.desc",
-  });
+  const rows = await selectRows(ctx, "ledger_events", { order: "event_time.desc" });
   const wallets = await readSupabaseWallets(ctx);
   return rowsForWallets(rows, wallets).map((row) => transferFromRow(row, wallets));
 }
@@ -334,7 +348,7 @@ export async function readSupabaseEscalations(ctx: ApiContext, status?: Escalati
 
 export async function readSupabaseEscalationByTxHash(ctx: ApiContext, txHash: string) {
   const rows = await selectRows(ctx, "escalations", {
-    filters: { id: txHash },
+    filters: { escalation_key: txHash },
     limit: 1,
   });
   const wallets = await readSupabaseWallets(ctx);
@@ -343,7 +357,7 @@ export async function readSupabaseEscalationByTxHash(ctx: ApiContext, txHash: st
 }
 
 export async function readSupabaseAnomalies(ctx: ApiContext) {
-  const rows = await selectRows(ctx, "anomalies", { order: "sigma.desc" });
+  const rows = await selectRows(ctx, "anomalies", { order: "score.desc" });
   const wallets = await readSupabaseWallets(ctx);
   return rowsForWallets(rows, wallets).map((row) => anomalyFromRow(row, wallets));
 }
@@ -372,45 +386,54 @@ export async function recordSupabaseCreatedWallet(
       chain_id: input.chainId,
       status: "pending_indexer",
       indexer_status: "pending",
-      data_source: "supabase",
+      data_source: "live",
       created_at: now,
-      wallet_factory_address: process.env.NEXT_PUBLIC_WALLET_FACTORY,
-    };
-    const doctrineRow = {
-      wallet_address: walletAddress,
-      owner_address: ownerAddress,
-      version: 1,
-      max_spend_per_tx: input.perTxCap,
-      max_spend_per_day: input.dailyCap,
-      max_spend_per_month: input.monthlyCap,
-      allowed_categories: 31,
-      allowed_vendors: [],
-      requires_quorum_above: input.escalationThreshold,
-      require_allowlist: input.requireAllowlist,
-      signers: input.signers.map((address) => address.toLowerCase()),
-      escalation_council: input.council.map((address) => address.toLowerCase()),
-      quorum: input.quorum,
-      updated_by: ownerAddress,
       updated_at: now,
-      data_source: "supabase",
+      wallet_factory_address: process.env.NEXT_PUBLIC_WALLET_FACTORY,
+      policy_engine_address: process.env.NEXT_PUBLIC_POLICY_ENGINE,
+      vendor_registry_address: process.env.NEXT_PUBLIC_VENDOR_REGISTRY,
+      escalation_manager_address: process.env.NEXT_PUBLIC_ESCALATION_MANAGER,
+      anomaly_oracle_address: process.env.NEXT_PUBLIC_ANOMALY_ORACLE,
+      created_by: workspace.profileId,
     };
-    const publicProfileRow = {
-      wallet_address: walletAddress,
-      label: input.label,
-      posture_score: 78,
-      status: "PENDING INDEXER",
-      data_source: "supabase",
-      deploy_tx_hash: input.deployTxHash.toLowerCase(),
-      created_at: now,
-    };
-
     const [writtenWallet] = await client.upsertRows(
       "governed_wallets",
       [walletRow],
       "wallet_address,chain_id",
     );
-    await client.upsertRows("doctrines", [doctrineRow], "wallet_address,version");
-    await client.upsertRows("public_wallet_profiles", [publicProfileRow], "wallet_address");
+    const walletId = requiredStringField(writtenWallet ?? walletRow, ["id"], "governed_wallets.id");
+
+    const doctrineRow = {
+      governed_wallet_id: walletId,
+      organization_id: workspace.organizationId,
+      name: `${input.label} Doctrine`,
+      version: 1,
+      daily_cap_usdc: input.dailyCap,
+      per_tx_cap_usdc: input.perTxCap,
+      per_vendor_daily_cap_usdc: input.perTxCap,
+      monthly_cap_usdc: input.monthlyCap,
+      escalate_above_usdc: input.escalationThreshold,
+      allowed_categories: ["api", "compute", "data", "other"],
+      require_vendor_allowlist: input.requireAllowlist,
+      signers: input.signers.map((address) => address.toLowerCase()),
+      escalation_council: input.council.map((address) => address.toLowerCase()),
+      quorum: input.quorum,
+      status: "active",
+      source: "supabase",
+      updated_at: now,
+    };
+    const publicProfileRow = {
+      governed_wallet_id: walletId,
+      wallet_address: walletAddress,
+      show_public_badge: false,
+      posture_score: 78,
+      health_grade: "PENDING INDEXER",
+      summary: `${input.label} is pending indexer sync on Arc Testnet.`,
+      updated_at: now,
+    };
+
+    await writeDoctrineRow(client, doctrineRow, walletId);
+    await writePublicWalletProfileRow(client, publicProfileRow, walletAddress);
 
     const wallet = walletFromGovernedWalletRow(writtenWallet ?? walletRow);
     return { ok: true, data: { wallet, agent: agentFromWallet(wallet) } };
@@ -477,6 +500,47 @@ async function ensureOwnerWorkspaceForWallet(
   );
 
   return { profileId, organizationId };
+}
+
+async function writeDoctrineRow(
+  client: SupabaseServiceRoleClient,
+  row: SupabaseRow,
+  governedWalletId: string,
+) {
+  const version = numberField(row, ["version"], 1);
+  const [existing] = await client.selectRows("doctrines", {
+    filters: { governed_wallet_id: governedWalletId, version },
+    limit: 1,
+  });
+  const existingId = stringField(existing, ["id"], "");
+
+  if (existingId) {
+    await client.patchRows("doctrines", row, { id: existingId });
+    return;
+  }
+
+  await client.upsertRows("doctrines", [{ ...row, created_at: new Date().toISOString() }]);
+}
+
+async function writePublicWalletProfileRow(
+  client: SupabaseServiceRoleClient,
+  row: SupabaseRow,
+  walletAddress: string,
+) {
+  const [existing] = await client.selectRows("public_wallet_profiles", {
+    filters: { wallet_address: walletAddress },
+    limit: 1,
+  });
+  const existingId = stringField(existing, ["id"], "");
+
+  if (existingId) {
+    await client.patchRows("public_wallet_profiles", row, { id: existingId });
+    return;
+  }
+
+  await client.upsertRows("public_wallet_profiles", [
+    { ...row, created_at: new Date().toISOString() },
+  ]);
 }
 
 export async function readSupabaseRuntimeHealth(ctx: ApiContext): Promise<SupabaseRuntimeHealth> {
@@ -602,21 +666,6 @@ async function selectRows(ctx: ApiContext, table: string, options?: SupabaseRequ
   }
 }
 
-async function selectFirstAvailableTable(
-  ctx: ApiContext,
-  tables: string[],
-  options?: SupabaseRequestOptions,
-) {
-  for (const table of tables) {
-    const rows = await selectRows(ctx, table, options);
-    if (rows.length > 0) {
-      return rows;
-    }
-  }
-
-  return [];
-}
-
 function scopedRows(ctx: ApiContext, rows: SupabaseRow[]) {
   const scope = ownerScope(ctx);
   if (!scope) {
@@ -624,7 +673,7 @@ function scopedRows(ctx: ApiContext, rows: SupabaseRow[]) {
   }
 
   const filtered = rows.filter((row) => {
-    const owner = stringField(row, ["owner_address", "owner_wallet", "wallet_owner"]);
+    const owner = stringField(row, ["owner_address"]);
     // Private read-model rows must be wallet-owned; rows without owner metadata fail closed.
     return Boolean(owner) && owner.toLowerCase() === scope;
   });
@@ -634,14 +683,37 @@ function scopedRows(ctx: ApiContext, rows: SupabaseRow[]) {
 
 function rowsForWallets(rows: SupabaseRow[], wallets: Wallet[]) {
   const walletAddresses = new Set(wallets.map((wallet) => wallet.address.toLowerCase()));
+  const walletIds = new Set(wallets.map((wallet) => wallet.id));
+  const organizationIds = new Set(wallets.map((wallet) => wallet.orgId));
   if (walletAddresses.size === 0) {
     return [];
   }
 
   return rows.filter((row) => {
     const walletAddress = stringField(row, ["wallet_address"], "").toLowerCase();
-    return Boolean(walletAddress) && walletAddresses.has(walletAddress);
+    const governedWalletId = stringField(row, ["governed_wallet_id", "wallet_id"], "");
+    const organizationId = stringField(row, ["organization_id"], "");
+    return (
+      (Boolean(walletAddress) && walletAddresses.has(walletAddress)) ||
+      (Boolean(governedWalletId) && walletIds.has(governedWalletId)) ||
+      (Boolean(organizationId) && organizationIds.has(organizationId))
+    );
   });
+}
+
+function walletForRow(row: SupabaseRow, wallets: Wallet[]) {
+  const walletAddress = stringField(row, ["wallet_address"], "").toLowerCase();
+  const governedWalletId = stringField(row, ["governed_wallet_id", "wallet_id"], "");
+  const organizationId = stringField(row, ["organization_id"], "");
+
+  return (
+    wallets.find(
+      (wallet) =>
+        (walletAddress && wallet.address.toLowerCase() === walletAddress) ||
+        (governedWalletId && wallet.id === governedWalletId) ||
+        (organizationId && wallet.orgId === organizationId),
+    ) ?? null
+  );
 }
 
 function ownerScope(ctx: ApiContext) {
@@ -679,12 +751,12 @@ function walletFromGovernedWalletRow(row: SupabaseRow): Wallet {
   const status = stringField(row, ["status", "indexer_status"], "active").toLowerCase();
 
   return {
-    id: stableUuid(`wallet:${walletAddress}`),
+    id: stringField(row, ["id"], stableUuid(`wallet:${walletAddress}`)),
     tenantId: defaultTenantId(),
     orgId: stringField(row, ["organization_id", "org_id"], fallbackOrgId),
     address: walletAddress.toLowerCase(),
     label,
-    ownerAddress: stringField(row, ["owner_address", "owner_wallet"], ownerScopeFromEnv()),
+    ownerAddress: stringField(row, ["owner_address"], ownerScopeFromEnv()),
     createdBlock: numberField(row, ["created_block", "block_number"], 0),
     createdAt: dateField(row, ["created_at", "deployed_at"]),
     factoryAddress: stringField(
@@ -718,22 +790,14 @@ function policyFromDoctrineRow(row: SupabaseRow, wallet: Wallet): Policy {
     tenantId: wallet.tenantId,
     walletId: wallet.id,
     version: numberField(row, ["version", "policy_version"], wallet.policyVersion),
-    perTxCap: moneyBaseUnits(row, ["per_tx_cap", "max_spend_per_tx"]),
-    daily24hCap: moneyBaseUnits(row, ["daily_24h_cap", "daily_cap", "max_spend_per_day"]),
-    monthlyRollingCap: moneyBaseUnits(row, [
-      "monthly_rolling_cap",
-      "monthly_cap",
-      "max_spend_per_month",
-    ]),
-    allowedCategories: numberField(row, ["allowed_categories"], 31),
-    escalationThreshold: moneyBaseUnits(row, [
-      "escalation_threshold",
-      "requires_quorum_above",
-      "escalation_amount",
-    ]),
-    requireAllowlist: booleanField(row, ["require_allowlist"], true),
+    perTxCap: moneyBaseUnits(row, ["per_tx_cap_usdc"]),
+    daily24hCap: moneyBaseUnits(row, ["daily_cap_usdc"]),
+    monthlyRollingCap: moneyBaseUnits(row, ["monthly_cap_usdc"]),
+    allowedCategories: allowedCategoryMask(row),
+    escalationThreshold: moneyBaseUnits(row, ["escalate_above_usdc"]),
+    requireAllowlist: booleanField(row, ["require_vendor_allowlist"], true),
     updatedAt: dateField(row, ["updated_at"]),
-    updatedBy: stringField(row, ["updated_by"], wallet.ownerAddress),
+    updatedBy: wallet.ownerAddress,
   };
 }
 
@@ -741,12 +805,8 @@ function vendorFromRow(
   row: SupabaseRow,
   wallet?: Wallet | null,
 ): Vendor & { name: string; kycStatus: "public" | "arcanevm"; walletAddress: string } {
-  const vendorAddress = stringField(row, ["address"], zeroWallet());
-  const walletAddress = stringField(
-    row,
-    ["wallet_address"],
-    wallet?.address ?? primaryFallbackWallet().address,
-  );
+  const vendorAddress = stringField(row, ["vendor_address"], zeroWallet());
+  const walletAddress = wallet?.address ?? primaryFallbackWallet().address;
   const walletId = wallet?.id ?? stableUuid(`wallet:${walletAddress}`);
 
   return {
@@ -756,19 +816,19 @@ function vendorFromRow(
     address: vendorAddress.toLowerCase(),
     category: stringField(row, ["category"], "other"),
     status: vendorStatusFromString(stringField(row, ["status"], "allowed")),
-    perVendorCap: moneyBaseUnits(row, ["per_vendor_cap", "cap"]),
+    perVendorCap: "0",
     metadataHash: stringField(row, ["metadata_hash"], stableHash(`vendor:${vendorAddress}`)),
     addedAt: dateField(row, ["created_at"]),
-    addedBy: stringField(row, ["added_by"], ownerScopeFromEnv()),
+    addedBy: wallet?.ownerAddress ?? ownerScopeFromEnv(),
     name: stringField(row, ["name", "label"], shortAddress(vendorAddress)),
-    kycStatus: stringField(row, ["kyc_status"], "public") === "arcanevm" ? "arcanevm" : "public",
+    kycStatus: booleanField(row, ["confidential"], false) ? "arcanevm" : "public",
     walletAddress,
   };
 }
 
 function transferFromRow(row: SupabaseRow, wallets: Wallet[]): Transfer {
-  const walletAddress = stringField(row, ["wallet_address"], primaryFallbackWallet().address);
-  const wallet = wallets.find((item) => item.address.toLowerCase() === walletAddress.toLowerCase());
+  const wallet = walletForRow(row, wallets);
+  const walletAddress = wallet?.address ?? primaryFallbackWallet().address;
   const txHash = stringField(
     row,
     ["tx_hash", "hash"],
@@ -782,54 +842,54 @@ function transferFromRow(row: SupabaseRow, wallets: Wallet[]): Transfer {
     agentId: stringField(row, ["agent_id"], null),
     txHash,
     blockNumber: numberField(row, ["block_number"], 0),
-    timestamp: dateField(row, ["timestamp", "created_at"]),
+    timestamp: dateField(row, ["event_time", "created_at"]),
     toAddress: stringField(row, ["to_address", "counterparty_address"], zeroWallet()),
     amount: moneyBaseUnits(row, ["amount", "amount_usdc"]),
     verdict: verdictFromString(stringField(row, ["verdict", "status"], "ALLOW")),
-    reason: stringField(row, ["reason"], "indexed from Supabase"),
+    reason: stringField(row, ["decision_reason"], "indexed from Supabase"),
     vendorCategory: stringField(row, ["vendor_category", "category"], "other"),
     dailySpentAfter: moneyBaseUnits(row, ["daily_spent_after"], 0),
   };
 }
 
 function escalationFromRow(row: SupabaseRow, wallets: Wallet[]): Escalation {
-  const walletAddress = stringField(row, ["wallet_address"], primaryFallbackWallet().address);
-  const wallet = wallets.find((item) => item.address.toLowerCase() === walletAddress.toLowerCase());
+  const wallet = walletForRow(row, wallets);
+  const walletAddress = wallet?.address ?? primaryFallbackWallet().address;
   const id = stringField(row, ["id", "tx_hash"], stableHash(`escalation:${JSON.stringify(row)}`));
 
   return {
     id,
     tenantId: stringField(row, ["tenant_id"], FALLBACK_TENANT_ID),
     walletId: wallet?.id ?? stableUuid(`wallet:${walletAddress}`),
-    transferId: stringField(row, ["transfer_id"], null),
+    transferId: stringField(row, ["ledger_event_id"], null),
     toAddress: stringField(row, ["to_address", "counterparty_address"], zeroWallet()),
     amount: moneyBaseUnits(row, ["amount", "amount_usdc"]),
     reason: stringField(row, ["reason"], "Supabase escalation"),
     createdAt: dateField(row, ["created_at"]),
     expiresAt: dateField(row, ["expires_at"], new Date(Date.now() + 30 * 60_000)),
     status: escalationStatusFromString(stringField(row, ["status"], "pending")),
-    signaturesCount: numberField(row, ["signatures_count"], 0),
-    threshold: numberField(row, ["threshold", "quorum"], 1),
+    signaturesCount: numberField(row, ["approvals_count"], 0),
+    threshold: numberField(row, ["quorum_required"], 1),
     signers: arrayField(row, ["signers"]),
-    executedTxHash: stringField(row, ["executed_tx_hash"], null),
+    executedTxHash: stringField(row, ["release_tx_hash", "deny_tx_hash"], null),
   };
 }
 
 function anomalyFromRow(row: SupabaseRow, wallets: Wallet[]): Anomaly {
-  const walletAddress = stringField(row, ["wallet_address"], primaryFallbackWallet().address);
-  const wallet = wallets.find((item) => item.address.toLowerCase() === walletAddress.toLowerCase());
+  const wallet = walletForRow(row, wallets);
+  const walletAddress = wallet?.address ?? primaryFallbackWallet().address;
 
   return {
     id: stringField(row, ["id"], stableUuid(`anomaly:${JSON.stringify(row)}`)),
     tenantId: stringField(row, ["tenant_id"], FALLBACK_TENANT_ID),
     walletId: wallet?.id ?? stableUuid(`wallet:${walletAddress}`),
     agentId: stringField(row, ["agent_id"], null),
-    sigma: String(numberField(row, ["sigma", "score"], 0)),
-    reason: stringField(row, ["reason", "narrative"], "Supabase anomaly"),
+    sigma: String(numberField(row, ["score"], 0)),
+    reason: stringField(row, ["description", "title"], "Supabase anomaly"),
     blockNumber: numberField(row, ["block_number"], 0),
     txHash: stringField(row, ["tx_hash"], null),
-    severity: anomalySeverityFromString(stringField(row, ["severity"], "warning")),
-    createdAt: dateField(row, ["created_at"]),
+    severity: anomalySeverityFromString(stringField(row, ["severity"], "low")),
+    createdAt: dateField(row, ["detected_at", "created_at"]),
   };
 }
 
@@ -1013,8 +1073,20 @@ function vendorStatusFromString(value: string): Vendor["status"] {
 }
 
 function verdictFromString(value: string): Transfer["verdict"] {
-  if (value === "DENY" || value === "ESCALATE" || value === "FREEZE") {
-    return value;
+  const normalized = value.toLowerCase();
+  if (
+    normalized === "deny" ||
+    normalized === "denied" ||
+    normalized === "blocked" ||
+    normalized === "rejected"
+  ) {
+    return "DENY";
+  }
+  if (normalized === "escalate" || normalized === "escalated") {
+    return "ESCALATE";
+  }
+  if (normalized === "freeze" || normalized === "frozen") {
+    return "FREEZE";
   }
 
   return "ALLOW";
@@ -1036,11 +1108,24 @@ function escalationStatusFromString(value: string): Escalation["status"] {
 }
 
 function anomalySeverityFromString(value: string): Anomaly["severity"] {
-  if (value === "info" || value === "danger") {
-    return value;
+  const normalized = value.toLowerCase();
+  if (normalized === "critical" || normalized === "high" || normalized === "danger") {
+    return "danger";
+  }
+  if (normalized === "medium" || normalized === "warning") {
+    return "warning";
   }
 
-  return "warning";
+  return "info";
+}
+
+function allowedCategoryMask(row: SupabaseRow) {
+  const categories = arrayField(row, ["allowed_categories"]);
+  if (categories.length === 0) {
+    return 31;
+  }
+
+  return categories.length;
 }
 
 function zeroWallet() {
