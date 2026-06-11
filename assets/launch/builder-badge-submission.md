@@ -6,7 +6,7 @@ Arcanum is open, non-custodial protocol-layer infrastructure for autonomous AI a
 
 ## Live Links
 
-- Live deployment: `[TO-FILL: deployed Vercel URL]`
+- Live deployment: `https://thearcanum.in`
 - Demo video: `[TO-FILL: demo video URL]`
 - GitHub: `https://github.com/bunnyyxtan/ARCANUM`
 - Twitter: `[TO-FILL: project handle]`

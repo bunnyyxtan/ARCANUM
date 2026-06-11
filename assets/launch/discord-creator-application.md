@@ -17,7 +17,7 @@ Each week I can bring:
 Open-source proof:
 
 - GitHub: `https://github.com/bunnyyxtan/ARCANUM`
-- Docs: `apps/docs` in `https://github.com/bunnyyxtan/ARCANUM`
+- Docs: `https://thearcanum.in/docs`
 - License: MIT
 - Full stack: contracts, indexer, API, dashboard, SDKs, self-hosting docs
 

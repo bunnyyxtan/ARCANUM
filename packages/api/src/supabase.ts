@@ -252,6 +252,61 @@ export async function readSupabasePolicy(ctx: ApiContext, wallet: Wallet | null)
   return rows[0] ? policyFromDoctrineRow(rows[0], wallet) : null;
 }
 
+export async function syncSupabaseSignerState(
+  ctx: ApiContext,
+  input: { authorized: boolean; signerAddress: `0x${string}`; wallet: Wallet },
+): Promise<SupabaseWriteResult<{ signers: `0x${string}`[]; status: string }>> {
+  const client = ctx.supabase;
+  if (!client) {
+    return unconfiguredWrite("signer state");
+  }
+
+  const signerAddress = input.signerAddress.toLowerCase() as `0x${string}`;
+
+  try {
+    const rows = await client.selectRows("doctrines", {
+      filters: { governed_wallet_id: input.wallet.id },
+      order: "updated_at.desc",
+      limit: 1,
+    });
+    const existing = rows[0];
+    if (!existing) {
+      return unavailableWrite(
+        "signer state",
+        new Error("No doctrine row exists for this governed wallet."),
+      );
+    }
+
+    const doctrineId = requiredStringField(existing, ["id"], "doctrines.id");
+    const currentSigners = arrayField(existing, ["signers"])
+      .map((address) => address.toLowerCase())
+      .filter((address): address is `0x${string}` => address.startsWith("0x"));
+    const nextSigners = input.authorized
+      ? Array.from(new Set([...currentSigners, signerAddress]))
+      : currentSigners.filter((address) => address !== signerAddress);
+
+    await client.patchRows(
+      "doctrines",
+      {
+        signers: nextSigners,
+        updated_at: new Date().toISOString(),
+      },
+      { id: doctrineId },
+    );
+
+    return {
+      ok: true,
+      data: {
+        signers: nextSigners,
+        status: stringField(existing, ["status"], "active"),
+      },
+    };
+  } catch (error) {
+    warnSupabase("signer-state.write", error);
+    return unavailableWrite("signer state", error);
+  }
+}
+
 export async function readSupabasePolicies(ctx: ApiContext, wallet: Wallet | null) {
   if (!wallet) {
     return [];
@@ -428,7 +483,7 @@ export async function recordSupabaseCreatedWallet(
       show_public_badge: false,
       posture_score: 78,
       health_grade: "PENDING INDEXER",
-      summary: `${input.label} is pending indexer sync on Arc Testnet.`,
+      summary: `${input.label} is synced in Supabase. On-chain event history may lag.`,
       updated_at: now,
     };
 
@@ -801,7 +856,10 @@ function agentFromWallet(wallet: Wallet): Agent {
   };
 }
 
-function policyFromDoctrineRow(row: SupabaseRow, wallet: Wallet): Policy {
+function policyFromDoctrineRow(
+  row: SupabaseRow,
+  wallet: Wallet,
+): Policy & { doctrineStatus: string; signers: string[] } {
   return {
     id: stableUuid(`policy:${wallet.address}:${stringField(row, ["version"], "1")}`),
     tenantId: wallet.tenantId,
@@ -815,6 +873,8 @@ function policyFromDoctrineRow(row: SupabaseRow, wallet: Wallet): Policy {
     requireAllowlist: booleanField(row, ["require_vendor_allowlist"], true),
     updatedAt: dateField(row, ["updated_at"]),
     updatedBy: wallet.ownerAddress,
+    doctrineStatus: stringField(row, ["status"], "active"),
+    signers: arrayField(row, ["signers"]),
   };
 }
 

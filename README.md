@@ -15,8 +15,9 @@ AI agents are starting to make payments, buy APIs, rent compute, call tools, and
 
 GuardedWallet contracts on Arc enforce policy envelopes, vendor allowlists, spend caps, anomaly checks, and human quorum escalation. The dashboard, SDKs, indexer, and API make the system usable. The wallet contracts keep the critical rules on-chain.
 
-Live demo: coming soon. Until a public URL is verified, use the local
-quickstart below.
+Public app: [https://thearcanum.in](https://thearcanum.in).
+
+For local development, use the quickstart below.
 
 ## Current Status at a Glance
 
@@ -199,9 +200,10 @@ Minimum web development variables are documented in `apps/web/.env.example`.
 | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | Client-safe Supabase project URL. |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Client-safe Supabase anon key. |
+| `NEXT_PUBLIC_APP_URL` | Public canonical app URL. Production should use `https://thearcanum.in`. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-only Supabase service role key. Never expose this to client code. |
 | `SIWE_SECRET` | Server-side session secret for wallet authentication. |
-| `NEXTAUTH_SECRET` / `NEXTAUTH_URL` | Not required by this repo today. If a fork adds NextAuth, keep these server-only. |
+| `NEXTAUTH_SECRET` / `NEXTAUTH_URL` | Not required by this repo today. If a fork adds NextAuth, use `NEXTAUTH_URL=https://thearcanum.in` in production and keep secrets server-only. |
 | `DATABASE_URL` | Not used by the Vercel web/API runtime. Optional only for legacy local DB tooling outside the Supabase read-model path. |
 | `ARCANUM_DEMO_OWNER_WALLET` | Optional wallet address allowed to see seeded demo data. |
 | `ARCANUM_DEMO_ORG_SLUG` | Optional demo organization slug. |
