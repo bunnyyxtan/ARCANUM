@@ -49,6 +49,13 @@ export const ledgerRouter = router({
     const wallet = await findWalletByLooseId(ctx, input.wallet);
     const page = input.page ?? defaultPage.page;
     const pageSize = input.pageSize ?? defaultPage.pageSize;
+    const supabaseRows = wallet
+      ? (await readSupabaseTransfers(ctx)).filter((transfer) => transfer.walletId === wallet.id)
+      : [];
+
+    if (supabaseRows.length > 0) {
+      return supabaseRows.slice(page * pageSize, page * pageSize + pageSize);
+    }
 
     if (!canUseDemoFallback(ctx)) {
       return [];

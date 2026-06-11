@@ -75,10 +75,7 @@ function agentStatus(status: string): AgentStatus {
   if (status === "frozen") {
     return "frozen";
   }
-  if (status === "paused") {
-    return "watch";
-  }
-  return "fortified";
+  return "watch";
 }
 
 function ledgerStatus(verdict: string): LedgerStatus {
@@ -92,6 +89,40 @@ function ledgerStatus(verdict: string): LedgerStatus {
     return "frozen";
   }
   return "approved";
+}
+
+type LiveTransferRow = {
+  id: string;
+  agentId: string | null;
+  walletId: string;
+  toAddress: string;
+  vendorCategory: string;
+  verdict: string;
+  amount: string | number;
+  reason: string;
+  timestamp: Date | string;
+  txHash: string;
+  blockNumber: number;
+};
+
+function ledgerEntryFromTransfer(entry: LiveTransferRow): LedgerEntry {
+  const status = ledgerStatus(entry.verdict);
+  return {
+    id: entry.id,
+    agentId: entry.agentId ?? entry.walletId,
+    agentName: agentName(entry.agentId, "Wallet"),
+    counterparty: vendorName(entry.toAddress),
+    category: normalizeCategory(entry.vendorCategory),
+    action: entry.verdict,
+    amount: usdcNumber(entry.amount),
+    status,
+    reason: entry.reason,
+    timestamp: formatTimestampOrNA(entry.timestamp),
+    hash: entry.txHash,
+    block: entry.blockNumber,
+    gasUsed: "INDEXED",
+    calldata: "0x",
+  };
 }
 
 function severityFromStatus(status: LedgerStatus): GovernanceEvent["severity"] {
@@ -118,19 +149,19 @@ function useLiveQueriesEnabled() {
 export function useLiveAgents() {
   const enabled = useLiveQueriesEnabled();
   const query = trpc.agents.list.useQuery(undefined, { enabled, retry: false, staleTime: 30_000 });
-  const agents: Agent[] = (enabled ? (query.data ?? []) : []).map((agent, index) => ({
+  const agents: Agent[] = (enabled ? (query.data ?? []) : []).map((agent) => ({
     id: agent.id,
     name: agent.label,
     wallet: agent.signerAddress,
-    owner: agent.signerAddress,
+    owner: "Owner synced in Supabase",
     status: agentStatus(agent.status),
-    posture: agent.status === "frozen" ? 42 : 87 - (index % 5),
+    posture: 0,
     dailySpend: 0,
-    dailyLimit: 1_000,
+    dailyLimit: 0,
     lastActivity: formatTimestampOrNA(agent.lastSeenAt),
-    doctrineVersion: "v1",
+    doctrineVersion: "pending indexer",
     mandate: agent.type.toUpperCase(),
-    categories: ["api", "compute", "data"].slice(0, 1 + (index % 3)) as Category[],
+    categories: [],
   }));
   return { ...query, data: agents };
 }
@@ -141,25 +172,24 @@ export function useLiveLedger() {
     { page: 0, pageSize: 100 },
     { enabled, retry: false, refetchOnWindowFocus: false, staleTime: 30_000 },
   );
-  const ledger: LedgerEntry[] = (enabled ? (query.data ?? []) : []).map((entry) => {
-    const status = ledgerStatus(entry.verdict);
-    return {
-      id: entry.id,
-      agentId: entry.agentId ?? entry.walletId,
-      agentName: agentName(entry.agentId, "Wallet"),
-      counterparty: vendorName(entry.toAddress),
-      category: normalizeCategory(entry.vendorCategory),
-      action: entry.verdict,
-      amount: usdcNumber(entry.amount),
-      status,
-      reason: entry.reason,
-      timestamp: formatTimestampOrNA(entry.timestamp),
-      hash: entry.txHash,
-      block: entry.blockNumber,
-      gasUsed: "INDEXED",
-      calldata: "0x",
-    };
-  });
+  const ledger: LedgerEntry[] = (enabled ? (query.data ?? []) : []).map(ledgerEntryFromTransfer);
+  return { ...query, data: ledger };
+}
+
+export function useLiveLedgerByWallet(wallet: string | null | undefined) {
+  const enabled = useLiveQueriesEnabled();
+  const query = trpc.ledger.byWallet.useQuery(
+    { wallet: wallet ?? "0x0000000000000000000000000000000000000000", page: 0, pageSize: 100 },
+    {
+      enabled: enabled && Boolean(wallet),
+      retry: false,
+      refetchOnWindowFocus: false,
+      staleTime: 30_000,
+    },
+  );
+  const ledger: LedgerEntry[] = (enabled && wallet ? (query.data ?? []) : []).map(
+    ledgerEntryFromTransfer,
+  );
   return { ...query, data: ledger };
 }
 

@@ -334,7 +334,7 @@ export async function writeSupabaseVendor(
 export async function readSupabaseTransfers(ctx: ApiContext) {
   const rows = await selectRows(ctx, "ledger_events", { order: "event_time.desc" });
   const wallets = await readSupabaseWallets(ctx);
-  return rowsForWallets(rows, wallets).map((row) => transferFromRow(row, wallets));
+  return rowsForWalletIdentity(rows, wallets).map((row) => transferFromRow(row, wallets));
 }
 
 export async function readSupabaseEscalations(ctx: ApiContext, status?: Escalation["status"]) {
@@ -701,6 +701,23 @@ function rowsForWallets(rows: SupabaseRow[], wallets: Wallet[]) {
   });
 }
 
+function rowsForWalletIdentity(rows: SupabaseRow[], wallets: Wallet[]) {
+  const walletAddresses = new Set(wallets.map((wallet) => wallet.address.toLowerCase()));
+  const walletIds = new Set(wallets.map((wallet) => wallet.id));
+  if (walletAddresses.size === 0) {
+    return [];
+  }
+
+  return rows.filter((row) => {
+    const walletAddress = stringField(row, ["wallet_address"], "").toLowerCase();
+    const governedWalletId = stringField(row, ["governed_wallet_id", "wallet_id"], "");
+    return (
+      (Boolean(walletAddress) && walletAddresses.has(walletAddress)) ||
+      (Boolean(governedWalletId) && walletIds.has(governedWalletId))
+    );
+  });
+}
+
 function walletForRow(row: SupabaseRow, wallets: Wallet[]) {
   const walletAddress = stringField(row, ["wallet_address"], "").toLowerCase();
   const governedWalletId = stringField(row, ["governed_wallet_id", "wallet_id"], "");
@@ -775,12 +792,12 @@ function agentFromWallet(wallet: Wallet): Agent {
     id: stableUuid(`agent:${wallet.address}`),
     tenantId: wallet.tenantId,
     walletId: wallet.id,
-    signerAddress: wallet.ownerAddress,
+    signerAddress: wallet.address,
     label,
     type: agentTypeFromLabel(label),
     createdAt: wallet.createdAt,
     lastSeenAt: wallet.createdAt,
-    status: wallet.frozen ? "frozen" : "active",
+    status: wallet.frozen ? "frozen" : "paused",
   };
 }
 
