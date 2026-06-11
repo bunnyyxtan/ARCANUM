@@ -191,7 +191,6 @@ export async function syncSupabaseAuthSession(user: {
         {
           wallet_address: walletAddress,
           display_name: shortAddress(walletAddress),
-          last_seen_at: new Date().toISOString(),
           role: user.role,
         },
       ],
@@ -218,11 +217,10 @@ export async function syncSupabaseAuthSession(user: {
         {
           organization_id: stringField(organization, ["id"], orgSlug),
           profile_id: stringField(profile, ["id"], walletAddress),
-          wallet_address: walletAddress,
           role: user.role,
         },
       ],
-      "organization_id,wallet_address",
+      "organization_id,profile_id",
     );
 
     return { synced: true as const };
@@ -315,8 +313,9 @@ export async function readSupabasePolicies(ctx: ApiContext, wallet: Wallet | nul
 
 export async function readSupabaseVendors(ctx: ApiContext, wallet?: Wallet | null) {
   const filters = wallet ? { wallet_address: wallet.address.toLowerCase() } : undefined;
-  const rows = await selectRows(ctx, "vendors", { filters, order: "added_at.desc" });
-  return scopedRows(ctx, rows).map((row) => vendorFromRow(row, wallet));
+  const rows = await selectRows(ctx, "vendors", { filters, order: "created_at.desc" });
+  const visibleRows = wallet ? rows : scopedRows(ctx, rows);
+  return visibleRows.map((row) => vendorFromRow(row, wallet));
 }
 
 export async function writeSupabaseVendor(
@@ -347,7 +346,7 @@ export async function writeSupabaseVendor(
     kyc_status: input.kycStatus,
     data_source: "supabase",
     added_by: ctx.session?.walletAddress ?? wallet.ownerAddress,
-    added_at: new Date().toISOString(),
+    created_at: new Date().toISOString(),
   };
 
   try {
@@ -367,16 +366,16 @@ export async function readSupabaseTransfers(ctx: ApiContext) {
     order: "block_number.desc",
   });
   const wallets = await readSupabaseWallets(ctx);
-  return scopedRows(ctx, rows).map((row) => transferFromRow(row, wallets));
+  return rowsForWallets(rows, wallets).map((row) => transferFromRow(row, wallets));
 }
 
 export async function readSupabaseEscalations(ctx: ApiContext, status?: Escalation["status"]) {
   const rows = await selectRows(ctx, "escalations", {
-    filters: status ? { status } : undefined,
     order: "expires_at.asc",
   });
   const wallets = await readSupabaseWallets(ctx);
-  return scopedRows(ctx, rows).map((row) => escalationFromRow(row, wallets));
+  const escalations = rowsForWallets(rows, wallets).map((row) => escalationFromRow(row, wallets));
+  return status ? escalations.filter((item) => item.status === status) : escalations;
 }
 
 export async function readSupabaseEscalationByTxHash(ctx: ApiContext, txHash: string) {
@@ -385,13 +384,14 @@ export async function readSupabaseEscalationByTxHash(ctx: ApiContext, txHash: st
     limit: 1,
   });
   const wallets = await readSupabaseWallets(ctx);
-  return rows[0] ? escalationFromRow(rows[0], wallets) : null;
+  const [row] = rowsForWallets(rows, wallets);
+  return row ? escalationFromRow(row, wallets) : null;
 }
 
 export async function readSupabaseAnomalies(ctx: ApiContext) {
   const rows = await selectRows(ctx, "anomalies", { order: "sigma.desc" });
   const wallets = await readSupabaseWallets(ctx);
-  return scopedRows(ctx, rows).map((row) => anomalyFromRow(row, wallets));
+  return rowsForWallets(rows, wallets).map((row) => anomalyFromRow(row, wallets));
 }
 
 export async function recordSupabaseCreatedWallet(
@@ -416,7 +416,7 @@ export async function recordSupabaseCreatedWallet(
     indexer_status: "pending",
     data_source: "supabase",
     created_at: now,
-    factory_address: process.env.NEXT_PUBLIC_WALLET_FACTORY,
+    wallet_factory_address: process.env.NEXT_PUBLIC_WALLET_FACTORY,
   };
   const doctrineRow = {
     wallet_address: walletAddress,
@@ -616,6 +616,18 @@ function scopedRows(ctx: ApiContext, rows: SupabaseRow[]) {
   return filtered;
 }
 
+function rowsForWallets(rows: SupabaseRow[], wallets: Wallet[]) {
+  const walletAddresses = new Set(wallets.map((wallet) => wallet.address.toLowerCase()));
+  if (walletAddresses.size === 0) {
+    return [];
+  }
+
+  return rows.filter((row) => {
+    const walletAddress = stringField(row, ["wallet_address"], "").toLowerCase();
+    return Boolean(walletAddress) && walletAddresses.has(walletAddress);
+  });
+}
+
 function ownerScope(ctx: ApiContext) {
   return ctx.session?.walletAddress.toLowerCase() ?? null;
 }
@@ -636,7 +648,7 @@ function walletFromGovernedWalletRow(row: SupabaseRow): Wallet {
     createdAt: dateField(row, ["created_at", "deployed_at"]),
     factoryAddress: stringField(
       row,
-      ["factory_address", "wallet_factory"],
+      ["wallet_factory_address"],
       process.env.NEXT_PUBLIC_WALLET_FACTORY ?? zeroWallet(),
     ),
     frozen: status.includes("frozen") || status.includes("restraint"),
@@ -688,7 +700,7 @@ function vendorFromRow(
   row: SupabaseRow,
   wallet?: Wallet | null,
 ): Vendor & { name: string; kycStatus: "public" | "arcanevm"; walletAddress: string } {
-  const vendorAddress = stringField(row, ["address", "vendor_address"], zeroWallet());
+  const vendorAddress = stringField(row, ["address"], zeroWallet());
   const walletAddress = stringField(
     row,
     ["wallet_address"],
@@ -705,7 +717,7 @@ function vendorFromRow(
     status: vendorStatusFromString(stringField(row, ["status"], "allowed")),
     perVendorCap: moneyBaseUnits(row, ["per_vendor_cap", "cap"]),
     metadataHash: stringField(row, ["metadata_hash"], stableHash(`vendor:${vendorAddress}`)),
-    addedAt: dateField(row, ["added_at", "created_at"]),
+    addedAt: dateField(row, ["created_at"]),
     addedBy: stringField(row, ["added_by"], ownerScopeFromEnv()),
     name: stringField(row, ["name", "label"], shortAddress(vendorAddress)),
     kycStatus: stringField(row, ["kyc_status"], "public") === "arcanevm" ? "arcanevm" : "public",
@@ -754,7 +766,7 @@ function escalationFromRow(row: SupabaseRow, wallets: Wallet[]): Escalation {
     reason: stringField(row, ["reason"], "Supabase escalation"),
     createdAt: dateField(row, ["created_at"]),
     expiresAt: dateField(row, ["expires_at"], new Date(Date.now() + 30 * 60_000)),
-    status: escalationStatusFromString(stringField(row, ["status"], "PENDING")),
+    status: escalationStatusFromString(stringField(row, ["status"], "pending")),
     signaturesCount: numberField(row, ["signatures_count"], 0),
     threshold: numberField(row, ["threshold", "quorum"], 1),
     signers: arrayField(row, ["signers"]),
@@ -968,8 +980,15 @@ function verdictFromString(value: string): Transfer["verdict"] {
 }
 
 function escalationStatusFromString(value: string): Escalation["status"] {
-  if (value === "EXECUTED" || value === "REJECTED" || value === "EXPIRED") {
-    return value;
+  const normalized = value.toLowerCase();
+  if (normalized === "executed" || normalized === "released" || normalized === "approved") {
+    return "EXECUTED";
+  }
+  if (normalized === "rejected" || normalized === "denied") {
+    return "REJECTED";
+  }
+  if (normalized === "expired") {
+    return "EXPIRED";
   }
 
   return "PENDING";
