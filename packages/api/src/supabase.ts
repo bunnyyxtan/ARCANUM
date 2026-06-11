@@ -10,7 +10,7 @@ import type {
   Vendor,
   Wallet,
 } from "@arcanum/db/schema";
-import { ARC_TESTNET_CHAIN_ID, isDemoOwnerWallet } from "@arcanum/shared";
+import { isDemoOwnerWallet } from "@arcanum/shared";
 
 import type { ApiContext } from "./context";
 import { fallbackAgents, fallbackOrgId, fallbackWallets } from "./mock-fallback";
@@ -175,54 +175,8 @@ export async function syncSupabaseAuthSession(user: {
     return { synced: false as const, reason: "unconfigured" as const };
   }
 
-  const walletAddress = user.walletAddress.toLowerCase();
-  const demoSession = isDemoOwnerWallet(walletAddress, process.env.ARCANUM_DEMO_OWNER_WALLET);
-  const orgSlug = demoSession
-    ? (process.env.ARCANUM_DEMO_ORG_SLUG ?? "demo-workspace")
-    : `wallet-${walletAddress.slice(2, 10)}`;
-  const orgName = demoSession
-    ? (process.env.ARCANUM_DEMO_ORG_NAME ?? "Demo Workspace")
-    : `${shortAddress(walletAddress)} Workspace`;
-
   try {
-    const [profile] = await client.upsertRows(
-      "profiles",
-      [
-        {
-          wallet_address: walletAddress,
-          display_name: shortAddress(walletAddress),
-          role: user.role,
-        },
-      ],
-      "wallet_address",
-    );
-
-    const [organization] = await client.upsertRows(
-      "organizations",
-      [
-        {
-          slug: orgSlug,
-          name: orgName,
-          owner_wallet: walletAddress,
-          chain_id: ARC_TESTNET_CHAIN_ID,
-          data_source: "supabase",
-        },
-      ],
-      "slug",
-    );
-
-    await client.upsertRows(
-      "organization_members",
-      [
-        {
-          organization_id: stringField(organization, ["id"], orgSlug),
-          profile_id: stringField(profile, ["id"], walletAddress),
-          role: user.role,
-        },
-      ],
-      "organization_id,profile_id",
-    );
-
+    await ensureOwnerWorkspaceForWallet(client, user.walletAddress);
     return { synced: true as const };
   } catch (error) {
     warnSupabase("auth.sync", error);
@@ -405,48 +359,51 @@ export async function recordSupabaseCreatedWallet(
 
   const walletAddress = input.walletAddress.toLowerCase();
   const ownerAddress = input.ownerAddress.toLowerCase();
-  const now = new Date().toISOString();
-  const walletRow = {
-    wallet_address: walletAddress,
-    owner_address: ownerAddress,
-    label: input.label,
-    deploy_tx_hash: input.deployTxHash.toLowerCase(),
-    chain_id: input.chainId,
-    status: "pending_indexer",
-    indexer_status: "pending",
-    data_source: "supabase",
-    created_at: now,
-    wallet_factory_address: process.env.NEXT_PUBLIC_WALLET_FACTORY,
-  };
-  const doctrineRow = {
-    wallet_address: walletAddress,
-    owner_address: ownerAddress,
-    version: 1,
-    max_spend_per_tx: input.perTxCap,
-    max_spend_per_day: input.dailyCap,
-    max_spend_per_month: input.monthlyCap,
-    allowed_categories: 31,
-    allowed_vendors: [],
-    requires_quorum_above: input.escalationThreshold,
-    require_allowlist: input.requireAllowlist,
-    signers: input.signers.map((address) => address.toLowerCase()),
-    escalation_council: input.council.map((address) => address.toLowerCase()),
-    quorum: input.quorum,
-    updated_by: ownerAddress,
-    updated_at: now,
-    data_source: "supabase",
-  };
-  const publicProfileRow = {
-    wallet_address: walletAddress,
-    label: input.label,
-    posture_score: 78,
-    status: "PENDING INDEXER",
-    data_source: "supabase",
-    deploy_tx_hash: input.deployTxHash.toLowerCase(),
-    created_at: now,
-  };
 
   try {
+    const workspace = await ensureOwnerWorkspaceForWallet(client, ownerAddress);
+    const now = new Date().toISOString();
+    const walletRow = {
+      organization_id: workspace.organizationId,
+      wallet_address: walletAddress,
+      owner_address: ownerAddress,
+      label: input.label,
+      deploy_tx_hash: input.deployTxHash.toLowerCase(),
+      chain_id: input.chainId,
+      status: "pending_indexer",
+      indexer_status: "pending",
+      data_source: "supabase",
+      created_at: now,
+      wallet_factory_address: process.env.NEXT_PUBLIC_WALLET_FACTORY,
+    };
+    const doctrineRow = {
+      wallet_address: walletAddress,
+      owner_address: ownerAddress,
+      version: 1,
+      max_spend_per_tx: input.perTxCap,
+      max_spend_per_day: input.dailyCap,
+      max_spend_per_month: input.monthlyCap,
+      allowed_categories: 31,
+      allowed_vendors: [],
+      requires_quorum_above: input.escalationThreshold,
+      require_allowlist: input.requireAllowlist,
+      signers: input.signers.map((address) => address.toLowerCase()),
+      escalation_council: input.council.map((address) => address.toLowerCase()),
+      quorum: input.quorum,
+      updated_by: ownerAddress,
+      updated_at: now,
+      data_source: "supabase",
+    };
+    const publicProfileRow = {
+      wallet_address: walletAddress,
+      label: input.label,
+      posture_score: 78,
+      status: "PENDING INDEXER",
+      data_source: "supabase",
+      deploy_tx_hash: input.deployTxHash.toLowerCase(),
+      created_at: now,
+    };
+
     const [writtenWallet] = await client.upsertRows(
       "governed_wallets",
       [walletRow],
@@ -461,6 +418,65 @@ export async function recordSupabaseCreatedWallet(
     warnSupabase("created-wallet.write", error);
     return unavailableWrite("created wallet", error);
   }
+}
+
+async function ensureOwnerWorkspaceForWallet(
+  client: SupabaseServiceRoleClient,
+  ownerAddress: string,
+) {
+  const walletAddress = ownerAddress.toLowerCase();
+  const now = new Date().toISOString();
+  const [existingProfile] = await client.selectRows("profiles", {
+    filters: { wallet_address: walletAddress },
+    limit: 1,
+  });
+  const profile =
+    existingProfile ??
+    (
+      await client.upsertRows("profiles", [
+        {
+          wallet_address: walletAddress,
+          display_name: shortAddress(walletAddress),
+          updated_at: now,
+        },
+      ])
+    )[0];
+  const profileId = requiredStringField(profile, ["id"], "profiles.id");
+
+  const [existingOrganization] = await client.selectRows("organizations", {
+    filters: { created_by: profileId },
+    limit: 1,
+    order: "created_at.asc",
+  });
+  const organization =
+    existingOrganization ??
+    (
+      await client.upsertRows("organizations", [
+        {
+          name: workspaceNameForWallet(walletAddress),
+          slug: workspaceSlugForWallet(walletAddress),
+          safe_address: walletAddress,
+          created_by: profileId,
+          plan: "free",
+          updated_at: now,
+        },
+      ])
+    )[0];
+  const organizationId = requiredStringField(organization, ["id"], "organizations.id");
+
+  await client.upsertRows(
+    "organization_members",
+    [
+      {
+        organization_id: organizationId,
+        profile_id: profileId,
+        role: "owner",
+      },
+    ],
+    "organization_id,profile_id",
+  );
+
+  return { profileId, organizationId };
 }
 
 export async function readSupabaseRuntimeHealth(ctx: ApiContext): Promise<SupabaseRuntimeHealth> {
@@ -630,6 +646,31 @@ function rowsForWallets(rows: SupabaseRow[], wallets: Wallet[]) {
 
 function ownerScope(ctx: ApiContext) {
   return ctx.session?.walletAddress.toLowerCase() ?? null;
+}
+
+function requiredStringField(row: SupabaseRow | undefined, keys: string[], label: string) {
+  const value = stringField(row, keys, "");
+  if (!value) {
+    throw new Error(`${label} was not returned by Supabase.`);
+  }
+
+  return value;
+}
+
+function workspaceNameForWallet(walletAddress: string) {
+  if (isDemoOwnerWallet(walletAddress, process.env.ARCANUM_DEMO_OWNER_WALLET)) {
+    return process.env.ARCANUM_DEMO_ORG_NAME ?? "Demo Workspace";
+  }
+
+  return "Arcanum Workspace";
+}
+
+function workspaceSlugForWallet(walletAddress: string) {
+  if (isDemoOwnerWallet(walletAddress, process.env.ARCANUM_DEMO_OWNER_WALLET)) {
+    return process.env.ARCANUM_DEMO_ORG_SLUG ?? "demo-workspace";
+  }
+
+  return `arcanum-${walletAddress.slice(2, 10)}`;
 }
 
 function walletFromGovernedWalletRow(row: SupabaseRow): Wallet {
