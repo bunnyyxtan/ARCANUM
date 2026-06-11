@@ -267,7 +267,18 @@ export const agentsRouter = router({
   recordCreatedWallet: protectedProcedure
     .input(agentCreatedWalletInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const result = await recordSupabaseCreatedWallet(ctx, input);
+      const sessionOwner = ctx.session.walletAddress.toLowerCase();
+      if (input.ownerAddress.toLowerCase() !== sessionOwner) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Created wallet owner must match the signed-in wallet.",
+        });
+      }
+
+      const result = await recordSupabaseCreatedWallet(ctx, {
+        ...input,
+        ownerAddress: ctx.session.walletAddress as `0x${string}`,
+      });
 
       if (result.ok) {
         return {
@@ -278,7 +289,10 @@ export const agentsRouter = router({
       }
 
       return {
-        dataSource: "local_session" as const,
+        dataSource:
+          result.reason === "unconfigured"
+            ? ("supabase_unconfigured" as const)
+            : ("supabase_failed" as const),
         wallet: null,
         agent: null,
         message: result.message,

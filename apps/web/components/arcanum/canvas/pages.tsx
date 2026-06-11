@@ -439,6 +439,22 @@ type CreatedWalletResult = {
   requireAllowlist: boolean;
 };
 
+type CreatedWalletSyncInput = {
+  walletAddress: Address;
+  ownerAddress: Address;
+  label: string;
+  deployTxHash: Hash;
+  chainId: number;
+  perTxCap: number;
+  dailyCap: number;
+  monthlyCap: number;
+  escalationThreshold: number;
+  requireAllowlist: boolean;
+  signers: Address[];
+  council: Address[];
+  quorum: number;
+};
+
 const initialDeployWalletForm: DeployWalletFormState = {
   label: "ResearchAgent",
   perTxCap: "100",
@@ -2253,8 +2269,10 @@ function DeployAgentModal({
   const [status, setStatus] = useState<"idle" | "confirming" | "success" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const [persistenceState, setPersistenceState] = useState<
-    "idle" | "saving" | "supabase" | "local_session"
+    "idle" | "saving" | "supabase" | "supabase_failed" | "supabase_unconfigured"
   >("idle");
+  const [persistenceMessage, setPersistenceMessage] = useState<string | null>(null);
+  const [pendingSyncInput, setPendingSyncInput] = useState<CreatedWalletSyncInput | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [advancedGovernanceOpen, setAdvancedGovernanceOpen] = useState(false);
   const submittingRef = useRef(false);
@@ -2294,6 +2312,33 @@ function DeployAgentModal({
     setStatus("idle");
     setError(null);
     setPersistenceState("idle");
+    setPersistenceMessage(null);
+    setPendingSyncInput(null);
+  };
+
+  const syncCreatedWallet = async (input: CreatedWalletSyncInput) => {
+    setPersistenceState("saving");
+    setPersistenceMessage(null);
+
+    try {
+      const persisted = await recordCreatedWallet.mutateAsync(input);
+      setPersistenceState(persisted.dataSource);
+      setPersistenceMessage(
+        persisted.dataSource === "supabase"
+          ? null
+          : (persisted.message ??
+              "Wallet deployed on-chain, but Supabase sync failed. Save this wallet address and retry sync."),
+      );
+      return persisted.dataSource;
+    } catch (persistError) {
+      const message = errorMessage(persistError);
+      setPersistenceState("supabase_failed");
+      setPersistenceMessage(
+        message ||
+          "Wallet deployed on-chain, but Supabase sync failed. Save this wallet address and retry sync.",
+      );
+      return "supabase_failed" as const;
+    }
   };
 
   const handleCreateWallet = async (event: ReactMouseEvent<HTMLButtonElement>) => {
@@ -2342,6 +2387,8 @@ function DeployAgentModal({
     setPredictedWallet(null);
     setStatus("confirming");
     setPersistenceState("idle");
+    setPersistenceMessage(null);
+    setPendingSyncInput(null);
 
     try {
       const label = form.label.trim();
@@ -2399,36 +2446,33 @@ function DeployAgentModal({
       setCreatedWallet(wallet);
       setStatus("success");
       onWalletCreated(createdResult);
-      setPersistenceState("saving");
-      try {
-        const persisted = await recordCreatedWallet.mutateAsync({
-          walletAddress: wallet,
-          ownerAddress: address,
-          label,
-          deployTxHash: hash,
-          chainId: arcTestnet.id,
-          perTxCap: Number(form.perTxCap),
-          dailyCap: Number(form.dailyCap),
-          monthlyCap: Number(form.monthlyCap),
-          escalationThreshold: Number(form.escalationAmount),
-          requireAllowlist: form.requireAllowlist,
-          signers,
-          council,
-          quorum,
+      const syncInput = {
+        walletAddress: wallet,
+        ownerAddress: address,
+        label,
+        deployTxHash: hash,
+        chainId: arcTestnet.id,
+        perTxCap: Number(form.perTxCap),
+        dailyCap: Number(form.dailyCap),
+        monthlyCap: Number(form.monthlyCap),
+        escalationThreshold: Number(form.escalationAmount),
+        requireAllowlist: form.requireAllowlist,
+        signers,
+        council,
+        quorum,
+      } satisfies CreatedWalletSyncInput;
+      setPendingSyncInput(syncInput);
+      const persistence = await syncCreatedWallet(syncInput);
+
+      if (persistence === "supabase") {
+        toast.success("GOVERNED WALLET CREATED", {
+          description: `${shortAddress(wallet)} saved to Supabase`,
         });
-        setPersistenceState(persisted.dataSource);
-      } catch (persistError) {
-        setPersistenceState("local_session");
-        if (process.env.NODE_ENV !== "production") {
-          console.warn(
-            "[Arcanum] Supabase createWallet persistence fell back locally.",
-            persistError,
-          );
-        }
+      } else {
+        toast.warning("WALLET DEPLOYED - SUPABASE SYNC FAILED", {
+          description: "Save the wallet address and retry sync.",
+        });
       }
-      toast.success("GOVERNED WALLET CREATED", {
-        description: shortAddress(wallet),
-      });
     } catch (caught) {
       setStatus("error");
       setError(errorMessage(caught));
@@ -2455,6 +2499,8 @@ function DeployAgentModal({
   const createdAgentHref = createdWallet ? `/agents/${createdWallet}` : "/agents";
   const createdWalletArcscanUrl = getArcscanAddressUrl(createdWallet);
   const txArcscanUrl = getArcscanTxUrl(txHash);
+  const persistenceFailed =
+    persistenceState === "supabase_failed" || persistenceState === "supabase_unconfigured";
 
   const copyCreatedWallet = async () => {
     if (!createdWallet) {
@@ -2538,7 +2584,12 @@ function DeployAgentModal({
             </div>
           ) : null}
           {hasSuccess ? (
-            <div className="space-y-4 border border-[#2F4F3A] bg-[#101813] p-4">
+            <div
+              className={cn(
+                "space-y-4 border bg-[#101813] p-4",
+                persistenceFailed ? "border-[#E0A04A]" : "border-[#2F4F3A]",
+              )}
+            >
               <div>
                 <div className="text-[10px] tracking-[0.18em] text-[#6E9E7C]">
                   GOVERNED WALLET CREATED
@@ -2551,9 +2602,17 @@ function DeployAgentModal({
                     ? "PENDING INDEXER SYNC - SAVED TO SUPABASE"
                     : persistenceState === "saving"
                       ? "PENDING INDEXER SYNC - SAVING READ MODEL"
-                      : "PENDING INDEXER SYNC - READ MODEL NOT SAVED"}
+                      : persistenceFailed
+                        ? "ON-CHAIN DEPLOYED - SUPABASE SYNC FAILED"
+                        : "PENDING INDEXER SYNC"}
                 </div>
               </div>
+              {persistenceFailed ? (
+                <div className="border border-[#E0A04A55] bg-[#1B1710] p-3 text-[11px] leading-relaxed text-[#E0A04A]">
+                  {persistenceMessage ??
+                    "Wallet deployed on-chain, but Supabase sync failed. Save this wallet address and retry sync."}
+                </div>
+              ) : null}
               <div className="space-y-2 border border-[#282C34] bg-[#101216] p-3 text-[10px] tracking-[0.12em]">
                 <DeployResultLine
                   label="GUARDEDWALLET"
@@ -2585,10 +2644,23 @@ function DeployAgentModal({
                 >
                   COPY WALLET ADDRESS
                 </button>
+                {persistenceFailed && pendingSyncInput ? (
+                  <button
+                    type="button"
+                    onClick={() => void syncCreatedWallet(pendingSyncInput)}
+                    disabled={recordCreatedWallet.isPending}
+                    className="flex h-9 cursor-pointer items-center justify-center border border-[#E0A04A] text-[11px] tracking-[0.12em] text-[#E0A04A] hover:bg-[#E0A04A] hover:text-[#0B0D10] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {recordCreatedWallet.isPending ? "SYNCING SUPABASE" : "RETRY SUPABASE SYNC"}
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   onClick={resetForAnotherWallet}
-                  className="flex h-9 cursor-pointer items-center justify-center border border-[#3A4250] text-[11px] tracking-[0.12em] text-[#D7DBE0] hover:border-[#FF5A1F] hover:text-[#FF5A1F]"
+                  className={cn(
+                    "flex h-9 cursor-pointer items-center justify-center border border-[#3A4250] text-[11px] tracking-[0.12em] text-[#D7DBE0] hover:border-[#FF5A1F] hover:text-[#FF5A1F]",
+                    persistenceFailed ? "col-span-2" : "",
+                  )}
                 >
                   CREATE ANOTHER WALLET
                 </button>
@@ -7904,6 +7976,42 @@ function TeamRow({ member }: Readonly<{ member: TeamDisplay }>) {
   );
 }
 
+type StatusSupabaseHealth = {
+  api: { urlConfigured: boolean; anonKeyConfigured: boolean; error: string | null };
+  serviceRole: { status: string };
+  readModel: { status: string; sampleRows: number; error: string | null };
+};
+
+function healthStatusLabel(status: string | null | undefined) {
+  return status ? status.replaceAll("_", " ").toUpperCase() : "UNAVAILABLE";
+}
+
+function supabaseCaption(supabase: StatusSupabaseHealth | null | undefined) {
+  if (!supabase) {
+    return "SUPABASE STATUS UNKNOWN";
+  }
+
+  if (!supabase.api.urlConfigured) {
+    return "SUPABASE URL MISSING";
+  }
+
+  if (!supabase.api.anonKeyConfigured) {
+    return "PUBLIC ANON KEY MISSING";
+  }
+
+  if (supabase.serviceRole.status !== "configured") {
+    return "SERVICE ROLE MISSING";
+  }
+
+  if (supabase.readModel.error) {
+    return supabase.readModel.error;
+  }
+
+  return supabase.readModel.sampleRows > 0
+    ? "SERVICE ROLE CONFIGURED / READ MODEL REACHABLE"
+    : "AVAILABLE, NO INDEXED ROWS YET";
+}
+
 export function StatusCanvasPage() {
   const health = trpc.health.ping.useQuery(undefined, {
     retry: false,
@@ -7912,17 +8020,18 @@ export function StatusCanvasPage() {
   });
   const indexer = health.data?.indexer;
   const rpc = health.data?.rpc;
-  const indexerStatus = health.isLoading
-    ? "CHECKING"
-    : (indexer?.status.toUpperCase() ?? "UNAVAILABLE");
+  const supabase = health.data?.supabase;
+  const indexerStatus = health.isLoading ? "CHECKING" : healthStatusLabel(indexer?.status);
   const indexerCaption =
     indexer?.lastIndexedBlock !== null && indexer?.lastIndexedBlock !== undefined
       ? `LAST BLOCK ${indexer.lastIndexedBlock}`
       : (indexer?.error ?? "NO INDEXED EVENTS YET");
-  const databaseAvailable =
-    health.data?.pgVersion !== undefined && health.data.pgVersion !== "postgres unavailable";
-  const apiStatus = health.isLoading ? "CHECKING" : databaseAvailable ? "AVAILABLE" : "UNAVAILABLE";
-  const rpcStatus = health.isLoading ? "CHECKING" : (rpc?.status.toUpperCase() ?? "UNAVAILABLE");
+  const readModelStatus = health.isLoading
+    ? "CHECKING"
+    : healthStatusLabel(supabase?.readModel.status);
+  const readModelCaption = supabaseCaption(supabase);
+  const readModelAvailable = supabase?.readModel.status === "available";
+  const rpcStatus = health.isLoading ? "CHECKING" : healthStatusLabel(rpc?.status);
   const rpcCaption = rpc?.latestBlock
     ? `LATEST BLOCK ${rpc.latestBlock}`
     : (rpc?.error ?? "RPC STATUS UNKNOWN");
@@ -7939,11 +8048,11 @@ export function StatusCanvasPage() {
             green={indexer?.status === "available"}
           />
           <SettingsStat
-            label="API / DATABASE"
-            value={apiStatus}
-            caption={health.data?.pgVersion ?? "POSTGRES STATUS UNKNOWN"}
-            hazard={!health.isLoading && !databaseAvailable}
-            green={databaseAvailable}
+            label="SUPABASE READ MODEL"
+            value={readModelStatus}
+            caption={readModelCaption}
+            hazard={!health.isLoading && !readModelAvailable}
+            green={readModelAvailable}
           />
           <SettingsStat
             label="ARC RPC"

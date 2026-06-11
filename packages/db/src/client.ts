@@ -3,13 +3,26 @@ import postgres from "postgres";
 
 import * as schema from "./schema";
 
-const DEFAULT_DATABASE_URL = "postgresql://arcanum:arcanum@localhost:5432/arcanum";
-
-export function createDb(databaseUrl = process.env.DATABASE_URL ?? DEFAULT_DATABASE_URL) {
+export function createDb(databaseUrl: string) {
   const client = postgres(databaseUrl, { prepare: false });
   return drizzle(client, { schema });
 }
 
-export const db = createDb();
+export type ArcanumDb = ReturnType<typeof createDb>;
 
-export type ArcanumDb = typeof db;
+function createUnavailableDb(): ArcanumDb {
+  return new Proxy(
+    {},
+    {
+      get() {
+        throw new Error(
+          "Direct Postgres is not configured for this runtime; use Supabase read-model helpers.",
+        );
+      },
+    },
+  ) as ArcanumDb;
+}
+
+export const db: ArcanumDb = process.env.DATABASE_URL
+  ? createDb(process.env.DATABASE_URL)
+  : createUnavailableDb();

@@ -202,7 +202,7 @@ Minimum web development variables are documented in `apps/web/.env.example`.
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-only Supabase service role key. Never expose this to client code. |
 | `SIWE_SECRET` | Server-side session secret for wallet authentication. |
 | `NEXTAUTH_SECRET` / `NEXTAUTH_URL` | Not required by this repo today. If a fork adds NextAuth, keep these server-only. |
-| `DATABASE_URL` | Optional database URL for local/self-hosted data paths. |
+| `DATABASE_URL` | Not used by the Vercel web/API runtime. Optional only for legacy local DB tooling outside the Supabase read-model path. |
 | `ARCANUM_DEMO_OWNER_WALLET` | Optional wallet address allowed to see seeded demo data. |
 | `ARCANUM_DEMO_ORG_SLUG` | Optional demo organization slug. |
 | `ARCANUM_DEMO_ORG_NAME` | Optional demo organization name. |

@@ -27,6 +27,29 @@ type SupabaseWriteResult<T> =
   | { ok: true; data: T }
   | { ok: false; reason: "unconfigured" | "unavailable"; message: string };
 
+export type SupabaseRuntimeHealth = {
+  api: {
+    status: "available" | "unavailable" | "not_configured";
+    urlConfigured: boolean;
+    anonKeyConfigured: boolean;
+    error: string | null;
+  };
+  serviceRole: {
+    status: "configured" | "missing";
+  };
+  readModel: {
+    status: "available" | "unavailable" | "not_configured";
+    sampleRows: number;
+    error: string | null;
+  };
+  indexerCheckpoint: {
+    status: "available" | "empty" | "unavailable" | "not_configured";
+    lastIndexedBlock: number | null;
+    lastIndexedAt: string | null;
+    error: string | null;
+  };
+};
+
 export type SupabasePublicWalletProfile = {
   walletAddress: string;
   label: string;
@@ -190,7 +213,7 @@ export async function syncSupabaseAuthSession(user: {
     );
 
     await client.upsertRows(
-      "organization_memberships",
+      "organization_members",
       [
         {
           organization_id: stringField(organization, ["id"], orgSlug),
@@ -210,7 +233,15 @@ export async function syncSupabaseAuthSession(user: {
 }
 
 export async function readSupabaseWallets(ctx: ApiContext): Promise<Wallet[]> {
-  const rows = await selectRows(ctx, "governed_wallets", { order: "created_at.desc" });
+  const owner = ownerScope(ctx);
+  if (!owner) {
+    return [];
+  }
+
+  const rows = await selectRows(ctx, "governed_wallets", {
+    filters: { owner_address: owner },
+    order: "created_at.desc",
+  });
   if (rows.length === 0) {
     return [];
   }
@@ -430,6 +461,87 @@ export async function recordSupabaseCreatedWallet(
     warnSupabase("created-wallet.write", error);
     return unavailableWrite("created wallet", error);
   }
+}
+
+export async function readSupabaseRuntimeHealth(ctx: ApiContext): Promise<SupabaseRuntimeHealth> {
+  const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const base = {
+    api: {
+      status: "not_configured" as const,
+      urlConfigured: Boolean(url),
+      anonKeyConfigured: Boolean(anonKey),
+      error: null,
+    },
+    serviceRole: {
+      status: serviceRoleKey ? ("configured" as const) : ("missing" as const),
+    },
+  };
+
+  if (!url) {
+    return {
+      ...base,
+      api: { ...base.api, error: "NEXT_PUBLIC_SUPABASE_URL is missing." },
+      readModel: {
+        status: "not_configured",
+        sampleRows: 0,
+        error: "Supabase URL is missing.",
+      },
+      indexerCheckpoint: {
+        status: "not_configured",
+        lastIndexedBlock: null,
+        lastIndexedAt: null,
+        error: "Supabase URL is missing.",
+      },
+    };
+  }
+
+  if (!serviceRoleKey || !ctx.supabase) {
+    return {
+      ...base,
+      readModel: {
+        status: "not_configured",
+        sampleRows: 0,
+        error: "SUPABASE_SERVICE_ROLE_KEY is missing.",
+      },
+      indexerCheckpoint: {
+        status: "not_configured",
+        lastIndexedBlock: null,
+        lastIndexedAt: null,
+        error: "SUPABASE_SERVICE_ROLE_KEY is missing.",
+      },
+    };
+  }
+
+  const client = ctx.supabase;
+  const readModel = await safeHealthRead(() => client.selectRows("governed_wallets", { limit: 1 }));
+  const checkpoint = await safeHealthRead(() =>
+    client.selectRows("indexer_checkpoints", { limit: 1 }),
+  );
+  const readModelError = readModel.ok ? null : safeSupabaseError(readModel.error);
+  const checkpointError = checkpoint.ok ? null : safeSupabaseError(checkpoint.error);
+  const checkpointRow = checkpoint.ok ? checkpoint.data[0] : undefined;
+
+  return {
+    ...base,
+    api: {
+      ...base.api,
+      status: readModel.ok || checkpoint.ok ? "available" : "unavailable",
+      error: readModel.ok || checkpoint.ok ? null : (readModelError ?? checkpointError),
+    },
+    readModel: {
+      status: readModel.ok ? "available" : "unavailable",
+      sampleRows: readModel.ok ? readModel.data.length : 0,
+      error: readModelError,
+    },
+    indexerCheckpoint: {
+      status: checkpoint.ok ? (checkpointRow ? "available" : "empty") : "unavailable",
+      lastIndexedBlock: checkpointRow ? checkpointBlock(checkpointRow) : null,
+      lastIndexedAt: checkpointRow ? checkpointTime(checkpointRow) : null,
+      error: checkpointError,
+    },
+  };
 }
 
 export async function readSupabasePublicWalletProfile(ctx: ApiContext, address: string) {
@@ -898,7 +1010,7 @@ function unconfiguredWrite<T>(label: string): SupabaseWriteResult<T> {
   return {
     ok: false,
     reason: "unconfigured",
-    message: `Supabase is not configured; ${label} is pending live read-model indexing.`,
+    message: `Supabase service role is not configured; ${label} cannot be saved to the live read model.`,
   };
 }
 
@@ -908,7 +1020,7 @@ function unavailableWrite<T>(label: string, error: unknown): SupabaseWriteResult
   return {
     ok: false,
     reason: "unavailable",
-    message: `Supabase ${label} write failed; retry or wait for the live read model to catch up.`,
+    message: `Supabase ${label} write failed; save the on-chain address and retry sync.`,
   };
 }
 
@@ -926,4 +1038,37 @@ function safeSupabaseError(message: string) {
   return message
     .replaceAll(process.env.SUPABASE_SERVICE_ROLE_KEY ?? "__never__", "[redacted]")
     .replaceAll(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "__never__", "[redacted]");
+}
+
+async function safeHealthRead(operation: () => Promise<SupabaseRow[] | undefined>) {
+  try {
+    return { ok: true as const, data: (await operation()) ?? [] };
+  } catch (error) {
+    return { ok: false as const, error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+function checkpointBlock(row: SupabaseRow) {
+  return numberOrNull(row, [
+    "last_indexed_block",
+    "last_block",
+    "latest_block",
+    "block_number",
+    "block",
+  ]);
+}
+
+function checkpointTime(row: SupabaseRow) {
+  const value = stringField(
+    row,
+    ["last_indexed_at", "updated_at", "timestamp", "created_at"],
+    null,
+  );
+
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toISOString();
 }
