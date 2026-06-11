@@ -6,8 +6,7 @@ export type ArcanumWorkspaceMode =
   | "connected_unsigned"
   | "demo"
   | "live_empty"
-  | "live_indexed"
-  | "pending_local_session";
+  | "live_indexed";
 
 export function normalizeWalletAddress(value: string | null | undefined) {
   return value?.trim().toLowerCase() ?? null;
