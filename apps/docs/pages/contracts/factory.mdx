@@ -1,0 +1,14 @@
+# WalletFactory
+
+WalletFactory deploys GuardedWallets deterministically with CREATE2.
+
+```ts
+const wallet = await publicClient.getContractAddress({
+  bytecode: "0x...",
+  opcode: "CREATE2",
+  from: process.env.WALLET_FACTORY as `0x${string}`,
+  salt: "0x...",
+})
+```
+
+The factory has no deployer allowlist. Any EOA can create a wallet for an owner.

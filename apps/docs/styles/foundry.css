@@ -1,0 +1,47 @@
+:root {
+  --foundry-bg: #121419;
+  --foundry-panel: #181b21;
+  --foundry-panel-alt: #16181d;
+  --foundry-line: #282c34;
+  --foundry-hazard: #ff5a1f;
+  --foundry-green: #6e9e7c;
+  --foundry-amber: #e0a04a;
+  --foundry-red: #ec7a6b;
+  --foundry-ash: #d6dae1;
+  --foundry-muted: #8a909b;
+}
+
+html {
+  background: var(--foundry-bg);
+}
+
+body {
+  background: linear-gradient(var(--foundry-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--foundry-line) 1px, transparent 1px), var(--foundry-bg);
+  background-size: 38px 38px;
+  color: var(--foundry-ash);
+}
+
+.nextra-content code,
+.nextra-content pre {
+  border-color: var(--foundry-line);
+}
+
+.nextra-content a {
+  color: var(--foundry-hazard);
+}
+
+.callout {
+  border: 1px solid var(--foundry-line);
+  border-left: 4px solid var(--foundry-hazard);
+  background: var(--foundry-panel-alt);
+  padding: 16px;
+}
+
+.callout.green {
+  border-left-color: var(--foundry-green);
+}
+
+.callout.amber {
+  border-left-color: var(--foundry-amber);
+}

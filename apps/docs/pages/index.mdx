@@ -1,0 +1,38 @@
+# Open, non-custodial governance for autonomous AI money on Arc.
+
+Arcanum is Arc-native protocol infrastructure for teams that want AI agents to hold and move USDC with real on-chain guardrails. Operators deploy GuardedWallets, define policy envelopes, approve escalations with their own signers, and observe every event through a self-hostable indexer.
+
+```ts
+import { ArcanumClient } from "@arcanum/sdk"
+import { arcTestnet } from "@arcanum/sdk/chains"
+import { privateKeyToAccount } from "viem/accounts"
+
+const arc = new ArcanumClient({
+  walletAddress: "0x0000000000000000000000000000000000000001",
+  agentSigner: privateKeyToAccount(process.env.AGENT_PRIVATE_KEY as `0x${string}`),
+  chain: arcTestnet,
+  rpcUrl: process.env.ARC_TESTNET_RPC!,
+})
+```
+
+The signer example above is for Arc Testnet agent services. Never hard-code
+private keys or commit `.env` files; production operators should use managed
+signer infrastructure or user-controlled wallets.
+
+## Built for Arc builders
+
+- DAO treasuries can give keeper agents explicit USDC envelopes.
+- DeFi protocols can run liquidator and rebalancer agents with enforced caps.
+- DePIN networks can let agents subcontract compute and data through vendor allowlists.
+- On-chain agent builders can add spend governance without giving a server custody.
+
+<div className="callout green">
+Arcanum is MIT licensed, self-hostable from day one, and designed so the protocol layer remains useful even when every hosted service is offline.
+</div>
+
+## Start here
+
+1. [Run the 10-minute TreasuryRebalancer tutorial](/getting-started)
+2. [Read the architecture commitments](/architecture)
+3. [Self-host the dashboard and indexer](/self-host)
+4. [Integrate the TypeScript SDK](/sdk/typescript)

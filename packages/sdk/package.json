@@ -1,0 +1,45 @@
+{
+  "name": "@arcanum/sdk",
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./chains": {
+      "types": "./dist/chains.d.ts",
+      "import": "./dist/chains.js",
+      "require": "./dist/chains.cjs"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts src/chains.ts --format esm,cjs --dts --clean",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "size": "size-limit"
+  },
+  "peerDependencies": {
+    "viem": "^2.21.0"
+  },
+  "dependencies": {
+    "@arcanum/contracts": "0.0.0",
+    "@arcanum/shared": "0.0.0"
+  },
+  "devDependencies": {
+    "@arcanum/config": "0.0.0",
+    "@size-limit/preset-small-lib": "^11.1.6",
+    "size-limit": "^11.1.6",
+    "tsup": "^8.3.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.9",
+    "viem": "^2.21.0"
+  },
+  "size-limit": [
+    {
+      "path": "dist/index.js",
+      "limit": "35 KB"
+    }
+  ]
+}

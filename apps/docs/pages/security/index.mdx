@@ -1,0 +1,39 @@
+# Security
+
+Arcanum's security posture starts with the custody boundary: user-deployed GuardedWallet contracts hold USDC and enforce policy. The indexer, API, dashboard, and SDK are operational tools around that boundary.
+
+## Threat model
+
+- Agent signer compromise: mitigated by spend caps, vendor allowlists, escalation thresholds, and owner-controlled signer rotation.
+- Vendor compromise: mitigated by per-vendor caps, blocklists, and category controls.
+- Anomaly detection failure: mitigated by on-chain policy remaining active at execution time.
+- Dashboard outage: operators can continue using direct contract calls and SDK clients.
+
+## Telemetry
+
+Telemetry is off by default. Enable it only after reviewing what your deployment
+emits and where the data is sent:
+
+```txt
+ARCANUM_TELEMETRY=on
+POSTHOG_KEY=...
+POSTHOG_HOST=...
+SENTRY_DSN_WEB=...
+SENTRY_DSN_INDEXER=...
+```
+
+Telemetry is never required for protocol operation. Do not send private keys,
+service-role keys, seed phrases, or sensitive user secrets to telemetry tools.
+
+## Rate limits
+
+API routes include rate-limit helpers where Redis/Upstash is configured. Wallet
+transactions are still explicit user actions; the app must not auto-submit
+contract writes on page load.
+
+## Audit status
+
+No formal audit has been published. Foundry unit, fuzz, and invariant tests ship
+in the repository.
+
+Continue to [bug bounty scope](/security/bug-bounty).
