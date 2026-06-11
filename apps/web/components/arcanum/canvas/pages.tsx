@@ -90,7 +90,7 @@ import {
   isZeroAddress,
   shortAddress,
 } from "@/lib/format/address";
-import { formatUsdCompact } from "@/lib/format/money";
+import { formatUsdCompact, usdcNumber } from "@/lib/format/money";
 import { formatDeviation } from "@/lib/format/risk";
 import {
   useLiveAgents,
@@ -98,6 +98,7 @@ import {
   useLiveDashboardMetrics,
   useLiveEscalations,
   useLiveLedger,
+  useLiveLedgerByWallet,
   useLiveMembers,
   useLiveVendors,
 } from "@/lib/live-data";
@@ -804,6 +805,11 @@ function agentRowKey(agent: AgentDisplay) {
   return (agent.fullWallet ?? agent.id ?? `${agent.name}-${agent.wallet}`).toLowerCase();
 }
 
+function governedWalletAddressFromAgent(agent: AgentDisplay): Address | null {
+  const candidate = agent.fullWallet ?? walletAlias[agent.wallet] ?? agent.wallet;
+  return isEvmAddress(candidate) ? (candidate as Address) : null;
+}
+
 function vendorRowKey(vendor: VendorDisplay) {
   return `${String(vendor[1])}-${String(vendor[2])}-${String(vendor[3])}`.toLowerCase();
 }
@@ -842,7 +848,7 @@ function statusLabel(value: string) {
 
 function agentRowFromLive(agent: ReturnType<typeof useLiveAgents>["data"][number]): AgentDisplay {
   const status = statusLabel(agent.status);
-  const postureColor = status === "FROZEN" ? "#FF5A1F" : agent.posture < 80 ? "#E0A04A" : "#6E9E7C";
+  const postureColor = status === "FROZEN" ? "#FF5A1F" : agent.posture > 0 ? "#6E9E7C" : "#8A909B";
   const spendWidth =
     agent.dailyLimit > 0
       ? Math.min(100, Math.round((agent.dailySpend / agent.dailyLimit) * 100))
@@ -850,12 +856,7 @@ function agentRowFromLive(agent: ReturnType<typeof useLiveAgents>["data"][number
 
   return {
     categories: agent.categories.map(categoryLabel),
-    deviation:
-      status === "FROZEN"
-        ? formatDeviation(7.4)
-        : agent.posture < 80
-          ? formatDeviation(0.8)
-          : formatDeviation(0.3),
+    deviation: formatDeviation(0),
     doctrine: agent.doctrineVersion,
     fullWallet: agent.wallet,
     id: agent.id,
@@ -996,7 +997,7 @@ function routeParamString(value: string | string[] | undefined) {
 function resolveGovernedWalletAddress(value: string | string[] | undefined): Address | null {
   const raw = routeParamString(value);
   if (!raw) {
-    return sampleAgentWallet as Address;
+    return null;
   }
 
   let decoded = raw;
@@ -1019,7 +1020,10 @@ function Main({ children, className }: Readonly<{ children: ReactNode; className
 
   return (
     <MotionMain
-      className={cn("arcanum-content space-y-4 px-3 py-4 sm:px-5 sm:py-5", className)}
+      className={cn(
+        "arcanum-content min-w-0 max-w-[100vw] space-y-4 overflow-x-clip px-3 py-4 sm:px-5 sm:py-5",
+        className,
+      )}
       variants={reduced ? undefined : enterRise}
       initial={reduced ? false : "hidden"}
       animate={reduced ? undefined : "show"}
@@ -2013,10 +2017,12 @@ function ErrorState({ cause, onRetry }: Readonly<{ cause: string; onRetry?: () =
 export function AgentsCanvasPage() {
   const workspace = useWorkspaceMode();
   const liveAgents = useLiveAgents();
+  const liveVendors = useLiveVendors();
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [agentQuery, setAgentQuery] = useState("");
   const [deployOpen, setDeployOpen] = useState(false);
   const [createdAgents, setCreatedAgents] = useState<AgentDisplay[]>([]);
+  const [selectedAgentKey, setSelectedAgentKey] = useState<string | null>(null);
   const canShowDemoWorkspace = workspace.isDemo;
   const sourceRows: readonly AgentDisplay[] = useMemo(
     () =>
@@ -2062,6 +2068,27 @@ export function AgentsCanvasPage() {
       ? Math.round(baseRows.reduce((sum, agent) => sum + agent.posture, 0) / baseRows.length)
       : 0;
   const emptyAgents = getWorkspaceEmptyCopy(workspace.dataMode, "agents");
+  const selectedAgent =
+    baseRows.find((agent) => agentRowKey(agent) === selectedAgentKey) ?? baseRows[0] ?? null;
+  const selectedWalletAddress = selectedAgent
+    ? governedWalletAddressFromAgent(selectedAgent)
+    : null;
+  const selectedLedger = useLiveLedgerByWallet(selectedWalletAddress);
+  const selectedWalletKey = selectedAgent ? agentRowKey(selectedAgent) : null;
+  const showAgentWorkspace = baseRows.length > 0 || agentFiltersActive || liveAgents.isError;
+
+  useEffect(() => {
+    if (baseRows.length === 0) {
+      setSelectedAgentKey(null);
+      return;
+    }
+
+    const firstAgent = baseRows[0];
+    if (firstAgent && !baseRows.some((agent) => agentRowKey(agent) === selectedAgentKey)) {
+      setSelectedAgentKey(agentRowKey(firstAgent));
+    }
+  }, [baseRows, selectedAgentKey]);
+
   const handleWalletCreated = (result: CreatedWalletResult) => {
     setCreatedAgents((previous) => {
       const walletKey = result.wallet.toLowerCase();
@@ -2075,19 +2102,19 @@ export function AgentsCanvasPage() {
         : baseName;
       const pendingAgent: AgentDisplay = {
         id: walletKey,
-        status: "ACTIVE",
+        status: "IDLE",
         name: displayName,
         wallet: shortAddress(result.wallet),
         fullWallet: result.wallet,
-        posture: 78,
-        postureColor: "#6E9E7C",
+        posture: 0,
+        postureColor: "#8A909B",
         spend: "$0.00",
         limit: amountLabel(Number(result.dailyCap)),
         spendWidth: 0,
-        categories: ["API", "COMPUTE", "DATA"],
+        categories: [],
         deviation: formatDeviation(0),
-        doctrine: "v1",
-        last: "pending indexer",
+        doctrine: "pending indexer",
+        last: "Supabase sync",
       };
       const existingIndex = previous.findIndex(
         (agent) => (agent.fullWallet ?? agent.id)?.toLowerCase() === walletKey,
@@ -2099,6 +2126,7 @@ export function AgentsCanvasPage() {
 
       return previous.map((agent, index) => (index === existingIndex ? pendingAgent : agent));
     });
+    setSelectedAgentKey(result.wallet.toLowerCase());
   };
 
   useEffect(() => {
@@ -2119,124 +2147,164 @@ export function AgentsCanvasPage() {
   return (
     <GovernanceFrame active="agents" file={`${workspaceFileRoot(workspace)} / GOVERNANCE / AGENTS`}>
       <Main>
-        <div className="grid grid-cols-1 divide-y divide-[#282C34] border border-[#282C34] bg-[#181B21] sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-4">
-          <StatTile
-            label="TOTAL AGENTS"
-            value={String(agentCounts.ALL).padStart(2, "0")}
-            caption="GOVERNED WALLETS"
-          />
-          <StatTile label="ACTIVE" value={String(agentCounts.ACTIVE).padStart(2, "0")}>
-            <div className="mt-2 flex items-center gap-1 text-[10px] tracking-[0.08em] text-[#6E9E7C]">
-              <span className="h-1.5 w-1.5 bg-[#6E9E7C]" /> SURVEILLANCE LIVE
+        {showAgentWorkspace ? (
+          <>
+            <div className="grid grid-cols-1 divide-y divide-[#282C34] border border-[#282C34] bg-[#181B21] sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-4">
+              <StatTile
+                label="TOTAL AGENTS"
+                value={String(agentCounts.ALL).padStart(2, "0")}
+                caption="GOVERNED WALLETS"
+              />
+              <StatTile label="ACTIVE" value={String(agentCounts.ACTIVE).padStart(2, "0")}>
+                <div className="mt-2 flex items-center gap-1 text-[10px] tracking-[0.08em] text-[#6E9E7C]">
+                  <span className="h-1.5 w-1.5 bg-[#6E9E7C]" />{" "}
+                  {agentCounts.ACTIVE > 0 ? "SURVEILLANCE LIVE" : "SIGNER SETUP NEEDED"}
+                </div>
+              </StatTile>
+              <StatTile
+                label="UNDER RESTRAINT"
+                value={String(agentCounts.FROZEN).padStart(2, "0")}
+                valueClassName="text-[#FF5A1F]"
+                caption={
+                  <span className="text-[#E0A04A]">
+                    {frozenAgent
+                      ? `${frozenAgent.name} / ${frozenAgent.deviation}`
+                      : "NO RESTRAINTS"}
+                  </span>
+                }
+                accent
+              />
+              <StatTile label="FLEET POSTURE" value={String(averagePosture)}>
+                <div className="mt-2 flex items-center gap-1 text-[10px] tracking-[0.08em] text-[#8A909B]">
+                  <ArrowUpRight className="h-3 w-3 rotate-90" strokeWidth={iconStroke} />{" "}
+                  {averagePosture > 0 ? "LIVE READ MODEL" : "NO ACTIVITY"}
+                </div>
+              </StatTile>
             </div>
-          </StatTile>
-          <StatTile
-            label="UNDER RESTRAINT"
-            value={String(agentCounts.FROZEN).padStart(2, "0")}
-            valueClassName="text-[#FF5A1F]"
-            caption={
-              <span className="text-[#E0A04A]">
-                {frozenAgent ? `${frozenAgent.name} / ${frozenAgent.deviation}` : "NO RESTRAINTS"}
-              </span>
-            }
-            accent
-          />
-          <StatTile label="FLEET POSTURE" value={String(averagePosture)}>
-            <div className="mt-2 flex items-center gap-1 text-[10px] tracking-[0.08em] text-[#8A909B]">
-              <ArrowUpRight className="h-3 w-3 rotate-90" strokeWidth={iconStroke} /> 4 PTS / 24H
-            </div>
-          </StatTile>
-        </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-1.5 text-[11px] tracking-[0.1em]">
-            {(["ALL", "ACTIVE", "FROZEN", "IDLE"] as const).map((filter) => {
-              const count = agentCounts[filter];
-              const selected = statusFilter === filter;
-              return (
-                <button
-                  type="button"
-                  key={filter}
-                  onClick={() => setStatusFilter(filter)}
-                  className={cn(
-                    "border px-3 py-1.5",
-                    selected
-                      ? "border-[#3A4250] bg-[#1B1F26] text-[#EDF0F3]"
-                      : filter === "IDLE"
-                        ? "border-[#282C34] text-[#5B626C] hover:text-[#8A909B]"
-                        : "border-[#282C34] text-[#8A909B] hover:text-[#D7DBE0]",
-                  )}
-                >
-                  {filter} <span className="text-[#5B626C]">{count}</span>
-                </button>
-              );
-            })}
-          </div>
-          <label className="flex h-9 min-w-[220px] max-w-[360px] flex-1 items-center gap-2 border border-[#282C34] bg-[#101216] px-3 text-[#5B626C]">
-            <Search className="h-3.5 w-3.5" strokeWidth={iconStroke} />
-            <input
-              value={agentQuery}
-              onChange={(event) => setAgentQuery(event.target.value)}
-              placeholder="filter agents, addresses, doctrines..."
-              className="min-w-0 flex-1 bg-transparent text-[12px] text-[#D7DBE0] outline-none placeholder:text-[#5B626C]"
-            />
-          </label>
-          <button
-            type="button"
-            onClick={() => setDeployOpen(true)}
-            className="flex h-9 shrink-0 items-center gap-2 border border-[#3A4250] px-4 text-[11px] tracking-[0.12em] text-[#D7DBE0] hover:border-[#FF5A1F] hover:text-[#FF5A1F]"
-          >
-            <Plus className="h-3.5 w-3.5" strokeWidth={iconStroke} /> DEPLOY GOVERNED WALLET
-          </button>
-        </div>
-
-        <div className="border border-[#282C34] bg-[#181B21]">
-          <PanelHeader
-            title="AGENT REGISTER"
-            meta={`${String(agentCounts.ALL).padStart(2, "0")} WALLETS`}
-          />
-          <div className="overflow-x-auto">
-            <div className="min-w-[1180px]">
-              <div className="grid grid-cols-[100px_minmax(190px,1.3fr)_118px_minmax(150px,1.1fr)_92px_92px_minmax(130px,1fr)_88px_minmax(170px,0.8fr)] items-center border-b border-[#282C34] px-4 py-2 text-[10px] tracking-[0.13em] text-[#5B626C]">
-                <span>STATUS</span>
-                <span>AGENT</span>
-                <span>POSTURE</span>
-                <span>DAILY SPEND</span>
-                <span>CATEGORIES</span>
-                <span>DEVIATION</span>
-                <span>DOCTRINE</span>
-                <span>LAST EVENT</span>
-                <span className="text-right">ACTIONS</span>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-1.5 text-[11px] tracking-[0.1em]">
+                {(["ALL", "ACTIVE", "FROZEN", "IDLE"] as const).map((filter) => {
+                  const count = agentCounts[filter];
+                  const selected = statusFilter === filter;
+                  return (
+                    <button
+                      type="button"
+                      key={filter}
+                      onClick={() => setStatusFilter(filter)}
+                      className={cn(
+                        "border px-3 py-1.5",
+                        selected
+                          ? "border-[#3A4250] bg-[#1B1F26] text-[#EDF0F3]"
+                          : filter === "IDLE"
+                            ? "border-[#282C34] text-[#5B626C] hover:text-[#8A909B]"
+                            : "border-[#282C34] text-[#8A909B] hover:text-[#D7DBE0]",
+                      )}
+                    >
+                      {filter} <span className="text-[#5B626C]">{count}</span>
+                    </button>
+                  );
+                })}
               </div>
-              {liveAgents.isError && baseRows.length === 0 ? (
-                <ErrorState cause="agent query failed" onRetry={() => void liveAgents.refetch()} />
-              ) : rows.length > 0 ? (
-                rows.map((agent) => <AgentRegisterRow key={agentRowKey(agent)} agent={agent} />)
-              ) : agentFiltersActive && baseRows.length > 0 ? (
-                <EmptyState
-                  actionLabel={agentQuery.trim() ? "CLEAR SEARCH" : "RESET FILTERS"}
-                  description={
-                    agentQuery.trim()
-                      ? `No agents match "${agentQuery.trim()}". Clear search or try another term.`
-                      : "No agents match this filter. Reset filters or try another term."
-                  }
-                  onAction={resetAgentFilters}
-                  title="NO AGENTS MATCH THIS FILTER"
+              <label className="flex h-9 min-w-[220px] max-w-[360px] flex-1 items-center gap-2 border border-[#282C34] bg-[#101216] px-3 text-[#5B626C]">
+                <Search className="h-3.5 w-3.5" strokeWidth={iconStroke} />
+                <input
+                  value={agentQuery}
+                  onChange={(event) => setAgentQuery(event.target.value)}
+                  placeholder="filter agents, addresses, doctrines..."
+                  className="min-w-0 flex-1 bg-transparent text-[12px] text-[#D7DBE0] outline-none placeholder:text-[#5B626C]"
                 />
-              ) : (
-                <EmptyState description={emptyAgents.description} title={emptyAgents.title} />
-              )}
-              <div className="flex h-9 items-center justify-between border-t border-[#282C34] px-4 text-[10px] tracking-[0.14em] text-[#5B626C]">
-                <span>
-                  {String(agentCounts.ALL).padStart(2, "0")} WALLETS /{" "}
-                  {String(agentCounts.ACTIVE).padStart(2, "0")} ACTIVE /{" "}
-                  {String(agentCounts.FROZEN).padStart(2, "0")} UNDER RESTRAINT
-                </span>
-                <span>FLEET POSTURE {averagePosture} / 100</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => setDeployOpen(true)}
+                className="flex h-9 shrink-0 items-center gap-2 border border-[#3A4250] px-4 text-[11px] tracking-[0.12em] text-[#D7DBE0] hover:border-[#FF5A1F] hover:text-[#FF5A1F]"
+              >
+                <Plus className="h-3.5 w-3.5" strokeWidth={iconStroke} /> DEPLOY GOVERNED WALLET
+              </button>
+            </div>
+
+            {baseRows.length > 0 && selectedAgent ? (
+              <>
+                <AgentsSetupGrid
+                  ledgerRows={selectedLedger.data}
+                  onDeploy={() => setDeployOpen(true)}
+                  selectedAgent={selectedAgent}
+                  selectedWalletAddress={selectedWalletAddress}
+                  vendorCount={liveVendors.data.length}
+                />
+                <AgentsOperationsGrid
+                  ledgerRows={selectedLedger.data}
+                  selectedAgent={selectedAgent}
+                  vendorCount={liveVendors.data.length}
+                />
+              </>
+            ) : null}
+
+            <div className="border border-[#282C34] bg-[#181B21]">
+              <PanelHeader
+                title="AGENT REGISTER"
+                meta={`${String(agentCounts.ALL).padStart(2, "0")} WALLETS`}
+              />
+              <div className="overflow-x-auto">
+                <div className="min-w-[1180px]">
+                  <div className="grid grid-cols-[100px_minmax(190px,1.3fr)_118px_minmax(150px,1.1fr)_92px_92px_minmax(130px,1fr)_88px_minmax(210px,0.95fr)] items-center border-b border-[#282C34] px-4 py-2 text-[10px] tracking-[0.13em] text-[#5B626C]">
+                    <span>STATUS</span>
+                    <span>AGENT</span>
+                    <span>POSTURE</span>
+                    <span>DAILY SPEND</span>
+                    <span>CATEGORIES</span>
+                    <span>DEVIATION</span>
+                    <span>DOCTRINE</span>
+                    <span>LAST EVENT</span>
+                    <span className="text-right">ACTIONS</span>
+                  </div>
+                  {liveAgents.isError && baseRows.length === 0 ? (
+                    <ErrorState
+                      cause="agent query failed"
+                      onRetry={() => void liveAgents.refetch()}
+                    />
+                  ) : rows.length > 0 ? (
+                    rows.map((agent) => {
+                      const rowKey = agentRowKey(agent);
+                      return (
+                        <AgentRegisterRow
+                          key={rowKey}
+                          agent={agent}
+                          selected={rowKey === selectedWalletKey}
+                          onSelect={() => setSelectedAgentKey(rowKey)}
+                        />
+                      );
+                    })
+                  ) : agentFiltersActive && baseRows.length > 0 ? (
+                    <EmptyState
+                      actionLabel={agentQuery.trim() ? "CLEAR SEARCH" : "RESET FILTERS"}
+                      description={
+                        agentQuery.trim()
+                          ? `No agents match "${agentQuery.trim()}". Clear search or try another term.`
+                          : "No agents match this filter. Reset filters or try another term."
+                      }
+                      onAction={resetAgentFilters}
+                      title="NO AGENTS MATCH THIS FILTER"
+                    />
+                  ) : (
+                    <EmptyState description={emptyAgents.description} title={emptyAgents.title} />
+                  )}
+                  <div className="flex h-9 items-center justify-between border-t border-[#282C34] px-4 text-[10px] tracking-[0.14em] text-[#5B626C]">
+                    <span>
+                      {String(agentCounts.ALL).padStart(2, "0")} WALLETS /{" "}
+                      {String(agentCounts.ACTIVE).padStart(2, "0")} ACTIVE /{" "}
+                      {String(agentCounts.FROZEN).padStart(2, "0")} UNDER RESTRAINT
+                    </span>
+                    <span>FLEET POSTURE {averagePosture} / 100</span>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
+          </>
+        ) : (
+          <AgentsFirstRunPanel mode={workspace.dataMode} onDeploy={() => setDeployOpen(true)} />
+        )}
       </Main>
       {deployOpen ? (
         <DeployAgentModal
@@ -2245,6 +2313,423 @@ export function AgentsCanvasPage() {
         />
       ) : null}
     </GovernanceFrame>
+  );
+}
+
+type AgentLedgerRows = ReturnType<typeof useLiveLedger>["data"];
+
+function AgentsSetupGrid({
+  ledgerRows,
+  onDeploy,
+  selectedAgent,
+  selectedWalletAddress,
+  vendorCount,
+}: Readonly<{
+  ledgerRows: AgentLedgerRows;
+  onDeploy: () => void;
+  selectedAgent: AgentDisplay;
+  selectedWalletAddress: Address | null;
+  vendorCount: number;
+}>) {
+  return (
+    <section className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,0.92fr)_minmax(380px,1.08fr)] 2xl:grid-cols-[minmax(280px,0.82fr)_minmax(440px,1.05fr)_minmax(300px,0.78fr)]">
+      <SelectedWalletOverview agent={selectedAgent} walletAddress={selectedWalletAddress} />
+      <AgentSignerPanel governedWalletAddress={selectedWalletAddress} />
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
+        <DoctrineMiniSnapshot agent={selectedAgent} />
+        <WalletSetupRail
+          ledgerCount={ledgerRows.length}
+          onDeploy={onDeploy}
+          selectedWalletAddress={selectedWalletAddress}
+          vendorCount={vendorCount}
+        />
+      </div>
+    </section>
+  );
+}
+
+function AgentsOperationsGrid({
+  ledgerRows,
+  selectedAgent,
+  vendorCount,
+}: Readonly<{
+  ledgerRows: AgentLedgerRows;
+  selectedAgent: AgentDisplay;
+  vendorCount: number;
+}>) {
+  return (
+    <section className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(300px,0.38fr)]">
+      <RecentWalletActivity ledgerRows={ledgerRows} />
+      <div className="border border-[#282C34] bg-[#181B21]">
+        <PanelHeader title="READINESS" meta="SETUP CONTROLS" />
+        <div className="divide-y divide-[#1E222A] text-[12px]">
+          <ReadinessRow
+            href="/vendors"
+            label="VENDORS"
+            state={vendorCount > 0 ? `${vendorCount} configured` : "Add approved vendor"}
+            tone={vendorCount > 0 ? "ready" : "action"}
+          />
+          <ReadinessRow
+            href={`/agents/${encodeURIComponent(selectedAgent.fullWallet ?? selectedAgent.id ?? "")}/policy`}
+            label="POLICY"
+            state={selectedAgent.doctrine || "Configure policy"}
+            tone="ready"
+          />
+          <ReadinessRow
+            href="/ledger"
+            label="ACTIVITY"
+            state={ledgerRows.length > 0 ? `${ledgerRows.length} indexed` : "No activity yet"}
+            tone={ledgerRows.length > 0 ? "ready" : "quiet"}
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SelectedWalletOverview({
+  agent,
+  walletAddress,
+}: Readonly<{ agent: AgentDisplay; walletAddress: Address | null }>) {
+  const copyWallet = async () => {
+    if (!walletAddress) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(walletAddress);
+      toast.success("GOVERNED WALLET COPIED", { description: shortAddress(walletAddress) });
+    } catch {
+      toast.error("GOVERNED WALLET COPY FAILED");
+    }
+  };
+  const agentHref = `/agents/${encodeURIComponent(walletAddress ?? agent.id ?? agent.wallet)}`;
+  const explorerHref = walletAddress ? `/explorer/${walletAddress}` : null;
+
+  return (
+    <div className="border border-[#282C34] bg-[#181B21]">
+      <PanelHeader title="SELECTED GOVERNED WALLET" meta={agent.status} />
+      <div className="space-y-4 p-4">
+        <div>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="font-cond text-[30px] font-semibold leading-none text-[#EDF0F3]">
+                {agent.name}
+              </div>
+              <button
+                type="button"
+                onClick={() => void copyWallet()}
+                disabled={!walletAddress}
+                className="mt-2 flex max-w-full items-center gap-1.5 font-mono text-[11px] text-[#8A909B] hover:text-[#FF5A1F] disabled:cursor-not-allowed disabled:hover:text-[#8A909B]"
+              >
+                <span className="min-w-0 truncate">
+                  {walletAddress ?? "No governed wallet address"}
+                </span>
+                {walletAddress ? (
+                  <Copy className="h-3.5 w-3.5 shrink-0" strokeWidth={iconStroke} />
+                ) : null}
+              </button>
+            </div>
+            <StatusLabel status={agent.status} align="right" />
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-3 text-[11px] sm:grid-cols-4 xl:grid-cols-2 2xl:grid-cols-4">
+            <WalletMetric
+              label="POSTURE"
+              value={String(agent.posture)}
+              accent={agent.postureColor}
+            />
+            <WalletMetric label="SPEND" value={agent.spend} />
+            <WalletMetric label="LIMIT" value={agent.limit} />
+            <WalletMetric label="LAST" value={agent.last} />
+          </div>
+        </div>
+
+        <div>
+          <div className="mb-2 text-[10px] tracking-[0.16em] text-[#5B626C]">
+            ALLOWED CATEGORIES
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {agent.categories.length > 0 ? (
+              agent.categories.map((category) => (
+                <span
+                  key={category}
+                  className="border border-[#282C34] bg-[#15181D] px-2 py-1 text-[10px] tracking-[0.12em] text-[#8A909B]"
+                >
+                  {category}
+                </span>
+              ))
+            ) : (
+              <span className="border border-[#282C34] bg-[#15181D] px-2 py-1 text-[10px] tracking-[0.12em] text-[#5B626C]">
+                No category spend yet
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href={agentHref}
+            className="flex h-8 items-center gap-1.5 border border-[#282C34] px-3 text-[10px] tracking-[0.12em] text-[#D7DBE0] hover:border-[#FF5A1F] hover:text-[#FF5A1F]"
+          >
+            VIEW DETAILS <ArrowUpRight className="h-3 w-3" strokeWidth={iconStroke} />
+          </Link>
+          <Link
+            href={`${agentHref}/policy`}
+            className="flex h-8 items-center gap-1.5 border border-[#282C34] px-3 text-[10px] tracking-[0.12em] text-[#8A909B] hover:text-[#D7DBE0]"
+          >
+            POLICY
+          </Link>
+          {explorerHref ? (
+            <Link
+              href={explorerHref}
+              className="flex h-8 items-center gap-1.5 border border-[#282C34] px-3 text-[10px] tracking-[0.12em] text-[#8A909B] hover:text-[#D7DBE0]"
+            >
+              EXPLORER
+            </Link>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WalletMetric({
+  accent,
+  label,
+  value,
+}: Readonly<{ accent?: string; label: string; value: string }>) {
+  return (
+    <div className="border border-[#282C34] bg-[#15181D] p-3">
+      <div className="text-[9px] tracking-[0.16em] text-[#5B626C]">{label}</div>
+      <div className="mt-1 truncate text-[13px] text-[#D7DBE0]" style={{ color: accent }}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function DoctrineMiniSnapshot({ agent }: Readonly<{ agent: AgentDisplay }>) {
+  const rows = [
+    ["DOCTRINE", agent.doctrine],
+    ["DAILY LIMIT", agent.limit],
+    ["SPEND TODAY", agent.spend],
+    ["DEVIATION", agent.deviation],
+  ] as const;
+
+  return (
+    <div className="border border-[#282C34] bg-[#181B21]">
+      <PanelHeader title="DOCTRINE SNAPSHOT" meta="POLICY CONTROL" />
+      <div className="divide-y divide-[#1E222A] text-[12px]">
+        {rows.map(([label, value]) => (
+          <div key={label} className="flex items-center justify-between gap-3 px-4 py-3">
+            <span className="text-[10px] tracking-[0.14em] text-[#5B626C]">{label}</span>
+            <span className="min-w-0 truncate text-[#D7DBE0]">{value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function WalletSetupRail({
+  ledgerCount,
+  onDeploy,
+  selectedWalletAddress,
+  vendorCount,
+}: Readonly<{
+  ledgerCount: number;
+  onDeploy: () => void;
+  selectedWalletAddress: Address | null;
+  vendorCount: number;
+}>) {
+  const steps = [
+    ["01", "Governed wallet", selectedWalletAddress ? "selected" : "missing"],
+    ["02", "Agent signer", "configure in panel"],
+    ["03", "Vendor allowlist", vendorCount > 0 ? `${vendorCount} configured` : "add vendor"],
+    ["04", "Activity", ledgerCount > 0 ? `${ledgerCount} indexed` : "no activity yet"],
+  ] as const;
+
+  return (
+    <div className="border border-[#282C34] bg-[#181B21]">
+      <PanelHeader title="SETUP SEQUENCE" meta="NEXT ACTIONS" />
+      <div className="space-y-3 p-4">
+        {steps.map(([index, label, state]) => (
+          <div key={label} className="grid grid-cols-[34px_minmax(0,1fr)] gap-3">
+            <div className="flex h-7 w-7 items-center justify-center border border-[#282C34] text-[10px] text-[#8A909B]">
+              {index}
+            </div>
+            <div className="min-w-0">
+              <div className="text-[12px] text-[#D7DBE0]">{label}</div>
+              <div className="text-[10px] tracking-[0.12em] text-[#5B626C]">{state}</div>
+            </div>
+          </div>
+        ))}
+        <div className="flex flex-wrap gap-2 pt-1">
+          <button
+            type="button"
+            onClick={onDeploy}
+            className="flex h-8 items-center gap-1.5 border border-[#282C34] px-3 text-[10px] tracking-[0.12em] text-[#8A909B] hover:border-[#FF5A1F] hover:text-[#FF5A1F]"
+          >
+            <Plus className="h-3.5 w-3.5" strokeWidth={iconStroke} /> DEPLOY ANOTHER
+          </button>
+          <Link
+            href="/vendors?action=add"
+            className="flex h-8 items-center gap-1.5 border border-[#282C34] px-3 text-[10px] tracking-[0.12em] text-[#8A909B] hover:text-[#D7DBE0]"
+          >
+            VENDORS
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RecentWalletActivity({ ledgerRows }: Readonly<{ ledgerRows: AgentLedgerRows }>) {
+  return (
+    <div className="border border-[#282C34] bg-[#181B21]">
+      <PanelHeader
+        title="RECENT WALLET ACTIVITY"
+        meta={ledgerRows.length > 0 ? `${ledgerRows.length} INDEXED` : "EMPTY LIVE STATE"}
+      />
+      {ledgerRows.length > 0 ? (
+        <div className="divide-y divide-[#1E222A] text-[12px]">
+          {ledgerRows.slice(0, 4).map((entry) => (
+            <div
+              key={entry.id}
+              className="grid grid-cols-[minmax(0,1fr)_90px_104px] items-center gap-3 px-4 py-3"
+            >
+              <div className="min-w-0">
+                <div className="truncate text-[#D7DBE0]">{entry.counterparty}</div>
+                <div className="mt-0.5 text-[10px] tracking-[0.1em] text-[#5B626C]">
+                  {entry.category.toUpperCase()} / {entry.timestamp}
+                </div>
+              </div>
+              <div className="text-right text-[#8A909B]">{amountLabel(entry.amount)}</div>
+              <div className="text-right text-[10px] tracking-[0.12em] text-[#6E9E7C]">
+                {entry.status.toUpperCase()}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <EmptyState
+          title="No activity yet"
+          description="Agent payment intents, policy updates, transfers, and escalations will appear here once this governed wallet is active."
+        />
+      )}
+    </div>
+  );
+}
+
+function ReadinessRow({
+  href,
+  label,
+  state,
+  tone,
+}: Readonly<{ href: string; label: string; state: string; tone: "ready" | "action" | "quiet" }>) {
+  return (
+    <Link
+      href={href}
+      className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-[#1B1F26]"
+    >
+      <span className="text-[10px] tracking-[0.14em] text-[#5B626C]">{label}</span>
+      <span
+        className={cn(
+          "min-w-0 truncate text-right text-[11px]",
+          tone === "ready"
+            ? "text-[#6E9E7C]"
+            : tone === "action"
+              ? "text-[#FF5A1F]"
+              : "text-[#8A909B]",
+        )}
+      >
+        {state}
+      </span>
+    </Link>
+  );
+}
+
+function AgentsFirstRunPanel({
+  mode,
+  onDeploy,
+}: Readonly<{ mode: ReturnType<typeof useWorkspaceMode>["dataMode"]; onDeploy: () => void }>) {
+  const copy =
+    mode === "disconnected"
+      ? {
+          title: "Connect wallet to load governed wallets",
+          body: "Connect your owner wallet, then sign in to deploy or manage Arc Testnet governed wallets.",
+          primary: "CONNECT IN HEADER",
+        }
+      : mode === "connected_unsigned"
+        ? {
+            title: "Sign in to load governed wallets",
+            body: "Sign the wallet challenge before Arcanum loads private wallet, signer, vendor, and policy state.",
+            primary: "SIGN IN REQUIRED",
+          }
+        : {
+            title: "Deploy your first governed wallet",
+            body: "Create a policy-controlled Arc Testnet wallet, then authorize the public signer address controlled by your agent backend.",
+            primary: "DEPLOY GOVERNED WALLET",
+          };
+
+  const steps = [
+    ["01", "Deploy governed wallet", "Create the owner-controlled wallet on Arc Testnet."],
+    ["02", "Authorize agent signer", "Add the public address controlled by your agent backend."],
+    ["03", "Add vendor + policy", "Define approved destinations and spending limits."],
+  ] as const;
+
+  return (
+    <section className="w-full max-w-[calc(100vw-1.5rem)] min-w-0 overflow-hidden border border-[#282C34] bg-[#181B21] p-5 sm:max-w-full md:p-6">
+      <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+        <div className="min-w-0">
+          <div className="text-[10px] tracking-[0.28em] text-[#FF5A1F]">AGENT CONTROL SETUP</div>
+          <h1 className="mt-3 max-w-full break-words font-cond text-[34px] font-semibold leading-none text-[#EDF0F3] md:text-[44px]">
+            {copy.title}
+          </h1>
+          <p className="mt-3 max-w-[580px] text-[13px] leading-relaxed text-[#9AA1AC]">
+            {copy.body}
+          </p>
+          <div className="mt-5 flex flex-wrap gap-2">
+            {mode === "live_empty" ? (
+              <button
+                type="button"
+                onClick={onDeploy}
+                className="flex h-9 items-center gap-2 border border-[#FF5A1F]/60 px-3 text-[10px] tracking-[0.14em] text-[#FF5A1F] hover:bg-[#1c1107]"
+              >
+                <Plus className="h-3.5 w-3.5" strokeWidth={iconStroke} />
+                {copy.primary}
+              </button>
+            ) : (
+              <div className="border border-[#282C34] px-3 py-2 text-[10px] tracking-[0.14em] text-[#8A909B]">
+                {copy.primary}
+              </div>
+            )}
+            <Link
+              href="/docs"
+              className="flex h-9 items-center gap-2 border border-[#282C34] px-3 text-[10px] tracking-[0.14em] text-[#8A909B] hover:border-[#3A4250] hover:text-[#D7DBE0]"
+            >
+              VIEW SETUP GUIDE <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={iconStroke} />
+            </Link>
+          </div>
+        </div>
+        <div className="grid min-w-0 gap-3">
+          {steps.map(([index, title, body]) => (
+            <div
+              key={title}
+              className="grid min-w-0 grid-cols-[44px_minmax(0,1fr)] gap-3 border border-[#282C34] bg-[#15181D] p-3"
+            >
+              <div className="flex h-9 w-9 items-center justify-center border border-[#3A4250] text-[11px] text-[#8A909B]">
+                {index}
+              </div>
+              <div className="min-w-0">
+                <div className="text-[13px] text-[#D7DBE0]">{title}</div>
+                <div className="mt-1 text-[12px] leading-relaxed text-[#6F7682]">{body}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -2910,7 +3395,11 @@ function DeployResultLine({
   );
 }
 
-function AgentRegisterRow({ agent }: Readonly<{ agent: AgentDisplay }>) {
+function AgentRegisterRow({
+  agent,
+  onSelect,
+  selected,
+}: Readonly<{ agent: AgentDisplay; onSelect?: () => void; selected?: boolean }>) {
   const [status, setStatus] = useState(agent.status);
   const utils = trpc.useUtils();
   const freeze = trpc.agents.freeze.useMutation();
@@ -2945,7 +3434,10 @@ function AgentRegisterRow({ agent }: Readonly<{ agent: AgentDisplay }>) {
   return (
     <RowShell
       danger={frozen}
-      className="grid grid-cols-[100px_minmax(190px,1.3fr)_118px_minmax(150px,1.1fr)_92px_92px_minmax(130px,1fr)_88px_minmax(170px,0.8fr)] items-center border-b border-[#1E222A] px-4 py-3"
+      className={cn(
+        "grid grid-cols-[100px_minmax(190px,1.3fr)_118px_minmax(150px,1.1fr)_92px_92px_minmax(130px,1fr)_88px_minmax(210px,0.95fr)] items-center border-b border-[#1E222A] px-4 py-3",
+        selected && "bg-[#1B1F26] shadow-[inset_3px_0_0_#FF5A1F]",
+      )}
     >
       <StatusLabel status={status} />
       <div>
@@ -2989,6 +3481,16 @@ function AgentRegisterRow({ agent }: Readonly<{ agent: AgentDisplay }>) {
       </span>
       <span className="text-[11px] text-[#5B626C]">{agent.last}</span>
       <div className="flex items-center justify-end gap-2">
+        <button
+          type="button"
+          onClick={onSelect}
+          className={cn(
+            "text-[10px] tracking-[0.1em]",
+            selected ? "text-[#FF5A1F]" : "text-[#8A909B] hover:text-[#D7DBE0]",
+          )}
+        >
+          {selected ? "Selected" : "Select"}
+        </button>
         <Link
           href={agentHref}
           className="text-[10px] tracking-[0.1em] text-[#8A909B] hover:text-[#D7DBE0]"
@@ -3037,11 +3539,95 @@ function AgentRegisterRow({ agent }: Readonly<{ agent: AgentDisplay }>) {
 
 export function AgentDossierCanvasPage() {
   const workspace = useWorkspaceMode();
-  useLiveAgents();
+  const liveVendors = useLiveVendors();
   const params = useParams();
   const governedWalletAddress = resolveGovernedWalletAddress(params.walletId);
-  const displayWalletAddress = governedWalletAddress ?? (sampleAgentWallet as Address);
-  const displayWalletLabel = shortAddress(displayWalletAddress, { head: 6, tail: 5 });
+  const queryWallet = governedWalletAddress ?? "0x0000000000000000000000000000000000000000";
+  const walletQueriesEnabled = workspace.isAuthenticated && Boolean(governedWalletAddress);
+  const agentQuery = trpc.agents.byWalletId.useQuery(
+    { walletId: queryWallet },
+    {
+      enabled: walletQueriesEnabled,
+      refetchOnWindowFocus: false,
+      retry: false,
+      staleTime: 30_000,
+    },
+  );
+  const transferQuery = trpc.ledger.byWallet.useQuery(
+    { wallet: queryWallet, page: 0, pageSize: 100 },
+    {
+      enabled: walletQueriesEnabled,
+      refetchOnWindowFocus: false,
+      retry: false,
+      staleTime: 30_000,
+    },
+  );
+  const policyQuery = trpc.agents.policy.useQuery(
+    { walletId: queryWallet },
+    {
+      enabled: walletQueriesEnabled,
+      refetchOnWindowFocus: false,
+      retry: false,
+      staleTime: 30_000,
+    },
+  );
+  const walletTransfers = (transferQuery.data ?? []) as WalletDetailTransfer[];
+  const walletPolicy = (policyQuery.data ?? null) as WalletDetailPolicy | null;
+  const vendorNames = useMemo(
+    () =>
+      new Map(
+        liveVendors.data.map((vendor) => [vendor.address.toLowerCase(), vendor.name] as const),
+      ),
+    [liveVendors.data],
+  );
+  const detailMetrics = useMemo(
+    () => walletDetailMetrics(walletTransfers, walletPolicy, vendorNames),
+    [walletTransfers, walletPolicy, vendorNames],
+  );
+  const displayWalletLabel = governedWalletAddress
+    ? shortAddress(governedWalletAddress, { head: 6, tail: 5 })
+    : "Invalid wallet";
+  const agentLabel =
+    agentQuery.data?.label?.trim() ||
+    (governedWalletAddress ? `Governed Wallet ${displayWalletLabel}` : "Invalid governed wallet");
+  const ownerAddress =
+    agentQuery.data &&
+    "ownerAddress" in agentQuery.data &&
+    typeof agentQuery.data.ownerAddress === "string" &&
+    isEvmAddress(agentQuery.data.ownerAddress)
+      ? agentQuery.data.ownerAddress
+      : null;
+  const ownerLabel = ownerAddress
+    ? shortAddress(ownerAddress)
+    : governedWalletAddress
+      ? "Owner synced in Supabase"
+      : "No wallet selected";
+  const postureScore =
+    walletTransfers.length > 0 ? Math.max(0, Math.min(100, 72 + detailMetrics.eventsCount)) : 0;
+  const postureLabel =
+    walletTransfers.length > 0
+      ? postureScore >= 70
+        ? "FORTIFIED"
+        : "WATCHING"
+      : governedWalletAddress
+        ? "NOT STARTED"
+        : "INVALID ROUTE";
+  const postureCopy =
+    walletTransfers.length > 0
+      ? "LIVE INDEXED"
+      : governedWalletAddress
+        ? "NO INDEXED ACTIVITY"
+        : "INVALID WALLET";
+  const dailyCapLabel =
+    detailMetrics.dailyCap > 0 ? amountLabel(detailMetrics.dailyCap) : "no cap configured";
+  const dailySpendWidth =
+    detailMetrics.dailyCap > 0
+      ? Math.min(100, Math.round((detailMetrics.dailySpend / detailMetrics.dailyCap) * 100))
+      : 0;
+  const indexerEmptyCopy =
+    governedWalletAddress && walletTransfers.length === 0
+      ? "Wallet row synced. No indexed activity yet; on-chain event indexing may still be delayed."
+      : "Agent payment intents, policy decisions, transfers, and escalations will appear here after this governed wallet is used.";
 
   return (
     <GovernanceFrame
@@ -3055,30 +3641,35 @@ export function AgentDossierCanvasPage() {
             <div className="text-[10px] tracking-[0.28em] text-[#5B626C]">AGENT POSTURE SCORE</div>
             <div className="mt-1 flex items-end gap-4">
               <span className="font-cond text-[112px] font-bold leading-[0.74] text-[#EDF0F3]">
-                87
+                {String(postureScore).padStart(2, "0")}
               </span>
               <div className="mb-2">
                 <div className="text-[15px] font-semibold tracking-[0.06em] text-[#FF5A1F]">
-                  FORTIFIED
+                  {postureLabel}
                 </div>
-                <div className="mt-1 flex items-center gap-1 text-[11px] text-[#6E9E7C]">
-                  <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={iconStroke} /> 4 PTS / 7D
+                <div className="mt-1 flex items-center gap-1 text-[11px] text-[#8A909B]">
+                  <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={iconStroke} /> {postureCopy}
                 </div>
               </div>
             </div>
-            <Gauge value={87} marker={83} markerLabel="83 P" />
+            <Gauge value={postureScore} marker={83} markerLabel="83 P" />
             <div className="mt-7 space-y-2.5 border-t border-[#282C34] pt-4">
               <div className="flex items-center gap-2">
                 <span className="flex items-center gap-1.5 border border-[#6E9E7C]/30 px-1.5 py-0.5 text-[10px] tracking-[0.1em] text-[#6E9E7C]">
-                  <span className="h-1.5 w-1.5 bg-[#6E9E7C]" /> ACTIVE
+                  <span className="h-1.5 w-1.5 bg-[#6E9E7C]" />{" "}
+                  {governedWalletAddress ? "SYNCED" : "INVALID"}
                 </span>
-                <span className="text-[14px] tracking-[0.04em] text-[#EDF0F3]">RESEARCH-AGENT</span>
+                <span className="text-[14px] tracking-[0.04em] text-[#EDF0F3]">{agentLabel}</span>
               </div>
               <button
                 type="button"
                 onClick={async () => {
+                  if (!governedWalletAddress) {
+                    return;
+                  }
+
                   try {
-                    await navigator.clipboard.writeText(displayWalletAddress);
+                    await navigator.clipboard.writeText(governedWalletAddress);
                     toast.success("GOVERNED WALLET COPIED", {
                       description: displayWalletLabel,
                     });
@@ -3087,18 +3678,22 @@ export function AgentDossierCanvasPage() {
                   }
                 }}
                 className="flex w-full min-w-0 items-center gap-2 text-[11px] text-[#8A909B] hover:text-[#D7DBE0]"
+                disabled={!governedWalletAddress}
               >
-                <span className="min-w-0 flex-1 truncate" title={displayWalletAddress}>
-                  {displayWalletAddress}
+                <span className="min-w-0 flex-1 truncate" title={governedWalletAddress ?? ""}>
+                  {governedWalletAddress ?? "Invalid governed wallet address"}
                 </span>
                 <Copy className="h-3 w-3 shrink-0" strokeWidth={iconStroke} />
               </button>
               <div className="flex items-center gap-4 text-[10px] tracking-[0.08em] text-[#5B626C]">
                 <span>
-                  DEPLOYED <span className="text-[#8A909B]">2026-04-12</span>
+                  OWNER <span className="text-[#8A909B]">{ownerLabel}</span>
                 </span>
                 <span>
-                  DOCTRINE <span className="text-[#8A909B]">std-research-v3</span>
+                  DOCTRINE{" "}
+                  <span className="text-[#8A909B]">
+                    {walletPolicy ? `v${walletPolicy.version}` : "not configured"}
+                  </span>
                 </span>
               </div>
             </div>
@@ -3118,55 +3713,68 @@ export function AgentDossierCanvasPage() {
                 <Snowflake className="h-3.5 w-3.5" strokeWidth={iconStroke} /> RESTRAIN
               </button>
               <Link
-                href={`/agents/${displayWalletAddress}/policy`}
+                href={governedWalletAddress ? `/agents/${governedWalletAddress}/policy` : "/agents"}
                 className="flex h-8 items-center gap-1.5 border border-[#3A4250] px-3 text-[11px] tracking-[0.12em] text-[#D7DBE0] hover:border-[#D7DBE0]"
               >
                 <SlidersHorizontal className="h-3.5 w-3.5" strokeWidth={iconStroke} /> EDIT DOCTRINE
               </Link>
-              <Link
-                href={`/explorer/${displayWalletAddress}`}
-                className="flex h-8 items-center gap-1.5 border border-[#282C34] px-3 text-[11px] tracking-[0.12em] text-[#8A909B] hover:border-[#D7DBE0] hover:text-[#D7DBE0]"
-              >
-                <ExternalLink className="h-3.5 w-3.5" strokeWidth={iconStroke} /> EXPLORER
-              </Link>
-              <Link
-                href={`/badge/${displayWalletAddress}`}
-                className="flex h-8 items-center gap-1.5 border border-[#282C34] px-3 text-[11px] tracking-[0.12em] text-[#8A909B] hover:border-[#D7DBE0] hover:text-[#D7DBE0]"
-              >
-                <ShieldCheck className="h-3.5 w-3.5" strokeWidth={iconStroke} /> BADGE
-              </Link>
+              {governedWalletAddress ? (
+                <>
+                  <Link
+                    href={`/explorer/${governedWalletAddress}`}
+                    className="flex h-8 items-center gap-1.5 border border-[#282C34] px-3 text-[11px] tracking-[0.12em] text-[#8A909B] hover:border-[#D7DBE0] hover:text-[#D7DBE0]"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" strokeWidth={iconStroke} /> EXPLORER
+                  </Link>
+                  <Link
+                    href={`/badge/${governedWalletAddress}`}
+                    className="flex h-8 items-center gap-1.5 border border-[#282C34] px-3 text-[11px] tracking-[0.12em] text-[#8A909B] hover:border-[#D7DBE0] hover:text-[#D7DBE0]"
+                  >
+                    <ShieldCheck className="h-3.5 w-3.5" strokeWidth={iconStroke} /> BADGE
+                  </Link>
+                </>
+              ) : null}
             </div>
             <div className="grid flex-1 grid-cols-1 divide-y divide-[#282C34] border border-[#282C34] bg-[#181B21] sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-4">
               <div className="p-5">
                 <div className="text-[10px] tracking-[0.2em] text-[#5B626C]">DAILY SPEND</div>
                 <div className="mt-2 font-cond text-[30px] font-semibold leading-none text-[#EDF0F3]">
-                  $342<span className="text-[#8A909B]"> / 500</span>
+                  {amountLabel(detailMetrics.dailySpend)}
+                  <span className="text-[#8A909B]"> / {dailyCapLabel}</span>
                 </div>
-                <ProgressLine width={68} className="mt-3 w-full h-1.5" />
+                <ProgressLine width={dailySpendWidth} className="mt-3 h-1.5 w-full" />
                 <div className="mt-2 text-[10px] tracking-[0.08em] text-[#5B626C]">
-                  68% OF DAILY CAP
+                  {detailMetrics.dailyCap > 0
+                    ? `${dailySpendWidth}% OF DAILY CAP`
+                    : "NO DAILY CAP IN READ MODEL"}
                 </div>
               </div>
               <SmallStat
                 label="30D SPEND"
-                value="$8,410"
+                value={amountLabel(detailMetrics.monthlySpend)}
                 caption="ROLLING WINDOW"
-                trend="6.1% / 30D"
+                trend={walletTransfers.length > 0 ? "LIVE INDEXED" : "NO ACTIVITY"}
               />
               <SmallStat
                 label="EVENTS GOVERNED"
-                value="1,284"
-                caption="LIFETIME"
-                trend="100% MEDIATED"
-                green
+                value={String(detailMetrics.eventsCount)}
+                caption="SELECTED WALLET"
+                trend={walletTransfers.length > 0 ? "SCOPED LEDGER" : "NO INDEXED EVENTS"}
+                green={walletTransfers.length > 0}
               />
               <SmallStat
                 label="DEVIATION"
-                value={formatDeviation(0.3)}
-                caption="THRESHOLD 3.0 deviation"
-                trend="NOMINAL"
-                green
-                valueClassName="text-[#6E9E7C]"
+                value={
+                  walletTransfers.length > 0 ? formatDeviation(detailMetrics.deviation) : "NONE"
+                }
+                caption={
+                  walletPolicy
+                    ? `THRESHOLD ${amountLabel(detailMetrics.escalationThreshold)}`
+                    : "NO ACTIVITY BASELINE"
+                }
+                trend={walletTransfers.length > 0 ? "NOMINAL" : "NOT ENOUGH ACTIVITY"}
+                green={walletTransfers.length > 0}
+                valueClassName={walletTransfers.length > 0 ? "text-[#6E9E7C]" : "text-[#8A909B]"}
               />
             </div>
           </div>
@@ -3187,74 +3795,118 @@ export function AgentDossierCanvasPage() {
           <div className="space-y-4">
             <div className="border border-[#282C34] bg-[#181B21]">
               <PanelHeader title="SPEND BY CATEGORY" meta="DAILY ENVELOPE" />
-              <div className="space-y-3.5 p-4">
-                <CategoryBudget label="API" category="API" amount="$186 / $250" width={74} />
-                <CategoryBudget label="COMPUTE" category="COMPUTE" amount="$92 / $150" width={61} />
-                <CategoryBudget label="DATA" category="DATA" amount="$64 / $100" width={64} />
-                <CategoryBudget label="OTHER" category="OTHER" amount="$0 / $50" width={0} muted />
-                <div className="flex items-center justify-between border-t border-[#282C34] pt-3 text-[11px] tracking-[0.08em]">
-                  <span className="text-[#5B626C]">TOTAL / 68% OF ENVELOPE</span>
-                  <span className="text-[#D7DBE0]">$342 / $500</span>
+              {detailMetrics.categorySpend.length > 0 ? (
+                <div className="space-y-3.5 p-4">
+                  {detailMetrics.categorySpend.map((row) => (
+                    <CategoryBudget
+                      key={row.category}
+                      label={row.category}
+                      category={row.category}
+                      amount={amountLabel(row.amount)}
+                      width={row.width}
+                    />
+                  ))}
+                  <div className="flex items-center justify-between border-t border-[#282C34] pt-3 text-[11px] tracking-[0.08em]">
+                    <span className="text-[#5B626C]">TOTAL / SELECTED WALLET</span>
+                    <span className="text-[#D7DBE0]">{amountLabel(detailMetrics.totalSpend)}</span>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <EmptyState
+                  title="No spend yet"
+                  description="Category usage will appear once agent payments are processed for this governed wallet."
+                />
+              )}
             </div>
 
             <div className="border border-[#282C34] bg-[#181B21]">
-              <PanelHeader title="EVENT STREAM - RESEARCH-AGENT" meta="LIVE / 1,284 LIFETIME" />
-              <div className="grid grid-cols-[84px_56px_minmax(96px,1fr)_minmax(110px,1fr)_92px_104px] items-center border-b border-[#282C34] px-4 py-2 text-[10px] tracking-[0.14em] text-[#5B626C]">
-                <span>TIME</span>
-                <span>CAT</span>
-                <span>ACTION</span>
-                <span>COUNTERPARTY</span>
-                <span className="text-right">AMOUNT</span>
-                <span className="text-right">STATUS</span>
-              </div>
-              <div className="text-[12px]">
-                {dossierEvents.map((event) => (
-                  <EventRow key={`${event[0]}-${event[2]}`} row={event} compact />
-                ))}
-              </div>
-              <div className="flex h-9 items-center justify-between border-t border-[#282C34] px-4 text-[10px] tracking-[0.14em] text-[#5B626C]">
-                <span>SHOWING 7 / 1,284</span>
-                <Link
-                  href="/ledger"
-                  className="flex items-center gap-1 text-[#8A909B] hover:text-[#D7DBE0]"
-                >
-                  OPEN FULL STREAM <ArrowUpRight className="h-3 w-3" strokeWidth={iconStroke} />
-                </Link>
-              </div>
+              <PanelHeader
+                title={`EVENT STREAM - ${agentLabel.toUpperCase()}`}
+                meta={
+                  walletTransfers.length > 0
+                    ? `LIVE / ${walletTransfers.length} INDEXED`
+                    : "NO INDEXED ACTIVITY"
+                }
+              />
+              {detailMetrics.eventRows.length > 0 ? (
+                <>
+                  <div className="grid grid-cols-[84px_56px_minmax(96px,1fr)_minmax(110px,1fr)_92px_104px] items-center border-b border-[#282C34] px-4 py-2 text-[10px] tracking-[0.14em] text-[#5B626C]">
+                    <span>TIME</span>
+                    <span>CAT</span>
+                    <span>ACTION</span>
+                    <span>COUNTERPARTY</span>
+                    <span className="text-right">AMOUNT</span>
+                    <span className="text-right">STATUS</span>
+                  </div>
+                  <div className="text-[12px]">
+                    {detailMetrics.eventRows.map((event) => (
+                      <EventRow key={`${event[0]}-${event[3]}-${event[4]}`} row={event} compact />
+                    ))}
+                  </div>
+                  <div className="flex h-9 items-center justify-between border-t border-[#282C34] px-4 text-[10px] tracking-[0.14em] text-[#5B626C]">
+                    <span>
+                      SHOWING {detailMetrics.eventRows.length} / {walletTransfers.length}
+                    </span>
+                    <Link
+                      href="/ledger"
+                      className="flex items-center gap-1 text-[#8A909B] hover:text-[#D7DBE0]"
+                    >
+                      OPEN FULL STREAM <ArrowUpRight className="h-3 w-3" strokeWidth={iconStroke} />
+                    </Link>
+                  </div>
+                </>
+              ) : (
+                <EmptyState title="No activity yet" description={indexerEmptyCopy} />
+              )}
             </div>
           </div>
 
           <div className="space-y-4">
             <div className="border border-[#282C34] bg-[#181B21]">
               <PanelHeader title="TOP COUNTERPARTIES" meta="30D" />
-              <div className="divide-y divide-[#1E222A]">
-                {topCounterparties.map(([name, amount, txs, width]) => (
-                  <div key={name} className="px-4 py-3">
-                    <div className="flex items-center justify-between text-[12px]">
-                      <span className="text-[#D7DBE0]">{name}</span>
-                      <span className="text-[#8A909B]">
-                        {amount} <span className="text-[#5B626C]">/ {txs}</span>
-                      </span>
+              {detailMetrics.counterparties.length > 0 ? (
+                <div className="divide-y divide-[#1E222A]">
+                  {detailMetrics.counterparties.map((counterparty) => (
+                    <div key={counterparty.name} className="px-4 py-3">
+                      <div className="flex items-center justify-between text-[12px]">
+                        <span className="text-[#D7DBE0]">{counterparty.name}</span>
+                        <span className="text-[#8A909B]">
+                          {amountLabel(counterparty.amount)}{" "}
+                          <span className="text-[#5B626C]">/ {counterparty.count} tx</span>
+                        </span>
+                      </div>
+                      <div className="mt-2 h-1.5 bg-[#20242B]">
+                        <div
+                          className="h-full bg-[#3A4250]"
+                          style={{ width: `${counterparty.width}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="mt-2 h-1.5 bg-[#20242B]">
-                      <div className="h-full bg-[#3A4250]" style={{ width: `${width}%` }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState
+                  title="No counterparties yet"
+                  description="Approved vendors and paid destinations will appear after agent activity begins."
+                />
+              )}
             </div>
 
             <div className="border border-[#282C34] bg-[#181B21]">
-              <PanelHeader title="DOCTRINE SNAPSHOT" meta="std-research-v3" />
+              <PanelHeader
+                title="DOCTRINE SNAPSHOT"
+                meta={walletPolicy ? `v${walletPolicy.version}` : "READ MODEL"}
+              />
               <div className="divide-y divide-[#1E222A] text-[12px]">
                 {[
-                  ["PER-TX CAP", "$50.00"],
-                  ["DAILY CAP", "$500.00"],
-                  ["PER-VENDOR / DAY", "$100.00"],
-                  ["QUORUM", "1 / 2"],
-                  ["ANOMALY THRESHOLD", "3.0 deviation"],
+                  ["PER-TX CAP", detailMetrics.perTxCapLabel],
+                  ["DAILY CAP", detailMetrics.dailyCapLabel],
+                  ["MONTHLY CAP", detailMetrics.monthlyCapLabel],
+                  [
+                    "VENDOR ALLOWLIST",
+                    walletPolicy?.requireAllowlist ? "required" : "not required",
+                  ],
+                  ["ESCALATE ABOVE", detailMetrics.escalationThresholdLabel],
                 ].map(([label, value]) => (
                   <div key={label} className="flex items-center justify-between px-4 py-3">
                     <span className="text-[10px] tracking-[0.14em] text-[#5B626C]">{label}</span>
@@ -3266,12 +3918,165 @@ export function AgentDossierCanvasPage() {
 
             <AgentSignerPanel governedWalletAddress={governedWalletAddress} />
 
-            <BadgeEmbedSnippet wallet={displayWalletAddress} />
+            {governedWalletAddress ? <BadgeEmbedSnippet wallet={governedWalletAddress} /> : null}
           </div>
         </section>
       </Main>
     </GovernanceFrame>
   );
+}
+
+type WalletDetailTransfer = {
+  id: string;
+  txHash: string;
+  blockNumber: number;
+  timestamp: Date | string;
+  toAddress: string;
+  amount: string | number;
+  verdict: string;
+  reason: string;
+  vendorCategory: string;
+};
+
+type WalletDetailPolicy = {
+  version: number;
+  perTxCap: string | number;
+  daily24hCap: string | number;
+  monthlyRollingCap: string | number;
+  escalationThreshold: string | number;
+  requireAllowlist: boolean;
+};
+
+function walletDetailMetrics(
+  transfers: WalletDetailTransfer[],
+  policy: WalletDetailPolicy | null,
+  vendorNames: Map<string, string>,
+) {
+  const now = Date.now();
+  const dayAgo = now - 24 * 60 * 60 * 1000;
+  const monthAgo = now - 30 * 24 * 60 * 60 * 1000;
+  const dailyCap = policy ? usdcNumber(policy.daily24hCap) : 0;
+  const perTxCap = policy ? usdcNumber(policy.perTxCap) : 0;
+  const monthlyCap = policy ? usdcNumber(policy.monthlyRollingCap) : 0;
+  const escalationThreshold = policy ? usdcNumber(policy.escalationThreshold) : 0;
+  const totalSpend = transfers.reduce((sum, transfer) => sum + usdcNumber(transfer.amount), 0);
+  const dailySpend = transfers.reduce((sum, transfer) => {
+    const timestamp = transferTimestampMs(transfer);
+    return timestamp !== null && timestamp >= dayAgo ? sum + usdcNumber(transfer.amount) : sum;
+  }, 0);
+  const monthlySpend = transfers.reduce((sum, transfer) => {
+    const timestamp = transferTimestampMs(transfer);
+    return timestamp !== null && timestamp >= monthAgo ? sum + usdcNumber(transfer.amount) : sum;
+  }, 0);
+  const categoryTotals = new Map<string, number>();
+  const counterpartyTotals = new Map<string, { amount: number; count: number; name: string }>();
+
+  for (const transfer of transfers) {
+    const amount = usdcNumber(transfer.amount);
+    const category = categoryLabel(transfer.vendorCategory || "other");
+    categoryTotals.set(category, (categoryTotals.get(category) ?? 0) + amount);
+
+    const address = transfer.toAddress?.toLowerCase();
+    const name = address ? (vendorNames.get(address) ?? shortAddress(address)) : "Counterparty";
+    const current = counterpartyTotals.get(name) ?? { amount: 0, count: 0, name };
+    counterpartyTotals.set(name, {
+      ...current,
+      amount: current.amount + amount,
+      count: current.count + 1,
+    });
+  }
+
+  const maxCategory = Math.max(1, ...categoryTotals.values());
+  const maxCounterparty = Math.max(
+    1,
+    ...Array.from(counterpartyTotals.values()).map((row) => row.amount),
+  );
+
+  return {
+    categorySpend: Array.from(categoryTotals.entries())
+      .map(([category, amount]) => ({
+        amount,
+        category,
+        width: Math.min(100, Math.round((amount / maxCategory) * 100)),
+      }))
+      .sort((left, right) => right.amount - left.amount),
+    counterPartiesCount: counterpartyTotals.size,
+    counterparties: Array.from(counterpartyTotals.values())
+      .map((row) => ({
+        ...row,
+        width: Math.min(100, Math.round((row.amount / maxCounterparty) * 100)),
+      }))
+      .sort((left, right) => right.amount - left.amount),
+    dailyCap,
+    dailyCapLabel: dailyCap > 0 ? amountLabel(dailyCap) : "Not configured",
+    dailySpend,
+    deviation: transfers.length > 0 ? 0 : 0,
+    escalationThreshold,
+    escalationThresholdLabel:
+      escalationThreshold > 0 ? amountLabel(escalationThreshold) : "Not configured",
+    eventsCount: transfers.length,
+    eventRows: transfers
+      .slice(0, 7)
+      .map((transfer) => walletTransferEventRow(transfer, vendorNames)),
+    monthlyCap,
+    monthlyCapLabel: monthlyCap > 0 ? amountLabel(monthlyCap) : "Not configured",
+    monthlySpend,
+    perTxCap,
+    perTxCapLabel: perTxCap > 0 ? amountLabel(perTxCap) : "Not configured",
+    totalSpend,
+  };
+}
+
+function transferTimestampMs(transfer: WalletDetailTransfer) {
+  const value =
+    transfer.timestamp instanceof Date
+      ? transfer.timestamp.getTime()
+      : Date.parse(transfer.timestamp);
+  return Number.isFinite(value) ? value : null;
+}
+
+function walletTransferEventRow(
+  transfer: WalletDetailTransfer,
+  vendorNames: Map<string, string>,
+): readonly string[] {
+  const address = transfer.toAddress?.toLowerCase();
+  const counterparty = address
+    ? (vendorNames.get(address) ?? shortAddress(address))
+    : "Counterparty";
+  return [
+    transferTimeLabel(transfer),
+    categoryLabel(transfer.vendorCategory || "other"),
+    transfer.reason || transfer.verdict,
+    counterparty,
+    amountLabel(usdcNumber(transfer.amount)),
+    transferVerdictLabel(transfer.verdict),
+  ];
+}
+
+function transferTimeLabel(transfer: WalletDetailTransfer) {
+  const timestamp = transferTimestampMs(transfer);
+  if (timestamp === null) {
+    return "N/A";
+  }
+
+  return new Date(timestamp).toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function transferVerdictLabel(verdict: string) {
+  const normalized = verdict.toUpperCase();
+  if (normalized === "DENY") {
+    return "REJECTED";
+  }
+  if (normalized === "ESCALATE") {
+    return "ESCALATED";
+  }
+  if (normalized === "FREEZE") {
+    return "FROZEN";
+  }
+  return "APPROVED";
 }
 
 type SignerReadStatus = "idle" | "checking" | "ready" | "error";
@@ -3988,7 +4793,9 @@ export function PolicyEditorCanvasPage() {
   return (
     <GovernanceFrame
       active="agents"
-      file={`${workspaceFileRoot(workspace)} / GOVERNANCE / AGENTS / RESEARCH-AGENT / DOCTRINE`}
+      file={`${workspaceFileRoot(workspace)} / GOVERNANCE / AGENTS / ${
+        selectedGovernedWalletAddress ? shortAddress(selectedGovernedWalletAddress) : "NO WALLET"
+      } / DOCTRINE`}
       showRange={false}
     >
       <main className="px-5 py-5">
@@ -4392,92 +5199,32 @@ function DoctrineSimulation({
   txHash: Hash | null;
   unsavedCount: number;
 }>) {
-  const disabledCategoryCount = doctrineCategoryOptions.length - enabledCategories.size;
-  const approvedCount = Math.max(0, 1194 - disabledCategoryCount * 42);
-  const escalatedCount = 71;
-  const deniedCount = 19 + disabledCategoryCount * 42;
-  const sampleVerdicts = [
-    ["$4.20", "OpenAI", "API", "APPROVED", "within all caps", false],
-    [
-      "$73.42",
-      "AWS Bedrock",
-      "COMPUTE",
-      "ESCALATED",
-      "exceeds per-vendor/day ($100) after today's spend",
-      false,
-    ],
-    ["$847.00", "evil-data-broker.com", "DATA", "DENIED", "vendor not on allowlist", true],
-    ["$312.00", "Anthropic", "API", "ESCALATED", "exceeds per-tx cap ($50)", false],
-    ["$1.90", "Pinecone", "COMPUTE", "APPROVED", "within all caps", false],
-  ] as const;
-
   return (
     <div className="self-start border border-[#282C34] bg-[#181B21]">
-      <PanelHeader title="DOCTRINE SIMULATION">
+      <PanelHeader title="POLICY CHANGE PREVIEW">
         <button
           type="button"
           onClick={() =>
-            toast.success(`DRY RUN COMPLETE / ${enabledCategories.size} categories enabled locally`)
+            toast.success(`POLICY PREVIEW UPDATED / ${enabledCategories.size} categories enabled`)
           }
           className="flex items-center gap-1.5 border border-[#3A4250] px-2 py-1 text-[10px] tracking-[0.14em] text-[#D7DBE0] hover:border-[#FF5A1F] hover:text-[#FF5A1F]"
         >
-          <Play className="h-3 w-3" strokeWidth={iconStroke} /> DRY RUN
+          <Play className="h-3 w-3" strokeWidth={iconStroke} /> PREVIEW
         </button>
       </PanelHeader>
       <div className="p-4">
-        <div className="flex items-center justify-between text-[11px]">
-          <span className="text-[#8A909B]">
-            Replaying last <span className="text-[#D7DBE0]">1,284</span> events against draft
-            doctrine...
-          </span>
-          <span className="text-[#6E9E7C]">DONE</span>
-        </div>
-        <div className="mt-3">
-          <div className="flex h-2.5 w-full overflow-hidden">
-            <div className="bg-[#6E9E7C]" style={{ width: "92.9%" }} />
-            <div className="bg-[#E0A04A]" style={{ width: "5.5%" }} />
-            <div className="bg-[#FF5A1F]" style={{ width: "1.6%" }} />
+        <div className="border border-[#282C34] bg-[#101216] p-3">
+          <div className="flex items-center justify-between text-[10px] tracking-[0.14em]">
+            <span className="text-[#5B626C]">INDEXED ACTIVITY REPLAY</span>
+            <span className="text-[#8A909B]">NOT LOADED</span>
           </div>
-          <div className="mt-2 flex items-center gap-4 text-[10px] tracking-[0.08em]">
-            <Legend color="#6E9E7C" label="APPROVED" value={approvedCount.toLocaleString()} />
-            <Legend color="#E0A04A" label="ESCALATED" value={escalatedCount.toLocaleString()} />
-            <Legend color="#FF5A1F" label="DENIED" value={deniedCount.toLocaleString()} />
+          <div className="mt-2 text-[11px] leading-relaxed text-[#8A909B]">
+            This panel shows the policy diff only. It does not invent historical spend, vendors, or
+            payment verdicts for a live wallet.
           </div>
         </div>
       </div>
       <div className="border-t border-[#282C34]">
-        <div className="flex h-8 items-center justify-between border-b border-[#282C34] px-4 text-[10px] tracking-[0.16em] text-[#5B626C]">
-          <span>SAMPLE TX VERDICTS</span>
-          <span>$ dry-run --sample 5</span>
-        </div>
-        <div className="divide-y divide-[#1E222A] text-[11px]">
-          {sampleVerdicts.map(([amount, vendor, category, status, reason, danger]) => {
-            const categoryEnabled = enabledCategories.has(category);
-            const finalStatus = categoryEnabled ? status : "DENIED";
-            const finalReason = categoryEnabled
-              ? reason
-              : `${category} category disabled in draft doctrine`;
-            const finalDanger = danger || !categoryEnabled;
-
-            return (
-              <div
-                key={`${amount}-${vendor}`}
-                className={cn("px-4 py-3", finalDanger && "bg-[#1a1207]")}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-[#D7DBE0]">
-                    {amount} <span className="text-[#5B626C]">to</span>{" "}
-                    <span className={finalDanger ? "text-[#FF5A1F]" : undefined}>{vendor}</span>{" "}
-                    <span className="text-[#5B626C]">/</span>{" "}
-                    <span style={{ color: categoryColors[String(category)] }}>{category}</span>
-                  </span>
-                  <StatusLabel status={String(finalStatus)} />
-                </div>
-                <div className="mt-1 text-[10px] text-[#5B626C]">{finalReason}</div>
-              </div>
-            );
-          })}
-        </div>
         <div className="border-t border-[#282C34] p-4">
           <div className="text-[10px] tracking-[0.16em] text-[#5B626C]">DOCTRINE DIFF</div>
           <div className="mt-2 divide-y divide-[#1E222A] border border-[#282C34] text-[11px]">
@@ -4507,19 +5254,6 @@ function DoctrineSimulation({
         </div>
       </div>
     </div>
-  );
-}
-
-function Legend({
-  color,
-  label,
-  value,
-}: Readonly<{ color: string; label: string; value: string }>) {
-  return (
-    <span className="flex items-center gap-1.5 text-[#8A909B]">
-      <span className="h-2 w-2" style={{ background: color }} /> {label}{" "}
-      <span className="text-[#D7DBE0]">{value}</span>
-    </span>
   );
 }
 

@@ -35,13 +35,18 @@ export const analyticsRouter = router({
       readSupabaseAnomalies(ctx),
     ]);
 
-    if (supabaseAgents.length > 0 || supabaseTransfers.length > 0 || supabaseAnomalies.length > 0) {
-      const frozen = supabaseAgents.filter((agent) => agent.status === "frozen").length;
+    const frozen = supabaseAgents.filter((agent) => agent.status === "frozen").length;
+    if (frozen > 0 || supabaseTransfers.length > 0 || supabaseAnomalies.length > 0) {
       const denied = supabaseTransfers.filter((transfer) => transfer.verdict === "DENY").length;
       const danger = supabaseAnomalies.filter((anomaly) => anomaly.severity === "danger").length;
       const value = Math.max(0, Math.min(100, 100 - frozen * 10 - denied * 3 - danger * 8));
       postureCache.set(cacheKey, { value, expiresAt: Date.now() + 30_000 });
       return value;
+    }
+
+    if (supabaseAgents.length > 0) {
+      postureCache.set(cacheKey, { value: 0, expiresAt: Date.now() + 30_000 });
+      return 0;
     }
 
     if (!canUseDemoFallback(ctx)) {
@@ -86,13 +91,13 @@ export const analyticsRouter = router({
       ],
     );
 
-    const frozen =
+    const fallbackFrozen =
       frozenAgents[0]?.count ?? fallbackAgents.filter((agent) => agent.status === "frozen").length;
     const denied =
       denied24h[0]?.count ??
       fallbackTransfers.filter((transfer) => transfer.verdict === "DENY").length;
     const danger = danger24h[0]?.count ?? fallbackAnomalies.length;
-    const value = Math.max(0, Math.min(100, 100 - frozen * 10 - denied * 3 - danger * 8));
+    const value = Math.max(0, Math.min(100, 100 - fallbackFrozen * 10 - denied * 3 - danger * 8));
     postureCache.set(cacheKey, { value, expiresAt: Date.now() + 30_000 });
     return value;
   }),

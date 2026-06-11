@@ -110,7 +110,7 @@ export function GovernanceFrame({
   return (
     <MotionDiv
       className={cn(
-        "arcanum-page-root flex min-h-screen w-full max-w-full flex-col overflow-x-clip bg-foundry-grid font-mono text-[#D7DBE0]",
+        "arcanum-page-root flex min-h-screen w-screen max-w-[100vw] flex-col overflow-x-clip bg-foundry-grid font-mono text-[#D7DBE0]",
         presentationMode && "arcanum-presenting",
         relative && "relative",
       )}
@@ -118,7 +118,7 @@ export function GovernanceFrame({
       initial={reduced ? false : "hidden"}
       animate={reduced ? undefined : "show"}
     >
-      <header className="arcanum-chrome flex min-h-[52px] w-full max-w-full flex-wrap items-center justify-between gap-2 border-b border-[#282C34] bg-[#16181D] px-3 py-2 xl:flex-nowrap xl:px-5 xl:py-2">
+      <header className="arcanum-chrome grid min-h-[52px] w-screen max-w-[100vw] grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b border-[#282C34] bg-[#16181D] px-3 py-2 sm:flex sm:flex-wrap sm:justify-between xl:flex-nowrap xl:px-5 xl:py-2">
         <div className="flex min-w-0 shrink items-center gap-3">
           <Link
             href="/dashboard"
@@ -145,7 +145,7 @@ export function GovernanceFrame({
           </MotionButton>
         </div>
 
-        <div className="relative flex min-w-0 flex-1 flex-wrap items-center justify-end gap-1 sm:gap-2">
+        <div className="relative flex min-w-0 flex-none flex-wrap items-center justify-end gap-1 sm:flex-1 sm:gap-2">
           <button
             type="button"
             aria-label="Open command search"
@@ -240,7 +240,7 @@ export function GovernanceFrame({
         </div>
       </header>
 
-      <div className="arcanum-chrome flex min-h-10 w-full max-w-full flex-wrap items-center justify-between gap-2 overflow-hidden border-b border-[#282C34] bg-[#14161A] px-3 lg:flex-nowrap lg:px-5">
+      <div className="arcanum-chrome flex min-h-10 w-screen max-w-[100vw] flex-wrap items-center justify-between gap-2 overflow-hidden border-b border-[#282C34] bg-[#14161A] px-3 lg:flex-nowrap lg:px-5">
         <nav className="flex h-full min-w-0 flex-wrap items-center gap-1 text-[12px] tracking-[0.12em]">
           {navItems.map((item) => {
             const selected = item.key === active;
@@ -310,7 +310,7 @@ export function GovernanceFrame({
         </div>
       </div>
 
-      <div className="min-h-0 min-w-0 flex-1 overflow-x-clip">{children}</div>
+      <div className="min-h-0 min-w-0 max-w-[100vw] flex-1 overflow-x-clip">{children}</div>
 
       <GovernanceFooter />
     </MotionDiv>
@@ -575,7 +575,7 @@ export function GovernanceFooter() {
       : "NO SIGNER";
 
   return (
-    <footer className="arcanum-footer sticky bottom-0 z-30 flex min-h-8 w-full max-w-full shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 overflow-x-clip border-t border-[#282C34] bg-[#16181D] px-3 py-1 text-[10px] tracking-[0.12em] text-[#5B626C] lg:flex-nowrap lg:px-5">
+    <footer className="arcanum-footer sticky bottom-0 z-30 flex min-h-8 w-screen max-w-[100vw] shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 overflow-x-clip border-t border-[#282C34] bg-[#16181D] px-3 py-1 text-[10px] tracking-[0.12em] text-[#5B626C] lg:flex-nowrap lg:px-5">
       <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1">
         <span className="flex items-center gap-1.5" style={{ color: statusColor }}>
           <MotionSpan
@@ -596,7 +596,7 @@ export function GovernanceFooter() {
           </span>
         </span>
       </div>
-      <div className="flex min-w-0 items-center gap-4">
+      <div className="hidden min-w-0 items-center gap-4 sm:flex">
         <span>RPC 47ms</span>
         <span className="text-[#343A44]">|</span>
         <span>ARCANUM v0.9.2</span>
