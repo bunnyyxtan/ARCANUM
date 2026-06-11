@@ -1,0 +1,28 @@
+{
+  "name": "@arcanum/auth",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc --noEmit -p tsconfig.json",
+    "lint": "biome check .",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@arcanum/db": "0.0.0",
+    "drizzle-orm": "^0.36.0",
+    "iron-session": "^8.0.4",
+    "siwe": "^2.3.2",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@arcanum/config": "0.0.0",
+    "typescript": "^5.6.0"
+  }
+}

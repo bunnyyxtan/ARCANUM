@@ -1,0 +1,16 @@
+# Research Agent With Vendor Allowlist
+
+Research agents are excellent first deployments because their spend usually flows to a small set of APIs and data vendors.
+
+```ts
+const vendor = await arc.getVendor(process.env.TAVILY_VENDOR as `0x${string}`)
+
+if (vendor.allowed && !vendor.blocked) {
+  await arc.executeUSDC({
+    to: process.env.TAVILY_VENDOR as `0x${string}`,
+    amount: 40_000_000n,
+    reason: "Search API research budget",
+    metadata: { category: "API" },
+  })
+}
+```

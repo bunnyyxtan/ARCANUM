@@ -1,0 +1,12 @@
+{
+  "name": "@arcanum/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "forge build",
+    "lint": "forge fmt --check",
+    "test": "forge test",
+    "typecheck": "forge build"
+  }
+}

@@ -1,0 +1,14 @@
+# DAO Treasury Keeper
+
+Give a treasury keeper a monthly USDC envelope and route larger transfers to council review.
+
+```ts
+const result = await arc.executeUSDC({
+  to: process.env.MORPHO_POOL as `0x${string}`,
+  amount: 900_000_000n,
+  reason: "Rebalance idle treasury USDC into Morpho pool",
+  metadata: { category: "COMPUTE" },
+})
+```
+
+Operators usually set a monthly cap, a low escalation threshold, and a vendor allowlist that maps approved pool addresses to compute or other categories.

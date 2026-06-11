@@ -1,0 +1,47 @@
+# secrets
+.env
+.env.local
+.env.*.local
+apps/web/.env.local
+packages/contracts/.env
+
+# logs/temp
+*.log
+*.err.log
+*.out.log
+dev-*.log
+fix_lint*.js
+screenshot.js
+
+# generated
+output/
+.playwright-cli/
+playwright-report/
+test-results/
+logs/
+screenshots/
+.next/
+.turbo/
+node_modules/
+dist/
+build/
+coverage/
+
+# foundry
+packages/contracts/out/
+packages/contracts/cache/
+packages/contracts/broadcast/
+packages/contracts/lib/
+packages/contracts/lcov.info
+
+# old planning exports
+*.pdf
+Direction B*.html
+# python/cache
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.pyc
+
+# typescript cache
+*.tsbuildinfo

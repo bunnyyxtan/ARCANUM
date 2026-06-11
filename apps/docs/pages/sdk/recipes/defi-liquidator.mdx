@@ -1,0 +1,12 @@
+# DeFi Liquidator
+
+Liquidator agents need speed, but they still need hard envelopes. Arcanum lets protocol teams define vendor caps for pool contracts and escalation for unusual transfer sizes.
+
+```ts
+const quote = await arc.simulate({
+  to: process.env.LIQUIDATION_POOL as `0x${string}`,
+  amount: 2_500_000_000n,
+})
+```
+
+Use simulation for planning. The wallet evaluates again at execution time.

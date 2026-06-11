@@ -1,0 +1,19 @@
+{
+  "name": "@arcanum/indexer-app",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "ponder codegen",
+    "dev": "ponder dev",
+    "lint": "biome check .",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "ponder": "^0.16.6"
+  },
+  "devDependencies": {
+    "@arcanum/config": "0.0.0",
+    "typescript": "^5.6.0"
+  }
+}

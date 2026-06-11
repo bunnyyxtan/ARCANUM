@@ -1,0 +1,48 @@
+import type { GovernanceEvent } from "@/lib/types";
+
+export const events: GovernanceEvent[] = [
+  {
+    id: "evt-1",
+    label: "Spend escalated for human co-sign",
+    actor: "ResearchAgent",
+    counterparty: "AWS Bedrock",
+    category: "compute",
+    amount: 73.42,
+    status: "escalated",
+    timestamp: "02:51:04Z",
+    severity: "warning",
+  },
+  {
+    id: "evt-2",
+    label: "Blocked non-whitelisted data broker",
+    actor: "DevAgent-01",
+    counterparty: "evil-data-broker.com",
+    category: "data",
+    amount: 847,
+    status: "rejected",
+    timestamp: "02:47:18Z",
+    severity: "danger",
+  },
+  {
+    id: "evt-3",
+    label: "Policy envelope allowed API spend",
+    actor: "ResearchAgent",
+    counterparty: "OpenAI",
+    category: "api",
+    amount: 4.2,
+    status: "approved",
+    timestamp: "02:44:03Z",
+    severity: "success",
+  },
+  {
+    id: "evt-4",
+    label: "Vendor registry synced",
+    actor: "Helix DAO",
+    counterparty: "Vendor Registry",
+    category: "other",
+    amount: 0,
+    status: "approved",
+    timestamp: "02:32:40Z",
+    severity: "info",
+  },
+];

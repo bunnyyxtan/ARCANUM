@@ -1,0 +1,25 @@
+image:
+  repository: ghcr.io/arcanum-protocol/arcanum
+  tag: latest
+
+ingress:
+  enabled: true
+  host: arcanum.local
+  className: nginx
+  certManager: true
+
+env:
+  ARC_TESTNET_RPC: https://rpc.testnet.arc.network
+  ARC_TESTNET_WS: wss://rpc.testnet.arc.network/ws
+  ARCANUM_TENANT_ID: default
+  ARCANUM_DEPLOYMENT_MODE: self-hosted
+  ARCANUM_OPEN_REGISTRATION: "true"
+  ARCANUM_TELEMETRY: "off"
+
+postgres:
+  externalUrl: ""
+  operatorManaged: false
+
+redis:
+  externalUrl: ""
+  operatorManaged: false

@@ -1,0 +1,12 @@
+# Policies
+
+Policy envelopes define caps, allowlist requirements, category bitmasks, and escalation thresholds. The policy engine evaluates these envelopes inside the EVM before USDC moves.
+
+```ts
+const result = await arc.simulate({
+  to: "0x0000000000000000000000000000000000000002",
+  amount: 1_250_000_000n,
+})
+```
+
+Simulation is an `eth_call`. It is useful for agent planning, but enforcement happens again during the actual transaction.

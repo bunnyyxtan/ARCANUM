@@ -1,0 +1,11 @@
+# Virtuals
+
+Virtual agents can route Arc USDC transfers through GuardedWallets by replacing direct token transfer calls with `executeUSDC`.
+
+```ts
+await arc.executeUSDC({
+  to: process.env.APPROVED_VENDOR as `0x${string}`,
+  amount: 25_000_000n,
+  reason: "Agent service budget",
+})
+```

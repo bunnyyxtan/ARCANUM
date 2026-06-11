@@ -1,0 +1,10 @@
+{
+  "extends": "../config/tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ESNext"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true
+  },
+  "include": ["drizzle.config.ts", "src/**/*.ts"]
+}

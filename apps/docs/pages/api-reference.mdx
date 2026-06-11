@@ -1,0 +1,19 @@
+# API Reference
+
+The tRPC API serves indexed observability data. It never signs or broadcasts user transactions.
+
+Procedure groups:
+
+- `auth`: SIWE session helpers.
+- `org`: current organization and members.
+- `wallets`: GuardedWallet records, policies, and agents.
+- `agents`: agent detail, transfers, and anomalies.
+- `transfers`: filtered ledger records.
+- `escalations`: queue reads plus unsigned approve/reject calldata preparation.
+- `vendors`: registry reads plus unsigned vendor mutation preparation.
+- `policies`: unsigned policy-update preparation and tx recording.
+- `anomalies`: anomaly reads and acknowledgment state.
+- `events`: indexed event stream.
+- `analytics`: posture, value governed, active agents, threats blocked, and pending escalations.
+
+Every protected procedure derives `tenantId` from the SIWE session. Inputs never choose tenant scope.

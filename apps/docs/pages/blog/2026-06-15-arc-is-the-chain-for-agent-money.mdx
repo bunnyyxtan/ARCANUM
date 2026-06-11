@@ -1,0 +1,85 @@
+---
+title: "Arc Is the Chain for Agent Money. Here's Why We Built On It."
+description: "Why Arcanum is built native to Arc for the stablecoin agent economy."
+date: "2026-06-15"
+---
+
+# Arc Is the Chain for Agent Money. Here's Why We Built On It.
+
+Arc is the chain where autonomous AI agents will hold, move, and earn stablecoins.
+
+That thesis is the reason Arcanum exists. Agents need money that settles at software speed. They need a chain where stablecoin movement is a first-class design concern. They need permissionless deployment, public execution, clear settlement, and infrastructure that feels natural for developers building real economic workflows.
+
+Circle and the Arc team are creating that foundation. Arcanum is our contribution to the ecosystem: open, non-custodial governance for the agents that will operate on top of it.
+
+## Agents Are Becoming On-Chain Operators
+
+The first generation of agents mostly produced text, tickets, summaries, and tool calls. The next generation will operate wallets.
+
+That changes the problem. A wallet-enabled agent can pay an API vendor, rebalance a treasury position, post collateral, settle a subcontractor, buy compute, route rewards, or run a maintenance job for a protocol. Once it can spend USDC, it becomes an economic actor.
+
+Arc is built for this kind of activity. It gives builders a stablecoin-native environment where the unit of account is practical, settlement is permissionless, and agent workflows can be expressed directly on-chain.
+
+Arcanum focuses on the missing governance layer for those workflows.
+
+## USDC At Agent Speed
+
+Stablecoins are the natural money rail for agents. Agents do not need a payroll account or a procurement team. They need programmable balances, clear settlement, and predictable denomination.
+
+USDC on Arc gives builders that base layer. An agent can be given a budget and a task. A DAO treasury can fund a rebalancer. A DeFi protocol can fund a keeper. A DePIN network can fund subcontracting agents. A research agent can pay approved model or data providers.
+
+The question becomes: what guardrails sit around that wallet?
+
+Arcanum answers with on-chain policy envelopes. Each GuardedWallet can define per-transfer caps, daily caps, monthly caps, escalation thresholds, category rules, and vendor allowlists. The policy travels with the wallet because the policy is enforced by the wallet.
+
+## Permissionless Governance Primitives
+
+Agent money should inherit the values of the chain it runs on.
+
+That means permissionless deployment. Anyone can deploy a GuardedWallet through the factory.
+
+It means non-custodial design. The protocol cannot move user funds.
+
+It means transparent enforcement. The policy is evaluated on-chain during the transfer path.
+
+It means self-hosted operations. The dashboard, indexer, API, and database can be run by the team using the protocol.
+
+It means open source. The contracts, SDKs, docs, and infrastructure are MIT-licensed so builders can inspect, fork, and extend.
+
+Arc makes those values practical for stablecoin finance. Arcanum applies them to AI agent governance.
+
+## What Builders Can Ship
+
+For DAO operators, Arcanum makes treasury agents easier to reason about. A DAO can give an agent a real USDC wallet with explicit caps, approved destinations, and council escalation for larger transfers.
+
+For DeFi engineers, Arcanum can sit around keeper or liquidator agents. The bot logic can remain focused on protocol actions while the wallet enforces spend policy and anomaly containment.
+
+For DePIN operators, Arcanum can govern subcontracting agents that pay compute providers, data providers, validators, or other network participants. Vendor allowlists and per-vendor caps become on-chain state.
+
+For agent-framework builders, Arcanum can become a recipe: replace the direct USDC transfer call with `arc.executeUSDC`, configure a wallet policy, and let the contract enforce the envelope.
+
+The integration surface is intentionally small because the governance requirement is universal.
+
+## Why We Built The Whole Stack
+
+The contracts are the center. The rest of the stack exists to make them usable.
+
+The indexer reads Arc events and writes to Postgres. The API serves tenant-isolated data. SIWE proves wallet ownership for dashboard access. The dashboard shows posture, ledger, vendors, escalations, and anomalies. The SDKs let agents call the protocol directly through Arc RPC.
+
+No off-chain service gets custody. No server signs user transfers. No hosted endpoint is required for the SDK.
+
+That architecture fits Arc because Arc is permissionless infrastructure. Arcanum should feel like a protocol that belongs to the builder using it, not a surface they merely rent.
+
+## A Love Letter To Arc Builders
+
+The most exciting part of Arc is not any single application. It is the surface area it opens for builders who want to make stablecoins programmable at a deeper level.
+
+Autonomous agents are one of the clearest examples. They will need wallets. They will need budgets. They will need review paths. They will need public records. They will need containment when behavior drifts.
+
+Those are not side features. They are core primitives for agent money.
+
+Arcanum is one attempt to make those primitives real on Arc. It is open because the ecosystem benefits when every team can read the code. It is non-custodial because stablecoin governance should not require handing over funds. It is self-hostable because serious operators need control over their own data plane. It is MIT because agent builders should be able to ship without a licensing maze.
+
+We are grateful to Circle and the Arc team for making this design space possible. Arc gives the agent economy a stablecoin-native home. Arcanum gives builders a governance layer to run those agents with confidence.
+
+Open protocol. Built on Arc. MIT. Forever.

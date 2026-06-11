@@ -1,0 +1,139 @@
+# 10-minute DAO Treasury Agent
+
+Helix DAO wants `TreasuryRebalancerAgent` to rebalance USDC positions across Aave, Compound, and Morpho on Arc. The agent gets a $10K monthly budget, $5K per-transfer and daily caps, a $1K escalation threshold, and a 2-of-3 council for human release.
+
+## Step 1 - Install
+
+These snippets are Arc Testnet examples for local development. Keep private keys
+in local environment variables only, and do not commit `.env` files.
+
+```ts
+import { ArcanumClient } from "@arcanum/sdk"
+import { arcTestnet } from "@arcanum/sdk/chains"
+import { createWalletClient, http, parseUnits } from "viem"
+import { privateKeyToAccount } from "viem/accounts"
+```
+
+```bash
+npm install @arcanum/sdk viem
+```
+
+## Step 2 - Deploy through WalletFactory
+
+```ts
+import { WalletFactoryAbi } from "@arcanum/contracts"
+
+const owner = privateKeyToAccount(process.env.DAO_DEPLOYER_KEY as `0x${string}`)
+const client = createWalletClient({ account: owner, chain: arcTestnet, transport: http(process.env.ARC_TESTNET_RPC!) })
+
+const policy = {
+  perTxCap: parseUnits("5000", 6),
+  daily24hCap: parseUnits("5000", 6),
+  monthlyRollingCap: parseUnits("10000", 6),
+  allowedCategories: 0b11111n,
+  escalationThreshold: parseUnits("1000", 6),
+  requireAllowlist: true,
+}
+
+const hash = await client.writeContract({
+  address: process.env.WALLET_FACTORY as `0x${string}`,
+  abi: WalletFactoryAbi,
+  functionName: "createWallet",
+  args: [
+    owner.address,
+    "TreasuryRebalancerAgent",
+    policy,
+    [process.env.AGENT_SIGNER as `0x${string}`],
+    [
+      process.env.COUNCIL_1 as `0x${string}`,
+      process.env.COUNCIL_2 as `0x${string}`,
+      process.env.COUNCIL_3 as `0x${string}`,
+    ],
+    2,
+  ],
+})
+```
+
+## Step 3 - Set the initial policy envelope
+
+The constructor above installs the first policy. Later updates use `GuardedWallet.setPolicy` from the owner wallet. Every transfer still passes through the policy engine inside the wallet.
+
+## Step 4 - Seed the vendor registry
+
+```ts
+import { GuardedWalletAbi } from "@arcanum/contracts"
+
+for (const vendor of [
+  { address: process.env.AAVE_POOL as `0x${string}`, category: 1 },
+  { address: process.env.COMPOUND_POOL as `0x${string}`, category: 1 },
+  { address: process.env.MORPHO_POOL as `0x${string}`, category: 1 },
+]) {
+  await client.writeContract({
+    address: process.env.GUARDED_WALLET as `0x${string}`,
+    abi: GuardedWalletAbi,
+    functionName: "addVendor",
+    args: [vendor.address, vendor.category, parseUnits("5000", 6), "0x0000000000000000000000000000000000000000000000000000000000000000"],
+  })
+}
+```
+
+## Step 5 - Set escalation council
+
+```ts
+await client.writeContract({
+  address: process.env.GUARDED_WALLET as `0x${string}`,
+  abi: GuardedWalletAbi,
+  functionName: "configureEscalation",
+  args: [
+    [
+      process.env.COUNCIL_1 as `0x${string}`,
+      process.env.COUNCIL_2 as `0x${string}`,
+      process.env.COUNCIL_3 as `0x${string}`,
+    ],
+    2,
+    3600,
+  ],
+})
+```
+
+## Step 6 - Fund with USDC
+
+Send Arc USDC from the DAO Safe to the new GuardedWallet address. The protocol does not custody that USDC; the wallet contract enforces the envelope.
+
+## Step 7 - Authorize the agent signer
+
+```ts
+await client.writeContract({
+  address: process.env.GUARDED_WALLET as `0x${string}`,
+  abi: GuardedWalletAbi,
+  functionName: "addSigner",
+  args: [process.env.AGENT_SIGNER as `0x${string}`],
+})
+```
+
+## Step 8 - Replace the agent transfer call
+
+```ts
+const arc = new ArcanumClient({
+  walletAddress: process.env.GUARDED_WALLET as `0x${string}`,
+  agentSigner: privateKeyToAccount(process.env.AGENT_PRIVATE_KEY as `0x${string}`),
+  chain: arcTestnet,
+  rpcUrl: process.env.ARC_TESTNET_RPC!,
+  dashboardUrl: process.env.ARCANUM_DASHBOARD_URL,
+})
+
+const result = await arc.executeUSDC({
+  to: process.env.AAVE_POOL as `0x${string}`,
+  amount: parseUnits("750", 6),
+  reason: "Treasury rebalance into Aave pool",
+  metadata: { category: "COMPUTE" },
+})
+```
+
+## Step 9 - Observe the dashboard
+
+Start the indexer and dashboard, connect the council wallet, and open `/dashboard`. The event stream reflects contract events from Arc testnet.
+
+## Step 10 - Manufacture an anomaly
+
+Submit an anomaly score above the wallet threshold from the opted-in anomaly oracle. The wallet freezes on-chain. Only the wallet owner can unfreeze after review.

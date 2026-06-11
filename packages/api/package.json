@@ -1,0 +1,41 @@
+{
+  "name": "@arcanum/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    },
+    "./server": {
+      "types": "./src/server.ts",
+      "import": "./src/server.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc --noEmit -p tsconfig.json",
+    "dev": "tsx src/dev.ts",
+    "lint": "biome check .",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@arcanum/auth": "0.0.0",
+    "@arcanum/contracts": "0.0.0",
+    "@arcanum/db": "0.0.0",
+    "@arcanum/shared": "0.0.0",
+    "@trpc/server": "^11.0.0",
+    "@upstash/ratelimit": "^2.0.6",
+    "@upstash/redis": "^1.34.3",
+    "drizzle-orm": "^0.36.0",
+    "superjson": "^2.2.1",
+    "viem": "^2.21.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@arcanum/config": "0.0.0",
+    "@types/node": "^22.15.30",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.0"
+  }
+}

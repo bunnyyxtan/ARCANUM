@@ -1,0 +1,12 @@
+# Safe Multisig
+
+DAO councils often keep treasury ownership in a Safe. Use the Safe as the GuardedWallet owner, then authorize agent signers and configure escalation signers from council addresses.
+
+```ts
+await ownerClient.writeContract({
+  address: guardedWallet,
+  abi: GuardedWalletAbi,
+  functionName: "configureEscalation",
+  args: [councilSigners, 2, 3600],
+})
+```

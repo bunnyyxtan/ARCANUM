@@ -1,0 +1,48 @@
+# How Arcanum Works
+
+Arcanum is built around four commitments that live in contract code and Foundry invariant tests.
+
+## 1. The protocol never touches your USDC
+
+No Arcanum-controlled address can call `GuardedWallet.executeUSDC`. Enforced by `invariant_NoProtocolAddressCanMoveFunds`. [view test](https://github.com/bunnyyxtan/ARCANUM)
+
+## 2. There is no upgrade key on your wallets
+
+Once deployed, your GuardedWallet bytecode is immutable. Modules are pluggable, but only you can plug them. Enforced by `invariant_NoUpgradeKeyOnWallets`. [view test](https://github.com/bunnyyxtan/ARCANUM)
+
+## 3. Policy enforcement is on-chain. Always.
+
+The dashboard is observability. The protocol enforces at the contract level on Arc, so policy checks continue as long as the chain and wallet bytecode exist. Enforced by `invariant_PolicyEnforcementIsOnChain`. [view test](https://github.com/bunnyyxtan/ARCANUM)
+
+## 4. Anyone can deploy. No gatekeeper.
+
+WalletFactory accepts any EOA, any geography, any time. Enforced by `invariant_AnyoneCanDeploy`. [view test](https://github.com/bunnyyxtan/ARCANUM)
+
+## Contract and read-model flow
+
+| Layer | Module | Role |
+| --- | --- | --- |
+| Arc on-chain enforcement | WalletFactory | Deploys new GuardedWallet instances. |
+| Arc on-chain enforcement | GuardedWallet | Holds USDC and checks policy before execution. |
+| Arc on-chain enforcement | PolicyEngine | Evaluates spend caps, vendors, and doctrine rules. |
+| Arc on-chain enforcement | EscalationManager | Records restraint requests and human quorum decisions. |
+| Arc on-chain enforcement | AnomalyOracle | Reports anomaly posture for freeze and review logic. |
+| Arc on-chain enforcement | VendorRegistry | Stores approved vendors and categories. |
+| Observability | Ponder indexer | Reads contract events and builds the read model. |
+| Observability | Postgres | Stores indexed events for the API and dashboard. |
+| Observability | tRPC API | Serves dashboard, SDK, explorer, and badge reads. |
+| User interfaces | Dashboard and SDK | Let operators inspect state and submit explicit actions. |
+
+The important boundary is simple: contracts decide whether funds can move; the indexer, API, dashboard, and SDK make that state easier to inspect and operate.
+
+## Why these commitments matter on Arc
+
+Arc is built for stablecoin finance, and stablecoin finance is where autonomous agents become operationally serious. Agents will rebalance treasury positions, pay API vendors, route DePIN work, and execute keeper tasks at a cadence human operators cannot manually supervise transaction by transaction.
+
+That economy needs governance primitives that are as transparent and permissionless as the chain itself. A policy envelope should be visible, auditable, and enforced before USDC moves. Escalation should be an on-chain request, not a private queue. Vendor status should be a contract read, not a spreadsheet.
+
+Arc's stablecoin focus makes it a natural home for agents that earn, hold, and spend USDC. Arcanum adds the missing operating envelope: what an agent may do, which counterparties it may pay, when humans must sign, and when the system should freeze for review.
+
+Open-source protocols earn trust through code that operators can run, fork, inspect, and test. Arcanum is MIT licensed because governance infrastructure for agent money should be available to DAO treasuries, DeFi protocols, DePIN networks, and on-chain builders without a license gate.
+
+The off-chain stack makes the system usable. The on-chain stack makes the system binding. That boundary is the heart of Arcanum.

@@ -1,0 +1,12 @@
+# DePIN Subcontractor
+
+DePIN networks can let agents pay approved compute and data providers from a governed wallet. Vendor categories make the policy legible to operators.
+
+```python
+result = arc.execute_usdc(
+    to="0x0000000000000000000000000000000000000002",
+    amount=125_000_000,
+    reason="Subcontract inference batch for network routing",
+    metadata={"category": "COMPUTE"},
+)
+```

@@ -1,0 +1,25 @@
+{
+  "name": "@arcanum/indexer",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "ponder codegen",
+    "dev": "ponder dev",
+    "lint": "biome check .",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@arcanum/contracts": "0.0.0",
+    "@arcanum/db": "0.0.0",
+    "@arcanum/shared": "0.0.0",
+    "drizzle-orm": "^0.36.0",
+    "ponder": "^0.16.6",
+    "viem": "^2.21.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@arcanum/config": "0.0.0",
+    "typescript": "^5.6.0"
+  }
+}

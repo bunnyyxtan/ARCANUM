@@ -1,0 +1,41 @@
+# Python SDK
+
+`arcanum-sdk` mirrors the TypeScript surface for Python agent stacks. It uses `web3.py`, signs locally with `eth-account`, and talks directly to Arc RPC.
+
+The examples below are for Arc Testnet/local development. Never hard-code
+private keys or commit `.env` files.
+
+```python
+import os
+from eth_account import Account
+from arcanum_sdk import ArcanumClient, arc_testnet
+
+agent_signer = Account.from_key(os.environ["AGENT_PRIVATE_KEY"])
+
+arc = ArcanumClient(
+    wallet_address="0x0000000000000000000000000000000000000001",
+    agent_signer=agent_signer,
+    chain=arc_testnet,
+    rpc_url=os.environ["ARC_TESTNET_RPC"],
+)
+
+result = arc.execute_usdc(
+    to="0x0000000000000000000000000000000000000002",
+    amount=50_000_000,
+    reason="OpenAI API top-up",
+    metadata={"category": "API"},
+)
+```
+
+## Async client
+
+```python
+from arcanum_sdk import AsyncArcanumClient
+
+async_client = AsyncArcanumClient(
+    wallet_address="0x0000000000000000000000000000000000000001",
+    agent_signer=agent_signer,
+    chain=arc_testnet,
+    rpc_url=os.environ["ARC_TESTNET_RPC"],
+)
+```
