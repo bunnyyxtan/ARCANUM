@@ -3,6 +3,8 @@
 Thank you for helping build Arcanum. Keep changes small, reviewable, and honest
 about what is testnet, demo-only, or still pending.
 
+Public app and docs: [https://thearcanum.in](https://thearcanum.in)
+
 ## Local Setup
 
 ```bash

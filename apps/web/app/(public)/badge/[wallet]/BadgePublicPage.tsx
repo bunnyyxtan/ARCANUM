@@ -10,10 +10,11 @@ import {
   ShieldHalf,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { isAddress } from "viem";
 
 import { truncateAddress } from "@/lib/format";
+import { configuredPublicOrigin } from "@/lib/public-url";
 import { trpc } from "@/lib/trpc";
 
 type BadgePublicPageProps = Readonly<{
@@ -24,7 +25,7 @@ const iconStroke = 1.75;
 
 export function BadgePublicPage({ wallet }: BadgePublicPageProps) {
   const [copied, setCopied] = useState<"url" | "embed" | null>(null);
-  const [publicOrigin, setPublicOrigin] = useState("");
+  const publicOrigin = configuredPublicOrigin();
   const profileQuery = trpc.wallets.publicProfile.useQuery(
     { address: wallet as `0x${string}` },
     {
@@ -55,16 +56,13 @@ export function BadgePublicPage({ wallet }: BadgePublicPageProps) {
     ? "LOADING"
     : (profile?.dataSource ?? "NO PUBLIC PROFILE").toUpperCase();
   const badgeUrl = `/badge/${encodeURIComponent(wallet)}`;
+  const publicBadgeUrl = `${publicOrigin}${badgeUrl}`;
   const explorerUrl = `/explorer/${encodeURIComponent(wallet)}`;
   const embedSnippet = useMemo(
     () =>
       `<iframe src="${publicOrigin}${badgeUrl}" width="600" height="180" frameborder="0" title="Arcanum governance badge"></iframe>`,
     [badgeUrl, publicOrigin],
   );
-
-  useEffect(() => {
-    setPublicOrigin(window.location.origin);
-  }, []);
 
   const copyValue = async (kind: "url" | "embed", value: string) => {
     await navigator.clipboard.writeText(value);
@@ -189,7 +187,7 @@ export function BadgePublicPage({ wallet }: BadgePublicPageProps) {
               <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <button
                   type="button"
-                  onClick={() => void copyValue("url", window.location.href)}
+                  onClick={() => void copyValue("url", publicBadgeUrl)}
                   className="flex h-10 cursor-pointer items-center justify-center gap-2 border border-[#282C34] text-[11px] tracking-[0.12em] text-[#8A909B] hover:border-[#3A4250] hover:text-[#D7DBE0]"
                 >
                   {copied === "url" ? (

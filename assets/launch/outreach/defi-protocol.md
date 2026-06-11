@@ -12,6 +12,6 @@ Everything is MIT, self-hostable, and non-custodial. The server never holds sign
 
 I would love to show the Arc testnet demo and see where this could support your agent operations.
 
-Docs: `apps/docs` in `https://github.com/bunnyyxtan/ARCANUM`
+Docs: `https://thearcanum.in/docs`
 
 Ranbir

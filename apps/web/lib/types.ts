@@ -26,6 +26,7 @@ export type Vendor = {
   trust: "approved" | "confidential" | "blocked";
   approvedBy: string[];
   confidential: boolean;
+  createdAt?: string;
   lastUsed: string;
   walletAddress?: string;
 };

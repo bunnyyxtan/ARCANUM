@@ -37,8 +37,8 @@ The timing is right because agent builders are moving from experiments into prod
 - Live Arc testnet deployment: `[TO-FILL: packages/contracts/deployments/arc-testnet.json addresses]`
 - Demo video: `[TO-FILL: demo video URL]`
 - GitHub: `https://github.com/bunnyyxtan/ARCANUM`
-- Dashboard: `[TO-FILL: deployed Vercel URL]`
-- Docs: `apps/docs` in this repository
+- Dashboard: `https://thearcanum.in`
+- Docs: `https://thearcanum.in/docs`
 - SDK: TypeScript and Python SDKs implemented and ready for package release
 - Contracts: Foundry suite with 90%+ coverage target and invariants for non-custodial guarantees
 - Self-hosting: docker-compose path verified for a single-tenant deployment

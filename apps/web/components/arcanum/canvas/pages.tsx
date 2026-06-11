@@ -104,6 +104,7 @@ import {
 } from "@/lib/live-data";
 import { MotionButton, MotionDiv, MotionMain } from "@/lib/motion-elements";
 import { enterFade, enterRise, hoverLift, useReducedMotion } from "@/lib/motion/motion-config";
+import { configuredPublicOrigin } from "@/lib/public-url";
 import { matchesSearch, normalizeSearch } from "@/lib/table-state";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
@@ -132,7 +133,9 @@ type AgentDisplay = {
   last: string;
 };
 type VendorDisplayMeta = {
+  createdAt?: string;
   id?: string;
+  lastUsed?: string;
   note?: string;
   status?: "approved" | "blocked" | "confidential";
   walletAddress?: string;
@@ -457,7 +460,7 @@ type CreatedWalletSyncInput = {
 };
 
 const initialDeployWalletForm: DeployWalletFormState = {
-  label: "ResearchAgent",
+  label: "Governed Wallet",
   perTxCap: "100",
   dailyCap: "1000",
   monthlyCap: "30000",
@@ -467,6 +470,8 @@ const initialDeployWalletForm: DeployWalletFormState = {
   quorum: "1",
   requireAllowlist: true,
 };
+const arcanumSelectClassName =
+  "h-9 w-full appearance-none border border-[#3A4250] bg-[#101216] px-3 pr-8 text-[12px] text-[#EDF0F3] outline-none focus:border-[#FF5A1F] disabled:cursor-not-allowed disabled:opacity-50";
 const vendorGridClass =
   "grid grid-cols-[minmax(220px,1.15fr)_minmax(150px,0.72fr)_minmax(120px,0.55fr)_minmax(124px,0.6fr)_minmax(132px,0.58fr)_minmax(116px,0.5fr)_40px]";
 const vendorCategoryOptions = [
@@ -898,10 +903,16 @@ function vendorRowFromLive(
     vendor.name,
     vendor.address,
     categoryLabel(vendor.category),
-    vendor.approvedBy.length > 0 ? vendor.approvedBy.map(approvedByLabel) : ["AC"],
+    vendor.approvedBy.length > 0 ? vendor.approvedBy.map(approvedByLabel) : ["OWNER"],
     vendor.confidential,
     vendor.lastUsed,
-    { id: vendor.id, status: vendor.trust, walletAddress: vendor.walletAddress },
+    {
+      createdAt: vendor.createdAt,
+      id: vendor.id,
+      lastUsed: vendor.lastUsed,
+      status: vendor.trust,
+      walletAddress: vendor.walletAddress,
+    },
   ];
 }
 
@@ -1334,16 +1345,25 @@ function EmptyActivityPreview() {
 export function DashboardCanvasPage() {
   const workspace = useWorkspaceMode();
   const metrics = useLiveDashboardMetrics();
+  const liveAgents = useLiveAgents();
   const liveEscalations = useLiveEscalations("PENDING");
   const canShowDemoWorkspace = workspace.isDemo;
+  const governedWalletCount = canShowDemoWorkspace ? agentRows.length : liveAgents.data.length;
   const hasLiveDashboardData =
     metrics.valueGoverned > 0 ||
     metrics.activeAgents > 0 ||
     metrics.threatsBlocked > 0 ||
     metrics.pendingEscalations > 0 ||
+    governedWalletCount > 0 ||
     liveEscalations.data.length > 0;
   const showWorkspaceOnboarding =
-    !canShowDemoWorkspace && !metrics.isLoading && !metrics.isError && !hasLiveDashboardData;
+    !canShowDemoWorkspace &&
+    !metrics.isLoading &&
+    !liveAgents.isLoading &&
+    !metrics.isError &&
+    !liveAgents.isError &&
+    governedWalletCount === 0 &&
+    !hasLiveDashboardData;
   const dashboardRows = canShowDemoWorkspace ? dashboardEvents : [];
   const posture = canShowDemoWorkspace || metrics.postureIndex > 0 ? metrics.postureIndex || 87 : 0;
   const pendingEscalationCount = canShowDemoWorkspace
@@ -1375,7 +1395,7 @@ export function DashboardCanvasPage() {
                 <StatTile
                   label="VALUE GOVERNED"
                   value={<>${metrics.valueGoverned.toLocaleString("en-US")}</>}
-                  caption={`${String(metrics.activeAgents).padStart(2, "0")} ACTIVE WALLETS`}
+                  caption={`${String(governedWalletCount).padStart(2, "0")} GOVERNED WALLETS`}
                 >
                   {canShowDemoWorkspace ? (
                     <div className="mt-2 flex items-center gap-1 text-[11px] text-[#6E9E7C]">
@@ -2113,8 +2133,8 @@ export function AgentsCanvasPage() {
         spendWidth: 0,
         categories: [],
         deviation: formatDeviation(0),
-        doctrine: "pending indexer",
-        last: "Supabase sync",
+        doctrine: "Supabase synced",
+        last: "No indexed activity yet",
       };
       const existingIndex = previous.findIndex(
         (agent) => (agent.fullWallet ?? agent.id)?.toLowerCase() === walletKey,
@@ -2248,7 +2268,7 @@ export function AgentsCanvasPage() {
               />
               <div className="overflow-x-auto">
                 <div className="min-w-[1180px]">
-                  <div className="grid grid-cols-[100px_minmax(190px,1.3fr)_118px_minmax(150px,1.1fr)_92px_92px_minmax(130px,1fr)_88px_minmax(210px,0.95fr)] items-center border-b border-[#282C34] px-4 py-2 text-[10px] tracking-[0.13em] text-[#5B626C]">
+                  <div className="grid grid-cols-[100px_minmax(190px,1.3fr)_118px_minmax(150px,1.1fr)_92px_92px_minmax(130px,1fr)_104px_minmax(250px,0.95fr)] items-center border-b border-[#282C34] px-4 py-2 text-[10px] tracking-[0.13em] text-[#5B626C]">
                     <span>STATUS</span>
                     <span>AGENT</span>
                     <span>POSTURE</span>
@@ -3435,7 +3455,7 @@ function AgentRegisterRow({
     <RowShell
       danger={frozen}
       className={cn(
-        "grid grid-cols-[100px_minmax(190px,1.3fr)_118px_minmax(150px,1.1fr)_92px_92px_minmax(130px,1fr)_88px_minmax(210px,0.95fr)] items-center border-b border-[#1E222A] px-4 py-3",
+        "grid grid-cols-[100px_minmax(190px,1.3fr)_118px_minmax(150px,1.1fr)_92px_92px_minmax(130px,1fr)_104px_minmax(250px,0.95fr)] items-center border-b border-[#1E222A] px-4 py-3",
         selected && "bg-[#1B1F26] shadow-[inset_3px_0_0_#FF5A1F]",
       )}
     >
@@ -3480,28 +3500,32 @@ function AgentRegisterRow({
         {agent.doctrine}
       </span>
       <span className="text-[11px] text-[#5B626C]">{agent.last}</span>
-      <div className="flex items-center justify-end gap-2">
-        <button
-          type="button"
-          onClick={onSelect}
-          className={cn(
-            "text-[10px] tracking-[0.1em]",
-            selected ? "text-[#FF5A1F]" : "text-[#8A909B] hover:text-[#D7DBE0]",
-          )}
-        >
-          {selected ? "Selected" : "Select"}
-        </button>
+      <div className="flex min-w-0 items-center justify-end gap-1.5">
+        {selected ? (
+          <span className="shrink-0 border border-[#FF5A1F]/40 bg-[#1c1107] px-2 py-1 text-[9px] tracking-[0.12em] text-[#FF5A1F]">
+            SELECTED
+          </span>
+        ) : null}
+        {selected ? null : (
+          <button
+            type="button"
+            onClick={onSelect}
+            className="shrink-0 border border-[#282C34] px-2 py-1 text-[9px] tracking-[0.1em] text-[#8A909B] hover:border-[#3A4250] hover:text-[#D7DBE0]"
+          >
+            SELECT
+          </button>
+        )}
         <Link
           href={agentHref}
-          className="text-[10px] tracking-[0.1em] text-[#8A909B] hover:text-[#D7DBE0]"
+          className="shrink-0 border border-[#282C34] px-2 py-1 text-[9px] tracking-[0.1em] text-[#8A909B] hover:border-[#3A4250] hover:text-[#D7DBE0]"
         >
-          View details
+          DETAILS
         </Link>
         <Link
           href={`${agentHref}/policy`}
-          className="text-[10px] tracking-[0.1em] text-[#8A909B] hover:text-[#D7DBE0]"
+          className="shrink-0 border border-[#282C34] px-2 py-1 text-[9px] tracking-[0.1em] text-[#8A909B] hover:border-[#3A4250] hover:text-[#D7DBE0]"
         >
-          View policy
+          POLICY
         </Link>
         {frozen ? (
           <button
@@ -4080,7 +4104,14 @@ function transferVerdictLabel(verdict: string) {
 }
 
 type SignerReadStatus = "idle" | "checking" | "ready" | "error";
-type SignerTxStatus = "idle" | "wallet" | "confirming" | "pending_indexer" | "error";
+type SignerTxStatus =
+  | "idle"
+  | "wallet"
+  | "confirming"
+  | "syncing"
+  | "synced"
+  | "sync_failed"
+  | "error";
 
 function AgentSignerPanel({
   governedWalletAddress,
@@ -4090,8 +4121,20 @@ function AgentSignerPanel({
   const publicClient = usePublicClient({ chainId: arcTestnet.id });
   const { switchChainAsync, isPending: switchPending } = useSwitchChain();
   const { writeContractAsync, isPending: writePending } = useWriteContract();
+  const utils = trpc.useUtils();
+  const signerPolicyQuery = trpc.agents.policy.useQuery(
+    { walletId: governedWalletAddress ?? "0x0000000000000000000000000000000000000000" },
+    {
+      enabled: workspace.isAuthenticated && Boolean(governedWalletAddress),
+      refetchOnWindowFocus: false,
+      retry: false,
+      staleTime: 30_000,
+    },
+  );
+  const syncSignerState = trpc.agents.syncSignerState.useMutation();
   const submittingRef = useRef(false);
   const [signerInput, setSignerInput] = useState("");
+  const [signerInputTouched, setSignerInputTouched] = useState(false);
   const [walletOwner, setWalletOwner] = useState<Address | null>(null);
   const [signerAuthorized, setSignerAuthorized] = useState<boolean | null>(null);
   const [readStatus, setReadStatus] = useState<SignerReadStatus>("idle");
@@ -4099,6 +4142,21 @@ function AgentSignerPanel({
   const [txStatus, setTxStatus] = useState<SignerTxStatus>("idle");
   const [txHash, setTxHash] = useState<Hash | null>(null);
   const [txError, setTxError] = useState<string | null>(null);
+  const persistedSignerAddress = useMemo(() => {
+    const signers =
+      signerPolicyQuery.data &&
+      "signers" in signerPolicyQuery.data &&
+      Array.isArray((signerPolicyQuery.data as { signers?: unknown }).signers)
+        ? ((signerPolicyQuery.data as { signers: unknown[] }).signers ?? [])
+        : [];
+
+    return (
+      signers.find(
+        (value): value is Address =>
+          typeof value === "string" && isEvmAddress(value) && !isZeroAddress(value),
+      ) ?? null
+    );
+  }, [signerPolicyQuery.data]);
 
   const trimmedSigner = signerInput.trim();
   const signerAddress = isEvmAddress(trimmedSigner) ? (trimmedSigner as Address) : null;
@@ -4115,8 +4173,10 @@ function AgentSignerPanel({
     submittingRef.current ||
     switchPending ||
     writePending ||
+    syncSignerState.isPending ||
     txStatus === "wallet" ||
-    txStatus === "confirming";
+    txStatus === "confirming" ||
+    txStatus === "syncing";
   const ownerMatchesConnectedWallet = Boolean(
     walletOwner && address && isSameAddress(walletOwner, address),
   );
@@ -4146,6 +4206,25 @@ function AgentSignerPanel({
     },
     [governedWalletAddress, publicClient],
   );
+
+  useEffect(() => {
+    setSignerInput("");
+    setSignerInputTouched(false);
+    setSignerAuthorized(null);
+    setReadError(null);
+    setReadStatus(governedWalletAddress ? "checking" : "idle");
+    setTxStatus("idle");
+    setTxHash(null);
+    setTxError(null);
+  }, [governedWalletAddress]);
+
+  useEffect(() => {
+    if (!persistedSignerAddress || signerInputTouched || signerPolicyQuery.isFetching) {
+      return;
+    }
+
+    setSignerInput(persistedSignerAddress);
+  }, [persistedSignerAddress, signerInputTouched, signerPolicyQuery.isFetching]);
 
   useEffect(() => {
     let cancelled = false;
@@ -4209,18 +4288,21 @@ function AgentSignerPanel({
     !managementDisabledReason && !signerCheckPending && signerAuthorized === false && !isBusy;
   const canRevoke =
     !managementDisabledReason && !signerCheckPending && signerAuthorized === true && !isBusy;
-  const statusCopy =
-    !usableSignerAddress || signerValidation
-      ? "NO SIGNER SELECTED"
+  const statusCopy = signerPolicyQuery.isLoading
+    ? "READING SIGNER"
+    : !usableSignerAddress || signerValidation
+      ? "NO SIGNER AUTHORIZED"
       : readStatus === "checking"
         ? "CHECKING CONTRACT"
         : signerAuthorized
-          ? "AUTHORIZED ON CONTRACT"
-          : "NOT AUTHORIZED";
+          ? "AUTHORIZED"
+          : readStatus === "error"
+            ? "READBACK FAILED"
+            : "NOT AUTHORIZED";
   const statusClassName =
     signerAuthorized && usableSignerAddress
       ? "border-[#6E9E7C]/40 text-[#6E9E7C]"
-      : readStatus === "error"
+      : readStatus === "error" || txStatus === "sync_failed"
         ? "border-[#EC7A6B]/40 text-[#EC7A6B]"
         : "border-[#3A4250] text-[#8A909B]";
   const txArcscanUrl = getArcscanTxUrl(txHash);
@@ -4269,6 +4351,7 @@ function AgentSignerPanel({
     setTxError(null);
     setTxHash(null);
     setTxStatus("wallet");
+    let contractConfirmed = false;
 
     try {
       if (chainId !== arcTestnet.id) {
@@ -4293,17 +4376,37 @@ function AgentSignerPanel({
         throw new Error("Signer transaction reverted.");
       }
 
+      contractConfirmed = true;
       const nextState = action === "authorize";
       const refreshed = await readLiveSignerState(usableSignerAddress);
       setWalletOwner(refreshed?.owner ?? walletOwner);
-      setSignerAuthorized(refreshed?.authorized ?? nextState);
+      if (refreshed?.authorized !== nextState) {
+        throw new Error("Contract readback did not confirm the signer state.");
+      }
+
+      setSignerAuthorized(nextState);
       setReadStatus("ready");
-      setTxStatus("pending_indexer");
+      setTxStatus("syncing");
+      await syncSignerState.mutateAsync({
+        action,
+        signerAddress: usableSignerAddress,
+        walletAddress: governedWalletAddress,
+      });
+      await Promise.all([
+        utils.agents.list.invalidate(),
+        utils.agents.policy.invalidate({ walletId: governedWalletAddress }),
+      ]);
+      if (action === "revoke") {
+        setSignerInput("");
+        setSignerInputTouched(false);
+      }
+
+      setTxStatus("synced");
       toast.success(action === "authorize" ? "AGENT SIGNER AUTHORIZED" : "AGENT SIGNER REVOKED", {
-        description: shortAddress(usableSignerAddress),
+        description: "Contract confirmed and Supabase signer state synced.",
       });
     } catch (caught) {
-      setTxStatus("error");
+      setTxStatus(contractConfirmed ? "sync_failed" : "error");
       setTxError(errorMessage(caught));
     } finally {
       submittingRef.current = false;
@@ -4367,6 +4470,7 @@ function AgentSignerPanel({
             value={signerInput}
             onChange={(event) => {
               setSignerInput(event.target.value);
+              setSignerInputTouched(true);
               setTxStatus("idle");
               setTxHash(null);
               setTxError(null);
@@ -4387,9 +4491,15 @@ function AgentSignerPanel({
           </div>
         ) : null}
 
-        {txStatus === "pending_indexer" && txHash ? (
+        {txStatus === "synced" && txHash ? (
           <div className="border border-[#6E9E7C]/30 bg-[#111b15] p-3 text-[11px] text-[#6E9E7C]">
-            Contract confirmed. Signer state is live on-chain and pending indexer sync.
+            Contract confirmed. Supabase signer state is synced for this governed wallet.
+          </div>
+        ) : null}
+
+        {txStatus === "syncing" && txHash ? (
+          <div className="border border-[#E0A04A]/30 bg-[#1d170d] p-3 text-[11px] text-[#E0A04A]">
+            Signer transaction confirmed. Syncing signer state to Supabase.
           </div>
         ) : null}
 
@@ -4507,13 +4617,9 @@ function SmallStat({
 }
 
 function BadgeEmbedSnippet({ wallet }: Readonly<{ wallet: string }>) {
-  const [publicOrigin, setPublicOrigin] = useState("");
+  const publicOrigin = configuredPublicOrigin();
   const badgeUrl = `/badge/${encodeURIComponent(wallet)}`;
   const snippet = `<iframe src="${publicOrigin}${badgeUrl}" width="600" height="60" frameborder="0" title="Arcanum governance badge"></iframe>`;
-
-  useEffect(() => {
-    setPublicOrigin(window.location.origin);
-  }, []);
 
   const copySnippet = async () => {
     await navigator.clipboard.writeText(snippet);
@@ -4778,7 +4884,8 @@ export function PolicyEditorCanvasPage() {
       await utils.policies.get.invalidate();
       await utils.wallets.listPolicies.invalidate();
       toast.success("POLICY TX CONFIRMED", {
-        description: "Policy update is pending indexer sync.",
+        description:
+          "Policy update is confirmed on-chain. Event indexer may lag before read-model refresh.",
       });
     } catch (caught) {
       const message = errorMessage(caught);
@@ -4904,16 +5011,22 @@ function DoctrineForm({
               value={selectedWalletAddress}
               onChange={(event) => onWalletChange(event.target.value)}
               disabled={saving || walletOptions.length === 0}
-              className="h-9 w-full border border-[#282C34] bg-[#101216] px-3 text-[12px] text-[#D7DBE0] outline-none focus:border-[#3A4250] disabled:cursor-not-allowed disabled:opacity-50"
+              className={arcanumSelectClassName}
             >
               {walletOptions.length > 0 ? (
                 walletOptions.map((wallet) => (
-                  <option key={wallet.address} value={wallet.address}>
+                  <option
+                    key={wallet.address}
+                    value={wallet.address}
+                    className="bg-[#101216] text-[#EDF0F3]"
+                  >
                     {wallet.label} / {shortAddress(wallet.address)}
                   </option>
                 ))
               ) : (
-                <option value="">No governed wallet indexed</option>
+                <option value="" className="bg-[#101216] text-[#EDF0F3]">
+                  No governed wallet indexed
+                </option>
               )}
             </select>
           </label>
@@ -5280,7 +5393,8 @@ function PolicyWriteNotice({
     <div className="mt-3 space-y-2">
       {pendingIndexer ? (
         <div className="border border-[#6E9E7C]/30 bg-[#111b15] px-3 py-2 text-[11px] text-[#6E9E7C]">
-          Contract confirmed. Policy is live on-chain and pending indexer sync.
+          Contract confirmed. Policy is live on-chain; event indexer may lag before read-model
+          refresh.
         </div>
       ) : null}
       {error ? (
@@ -5345,6 +5459,7 @@ export function VendorsCanvasPage() {
   const [vendorQuery, setVendorQuery] = useState("");
   const [vendorCategory, setVendorCategory] = useState("ALL");
   const [openVendorMenuKey, setOpenVendorMenuKey] = useState<string | null>(null);
+  const [detailVendor, setDetailVendor] = useState<VendorDisplay | null>(null);
   const [selectedVendorWalletAddress, setSelectedVendorWalletAddress] = useState("");
   const [vendorWalletOwner, setVendorWalletOwner] = useState<Address | null>(null);
   const [vendorOwnerReadStatus, setVendorOwnerReadStatus] = useState<SignerReadStatus>("idle");
@@ -5494,6 +5609,16 @@ export function VendorsCanvasPage() {
     }
   }, [openVendorMenuKey, rows]);
 
+  useEffect(() => {
+    if (!detailVendor) {
+      return;
+    }
+
+    if (!rows.some((vendor) => vendorRowKey(vendor) === vendorRowKey(detailVendor))) {
+      setDetailVendor(null);
+    }
+  }, [detailVendor, rows]);
+
   const updateVendorForm = (patch: Partial<AddVendorFormState>) => {
     setVendorForm((current) => ({ ...current, ...patch }));
     setVendorError(null);
@@ -5559,8 +5684,10 @@ export function VendorsCanvasPage() {
       categoryLabel(category),
       ["PENDING"],
       perVendorCap > 0n,
-      "pending indexer",
+      "Awaiting event indexer",
       {
+        createdAt: "Pending indexed timestamp",
+        lastUsed: "Never used",
         note,
         status,
         walletAddress: selectedGovernedWalletAddress ?? undefined,
@@ -5672,7 +5799,8 @@ export function VendorsCanvasPage() {
       setVendorForm(initialVendorForm);
       setAddVendorOpen(false);
       toast.success("VENDOR WRITE CONFIRMED", {
-        description: `${name} pending indexer sync`,
+        description:
+          "On-chain write confirmed. Event indexer may lag before the read model updates.",
       });
     } catch (caught) {
       const message = errorMessage(caught);
@@ -5747,7 +5875,8 @@ export function VendorsCanvasPage() {
       );
       await utils.vendors.list.invalidate();
       toast.success(action === "block" ? "VENDOR BLOCK CONFIRMED" : "VENDOR REMOVE CONFIRMED", {
-        description: `${name} pending indexer sync`,
+        description:
+          "On-chain write confirmed. Event indexer may lag before the read model updates.",
       });
     } catch (caught) {
       const message = errorMessage(caught);
@@ -5843,16 +5972,22 @@ export function VendorsCanvasPage() {
               value={selectedVendorWalletAddress}
               onChange={(event) => setSelectedVendorWalletAddress(event.target.value)}
               disabled={vendorWalletOptions.length === 0 || vendorWritesBusy}
-              className="min-w-0 flex-1 bg-transparent text-[12px] text-[#D7DBE0] outline-none disabled:cursor-not-allowed disabled:opacity-50"
+              className="min-w-0 flex-1 appearance-none bg-transparent text-[12px] text-[#EDF0F3] outline-none disabled:cursor-not-allowed disabled:opacity-50"
             >
               {vendorWalletOptions.length > 0 ? (
                 vendorWalletOptions.map((wallet) => (
-                  <option key={wallet.address} value={wallet.address}>
+                  <option
+                    key={wallet.address}
+                    value={wallet.address}
+                    className="bg-[#101216] text-[#EDF0F3]"
+                  >
                     {wallet.label} / {shortAddress(wallet.address)}
                   </option>
                 ))
               ) : (
-                <option value="">No governed wallet</option>
+                <option value="" className="bg-[#101216] text-[#EDF0F3]">
+                  No governed wallet
+                </option>
               )}
             </select>
           </label>
@@ -5900,6 +6035,10 @@ export function VendorsCanvasPage() {
                           void setVendorStatusRemote("block", vendor, event)
                         }
                         onEditVendor={() => openVendorEditor(vendor)}
+                        onViewDetails={() => {
+                          setDetailVendor(vendor);
+                          setOpenVendorMenuKey(null);
+                        }}
                         vendor={vendor}
                         onMenuOpenChange={(open) => setOpenVendorMenuKey(open ? rowKey : null)}
                         onRemoveVendor={(event) =>
@@ -5948,6 +6087,13 @@ export function VendorsCanvasPage() {
           txHash={vendorTxHash}
           walletOptions={vendorWalletOptions}
           writeDisabledReason={vendorWriteDisabledReason}
+        />
+      ) : null}
+      {detailVendor ? (
+        <VendorDetailsModal
+          onClose={() => setDetailVendor(null)}
+          selectedWalletAddress={selectedVendorWalletAddress}
+          vendor={detailVendor}
         />
       ) : null}
     </GovernanceFrame>
@@ -6026,16 +6172,22 @@ function AddVendorModal({
               value={selectedWalletAddress}
               onChange={(event) => onWalletChange(event.target.value)}
               disabled={saving || walletOptions.length === 0}
-              className="h-9 w-full border border-[#282C34] bg-[#101216] px-3 text-[12px] text-[#D7DBE0] outline-none focus:border-[#3A4250] disabled:cursor-not-allowed disabled:opacity-50"
+              className={arcanumSelectClassName}
             >
               {walletOptions.length > 0 ? (
                 walletOptions.map((wallet) => (
-                  <option key={wallet.address} value={wallet.address}>
+                  <option
+                    key={wallet.address}
+                    value={wallet.address}
+                    className="bg-[#101216] text-[#EDF0F3]"
+                  >
                     {wallet.label} / {shortAddress(wallet.address)}
                   </option>
                 ))
               ) : (
-                <option value="">No governed wallet indexed</option>
+                <option value="" className="bg-[#101216] text-[#EDF0F3]">
+                  No governed wallet indexed
+                </option>
               )}
             </select>
           </label>
@@ -6058,10 +6210,14 @@ function AddVendorModal({
                 onChange={(event) =>
                   onChange({ category: event.target.value as VendorCategoryValue })
                 }
-                className="h-9 w-full border border-[#282C34] bg-[#101216] px-3 text-[12px] text-[#D7DBE0] outline-none focus:border-[#3A4250]"
+                className={arcanumSelectClassName}
               >
                 {vendorCategoryOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
+                  <option
+                    key={option.value}
+                    value={option.value}
+                    className="bg-[#101216] text-[#EDF0F3]"
+                  >
                     {option.label}
                   </option>
                 ))}
@@ -6170,12 +6326,180 @@ function AddVendorModal({
   );
 }
 
+function VendorDetailsModal({
+  onClose,
+  selectedWalletAddress,
+  vendor,
+}: Readonly<{
+  onClose: () => void;
+  selectedWalletAddress: string;
+  vendor: VendorDisplay;
+}>) {
+  const [, name, address, category, approvedBy, confidential, used, meta] = vendor;
+  const arcscanAddressUrl = getArcscanAddressUrl(address);
+  const status = meta?.status ?? (confidential ? "confidential" : "approved");
+  const linkedWallet = meta?.walletAddress || selectedWalletAddress;
+  const createdAt = meta?.createdAt ?? "N/A";
+  const lastUsed = meta?.lastUsed ?? used ?? "Never used";
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  const copyVendorAddress = async () => {
+    await navigator.clipboard.writeText(address);
+    toast.success("VENDOR ADDRESS COPIED", { description: name });
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        aria-label="Close vendor details"
+        className="fixed inset-0 z-50 bg-[#0a0b0e]/70"
+        onClick={onClose}
+      />
+      <section className="fixed right-4 top-4 z-[60] flex max-h-[calc(100vh-32px)] w-[520px] max-w-[calc(100vw-32px)] flex-col border border-[#282C34] bg-[#181B21] shadow-[0_0_60px_rgba(0,0,0,0.65)]">
+        <div className="flex h-[52px] items-center justify-between border-b border-[#282C34] bg-[#16181D] px-5">
+          <div>
+            <div className="text-[11px] tracking-[0.18em] text-[#D7DBE0]">VENDOR DETAILS</div>
+            <div className="mt-1 text-[10px] tracking-[0.12em] text-[#5B626C]">
+              {linkedWallet && isEvmAddress(linkedWallet)
+                ? `WALLET ${shortAddress(linkedWallet)}`
+                : "WALLET SCOPE UNAVAILABLE"}
+            </div>
+          </div>
+          <button
+            type="button"
+            aria-label="Close vendor details"
+            onClick={onClose}
+            className="flex h-7 w-7 items-center justify-center border border-[#282C34] text-[#8A909B] hover:text-[#D7DBE0]"
+          >
+            <X className="h-4 w-4" strokeWidth={iconStroke} />
+          </button>
+        </div>
+        <div className="min-h-0 space-y-4 overflow-y-auto p-5 text-[12px] text-[#8A909B]">
+          <div className="border border-[#282C34] bg-[#15181D] p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <div className="truncate text-[16px] font-semibold tracking-[0.04em] text-[#EDF0F3]">
+                  {name}
+                </div>
+                <div className="mt-2 flex min-w-0 items-center gap-2 font-mono text-[11px] text-[#8A909B]">
+                  <span className="min-w-0 truncate" title={address}>
+                    {address}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label="Copy vendor address"
+                    onClick={() => void copyVendorAddress()}
+                    className="shrink-0 text-[#8A909B] hover:text-[#D7DBE0]"
+                  >
+                    <Copy className="h-3.5 w-3.5" strokeWidth={iconStroke} />
+                  </button>
+                </div>
+              </div>
+              <span
+                className={cn(
+                  "shrink-0 border px-2 py-1 text-[10px] tracking-[0.12em]",
+                  status === "blocked"
+                    ? "border-[#FF5A1F]/40 text-[#FF5A1F]"
+                    : "border-[#6E9E7C]/30 text-[#6E9E7C]",
+                )}
+              >
+                {status.toUpperCase()}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <VendorDetailField label="CATEGORY" value={category} />
+            <VendorDetailField
+              label="CONFIDENTIALITY"
+              value={confidential ? "ArcaneVM shielded" : "Public"}
+            />
+            <VendorDetailField
+              label="LINKED WALLET"
+              value={
+                linkedWallet && isEvmAddress(linkedWallet) ? shortAddress(linkedWallet) : "N/A"
+              }
+            />
+            <VendorDetailField label="CREATED" value={createdAt} />
+            <VendorDetailField label="LAST USED" value={lastUsed} />
+            <VendorDetailField
+              label="APPROVED BY"
+              value={approvedBy.length > 0 ? approvedBy.join(", ") : "Owner-managed"}
+            />
+          </div>
+
+          <div className="border border-[#282C34] bg-[#101216] p-4">
+            <div className="text-[10px] tracking-[0.18em] text-[#5B626C]">POLICY CONTEXT</div>
+            <div className="mt-3 grid gap-2 text-[11px] leading-relaxed">
+              <div className="flex items-center justify-between gap-3">
+                <span>Vendor allowlist</span>
+                <span className="text-[#D7DBE0]">Controlled by wallet doctrine</span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span>Per-vendor cap</span>
+                <span className="text-[#D7DBE0]">
+                  {confidential ? "Configured / shielded" : "Not set in read model"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span>Review state</span>
+                <span className="text-[#D7DBE0]">Owner-managed</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {arcscanAddressUrl ? (
+              <a
+                href={arcscanAddressUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="flex h-8 items-center gap-1.5 border border-[#282C34] px-3 text-[10px] tracking-[0.12em] text-[#8A909B] hover:border-[#D7DBE0] hover:text-[#D7DBE0]"
+              >
+                OPEN IN ARCSCAN <ExternalLink className="h-3 w-3" strokeWidth={iconStroke} />
+              </a>
+            ) : null}
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-8 items-center justify-center border border-[#3A4250] px-3 text-[10px] tracking-[0.12em] text-[#D7DBE0] hover:border-[#FF5A1F] hover:text-[#FF5A1F]"
+            >
+              CLOSE
+            </button>
+          </div>
+        </div>
+      </section>
+    </>
+  );
+}
+
+function VendorDetailField({ label, value }: Readonly<{ label: string; value: string }>) {
+  return (
+    <div className="border border-[#282C34] bg-[#101216] p-3">
+      <div className="text-[10px] tracking-[0.16em] text-[#5B626C]">{label}</div>
+      <div className="mt-1 min-h-5 break-words text-[12px] text-[#D7DBE0]">{value || "N/A"}</div>
+    </div>
+  );
+}
+
 function VendorRow({
   menuOpen,
   onBlockVendor,
   onEditVendor,
   onMenuOpenChange,
   onRemoveVendor,
+  onViewDetails,
   vendor,
 }: Readonly<{
   menuOpen: boolean;
@@ -6183,6 +6507,7 @@ function VendorRow({
   onEditVendor: () => void;
   onMenuOpenChange: (open: boolean) => void;
   onRemoveVendor: (event: ReactMouseEvent<HTMLButtonElement>) => void;
+  onViewDetails: () => void;
   vendor: VendorDisplay;
 }>) {
   const [initials, name, address, category, approvedBy, confidential, used, meta] = vendor;
@@ -6311,9 +6636,7 @@ function VendorRow({
           >
             <VendorMenuButton
               onClick={() => {
-                toast.info("VENDOR DETAILS", {
-                  description: `${name} - ${category} - ${confidential ? "ArcaneVM shielded" : "public"}`,
-                });
+                onViewDetails();
                 onMenuOpenChange(false);
               }}
             >
@@ -7801,8 +8124,8 @@ function ExplorerCard({
             COPY
           </button>
         </div>
-        <pre className="mt-2 overflow-hidden border border-[#282C34] bg-[#0c0d10] p-3 text-[10px] leading-relaxed text-[#6E9E7C]">{`<a href="arcanum.xyz/explorer/${wallet.slice(0, 6)}...">
-  <img src=".../badge/${wallet.slice(0, 6)}.svg"/>
+        <pre className="mt-2 overflow-hidden border border-[#282C34] bg-[#0c0d10] p-3 text-[10px] leading-relaxed text-[#6E9E7C]">{`<a href="https://thearcanum.in/explorer/${wallet}">
+  <iframe src="https://thearcanum.in/badge/${wallet}" title="Arcanum governance badge"></iframe>
 </a>`}</pre>
       </div>
     </div>
@@ -7858,7 +8181,7 @@ const docsNavItems = [
     id: "deploy",
     label: "Deploy a GuardedWallet",
     group: "QUICKSTART",
-    keywords: "wallet deploy create signer Arc Testnet pending indexer empty state",
+    keywords: "wallet deploy create signer Arc Testnet event indexer empty state",
   },
   {
     id: "author-doctrine",
@@ -8151,7 +8474,7 @@ const txHash = await walletClient.writeContract({
   address: process.env.NEXT_PUBLIC_WALLET_FACTORY as \`0x\${string}\`,
   abi: WalletFactoryAbi,
   functionName: "createWallet",
-  args: [ownerAddress, "ResearchAgent", policy, [agentSigner], council, 2],
+  args: [ownerAddress, "AgentBackend", policy, [agentSigner], council, 2],
 });`}
         />
       </DocStep>
@@ -8574,7 +8897,7 @@ export function SettingsCanvasPage() {
               type="button"
               onClick={() =>
                 toast.info(
-                  "INVITE MEMBER / approver invitations are not enabled in this testnet prototype",
+                  "INVITE MEMBER / approver invitations are not enabled in this Arc Testnet deployment yet",
                 )
               }
               className="flex h-8 items-center gap-2 border border-[#3A4250] px-3 text-[11px] tracking-[0.12em] text-[#D7DBE0] hover:border-[#FF5A1F] hover:text-[#FF5A1F]"
@@ -8757,9 +9080,11 @@ export function StatusCanvasPage() {
   const supabase = health.data?.supabase;
   const indexerStatus = health.isLoading ? "CHECKING" : healthStatusLabel(indexer?.status);
   const indexerCaption =
-    indexer?.lastIndexedBlock !== null && indexer?.lastIndexedBlock !== undefined
-      ? `LAST BLOCK ${indexer.lastIndexedBlock}`
-      : (indexer?.error ?? "NO INDEXED EVENTS YET");
+    indexer?.status === "stale" && indexer.lastIndexedBlock !== null
+      ? `STALE / LAST BLOCK ${indexer.lastIndexedBlock}`
+      : indexer?.lastIndexedBlock !== null && indexer?.lastIndexedBlock !== undefined
+        ? `LAST BLOCK ${indexer.lastIndexedBlock}`
+        : (indexer?.error ?? "NO INDEXED EVENTS YET");
   const readModelStatus = health.isLoading
     ? "CHECKING"
     : healthStatusLabel(supabase?.readModel.status);
@@ -8775,7 +9100,7 @@ export function StatusCanvasPage() {
       <Main>
         <div className="grid grid-cols-3 divide-x divide-[#282C34] border border-[#282C34] bg-[#181B21]">
           <SettingsStat
-            label="INDEXER READ MODEL"
+            label="EVENT INDEXER"
             value={indexerStatus}
             caption={indexerCaption}
             hazard={indexer?.status === "stale" || indexer?.status === "unavailable"}
@@ -8795,6 +9120,11 @@ export function StatusCanvasPage() {
             hazard={!health.isLoading && rpc?.status !== "available"}
             green={rpc?.status === "available"}
           />
+        </div>
+        <div className="border border-[#282C34] bg-[#181B21] px-4 py-3 text-[11px] leading-relaxed text-[#8A909B]">
+          Supabase read model stores wallet creation and setup writes. Event indexer tracks on-chain
+          history and may lag behind; fresh wallets can be synced in Supabase while showing no
+          indexed activity yet.
         </div>
       </Main>
     </GovernanceFrame>

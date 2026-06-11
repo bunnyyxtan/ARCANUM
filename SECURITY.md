@@ -3,6 +3,8 @@
 Arcanum is an Arc Testnet prototype under active development. The contracts are
 not audited and should not be treated as mainnet infrastructure.
 
+Project website: [https://thearcanum.in](https://thearcanum.in)
+
 ## Reporting
 
 Report security issues privately through GitHub private vulnerability reporting

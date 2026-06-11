@@ -4,6 +4,7 @@ import {
   agentCreatedWalletInputSchema,
   agentFreezeInputSchema,
   agentRegisterInputSchema,
+  agentSignerSyncInputSchema,
   agentStatusSchema,
   pageInputSchema,
   uuidSchema,
@@ -19,7 +20,13 @@ import {
   fallbackTransfers,
   fallbackWalletRows,
 } from "../mock-fallback";
-import { readSupabaseAgents, readSupabasePolicy, recordSupabaseCreatedWallet } from "../supabase";
+import {
+  readSupabaseAgents,
+  readSupabasePolicy,
+  readSupabaseWalletByLooseId,
+  recordSupabaseCreatedWallet,
+  syncSupabaseSignerState,
+} from "../supabase";
 import { protectedProcedure, publicProcedure, router } from "../trpc";
 import {
   actorFor,
@@ -38,6 +45,8 @@ function onChainAgentRestraintWriteOnly(): never {
       "Agent restraint changes must be submitted on-chain by the governed wallet owner; this API only reflects indexed state.",
   });
 }
+
+const zeroAddress = "0x0000000000000000000000000000000000000000";
 
 export const agentsRouter = router({
   list: publicProcedure
@@ -296,6 +305,52 @@ export const agentsRouter = router({
         wallet: null,
         agent: null,
         message: result.message,
+      };
+    }),
+
+  syncSignerState: protectedProcedure
+    .input(agentSignerSyncInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      const signerAddress = input.signerAddress.toLowerCase() as `0x${string}`;
+      if (signerAddress === zeroAddress) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Zero address cannot be an agent signer.",
+        });
+      }
+
+      const wallet = await readSupabaseWalletByLooseId(ctx, input.walletAddress);
+      if (!wallet || wallet.address.toLowerCase() !== input.walletAddress.toLowerCase()) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Governed wallet was not found for the signed-in owner.",
+        });
+      }
+
+      if (wallet.ownerAddress.toLowerCase() !== ctx.session.walletAddress.toLowerCase()) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only the governed wallet owner can sync signer state.",
+        });
+      }
+
+      const result = await syncSupabaseSignerState(ctx, {
+        authorized: input.action === "authorize",
+        signerAddress,
+        wallet,
+      });
+
+      if (!result.ok) {
+        throw new TRPCError({
+          code: "SERVICE_UNAVAILABLE",
+          message: result.message,
+        });
+      }
+
+      return {
+        dataSource: "supabase" as const,
+        signers: result.data.signers,
+        status: result.data.status,
       };
     }),
 });

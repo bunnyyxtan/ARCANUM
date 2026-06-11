@@ -103,7 +103,8 @@ Drop into Discord. Send a PR. Fork the repo. Let's harden the agent economy on A
 
 Live now on Arc testnet:
 
-Docs: https://github.com/bunnyyxtan/ARCANUM/tree/main/apps/docs
+App: https://thearcanum.in
+Docs: https://thearcanum.in/docs
 🛠 https://github.com/bunnyyxtan/ARCANUM
 💬 discord.gg/arcanum
 🎥 [demo video link]
@@ -154,7 +155,8 @@ The repo includes contracts, indexer, tRPC API, dashboard, TypeScript SDK, Pytho
 
 Live on Arc testnet now:
 
-Docs: https://github.com/bunnyyxtan/ARCANUM/tree/main/apps/docs
+App: https://thearcanum.in
+Docs: https://thearcanum.in/docs
 https://github.com/bunnyyxtan/ARCANUM  
 discord.gg/arcanum  
 [demo video link]

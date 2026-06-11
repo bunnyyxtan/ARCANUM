@@ -12,6 +12,6 @@ I would like to ship an integration recipe for your framework so builders can ad
 
 If useful, I can open a draft recipe and collect feedback from your community before publishing.
 
-Docs: `apps/docs/pages/sdk/typescript.mdx` in `https://github.com/bunnyyxtan/ARCANUM`
+Docs: `https://thearcanum.in/docs/sdk/typescript`
 
 Ranbir

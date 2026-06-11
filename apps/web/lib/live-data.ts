@@ -42,7 +42,7 @@ function categoryLabel(category: Category) {
 }
 
 const knownAgents: Record<string, string> = {
-  "30000000-0000-4000-8000-000000000001": "ResearchAgent",
+  "30000000-0000-4000-8000-000000000001": "Governed Wallet",
   "30000000-0000-4000-8000-000000000002": "MarketingAgent",
   "30000000-0000-4000-8000-000000000003": "DevAgent-01",
   "30000000-0000-4000-8000-000000000004": "TreasuryRebalancer",
@@ -158,8 +158,8 @@ export function useLiveAgents() {
     posture: 0,
     dailySpend: 0,
     dailyLimit: 0,
-    lastActivity: formatTimestampOrNA(agent.lastSeenAt),
-    doctrineVersion: "pending indexer",
+    lastActivity: "No activity yet",
+    doctrineVersion: "Supabase synced",
     mandate: agent.type.toUpperCase(),
     categories: [],
   }));
@@ -204,7 +204,7 @@ export function useLiveEscalations(status?: "PENDING" | "EXECUTED" | "REJECTED" 
   const escalations: Escalation[] = (enabled ? (query.data ?? []) : []).map((item) => ({
     id: item.id,
     agentId: item.walletId,
-    agentName: agentName(item.transferId, "ResearchAgent"),
+    agentName: agentName(item.transferId, "Governed Wallet"),
     wallet: item.walletId,
     amount: usdcNumber(item.amount),
     counterparty: vendorName(item.toAddress),
@@ -258,7 +258,8 @@ export function useLiveVendors() {
           : "approved",
     approvedBy: [vendor.addedBy],
     confidential: vendor.perVendorCap !== "0",
-    lastUsed: formatTimestampOrNA(vendor.addedAt),
+    createdAt: formatTimestampOrNA(vendor.addedAt),
+    lastUsed: "Never used",
     walletAddress:
       "walletAddress" in vendor && typeof vendor.walletAddress === "string"
         ? vendor.walletAddress

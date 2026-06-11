@@ -3,7 +3,14 @@ import { z } from "zod";
 import { addressSchema, looseWalletIdSchema, txHashSchema } from "./common";
 
 export const agentStatusSchema = z.enum(["active", "paused", "frozen"]);
-export const agentTypeSchema = z.enum(["research", "marketing", "dev", "treasury", "support", "other"]);
+export const agentTypeSchema = z.enum([
+  "research",
+  "marketing",
+  "dev",
+  "treasury",
+  "support",
+  "other",
+]);
 
 export const agentByWalletInputSchema = z.object({
   walletId: looseWalletIdSchema,
@@ -11,6 +18,12 @@ export const agentByWalletInputSchema = z.object({
 
 export const agentFreezeInputSchema = z.object({
   walletId: looseWalletIdSchema,
+});
+
+export const agentSignerSyncInputSchema = z.object({
+  action: z.enum(["authorize", "revoke"]),
+  signerAddress: addressSchema,
+  walletAddress: addressSchema,
 });
 
 export const agentRegisterInputSchema = z.object({

@@ -6,6 +6,8 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Saira_Condensed } from "next/font/google";
 import type { ReactNode } from "react";
 
+import { configuredPublicOrigin } from "@/lib/public-url";
+
 import { Providers } from "./providers";
 
 const sairaCondensed = Saira_Condensed({
@@ -27,10 +29,28 @@ const jetBrainsMono = JetBrains_Mono({
   variable: "--font-mono",
 });
 
+const publicOrigin = configuredPublicOrigin();
+const publicDescription = "Arc Testnet prototype for non-custodial AI agent spend governance.";
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
-  title: "Arcanum",
-  description: "On-chain spend governance for autonomous AI agents on Arc.",
+  metadataBase: new URL(publicOrigin),
+  title: "ARCANUM",
+  description: publicDescription,
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "ARCANUM",
+    description: publicDescription,
+    url: publicOrigin,
+    siteName: "ARCANUM",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ARCANUM",
+    description: publicDescription,
+  },
   icons: {
     icon: [
       { url: "/favicon.ico" },
