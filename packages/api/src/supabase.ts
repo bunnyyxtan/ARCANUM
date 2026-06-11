@@ -450,7 +450,7 @@ export async function recordSupabaseCreatedWallet(
     const [writtenWallet] = await client.upsertRows(
       "governed_wallets",
       [walletRow],
-      "wallet_address",
+      "wallet_address,chain_id",
     );
     await client.upsertRows("doctrines", [doctrineRow], "wallet_address,version");
     await client.upsertRows("public_wallet_profiles", [publicProfileRow], "wallet_address");
