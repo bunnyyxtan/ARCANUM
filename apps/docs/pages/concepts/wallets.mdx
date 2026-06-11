@@ -1,0 +1,10 @@
+# GuardedWallets
+
+A GuardedWallet is a per-agent contract account on Arc. It holds USDC, authorizes agent signers, enforces policy on every `executeUSDC` call, and emits the events the dashboard indexes.
+
+The wallet has an immutable owner and no protocol admin. Owners can rotate modules and signers, but the custody promise stays in the deployed bytecode.
+
+```ts
+const dailySpent = await arc.getDailySpent()
+const policy = await arc.getPolicy()
+```

@@ -1,0 +1,21 @@
+{
+  "chainId": 5042002,
+  "network": "arc-testnet",
+  "rpcUrl": "https://rpc.testnet.arc.network",
+  "deployer": "FILL_AFTER_DEPLOY",
+  "deployedAt": "FILL_AFTER_DEPLOY",
+  "blockNumber": "FILL_AFTER_DEPLOY",
+  "txHashes": {
+    "policyEngine": "FILL_AFTER_DEPLOY",
+    "escalationManager": "FILL_AFTER_DEPLOY",
+    "anomalyOracle": "FILL_AFTER_DEPLOY",
+    "vendorRegistry": "FILL_AFTER_DEPLOY",
+    "walletFactory": "FILL_AFTER_DEPLOY"
+  },
+  "policyEngine": "FILL_AFTER_DEPLOY",
+  "escalationManager": "FILL_AFTER_DEPLOY",
+  "anomalyOracle": "FILL_AFTER_DEPLOY",
+  "vendorRegistry": "FILL_AFTER_DEPLOY",
+  "walletFactory": "FILL_AFTER_DEPLOY",
+  "usdc": "0x3600000000000000000000000000000000000000"
+}

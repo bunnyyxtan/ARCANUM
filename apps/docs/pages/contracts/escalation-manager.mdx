@@ -1,0 +1,13 @@
+# EscalationManager
+
+EscalationManager stores transfer requests that need human quorum. Required signers can approve, reject, or let the request expire. Expiry settles to rejection.
+
+Key calls:
+
+- `approve(bytes32 escalationId)`
+- `reject(bytes32 escalationId)`
+- `sweepExpired(bytes32 escalationId)`
+- `statusOf(bytes32 escalationId)`
+- `getEscalation(bytes32 escalationId)`
+
+Escalated transfers execute only after threshold approval.

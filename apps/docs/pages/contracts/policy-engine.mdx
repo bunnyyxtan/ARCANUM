@@ -1,0 +1,20 @@
+# PolicyEngine
+
+PolicyEngine evaluates a transfer proposal against a wallet policy and vendor registry namespace.
+
+Decision order:
+
+1. Blocked vendor freezes.
+2. Missing allowlist denies.
+3. Per-transfer cap denies.
+4. Vendor cap denies.
+5. Daily cap denies.
+6. Escalation threshold escalates.
+7. Remaining transfers allow.
+
+```ts
+const decision = await arc.simulate({
+  to: "0x0000000000000000000000000000000000000002",
+  amount: 50_000_000n,
+})
+```

@@ -1,0 +1,41 @@
+# TypeScript SDK
+
+`@arcanum/sdk` is a direct Arc RPC client. It reads contract state, simulates policy decisions, and signs `executeUSDC` with your agent signer.
+
+The write example below is for Arc Testnet/local development. Never hard-code
+private keys or commit `.env` files. Production operators should use managed
+signer infrastructure or user-controlled wallets.
+
+```ts
+import { ArcanumClient } from "@arcanum/sdk"
+import { ARC_TESTNET_RPC_URL, arcTestnet, usdcErc20 } from "@arcanum/sdk/chains"
+import { privateKeyToAccount } from "viem/accounts"
+
+const arc = new ArcanumClient({
+  walletAddress: "0x0000000000000000000000000000000000000001",
+  agentSigner: privateKeyToAccount(process.env.AGENT_PRIVATE_KEY as `0x${string}`),
+  chain: arcTestnet,
+  rpcUrl: process.env.ARC_TESTNET_RPC ?? ARC_TESTNET_RPC_URL,
+})
+
+const result = await arc.executeUSDC({
+  to: "0x0000000000000000000000000000000000000002",
+  amount: usdcErc20(50),
+  reason: "OpenAI API top-up",
+  metadata: { category: "API" },
+})
+```
+
+## API
+
+- `executeUSDC({ to, amount, reason, metadata })`
+- `simulate({ to, amount })`
+- `getPolicy()`
+- `getDailySpent()`
+- `getVendor(address)`
+- `onEscalationResolved(escalationId, callback)`
+- `onFrozen(callback)`
+
+## Errors
+
+`PolicyDeniedError`, `EscalationRequiredError`, `WalletFrozenError`, `AgentNotAuthorizedError`, and `InsufficientUSDCError` all extend `ArcanumError`.

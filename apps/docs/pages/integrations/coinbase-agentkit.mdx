@@ -1,0 +1,13 @@
+# Coinbase AgentKit
+
+AgentKit-based builders can keep their wallet client and add Arcanum at the transfer boundary.
+
+```ts
+const guardedSpend = await arc.executeUSDC({
+  to: vendorAddress,
+  amount,
+  reason: "Arc-native agent operation",
+})
+```
+
+The SDK returns a verdict the agent can reason about.

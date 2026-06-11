@@ -1,0 +1,11 @@
+# ElizaOS
+
+Use Arcanum as the spend boundary around an ElizaOS agent that needs a real Arc USDC wallet.
+
+```ts
+const transferTool = async (to: `0x${string}`, amount: bigint, reason: string) => {
+  return arc.executeUSDC({ to, amount, reason, metadata: { category: "API" } })
+}
+```
+
+Keep the agent's key in your operator environment and keep policy in the wallet.

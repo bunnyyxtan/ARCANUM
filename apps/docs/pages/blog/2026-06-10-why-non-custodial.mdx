@@ -1,0 +1,71 @@
+---
+title: "Why Arcanum Is Non-Custodial by Construction"
+description: "The Solidity-level commitments that keep Arcanum from touching user USDC."
+date: "2026-06-10"
+---
+
+# Why Arcanum Is Non-Custodial by Construction
+
+Arcanum is built around a simple constraint: the protocol must never be able to move user USDC.
+
+That constraint is not a branding line. It shapes the contract architecture, the API design, the SDK, the indexer, and the way operators use the dashboard. If an AI agent is going to hold real stablecoins on Arc, custody has to remain with the user's own wallet contract. Arcanum can provide policy, escalation, anomaly defense, and observability. It cannot become the spender.
+
+This is especially important on Arc because the chain is built for stablecoin finance at real speed. Agents will not only watch markets. They will pay invoices, rebalance vaults, call protocols, reward contributors, and route compute tasks. The system that governs them has to match that execution path.
+
+## The Core Custody Boundary
+
+The GuardedWallet is the custody boundary.
+
+USDC sits in the wallet. Agent signers can request transfers through `executeUSDC`. The wallet checks the configured policy envelope before funds move. If the transfer is within policy, the wallet transfers USDC. If it crosses an escalation threshold, the EscalationManager holds the transfer. If the transfer breaks policy, the call reverts.
+
+No Arcanum server signs for the user. No indexer can approve a transfer. No tRPC procedure can broadcast a transaction with a hidden key. The SDK talks directly to Arc RPC using the agent signer provided by the integrator.
+
+This keeps the operational model clean. The protocol provides reusable enforcement. The user keeps custody.
+
+## Commitment One: The Protocol Cannot Move Your Funds
+
+Arcanum-controlled addresses have no spending path into a GuardedWallet. There is no protocol admin that can call `executeUSDC`. There is no fee hook that touches user USDC. There is no hidden module that can sweep funds.
+
+The invariant test `invariant_NoProtocolAddressCanMoveFunds` exists to keep that promise from becoming soft. The handler attempts external calls from protocol-shaped attacker addresses across the system. The invariant checks that attacker balances never receive user USDC.
+
+For builders, that means a self-hosted operator, hosted dashboard, indexer, or API outage does not become a custody event. The wallet remains governed by its contract.
+
+## Commitment Two: No Upgrade Key On User Wallets
+
+A user-deployed GuardedWallet is immutable bytecode. Modules are rotatable by the owner, but the wallet itself is not a proxy. There is no UUPS hook, no proxy admin, and no delegatecall-based upgrade path.
+
+That matters for agent money because the wallet becomes part of the operating surface for the organization. A DAO treasury agent, DeFi keeper agent, or DePIN subcontracting agent may run for months or years. The custody guarantees should not depend on a shared upgrade key.
+
+The invariant test `invariant_NoUpgradeKeyOnWallets` protects this property by checking for upgrade-related selectors and proxy-style escape hatches.
+
+## Commitment Three: Policy Enforcement Is On-Chain
+
+The dashboard is useful because it gives operators a live view: posture index, event stream, escalations, anomaly register, ledger, and vendor registry. The indexer is useful because it turns Arc events into queryable state. The API is useful because it gives the frontend a clean tenant-isolated interface.
+
+None of those layers decide whether USDC moves.
+
+The GuardedWallet calls the PolicyEngine during execution. The PolicyEngine evaluates the policy envelope against the proposed transfer, current daily spend, and vendor registry state. The result is enforced at the EVM level.
+
+The invariant test `invariant_PolicyEnforcementIsOnChain` sets a hard cap and fuzzes transfers above it. Every attempt must revert inside the contract. That is the guarantee builders should care about: even if every off-chain service is offline, the policy still applies on Arc.
+
+## Commitment Four: Anyone Can Deploy
+
+Arcanum is a permissionless protocol. The WalletFactory accepts any EOA and can deploy a GuardedWallet with deterministic CREATE2 addresses. There is no allowlist of deployers and no gate in bytecode.
+
+The invariant test `invariant_AnyoneCanDeploy` calls the factory from many EOAs and expects success. That property is essential for an Arc-native primitive. Builders should be able to fork, deploy, self-host, and extend without asking us.
+
+## What This Enables
+
+Non-custodial governance lets teams put real budgets behind agents without handing authority to a hosted service.
+
+A DAO can give an agent a capped wallet for treasury rebalancing. A DeFi protocol can run a keeper with strict spend ceilings. A DePIN network can let subcontracting agents pay approved vendors. An agent framework user can add guardrails to an existing USDC workflow by replacing a single transfer call with `arc.executeUSDC`.
+
+In each case, Arcanum handles the same underlying job: enforce the policy before funds move.
+
+## Why Arc Makes This Timely
+
+Arc gives the stablecoin agent economy a permissionless settlement layer. Circle and the Arc team have created a place where USDC-native applications can be built directly into the chain's operating rhythm. Arcanum is designed to meet that rhythm with governance primitives that are transparent, forkable, and operator-owned.
+
+The goal is not to hide complexity. It is to put the hard boundary in the right place. Custody stays with the wallet. Policy stays on-chain. Observability stays optional and self-hostable.
+
+That is what non-custodial means in Arcanum: not a promise to trust us, but a contract path you can inspect, test, and run yourself.

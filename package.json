@@ -1,0 +1,41 @@
+{
+  "name": "arcanum",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "npm@11.6.2",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace @arcanum/web",
+    "dev": "npm run dev --workspace @arcanum/web",
+    "lint": "npm run lint --workspace @arcanum/web",
+    "typecheck": "npm run typecheck --workspace @arcanum/web",
+    "test": "npm run test --workspaces --if-present",
+    "db:generate": "npm run db:generate --workspace @arcanum/db",
+    "db:migrate": "npm run db:migrate --workspace @arcanum/db",
+    "db:studio": "npm run db:studio --workspace @arcanum/db",
+    "db:seed": "tsx packages/db/seed.ts",
+    "biome": "biome",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,json,css,md}": "biome check --apply"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.9.4",
+    "@changesets/cli": "^2.29.5",
+    "@tailwindcss/postcss": "^4.1.8",
+    "@types/node": "^22.15.30",
+    "@types/react": "^19.1.6",
+    "@types/react-dom": "^19.1.6",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.0",
+    "tailwindcss": "^4.1.8",
+    "tsx": "^4.19.2",
+    "turbo": "^2.9.17",
+    "typescript": "^5.6.0"
+  }
+}

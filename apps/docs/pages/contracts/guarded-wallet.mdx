@@ -1,0 +1,14 @@
+# GuardedWallet
+
+GuardedWallet is the per-agent wallet that holds Arc USDC and enforces every transfer through `executeUSDC`.
+
+Key calls:
+
+- `executeUSDC(address to, uint256 amount, bytes reason)`
+- `setPolicy(PolicyEnvelope nextPolicy)`
+- `addSigner(address signer)`
+- `removeSigner(address signer)`
+- `configureEscalation(address[] signers, uint8 threshold, uint64 expirySeconds)`
+- `addVendor(address vendor, uint8 category, uint256 cap, bytes32 metadataHash)`
+
+Custody guarantee: no protocol admin exists on the wallet.

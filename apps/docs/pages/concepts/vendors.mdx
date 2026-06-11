@@ -1,0 +1,8 @@
+# Vendors
+
+VendorRegistry stores per-wallet allowlists, blocklists, category tags, and caps. The same vendor address can be allowed for one wallet and blocked for another.
+
+```ts
+const vendor = await arc.getVendor("0x0000000000000000000000000000000000000002")
+console.log(vendor.allowed, vendor.blocked, vendor.perVendorCap)
+```

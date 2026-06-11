@@ -1,0 +1,15 @@
+export default {
+  index: "Home",
+  "getting-started": "Getting Started",
+  concepts: "Concepts",
+  sdk: "SDK",
+  contracts: "Contracts",
+  "self-host": "Self-host",
+  architecture: "Architecture",
+  security: "Security",
+  integrations: "Integrations",
+  "api-reference": "API Reference",
+  governance: "Governance",
+  community: "Community",
+  blog: "Blog",
+};

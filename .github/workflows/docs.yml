@@ -1,0 +1,24 @@
+name: Docs
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run snippets --workspace @arcanum/docs
+      - run: npm run typecheck --workspace @arcanum/docs
+      # The public /docs route is built by @arcanum/web in the main CI job.
+      # apps/docs is the legacy Nextra docs app and is not part of launch-blocking CI yet.

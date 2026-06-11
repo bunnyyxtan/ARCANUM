@@ -1,0 +1,91 @@
+---
+title: "Introducing Arcanum: Open Governance for Autonomous AI Money on Arc"
+description: "Arcanum is open, non-custodial protocol-layer infrastructure for autonomous AI agent money on Arc."
+date: "2026-06-08"
+---
+
+# Introducing Arcanum: Open Governance for Autonomous AI Money on Arc
+
+Arc is the chain where autonomous AI agents will hold, move, and earn stablecoins. Arcanum is the on-chain governance layer that makes it safe.
+
+We built Arcanum for the teams already turning agents into on-chain operators: DAO treasury working groups, DeFi protocol engineers, DePIN networks, and builders wiring agents into real USDC workflows. These agents can rebalance positions, pay vendors, buy compute, settle rewards, and trigger payments at machine speed. That is powerful. It also means the wallet needs guardrails that live where the money moves.
+
+Arcanum gives an agent a real wallet on Arc, then routes every transfer through an on-chain policy envelope. The envelope can enforce a per-transaction cap, a daily spend ceiling, a vendor allowlist, an escalation threshold, and anomaly defense. If the transfer is inside policy, it executes. If it requires human review, the contract holds it for council quorum. If it violates the envelope, the transfer fails on-chain.
+
+The dashboard is not the source of authority. The indexer is not the source of authority. The API is not the source of authority. The GuardedWallet contract is.
+
+That line is the whole product.
+
+## The Agent-Money Gap
+
+Agent wallets are moving from demo accounts into real treasury paths. A bot that can sign transactions can pay an API vendor, rebalance stablecoin positions, reward a subcontractor, or call a protocol on behalf of an organization. Once that bot holds USDC, operational policy becomes part of custody.
+
+Teams need clear answers to simple questions:
+
+- How much can this agent spend in one transfer?
+- What is the daily ceiling?
+- Which vendors are approved?
+- What happens when a payment is unusual?
+- Who signs off on larger transfers?
+- What happens if the agent tries to pay a blocked counterparty?
+
+If those answers only live in an off-chain process, the chain cannot enforce them. Arcanum moves the answer into Solidity.
+
+## Four Architectural Commitments
+
+Arcanum is shaped around four commitments.
+
+First, the protocol is non-custodial. Arcanum-controlled addresses cannot call `executeUSDC` and cannot move user funds. The user's GuardedWallet holds the USDC. The user's configured signer set and policy decide what can happen.
+
+Second, there is no upgrade key on user wallets. A GuardedWallet is deployed as immutable bytecode. Owners can rotate modules and update policy, but the custody guarantees remain anchored in the deployed contract.
+
+Third, policy enforcement is on-chain. The dashboard, indexer, tRPC API, and SDK are observability and UX layers. They help operators understand and sign actions, but they do not have authority to allow, block, or modify transfers.
+
+Fourth, deployment is permissionless. Anyone can deploy a governed wallet on Arc. No KYC gate. No deployer allowlist. No central approval path.
+
+These commitments are enforced by Foundry invariant tests in the repo. We want builders to read the tests, run them, and fork the system with confidence.
+
+## The Helix DAO Example
+
+The first demo organization is Helix DAO, a fictional on-chain DAO with a multisig treasury and a set of AI agents.
+
+Helix gives `TreasuryRebalancerAgent` a governed wallet on Arc. The policy is direct:
+
+- Per-transaction cap: $5,000 USDC.
+- Daily ceiling: $5,000 USDC.
+- Monthly budget: $10,000 USDC.
+- Escalation threshold: $1,000 USDC.
+- Council quorum: two of three signers.
+- Vendor allowlist: approved protocol addresses and service vendors.
+
+When the agent sends $425 to an approved venue, the transfer is inside policy and executes immediately. The event lands on Arc, the indexer picks it up, and the dashboard updates the governed event stream.
+
+When the agent sends $1,250 to an approved vendor, the transfer crosses the escalation threshold. The EscalationManager holds the transfer. Council members can approve or reject. When quorum is reached, the wallet executes on-chain.
+
+When `DevAgent-01` attempts to pay `evil-data-broker.com`, the VendorRegistry blocks the path and the wallet enters frozen review. The DAO sees the danger event, investigates, and unfreezes only after explicit owner action.
+
+Every step is visible. Every step is on-chain.
+
+## What Ships Today
+
+The Arcanum repo includes:
+
+- Solidity contracts for governed wallets, policy evaluation, escalation, anomaly scores, vendor registry, and deterministic deployment.
+- A Ponder indexer for Arc testnet events.
+- A Postgres schema and tRPC API for observability.
+- A Next.js dashboard with SIWE auth.
+- TypeScript and Python SDKs that talk directly to Arc RPC.
+- A Vercel-ready web workflow, Supabase-backed configuration, and optional Helm scaffolding for operators that need Kubernetes.
+- Docs for contracts, architecture, SDKs, and launch recipes.
+
+Everything is MIT-licensed. Everything is designed to be forked, audited, and run by builders.
+
+## Built On Arc
+
+Arcanum exists because Arc exists. Circle and the Arc team are building the stablecoin L1 that makes autonomous agent money practical: permissionless settlement, USDC-native flows, and a builder surface that invites new primitives.
+
+Our contribution is narrow and deliberate: governance for agents that move stablecoins on Arc. We want DAO treasuries, DeFi protocols, DePIN networks, and agent framework users to have a shared open base layer for these patterns.
+
+The next era of software will include agents that earn, spend, and settle. On Arc, those agents can become first-class economic actors. Arcanum helps teams give them real wallets with real guardrails.
+
+Open protocol. Built on Arc. MIT. Forever.

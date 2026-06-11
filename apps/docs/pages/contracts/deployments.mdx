@@ -1,0 +1,22 @@
+# Deployments
+
+Arc testnet deployment metadata lives in:
+
+```txt
+packages/contracts/deployments/arc-testnet.json
+```
+
+Expected keys:
+
+```json
+{
+  "policyEngine": "0x...",
+  "escalationManager": "0x...",
+  "anomalyOracle": "0x...",
+  "vendorRegistry": "0x...",
+  "walletFactory": "0x...",
+  "startBlock": 0
+}
+```
+
+Self-hosted indexers read this file to start from the correct deployment block.
