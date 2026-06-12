@@ -178,6 +178,26 @@ type AnomalyDisplay = {
 };
 type TeamDisplay = (typeof teamMembers)[number];
 
+const zeroEvmAddress = "0x0000000000000000000000000000000000000000" as const;
+
+// GuardedWallet exposes a non-enumerable signer mapping, so saved candidates must be verified.
+function signerCandidatesFromPolicy(policy: unknown): Address[] {
+  const signers =
+    policy &&
+    typeof policy === "object" &&
+    "signers" in policy &&
+    Array.isArray((policy as { signers?: unknown }).signers)
+      ? ((policy as { signers: unknown[] }).signers ?? [])
+      : [];
+
+  const normalized = signers
+    .filter((value): value is string => typeof value === "string")
+    .map((value) => value.trim().toLowerCase())
+    .filter((value): value is Address => isEvmAddress(value) && !isZeroAddress(value));
+
+  return Array.from(new Set(normalized));
+}
+
 const fallbackEscalationHash = "0xeeee000000000000000000000000000000000000000000000000000000000001";
 const fallbackAnomalyId = "70000000-0000-4000-8000-000000000001";
 const sampleAgentWallet = "0x4F8C39A7D2B1E84F3aF20a91dDb83a7B7A4eA3B7";
@@ -2407,10 +2427,108 @@ function AgentsOperationsGrid({
   );
 }
 
+function WalletSignerSummary({
+  candidates,
+  isLoading,
+  walletAddress,
+}: Readonly<{
+  candidates: Address[];
+  isLoading: boolean;
+  walletAddress: Address | null;
+}>) {
+  const publicClient = usePublicClient({ chainId: arcTestnet.id });
+  const [verifiedSigners, setVerifiedSigners] = useState<Address[]>([]);
+  const [verificationStatus, setVerificationStatus] = useState<
+    "idle" | "checking" | "ready" | "error"
+  >("idle");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!walletAddress || !publicClient || candidates.length === 0) {
+      setVerifiedSigners([]);
+      setVerificationStatus(walletAddress && candidates.length > 0 ? "error" : "idle");
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setVerificationStatus("checking");
+    Promise.all(
+      candidates.map(async (candidate) => {
+        const authorized = (await publicClient.readContract({
+          address: walletAddress,
+          abi: guardedWalletControlAbi,
+          functionName: "agentSigners",
+          args: [candidate],
+        })) as boolean;
+
+        return authorized ? candidate : null;
+      }),
+    )
+      .then((results) => {
+        if (cancelled) {
+          return;
+        }
+
+        setVerifiedSigners(results.filter((candidate): candidate is Address => Boolean(candidate)));
+        setVerificationStatus("ready");
+      })
+      .catch(() => {
+        if (cancelled) {
+          return;
+        }
+
+        setVerifiedSigners([]);
+        setVerificationStatus("error");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [candidates, publicClient, walletAddress]);
+
+  if (isLoading) {
+    return <span className="text-[#8A909B]">Loading signer state</span>;
+  }
+  if (candidates.length === 0) {
+    return <span className="text-[#8A909B]">No signer authorized</span>;
+  }
+  if (verificationStatus === "checking") {
+    return <span className="text-[#E0A04A]">Verifying saved signer on Arc Testnet</span>;
+  }
+  if (verificationStatus === "error") {
+    return <span className="text-[#EC7A6B]">Signer readback unavailable</span>;
+  }
+  if (verifiedSigners.length === 0) {
+    return <span className="text-[#EC7A6B]">Saved signer not authorized on contract</span>;
+  }
+  if (verifiedSigners.length === 1) {
+    return <span className="text-[#D7DBE0]">1 signer: {shortAddress(verifiedSigners[0])}</span>;
+  }
+
+  return <span className="text-[#D7DBE0]">{verifiedSigners.length} signers authorized</span>;
+}
+
 function SelectedWalletOverview({
   agent,
   walletAddress,
 }: Readonly<{ agent: AgentDisplay; walletAddress: Address | null }>) {
+  const workspace = useWorkspaceMode();
+  const signerPolicyQuery = trpc.agents.policy.useQuery(
+    { walletId: walletAddress ?? zeroEvmAddress },
+    {
+      enabled: workspace.isAuthenticated && Boolean(walletAddress),
+      refetchOnMount: "always",
+      refetchOnWindowFocus: true,
+      retry: false,
+      staleTime: 30_000,
+    },
+  );
+  const signerCandidates = useMemo(
+    () => signerCandidatesFromPolicy(signerPolicyQuery.data),
+    [signerPolicyQuery.data],
+  );
   const copyWallet = async () => {
     if (!walletAddress) {
       return;
@@ -2449,6 +2567,18 @@ function SelectedWalletOverview({
                   <Copy className="h-3.5 w-3.5 shrink-0" strokeWidth={iconStroke} />
                 ) : null}
               </button>
+              <div className="mt-2 flex max-w-full items-center gap-2 text-[11px]">
+                <span className="shrink-0 text-[10px] tracking-[0.14em] text-[#5B626C]">
+                  SIGNER
+                </span>
+                <span className="min-w-0 truncate" title={signerCandidates.join(", ")}>
+                  <WalletSignerSummary
+                    candidates={signerCandidates}
+                    isLoading={signerPolicyQuery.isLoading}
+                    walletAddress={walletAddress}
+                  />
+                </span>
+              </div>
             </div>
             <StatusLabel status={agent.status} align="right" />
           </div>
@@ -4104,6 +4234,7 @@ function transferVerdictLabel(verdict: string) {
 }
 
 type SignerReadStatus = "idle" | "checking" | "ready" | "error";
+type SignerSyncRequest = { action: "authorize" | "revoke"; signerAddress: Address };
 type SignerTxStatus =
   | "idle"
   | "wallet"
@@ -4123,10 +4254,11 @@ function AgentSignerPanel({
   const { writeContractAsync, isPending: writePending } = useWriteContract();
   const utils = trpc.useUtils();
   const signerPolicyQuery = trpc.agents.policy.useQuery(
-    { walletId: governedWalletAddress ?? "0x0000000000000000000000000000000000000000" },
+    { walletId: governedWalletAddress ?? zeroEvmAddress },
     {
       enabled: workspace.isAuthenticated && Boolean(governedWalletAddress),
-      refetchOnWindowFocus: false,
+      refetchOnMount: "always",
+      refetchOnWindowFocus: true,
       retry: false,
       staleTime: 30_000,
     },
@@ -4137,26 +4269,21 @@ function AgentSignerPanel({
   const [signerInputTouched, setSignerInputTouched] = useState(false);
   const [walletOwner, setWalletOwner] = useState<Address | null>(null);
   const [signerAuthorized, setSignerAuthorized] = useState<boolean | null>(null);
+  const [signerVerificationByAddress, setSignerVerificationByAddress] = useState<
+    Record<string, boolean | null>
+  >({});
+  const [lastVerifiedAt, setLastVerifiedAt] = useState<string | null>(null);
   const [readStatus, setReadStatus] = useState<SignerReadStatus>("idle");
   const [readError, setReadError] = useState<string | null>(null);
   const [txStatus, setTxStatus] = useState<SignerTxStatus>("idle");
   const [txHash, setTxHash] = useState<Hash | null>(null);
   const [txError, setTxError] = useState<string | null>(null);
-  const persistedSignerAddress = useMemo(() => {
-    const signers =
-      signerPolicyQuery.data &&
-      "signers" in signerPolicyQuery.data &&
-      Array.isArray((signerPolicyQuery.data as { signers?: unknown }).signers)
-        ? ((signerPolicyQuery.data as { signers: unknown[] }).signers ?? [])
-        : [];
-
-    return (
-      signers.find(
-        (value): value is Address =>
-          typeof value === "string" && isEvmAddress(value) && !isZeroAddress(value),
-      ) ?? null
-    );
-  }, [signerPolicyQuery.data]);
+  const [lastSyncRequest, setLastSyncRequest] = useState<SignerSyncRequest | null>(null);
+  const persistedSignerCandidates = useMemo(
+    () => signerCandidatesFromPolicy(signerPolicyQuery.data),
+    [signerPolicyQuery.data],
+  );
+  const persistedSignerAddress = persistedSignerCandidates[0] ?? null;
 
   const trimmedSigner = signerInput.trim();
   const signerAddress = isEvmAddress(trimmedSigner) ? (trimmedSigner as Address) : null;
@@ -4180,9 +4307,57 @@ function AgentSignerPanel({
   const ownerMatchesConnectedWallet = Boolean(
     walletOwner && address && isSameAddress(walletOwner, address),
   );
+  const visibleSignerCandidates = useMemo(() => {
+    const nextCandidates = [...persistedSignerCandidates];
+    if (
+      usableSignerAddress &&
+      signerAuthorized === true &&
+      !nextCandidates.some((candidate) => isSameAddress(candidate, usableSignerAddress))
+    ) {
+      nextCandidates.push(usableSignerAddress);
+    }
 
-  const readLiveSignerState = useCallback(
-    async (nextSigner: Address | null) => {
+    return nextCandidates;
+  }, [persistedSignerCandidates, signerAuthorized, usableSignerAddress]);
+  const signerRows = useMemo(
+    () =>
+      visibleSignerCandidates.map((candidate) => {
+        const verified = signerVerificationByAddress[candidate.toLowerCase()] ?? null;
+        const isSyncTarget = Boolean(
+          lastSyncRequest && isSameAddress(candidate, lastSyncRequest.signerAddress),
+        );
+        const isPendingSync =
+          isSyncTarget && (txStatus === "syncing" || txStatus === "sync_failed");
+        const status = isPendingSync
+          ? txStatus === "sync_failed"
+            ? "SYNC FAILED"
+            : "SYNC PENDING"
+          : readStatus === "checking" && verified === null
+            ? "VERIFYING"
+            : verified === true
+              ? "AUTHORIZED ON CONTRACT"
+              : verified === false
+                ? "NOT AUTHORIZED ON CONTRACT"
+                : readStatus === "error"
+                  ? "READBACK FAILED"
+                  : "SUPABASE CANDIDATE";
+        const source = isPendingSync
+          ? "recent tx"
+          : verified === true
+            ? "contract verified"
+            : "Supabase candidate";
+
+        return { address: candidate, source, status, verified };
+      }),
+    [readStatus, lastSyncRequest, signerVerificationByAddress, txStatus, visibleSignerCandidates],
+  );
+  const authorizedSignerCount = signerRows.filter((row) => row.verified === true).length;
+  const lastVerifiedLabel = lastVerifiedAt
+    ? new Date(lastVerifiedAt).toLocaleTimeString([], { hour12: false })
+    : null;
+
+  const readLiveSignerStates = useCallback(
+    async (nextSigners: Address[]) => {
       if (!publicClient || !governedWalletAddress) {
         return null;
       }
@@ -4192,30 +4367,53 @@ function AgentSignerPanel({
         abi: guardedWalletControlAbi,
         functionName: "owner",
       })) as Address;
-      const authorized =
-        nextSigner === null
-          ? null
-          : ((await publicClient.readContract({
-              address: governedWalletAddress,
-              abi: guardedWalletControlAbi,
-              functionName: "agentSigners",
-              args: [nextSigner],
-            })) as boolean);
 
-      return { authorized, owner };
+      const authorizationEntries = await Promise.all(
+        nextSigners.map(async (signer) => {
+          const authorized = (await publicClient.readContract({
+            address: governedWalletAddress,
+            abi: guardedWalletControlAbi,
+            functionName: "agentSigners",
+            args: [signer],
+          })) as boolean;
+
+          return [signer.toLowerCase(), authorized] as const;
+        }),
+      );
+
+      return { authorizationByAddress: Object.fromEntries(authorizationEntries), owner };
     },
     [governedWalletAddress, publicClient],
+  );
+  const readLiveSignerState = useCallback(
+    async (nextSigner: Address | null) => {
+      const result = await readLiveSignerStates(nextSigner ? [nextSigner] : []);
+      if (!result) {
+        return null;
+      }
+
+      return {
+        authorized: nextSigner
+          ? (result.authorizationByAddress[nextSigner.toLowerCase()] ?? null)
+          : null,
+        owner: result.owner,
+      };
+    },
+    [readLiveSignerStates],
   );
 
   useEffect(() => {
     setSignerInput("");
     setSignerInputTouched(false);
     setSignerAuthorized(null);
+    setSignerVerificationByAddress({});
+    setLastVerifiedAt(null);
     setReadError(null);
     setReadStatus(governedWalletAddress ? "checking" : "idle");
     setTxStatus("idle");
     setTxHash(null);
     setTxError(null);
+    setLastSyncRequest(null);
   }, [governedWalletAddress]);
 
   useEffect(() => {
@@ -4225,6 +4423,22 @@ function AgentSignerPanel({
 
     setSignerInput(persistedSignerAddress);
   }, [persistedSignerAddress, signerInputTouched, signerPolicyQuery.isFetching]);
+  const verificationSignerCandidates = useMemo(() => {
+    const candidates = usableSignerAddress
+      ? [...persistedSignerCandidates, usableSignerAddress]
+      : persistedSignerCandidates;
+
+    return Array.from(
+      new Set(
+        candidates
+          .map((candidate) => candidate.toLowerCase())
+          .filter(
+            (candidate): candidate is Address =>
+              isEvmAddress(candidate) && !isZeroAddress(candidate),
+          ),
+      ),
+    );
+  }, [persistedSignerCandidates, usableSignerAddress]);
 
   useEffect(() => {
     let cancelled = false;
@@ -4233,6 +4447,8 @@ function AgentSignerPanel({
     if (!governedWalletAddress || !publicClient) {
       setWalletOwner(null);
       setSignerAuthorized(null);
+      setSignerVerificationByAddress({});
+      setLastVerifiedAt(null);
       setReadStatus(governedWalletAddress ? "error" : "idle");
       setReadError(governedWalletAddress ? "Arc Testnet RPC is unavailable." : null);
       return () => {
@@ -4242,14 +4458,20 @@ function AgentSignerPanel({
 
     setReadStatus("checking");
     setReadError(null);
-    readLiveSignerState(usableSignerAddress)
+    readLiveSignerStates(verificationSignerCandidates)
       .then((result) => {
         if (cancelled || !result) {
           return;
         }
 
         setWalletOwner(result.owner);
-        setSignerAuthorized(result.authorized);
+        setSignerVerificationByAddress(result.authorizationByAddress);
+        setSignerAuthorized(
+          usableSignerAddress
+            ? (result.authorizationByAddress[usableSignerAddress.toLowerCase()] ?? null)
+            : null,
+        );
+        setLastVerifiedAt(new Date().toISOString());
         setReadStatus("ready");
       })
       .catch((caught) => {
@@ -4259,6 +4481,8 @@ function AgentSignerPanel({
 
         setWalletOwner(null);
         setSignerAuthorized(null);
+        setSignerVerificationByAddress({});
+        setLastVerifiedAt(null);
         setReadStatus("error");
         setReadError(errorMessage(caught));
       });
@@ -4266,7 +4490,13 @@ function AgentSignerPanel({
     return () => {
       cancelled = true;
     };
-  }, [governedWalletAddress, publicClient, readLiveSignerState, usableSignerAddress]);
+  }, [
+    governedWalletAddress,
+    publicClient,
+    readLiveSignerStates,
+    usableSignerAddress,
+    verificationSignerCandidates,
+  ]);
 
   const managementDisabledReason = !governedWalletAddress
     ? "Open a valid governed wallet route."
@@ -4282,25 +4512,34 @@ function AgentSignerPanel({
               ? "Only the governed wallet owner can manage the agent signer."
               : chainId !== arcTestnet.id
                 ? "Switch to Arc Testnet."
-                : signerValidation;
-  const signerCheckPending = Boolean(usableSignerAddress && signerAuthorized === null);
+                : null;
+  const signerWriteDisabledReason = managementDisabledReason ?? signerValidation;
+  const signerCheckPending = Boolean(
+    usableSignerAddress && signerAuthorized === null && readStatus === "checking",
+  );
   const canAuthorize =
-    !managementDisabledReason && !signerCheckPending && signerAuthorized === false && !isBusy;
+    !signerWriteDisabledReason && !signerCheckPending && signerAuthorized === false && !isBusy;
   const canRevoke =
-    !managementDisabledReason && !signerCheckPending && signerAuthorized === true && !isBusy;
+    !signerWriteDisabledReason && !signerCheckPending && signerAuthorized === true && !isBusy;
   const statusCopy = signerPolicyQuery.isLoading
-    ? "READING SIGNER"
-    : !usableSignerAddress || signerValidation
-      ? "NO SIGNER AUTHORIZED"
-      : readStatus === "checking"
-        ? "CHECKING CONTRACT"
-        : signerAuthorized
-          ? "AUTHORIZED"
-          : readStatus === "error"
-            ? "READBACK FAILED"
-            : "NOT AUTHORIZED";
+    ? "READING SIGNERS"
+    : readStatus === "checking" && visibleSignerCandidates.length > 0
+      ? "VERIFYING SIGNERS"
+      : authorizedSignerCount > 0
+        ? `${authorizedSignerCount} SIGNER${authorizedSignerCount === 1 ? "" : "S"} AUTHORIZED`
+        : visibleSignerCandidates.length > 0
+          ? "SAVED SIGNER STALE"
+          : !usableSignerAddress || signerValidation
+            ? "NO SIGNER AUTHORIZED"
+            : readStatus === "checking"
+              ? "CHECKING CONTRACT"
+              : signerAuthorized
+                ? "AUTHORIZED"
+                : readStatus === "error"
+                  ? "READBACK FAILED"
+                  : "NOT AUTHORIZED";
   const statusClassName =
-    signerAuthorized && usableSignerAddress
+    authorizedSignerCount > 0 || (signerAuthorized && usableSignerAddress)
       ? "border-[#6E9E7C]/40 text-[#6E9E7C]"
       : readStatus === "error" || txStatus === "sync_failed"
         ? "border-[#EC7A6B]/40 text-[#EC7A6B]"
@@ -4332,15 +4571,17 @@ function AgentSignerPanel({
   const submitSignerWrite = async (
     action: "authorize" | "revoke",
     event: ReactMouseEvent<HTMLButtonElement>,
+    signerOverride?: Address,
   ) => {
     if (!allowTrustedMutation(`agentSigner.${action}`, event)) {
       return;
     }
 
+    const targetSigner = signerOverride ?? usableSignerAddress;
     if (
       submittingRef.current ||
       !governedWalletAddress ||
-      !usableSignerAddress ||
+      !targetSigner ||
       !publicClient ||
       !ownerMatchesConnectedWallet
     ) {
@@ -4362,7 +4603,7 @@ function AgentSignerPanel({
         address: governedWalletAddress,
         abi: guardedWalletControlAbi,
         functionName: action === "authorize" ? "addSigner" : "removeSigner",
-        args: [usableSignerAddress],
+        args: [targetSigner],
         chainId: arcTestnet.id,
       });
       setTxHash(hash);
@@ -4378,18 +4619,24 @@ function AgentSignerPanel({
 
       contractConfirmed = true;
       const nextState = action === "authorize";
-      const refreshed = await readLiveSignerState(usableSignerAddress);
+      const refreshed = await readLiveSignerState(targetSigner);
       setWalletOwner(refreshed?.owner ?? walletOwner);
       if (refreshed?.authorized !== nextState) {
         throw new Error("Contract readback did not confirm the signer state.");
       }
 
       setSignerAuthorized(nextState);
+      setSignerVerificationByAddress((previous) => ({
+        ...previous,
+        [targetSigner.toLowerCase()]: nextState,
+      }));
+      setLastVerifiedAt(new Date().toISOString());
       setReadStatus("ready");
       setTxStatus("syncing");
+      setLastSyncRequest({ action, signerAddress: targetSigner });
       await syncSignerState.mutateAsync({
         action,
-        signerAddress: usableSignerAddress,
+        signerAddress: targetSigner,
         walletAddress: governedWalletAddress,
       });
       await Promise.all([
@@ -4397,11 +4644,14 @@ function AgentSignerPanel({
         utils.agents.policy.invalidate({ walletId: governedWalletAddress }),
       ]);
       if (action === "revoke") {
-        setSignerInput("");
-        setSignerInputTouched(false);
+        if (usableSignerAddress && isSameAddress(targetSigner, usableSignerAddress)) {
+          setSignerInput("");
+          setSignerInputTouched(false);
+        }
       }
 
       setTxStatus("synced");
+      setLastSyncRequest(null);
       toast.success(action === "authorize" ? "AGENT SIGNER AUTHORIZED" : "AGENT SIGNER REVOKED", {
         description: "Contract confirmed and Supabase signer state synced.",
       });
@@ -4410,6 +4660,42 @@ function AgentSignerPanel({
       setTxError(errorMessage(caught));
     } finally {
       submittingRef.current = false;
+    }
+  };
+  const retrySignerSync = async (event: ReactMouseEvent<HTMLButtonElement>) => {
+    if (
+      !allowTrustedMutation("agentSigner.retrySync", event) ||
+      !governedWalletAddress ||
+      !lastSyncRequest ||
+      syncSignerState.isPending
+    ) {
+      return;
+    }
+
+    try {
+      setTxError(null);
+      setTxStatus("syncing");
+      await syncSignerState.mutateAsync({
+        action: lastSyncRequest.action,
+        signerAddress: lastSyncRequest.signerAddress,
+        walletAddress: governedWalletAddress,
+      });
+      await Promise.all([
+        utils.agents.list.invalidate(),
+        utils.agents.policy.invalidate({ walletId: governedWalletAddress }),
+      ]);
+      if (lastSyncRequest.action === "revoke") {
+        setSignerInput("");
+        setSignerInputTouched(false);
+      }
+      setTxStatus("synced");
+      setLastSyncRequest(null);
+      toast.success("SIGNER STATE SYNCED", {
+        description: "Supabase signer state now matches the confirmed contract transaction.",
+      });
+    } catch (caught) {
+      setTxStatus("sync_failed");
+      setTxError(errorMessage(caught));
     }
   };
 
@@ -4462,6 +4748,95 @@ function AgentSignerPanel({
           </div>
         </div>
 
+        <div className="border border-[#282C34] bg-[#101216]">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#282C34] px-3 py-2">
+            <div>
+              <div className="text-[10px] tracking-[0.18em] text-[#5B626C]">AUTHORIZED SIGNERS</div>
+              <div className="mt-1 text-[11px] text-[#8A909B]">
+                {authorizedSignerCount > 0
+                  ? `${authorizedSignerCount} signer${authorizedSignerCount === 1 ? "" : "s"} verified for this governed wallet`
+                  : "No contract-verified signer yet"}
+              </div>
+            </div>
+            {lastVerifiedLabel ? (
+              <span className="border border-[#282C34] px-2 py-1 text-[10px] tracking-[0.12em] text-[#5B626C]">
+                VERIFIED {lastVerifiedLabel}
+              </span>
+            ) : null}
+          </div>
+          {signerRows.length > 0 ? (
+            <div className="divide-y divide-[#1E222A]">
+              {signerRows.map((row) => {
+                const rowAuthorized = row.verified === true;
+                const rowStale = row.verified === false || row.status === "SYNC FAILED";
+                const revokeDisabled =
+                  !rowAuthorized || Boolean(managementDisabledReason) || isBusy;
+
+                return (
+                  <div
+                    key={row.address}
+                    className="grid gap-2 px-3 py-3 text-[11px] sm:grid-cols-[minmax(0,1fr)_auto]"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
+                        <span className="font-mono text-[#D7DBE0]" title={row.address}>
+                          {shortAddress(row.address, { head: 8, tail: 6 })}
+                        </span>
+                        <span
+                          className={cn(
+                            "border px-1.5 py-0.5 text-[9px] tracking-[0.12em]",
+                            rowAuthorized
+                              ? "border-[#6E9E7C]/35 text-[#6E9E7C]"
+                              : rowStale
+                                ? "border-[#EC7A6B]/35 text-[#EC7A6B]"
+                                : "border-[#E0A04A]/35 text-[#E0A04A]",
+                          )}
+                        >
+                          {row.status}
+                        </span>
+                      </div>
+                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[10px] tracking-[0.1em] text-[#5B626C]">
+                        <span>SOURCE {row.source.toUpperCase()}</span>
+                        <span>
+                          WALLET{" "}
+                          {governedWalletAddress ? shortAddress(governedWalletAddress) : "N/A"}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                      <button
+                        type="button"
+                        onClick={() => void copyAddress(row.address, "AGENT SIGNER")}
+                        className="flex h-7 items-center gap-1.5 border border-[#282C34] px-2 text-[9px] tracking-[0.12em] text-[#8A909B] hover:border-[#D7DBE0] hover:text-[#D7DBE0]"
+                      >
+                        <Copy className="h-3 w-3" strokeWidth={iconStroke} /> COPY
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(event) => void submitSignerWrite("revoke", event, row.address)}
+                        disabled={revokeDisabled}
+                        title={
+                          revokeDisabled
+                            ? (managementDisabledReason ?? "Only verified signers can be revoked.")
+                            : "Revoke signer"
+                        }
+                        className="flex h-7 items-center gap-1.5 border border-[#EC7A6B]/45 px-2 text-[9px] tracking-[0.12em] text-[#EC7A6B] hover:bg-[#211514] disabled:cursor-not-allowed disabled:opacity-45"
+                      >
+                        <UserMinus className="h-3 w-3" strokeWidth={iconStroke} /> REVOKE
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="px-3 py-4 text-[11px] text-[#8A909B]">
+              No signer authorized for this governed wallet. Add the public address controlled by
+              your agent backend below.
+            </div>
+          )}
+        </div>
+
         <label className="block space-y-2">
           <span className="text-[10px] tracking-[0.18em] text-[#5B626C]">
             AGENT SIGNER PUBLIC ADDRESS
@@ -4510,8 +4885,18 @@ function AgentSignerPanel({
         ) : null}
 
         {txError ? (
-          <div className="border border-[#EC7A6B]/30 bg-[#211514] p-3 text-[11px] text-[#EC7A6B]">
-            {txError}
+          <div className="flex flex-wrap items-center justify-between gap-3 border border-[#EC7A6B]/30 bg-[#211514] p-3 text-[11px] text-[#EC7A6B]">
+            <span>{txError}</span>
+            {txStatus === "sync_failed" && lastSyncRequest ? (
+              <button
+                type="button"
+                onClick={retrySignerSync}
+                disabled={syncSignerState.isPending}
+                className="h-7 border border-[#EC7A6B]/45 px-2 text-[9px] tracking-[0.12em] hover:bg-[#2a1715] disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                RETRY SIGNER SYNC
+              </button>
+            ) : null}
           </div>
         ) : null}
 
@@ -4572,7 +4957,7 @@ function AgentSignerPanel({
         </div>
 
         <div className="text-[10px] leading-relaxed tracking-[0.1em] text-[#5B626C]">
-          {managementDisabledReason ??
+          {signerWriteDisabledReason ??
             (signerAuthorized
               ? "ROTATE BY REVOKING THIS SIGNER, THEN AUTHORIZE THE NEW PUBLIC SIGNER ADDRESS."
               : "THIS SIGNER IS NOT AUTHORIZED FOR THIS GOVERNED WALLET YET.")}
