@@ -14,12 +14,15 @@ fix_lint*.js
 screenshot.js
 
 # generated
+out/
 output/
 .playwright-cli/
 playwright-report/
 test-results/
 logs/
 screenshots/
+*.webm
+*.mp4
 arcanum-rendered-qa/
 .next/
 .turbo/
