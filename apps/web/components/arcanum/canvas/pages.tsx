@@ -40,6 +40,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import {
   formatUnits,
@@ -2516,14 +2517,14 @@ function WalletSignerSummary({
   if (verifiedSigners.length === 1) {
     return (
       <span className="text-[#D7DBE0]">
-        1 {workspace.isDemo ? "simulated signer" : "signer"}: {shortAddress(verifiedSigners[0])}
+        1 {workspace.isDemo ? "signer configured" : "signer"}: {shortAddress(verifiedSigners[0])}
       </span>
     );
   }
 
   return (
     <span className="text-[#D7DBE0]">
-      {verifiedSigners.length} {workspace.isDemo ? "simulated signers" : "signers authorized"}
+      {verifiedSigners.length} {workspace.isDemo ? "signers configured" : "signers authorized"}
     </span>
   );
 }
@@ -3648,7 +3649,12 @@ function AgentRegisterRow({
         {agent.doctrine}
       </span>
       <span className="text-[11px] text-[#5B626C]">{agent.last}</span>
-      <div className="flex min-w-0 items-center justify-end gap-1.5">
+      <div
+        className={cn(
+          "min-w-0 justify-end gap-1.5",
+          frozen ? "grid grid-cols-3" : "flex items-center",
+        )}
+      >
         {selected ? (
           <span className="shrink-0 border border-[#FF5A1F]/40 bg-[#1c1107] px-2 py-1 text-[9px] tracking-[0.12em] text-[#FF5A1F]">
             SELECTED
@@ -3684,7 +3690,7 @@ function AgentRegisterRow({
               }
               void toggleRestraintRemote();
             }}
-            className="flex h-6 items-center justify-center gap-1 border border-[#FF5A1F]/50 px-2 text-[9px] tracking-[0.1em] text-[#FF5A1F] hover:bg-[#1c1107]"
+            className="col-span-3 flex h-6 items-center justify-center gap-1 border border-[#FF5A1F]/50 px-2 text-[9px] tracking-[0.1em] text-[#FF5A1F] hover:bg-[#1c1107]"
             title="RELEASE"
           >
             <LockOpen className="h-3 w-3" strokeWidth={iconStroke} /> RELEASE
@@ -4347,7 +4353,7 @@ function AgentSignerPanel({
         const isPendingSync =
           isSyncTarget && (txStatus === "syncing" || txStatus === "sync_failed");
         const status = workspace.isDemo
-          ? "SIMULATED SIGNER AUTHORIZATION"
+          ? "POLICY-SCOPED"
           : isPendingSync
             ? txStatus === "sync_failed"
               ? "SYNC FAILED"
@@ -4362,7 +4368,7 @@ function AgentSignerPanel({
                     ? "READBACK FAILED"
                     : "SUPABASE CANDIDATE";
         const source = workspace.isDemo
-          ? "demo fixture"
+          ? "review workspace"
           : isPendingSync
             ? "recent tx"
             : verified === true
@@ -4544,7 +4550,7 @@ function AgentSignerPanel({
   ]);
 
   const managementDisabledReason = workspace.isDemo
-    ? "Demo signer authorization is simulated and read-only."
+    ? "Signer management is disabled in the review workspace."
     : !governedWalletAddress
       ? "Open a valid governed wallet route."
       : !isConnected
@@ -4569,7 +4575,7 @@ function AgentSignerPanel({
   const canRevoke =
     !signerWriteDisabledReason && !signerCheckPending && signerAuthorized === true && !isBusy;
   const statusCopy = workspace.isDemo
-    ? `${authorizedSignerCount} SIMULATED SIGNER${authorizedSignerCount === 1 ? "" : "S"}`
+    ? `${authorizedSignerCount} SIGNER${authorizedSignerCount === 1 ? "" : "S"} CONFIGURED`
     : signerPolicyQuery.isLoading
       ? "READING SIGNERS"
       : readStatus === "checking" && visibleSignerCandidates.length > 0
@@ -4752,7 +4758,7 @@ function AgentSignerPanel({
     <div className="border border-[#282C34] bg-[#181B21]">
       <PanelHeader
         title="AGENT SIGNER"
-        meta={workspace.isDemo ? "DEMO WORKSPACE" : "OWNER CONTROLLED"}
+        meta={workspace.isDemo ? "REVIEW WORKSPACE" : "OWNER CONTROLLED"}
       />
       <div className="space-y-4 p-4 text-[12px] leading-relaxed text-[#8A909B]">
         <p>
@@ -4804,7 +4810,7 @@ function AgentSignerPanel({
               <div className="mt-1 text-[11px] text-[#8A909B]">
                 {authorizedSignerCount > 0
                   ? workspace.isDemo
-                    ? `${authorizedSignerCount} simulated signer${authorizedSignerCount === 1 ? "" : "s"} scoped to this demo governed wallet`
+                    ? `${authorizedSignerCount} signer${authorizedSignerCount === 1 ? "" : "s"} configured for this governed wallet`
                     : `${authorizedSignerCount} signer${authorizedSignerCount === 1 ? "" : "s"} verified for this governed wallet`
                   : "No contract-verified signer yet"}
               </div>
@@ -6974,17 +6980,50 @@ function VendorRow({
   const [initials, name, address, category, approvedBy, confidential, used, meta] = vendor;
   const avatarColors: Record<string, string> = { AC: "#2A2E35", RK: "#3A2A1E", JM: "#1E2A2E" };
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const menuTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{ left: number; top: number } | null>(null);
   const arcscanAddressUrl = getArcscanAddressUrl(address);
   const fullAddressAvailable = isEvmAddress(address);
   const blocked = meta?.status === "blocked";
+  const positionMenu = useCallback(() => {
+    const trigger = menuTriggerRef.current;
+    if (!trigger) {
+      return;
+    }
+
+    const viewportPadding = 12;
+    const menuGap = 8;
+    const menuWidth = 272;
+    const triggerRect = trigger.getBoundingClientRect();
+    const menuHeight = menuRef.current?.offsetHeight ?? 320;
+    const openUpward =
+      window.innerHeight - triggerRect.bottom < menuHeight + menuGap &&
+      triggerRect.top > window.innerHeight - triggerRect.bottom;
+    const preferredTop = openUpward
+      ? triggerRect.top - menuHeight - menuGap
+      : triggerRect.bottom + menuGap;
+
+    setMenuPosition({
+      left: Math.min(
+        Math.max(viewportPadding, triggerRect.right - menuWidth),
+        window.innerWidth - menuWidth - viewportPadding,
+      ),
+      top: Math.min(
+        Math.max(viewportPadding, preferredTop),
+        window.innerHeight - menuHeight - viewportPadding,
+      ),
+    });
+  }, []);
 
   useEffect(() => {
     if (!menuOpen) {
+      setMenuPosition(null);
       return undefined;
     }
 
     const onPointerDown = (event: PointerEvent) => {
-      if (!menuRef.current?.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (!menuRef.current?.contains(target) && !menuTriggerRef.current?.contains(target)) {
         onMenuOpenChange(false);
       }
     };
@@ -6996,11 +7035,19 @@ function VendorRow({
 
     window.addEventListener("pointerdown", onPointerDown);
     window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("resize", positionMenu);
+    window.addEventListener("scroll", positionMenu, true);
+    positionMenu();
+    const frame = window.requestAnimationFrame(positionMenu);
+
     return () => {
+      window.cancelAnimationFrame(frame);
       window.removeEventListener("pointerdown", onPointerDown);
       window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("resize", positionMenu);
+      window.removeEventListener("scroll", positionMenu, true);
     };
-  }, [menuOpen, onMenuOpenChange]);
+  }, [menuOpen, onMenuOpenChange, positionMenu]);
 
   const copyVendorAddress = async () => {
     await navigator.clipboard.writeText(address);
@@ -7070,12 +7117,9 @@ function VendorRow({
       <span className="min-w-0 truncate pr-3 text-[11px] text-[#5B626C]" title={used}>
         {used}
       </span>
-      <div
-        ref={menuRef}
-        className="relative flex justify-end"
-        onPointerDown={(event) => event.stopPropagation()}
-      >
+      <div className="relative flex justify-end" onPointerDown={(event) => event.stopPropagation()}>
         <button
+          ref={menuTriggerRef}
           type="button"
           aria-expanded={menuOpen}
           aria-haspopup="menu"
@@ -7089,67 +7133,77 @@ function VendorRow({
         >
           <EllipsisVertical className="h-3.5 w-3.5" strokeWidth={iconStroke} />
         </button>
-        {menuOpen ? (
-          <div
-            role="menu"
-            className="absolute right-0 top-7 z-50 w-[244px] border border-[#282C34] bg-[#111419] p-1.5 shadow-[0_18px_60px_rgba(0,0,0,0.45)]"
-            onPointerDown={(event) => event.stopPropagation()}
-          >
-            <VendorMenuButton
-              onClick={() => {
-                onViewDetails();
-                onMenuOpenChange(false);
-              }}
-            >
-              VIEW VENDOR DETAILS
-            </VendorMenuButton>
-            <VendorMenuButton onClick={() => void copyVendorAddress()}>
-              COPY VENDOR ADDRESS
-            </VendorMenuButton>
-            {arcscanAddressUrl ? (
-              <a
-                role="menuitem"
-                href={arcscanAddressUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="flex h-8 cursor-pointer items-center justify-between px-2 text-left text-[10px] tracking-[0.12em] text-[#8A909B] hover:bg-[#181B21] hover:text-[#D7DBE0]"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onMenuOpenChange(false);
-                }}
+        {menuOpen && typeof document !== "undefined"
+          ? createPortal(
+              <div
+                ref={menuRef}
+                role="menu"
+                aria-label={`${name} actions`}
+                style={
+                  menuPosition
+                    ? { left: menuPosition.left, top: menuPosition.top }
+                    : { left: 0, top: 0, visibility: "hidden" }
+                }
+                className="fixed z-[100] max-h-[calc(100vh-24px)] w-[272px] overflow-y-auto border border-[#3A4250] bg-[#111419] p-1.5 shadow-[0_18px_60px_rgba(0,0,0,0.62)]"
                 onPointerDown={(event) => event.stopPropagation()}
               >
-                VIEW ON ARCSCAN
-                <ExternalLink className="h-3 w-3" strokeWidth={iconStroke} />
-              </a>
-            ) : (
-              <VendorMenuButton muted onClick={showUnavailable}>
-                VIEW ON ARCSCAN - NO FULL ADDRESS
-              </VendorMenuButton>
-            )}
-            <div className="my-1 border-t border-[#282C34]" />
-            <VendorMenuButton
-              muted={!fullAddressAvailable}
-              onClick={() => {
-                onEditVendor();
-                onMenuOpenChange(false);
-              }}
-            >
-              {blocked ? "ALLOW / UPDATE VENDOR" : "UPDATE CATEGORY / CAP"}
-            </VendorMenuButton>
-            <VendorMenuButton danger muted={!fullAddressAvailable} onClick={onBlockVendor}>
-              BLOCK VENDOR
-            </VendorMenuButton>
-            <VendorMenuButton danger muted={!fullAddressAvailable} onClick={onRemoveVendor}>
-              REMOVE FROM REGISTRY
-            </VendorMenuButton>
-            <div className="mt-1 border border-[#282C34] bg-[#0F1115] px-2 py-1.5 font-body text-[11px] leading-snug text-[#6F7682]">
-              {blocked
-                ? "This vendor is blocked in the indexed read model."
-                : "Writes require the governed wallet owner and Arc Testnet."}
-            </div>
-          </div>
-        ) : null}
+                <VendorMenuButton
+                  onClick={() => {
+                    onViewDetails();
+                    onMenuOpenChange(false);
+                  }}
+                >
+                  VIEW VENDOR DETAILS
+                </VendorMenuButton>
+                <VendorMenuButton onClick={() => void copyVendorAddress()}>
+                  COPY VENDOR ADDRESS
+                </VendorMenuButton>
+                {arcscanAddressUrl ? (
+                  <a
+                    role="menuitem"
+                    href={arcscanAddressUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex h-8 cursor-pointer items-center justify-between px-2 text-left text-[10px] tracking-[0.12em] text-[#8A909B] hover:bg-[#181B21] hover:text-[#D7DBE0]"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onMenuOpenChange(false);
+                    }}
+                    onPointerDown={(event) => event.stopPropagation()}
+                  >
+                    VIEW ON ARCSCAN
+                    <ExternalLink className="h-3 w-3" strokeWidth={iconStroke} />
+                  </a>
+                ) : (
+                  <VendorMenuButton muted onClick={showUnavailable}>
+                    VIEW ON ARCSCAN - NO FULL ADDRESS
+                  </VendorMenuButton>
+                )}
+                <div className="my-1 border-t border-[#282C34]" />
+                <VendorMenuButton
+                  muted={!fullAddressAvailable}
+                  onClick={() => {
+                    onEditVendor();
+                    onMenuOpenChange(false);
+                  }}
+                >
+                  {blocked ? "ALLOW / UPDATE VENDOR" : "UPDATE CATEGORY / CAP"}
+                </VendorMenuButton>
+                <VendorMenuButton danger muted={!fullAddressAvailable} onClick={onBlockVendor}>
+                  BLOCK VENDOR
+                </VendorMenuButton>
+                <VendorMenuButton danger muted={!fullAddressAvailable} onClick={onRemoveVendor}>
+                  REMOVE FROM REGISTRY
+                </VendorMenuButton>
+                <div className="mt-1 border border-[#282C34] bg-[#0F1115] px-2 py-1.5 font-body text-[11px] leading-snug text-[#6F7682]">
+                  {blocked
+                    ? "This vendor is blocked in the indexed read model."
+                    : "Write actions require the owner wallet on Arc Testnet."}
+                </div>
+              </div>,
+              document.body,
+            )
+          : null}
       </div>
     </RowShell>
   );
