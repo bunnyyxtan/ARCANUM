@@ -20,12 +20,20 @@ playwright-report/
 test-results/
 logs/
 screenshots/
+arcanum-rendered-qa/
 .next/
 .turbo/
 node_modules/
 dist/
 build/
 coverage/
+*.tmp
+*.bak
+*.old
+*.trace
+trace.zip
+.DS_Store
+Thumbs.db
 
 # foundry
 packages/contracts/out/
