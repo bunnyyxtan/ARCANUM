@@ -4,14 +4,14 @@ const relativeExpiry = (minutes: number) => new Date(Date.now() + minutes * 60_0
 
 export const escalations: Escalation[] = [
   {
-    id: "esc-73-42",
-    agentId: "research-agent",
-    agentName: "ResearchAgent",
-    wallet: "0x4F8Cb101B6C6d98E9A3B7f62440F4F5a01b7A93B",
-    amount: 73.42,
+    id: "esc-96-20",
+    agentId: "cloud-ops-agent",
+    agentName: "Cloud Ops Agent",
+    wallet: "0xA12E00000000000000000000000000000000D9F4",
+    amount: 96.2,
     counterparty: "AWS Bedrock",
     category: "compute",
-    reason: "GPU lease exceeds the per-vendor burst limit by $23.42.",
+    reason: "Compute request exceeds the per-transaction threshold and requires human review.",
     quorumCurrent: 1,
     quorumRequired: 2,
     deviation: 2.8,

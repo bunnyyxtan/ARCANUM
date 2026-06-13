@@ -3,7 +3,7 @@ import type { Agent } from "@/lib/types";
 export const agents: Agent[] = [
   {
     id: "research-agent",
-    name: "ResearchAgent",
+    name: "Research Agent",
     wallet: "0x4F8Cb101B6C6d98E9A3B7f62440F4F5a01b7A93B",
     owner: "Risk Research",
     status: "fortified",

@@ -8,6 +8,6 @@ export default function Image() {
     page: "AGENTS",
     statLabel: "ACTIVE AGENTS",
     statValue: "04 / 05",
-    detail: "DEV-AGENT-01 UNDER RESTRAINT",
+    detail: "TREASURY GUARD AGENT UNDER RESTRAINT",
   });
 }

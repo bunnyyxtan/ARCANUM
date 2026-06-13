@@ -121,7 +121,7 @@ function HeroSection() {
             </div>
             <div className="space-y-2 px-4 py-3 text-[11px]">
               <div className="flex items-center justify-between">
-                <span className="text-[#8A909B]">DEV-AGENT-01 to OpenAI</span>
+                <span className="text-[#8A909B]">Cloud Ops Agent to AWS Bedrock</span>
                 <span className="flex items-center gap-1 text-[#6E9E7C]">
                   <Check className="h-3 w-3" /> APPROVED
                 </span>
@@ -470,7 +470,7 @@ function ConsolePreviewSection() {
                 statusColor="#E0A04A"
               />
               <EscalationRow
-                agent="DEV-AGENT-01"
+                agent="CLOUD OPS AGENT"
                 amount="$2,100.00"
                 vendor="Anthropic"
                 status="APPROVED"
@@ -493,7 +493,7 @@ function ConsolePreviewSection() {
                 </div>
                 <div>
                   <div className="text-[12px] font-semibold tracking-[0.08em] text-[#EDF0F3]">
-                    ACME-CAPITAL
+                    DEMO WORKSPACE
                   </div>
                   <div className="text-[10px] text-[#8A909B]">GOVERNANCE SCORE: 87 / FORTIFIED</div>
                 </div>

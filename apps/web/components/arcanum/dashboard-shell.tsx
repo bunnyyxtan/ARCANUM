@@ -78,7 +78,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
                   </div>
                   <div className="divide-y divide-line-subtle text-[12px]">
                     {[
-                      ["Escalation waiting", "$73.42 to AWS Bedrock needs quorum."],
+                      ["Escalation waiting", "$96.20 to AWS Bedrock needs quorum."],
                       ["Vendor review", "Qdrant Cloud is staged until contracts deploy."],
                       ["Indexer quiet", "No live on-chain events indexed in this session."],
                     ].map(([title, body]) => (

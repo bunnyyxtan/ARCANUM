@@ -75,9 +75,9 @@ export function getWorkspaceSwitcherMessage(mode: ArcanumWorkspaceMode) {
 export function getWorkspaceNotificationItems(mode: ArcanumWorkspaceMode) {
   if (mode === "demo") {
     return [
-      ["ESCALATION", "AWS Bedrock payment is waiting for quorum."],
-      ["ANOMALY", "DEV-AGENT-01 remains under demo restraint."],
-      ["WORKSPACE", "Demo workspace data is loaded for review."],
+      ["ESCALATION", "Cloud Ops Agent compute request is waiting for quorum."],
+      ["ANOMALY", "Treasury Guard Agent remains under simulated restraint."],
+      ["WORKSPACE", "Simulated agent activity is loaded for this walkthrough."],
     ] as const;
   }
 
@@ -112,7 +112,7 @@ export function getWorkspaceEmptyCopy(mode: ArcanumWorkspaceMode, entity: Worksp
 
 export function getSettingsWorkspaceSummary(mode: ArcanumWorkspaceMode, isAuthenticated: boolean) {
   if (mode === "demo") {
-    return { caption: "SEEDED DEMO ORG", label: "DEMO WORKSPACE" };
+    return { caption: "SIMULATED WALKTHROUGH", label: "DEMO WORKSPACE" };
   }
 
   if (mode === "disconnected") {
