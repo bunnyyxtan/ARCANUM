@@ -2448,14 +2448,6 @@ function WalletSignerSummary({
   useEffect(() => {
     let cancelled = false;
 
-    if (workspace.isDemo) {
-      setVerifiedSigners(candidates);
-      setVerificationStatus(candidates.length > 0 ? "ready" : "idle");
-      return () => {
-        cancelled = true;
-      };
-    }
-
     if (!walletAddress || !publicClient || candidates.length === 0) {
       setVerifiedSigners([]);
       setVerificationStatus(walletAddress && candidates.length > 0 ? "error" : "idle");
@@ -2465,18 +2457,26 @@ function WalletSignerSummary({
     }
 
     setVerificationStatus("checking");
-    Promise.all(
-      candidates.map(async (candidate) => {
-        const authorized = (await publicClient.readContract({
-          address: walletAddress,
-          abi: guardedWalletControlAbi,
-          functionName: "agentSigners",
-          args: [candidate],
-        })) as boolean;
+    publicClient
+      .getBytecode({ address: walletAddress })
+      .then(async (bytecode) => {
+        if (!bytecode || bytecode === "0x") {
+          throw new Error(liveSignerContractRequiredCopy);
+        }
 
-        return authorized ? candidate : null;
-      }),
-    )
+        return Promise.all(
+          candidates.map(async (candidate) => {
+            const authorized = (await publicClient.readContract({
+              address: walletAddress,
+              abi: guardedWalletControlAbi,
+              functionName: "agentSigners",
+              args: [candidate],
+            })) as boolean;
+
+            return authorized ? candidate : null;
+          }),
+        );
+      })
       .then((results) => {
         if (cancelled) {
           return;
@@ -2497,7 +2497,7 @@ function WalletSignerSummary({
     return () => {
       cancelled = true;
     };
-  }, [candidates, publicClient, walletAddress, workspace.isDemo]);
+  }, [candidates, publicClient, walletAddress]);
 
   if (isLoading) {
     return <span className="text-[#8A909B]">Loading signer state</span>;
@@ -2509,24 +2509,20 @@ function WalletSignerSummary({
     return <span className="text-[#E0A04A]">Verifying saved signer on Arc Testnet</span>;
   }
   if (verificationStatus === "error") {
-    return <span className="text-[#EC7A6B]">Signer readback unavailable</span>;
+    return (
+      <span className={workspace.isDemo ? "text-[#E0A04A]" : "text-[#EC7A6B]"}>
+        {workspace.isDemo ? liveSignerContractRequiredCopy : "Signer readback unavailable"}
+      </span>
+    );
   }
   if (verifiedSigners.length === 0) {
     return <span className="text-[#EC7A6B]">Saved signer not authorized on contract</span>;
   }
   if (verifiedSigners.length === 1) {
-    return (
-      <span className="text-[#D7DBE0]">
-        1 {workspace.isDemo ? "signer configured" : "signer"}: {shortAddress(verifiedSigners[0])}
-      </span>
-    );
+    return <span className="text-[#D7DBE0]">1 signer: {shortAddress(verifiedSigners[0])}</span>;
   }
 
-  return (
-    <span className="text-[#D7DBE0]">
-      {verifiedSigners.length} {workspace.isDemo ? "signers configured" : "signers authorized"}
-    </span>
-  );
+  return <span className="text-[#D7DBE0]">{verifiedSigners.length} signers authorized</span>;
 }
 
 function SelectedWalletOverview({
@@ -4268,6 +4264,9 @@ type SignerTxStatus =
   | "sync_failed"
   | "error";
 
+const liveSignerContractRequiredCopy =
+  "Signer management requires a live governed wallet contract on Arc Testnet.";
+
 function AgentSignerPanel({
   governedWalletAddress,
 }: Readonly<{ governedWalletAddress: Address | null }>) {
@@ -4334,15 +4333,15 @@ function AgentSignerPanel({
   const visibleSignerCandidates = useMemo(() => {
     const nextCandidates = [...persistedSignerCandidates];
     if (
-      usableSignerAddress &&
-      signerAuthorized === true &&
-      !nextCandidates.some((candidate) => isSameAddress(candidate, usableSignerAddress))
+      lastSyncRequest?.action === "authorize" &&
+      (txStatus === "syncing" || txStatus === "sync_failed" || txStatus === "synced") &&
+      !nextCandidates.some((candidate) => isSameAddress(candidate, lastSyncRequest.signerAddress))
     ) {
-      nextCandidates.push(usableSignerAddress);
+      nextCandidates.push(lastSyncRequest.signerAddress);
     }
 
     return nextCandidates;
-  }, [persistedSignerCandidates, signerAuthorized, usableSignerAddress]);
+  }, [lastSyncRequest, persistedSignerCandidates, txStatus]);
   const signerRows = useMemo(
     () =>
       visibleSignerCandidates.map((candidate) => {
@@ -4352,40 +4351,30 @@ function AgentSignerPanel({
         );
         const isPendingSync =
           isSyncTarget && (txStatus === "syncing" || txStatus === "sync_failed");
-        const status = workspace.isDemo
-          ? "POLICY-SCOPED"
-          : isPendingSync
-            ? txStatus === "sync_failed"
-              ? "SYNC FAILED"
-              : "SYNC PENDING"
-            : readStatus === "checking" && verified === null
-              ? "VERIFYING"
-              : verified === true
-                ? "AUTHORIZED ON CONTRACT"
-                : verified === false
-                  ? "NOT AUTHORIZED ON CONTRACT"
-                  : readStatus === "error"
-                    ? "READBACK FAILED"
-                    : "SUPABASE CANDIDATE";
-        const source = workspace.isDemo
-          ? "review workspace"
-          : isPendingSync
-            ? "recent tx"
+        const status = isPendingSync
+          ? txStatus === "sync_failed"
+            ? "SYNC FAILED"
+            : "SYNC PENDING"
+          : readStatus === "checking" && verified === null
+            ? "VERIFYING"
             : verified === true
-              ? "contract verified"
-              : "Supabase candidate";
+              ? "AUTHORIZED ON CONTRACT"
+              : verified === false
+                ? "NOT AUTHORIZED ON CONTRACT"
+                : readStatus === "error"
+                  ? "READBACK FAILED"
+                  : "SUPABASE CANDIDATE";
+        const source = isPendingSync
+          ? "recent tx"
+          : verified === true
+            ? "contract verified"
+            : "Supabase candidate";
 
         return { address: candidate, source, status, verified };
       }),
-    [
-      readStatus,
-      lastSyncRequest,
-      signerVerificationByAddress,
-      txStatus,
-      visibleSignerCandidates,
-      workspace.isDemo,
-    ],
+    [readStatus, lastSyncRequest, signerVerificationByAddress, txStatus, visibleSignerCandidates],
   );
+  const displaySignerRows = workspace.isDemo && readStatus === "error" ? [] : signerRows;
   const authorizedSignerCount = signerRows.filter((row) => row.verified === true).length;
   const lastVerifiedLabel = lastVerifiedAt
     ? new Date(lastVerifiedAt).toLocaleTimeString([], { hour12: false })
@@ -4395,6 +4384,11 @@ function AgentSignerPanel({
     async (nextSigners: Address[]) => {
       if (!publicClient || !governedWalletAddress) {
         return null;
+      }
+
+      const bytecode = await publicClient.getBytecode({ address: governedWalletAddress });
+      if (!bytecode || bytecode === "0x") {
+        throw new Error(liveSignerContractRequiredCopy);
       }
 
       const owner = (await publicClient.readContract({
@@ -4459,13 +4453,9 @@ function AgentSignerPanel({
     setSignerInput(persistedSignerAddress);
   }, [persistedSignerAddress, signerInputTouched, signerPolicyQuery.isFetching]);
   const verificationSignerCandidates = useMemo(() => {
-    const candidates = usableSignerAddress
-      ? [...persistedSignerCandidates, usableSignerAddress]
-      : persistedSignerCandidates;
-
     return Array.from(
       new Set(
-        candidates
+        visibleSignerCandidates
           .map((candidate) => candidate.toLowerCase())
           .filter(
             (candidate): candidate is Address =>
@@ -4473,26 +4463,11 @@ function AgentSignerPanel({
           ),
       ),
     );
-  }, [persistedSignerCandidates, usableSignerAddress]);
+  }, [visibleSignerCandidates]);
 
   useEffect(() => {
     let cancelled = false;
     setTxError(null);
-
-    if (workspace.isDemo) {
-      const authorizationByAddress = Object.fromEntries(
-        verificationSignerCandidates.map((signer) => [signer.toLowerCase(), true]),
-      );
-      setWalletOwner(DEFAULT_ARCANUM_DEMO_OWNER_WALLET as Address);
-      setSignerVerificationByAddress(authorizationByAddress);
-      setSignerAuthorized(usableSignerAddress ? true : null);
-      setLastVerifiedAt(null);
-      setReadStatus("ready");
-      setReadError(null);
-      return () => {
-        cancelled = true;
-      };
-    }
 
     if (!governedWalletAddress || !publicClient) {
       setWalletOwner(null);
@@ -4516,10 +4491,17 @@ function AgentSignerPanel({
 
         setWalletOwner(result.owner);
         setSignerVerificationByAddress(result.authorizationByAddress);
+        const inputCandidateKey = usableSignerAddress?.toLowerCase();
+        const inputCandidateIsPersisted = Boolean(
+          inputCandidateKey &&
+            verificationSignerCandidates.some((candidate) => candidate === inputCandidateKey),
+        );
         setSignerAuthorized(
-          usableSignerAddress
+          usableSignerAddress && inputCandidateIsPersisted
             ? (result.authorizationByAddress[usableSignerAddress.toLowerCase()] ?? null)
-            : null,
+            : usableSignerAddress
+              ? false
+              : null,
         );
         setLastVerifiedAt(new Date().toISOString());
         setReadStatus("ready");
@@ -4534,7 +4516,7 @@ function AgentSignerPanel({
         setSignerVerificationByAddress({});
         setLastVerifiedAt(null);
         setReadStatus("error");
-        setReadError(errorMessage(caught));
+        setReadError(workspace.isDemo ? liveSignerContractRequiredCopy : errorMessage(caught));
       });
 
     return () => {
@@ -4549,23 +4531,23 @@ function AgentSignerPanel({
     workspace.isDemo,
   ]);
 
-  const managementDisabledReason = workspace.isDemo
-    ? "Signer management is disabled in the review workspace."
-    : !governedWalletAddress
-      ? "Open a valid governed wallet route."
-      : !isConnected
-        ? "Connect wallet first."
-        : !workspace.isAuthenticated
-          ? "Sign in to manage the agent signer."
-          : readStatus === "checking"
-            ? "Checking governed wallet owner."
-            : readStatus === "error"
-              ? "Unable to read signer permissions from Arc Testnet."
-              : !ownerMatchesConnectedWallet
-                ? "Only the governed wallet owner can manage the agent signer."
-                : chainId !== arcTestnet.id
-                  ? "Switch to Arc Testnet."
-                  : null;
+  const managementDisabledReason = !governedWalletAddress
+    ? "Open a valid governed wallet route."
+    : !isConnected
+      ? "Connect wallet first."
+      : !workspace.isAuthenticated
+        ? "Sign in to manage the agent signer."
+        : readStatus === "checking"
+          ? "Checking governed wallet owner."
+          : readStatus === "error"
+            ? workspace.isDemo
+              ? liveSignerContractRequiredCopy
+              : "Unable to read signer permissions from Arc Testnet."
+            : !ownerMatchesConnectedWallet
+              ? "Only the governed wallet owner can manage the agent signer."
+              : chainId !== arcTestnet.id
+                ? "Switch to Arc Testnet."
+                : null;
   const signerWriteDisabledReason = managementDisabledReason ?? signerValidation;
   const signerCheckPending = Boolean(
     usableSignerAddress && signerAuthorized === null && readStatus === "checking",
@@ -4574,31 +4556,34 @@ function AgentSignerPanel({
     !signerWriteDisabledReason && !signerCheckPending && signerAuthorized === false && !isBusy;
   const canRevoke =
     !signerWriteDisabledReason && !signerCheckPending && signerAuthorized === true && !isBusy;
-  const statusCopy = workspace.isDemo
-    ? `${authorizedSignerCount} SIGNER${authorizedSignerCount === 1 ? "" : "S"} CONFIGURED`
-    : signerPolicyQuery.isLoading
-      ? "READING SIGNERS"
+  const hasCandidateSignerInput = Boolean(usableSignerAddress && !signerValidation);
+  const statusCopy = signerPolicyQuery.isLoading
+    ? "READING SIGNERS"
+    : readStatus === "error" && workspace.isDemo
+      ? "LIVE CONTRACT REQUIRED"
       : readStatus === "checking" && visibleSignerCandidates.length > 0
         ? "VERIFYING SIGNERS"
         : authorizedSignerCount > 0
           ? `${authorizedSignerCount} SIGNER${authorizedSignerCount === 1 ? "" : "S"} AUTHORIZED`
           : visibleSignerCandidates.length > 0
             ? "SAVED SIGNER STALE"
-            : !usableSignerAddress || signerValidation
-              ? "NO SIGNER AUTHORIZED"
+            : hasCandidateSignerInput
+              ? "CANDIDATE SIGNER"
               : readStatus === "checking"
                 ? "CHECKING CONTRACT"
-                : signerAuthorized
-                  ? "AUTHORIZED"
-                  : readStatus === "error"
-                    ? "READBACK FAILED"
-                    : "NOT AUTHORIZED";
+                : readStatus === "error"
+                  ? "READBACK FAILED"
+                  : "NO SIGNER AUTHORIZED";
   const statusClassName =
     authorizedSignerCount > 0 || (signerAuthorized && usableSignerAddress)
       ? "border-[#6E9E7C]/40 text-[#6E9E7C]"
       : readStatus === "error" || txStatus === "sync_failed"
-        ? "border-[#EC7A6B]/40 text-[#EC7A6B]"
-        : "border-[#3A4250] text-[#8A909B]";
+        ? workspace.isDemo
+          ? "border-[#E0A04A]/40 text-[#E0A04A]"
+          : "border-[#EC7A6B]/40 text-[#EC7A6B]"
+        : hasCandidateSignerInput
+          ? "border-[#E0A04A]/40 text-[#E0A04A]"
+          : "border-[#3A4250] text-[#8A909B]";
   const txArcscanUrl = getArcscanTxUrl(txHash);
 
   const copyAddress = async (value: string, label: string) => {
@@ -4809,10 +4794,12 @@ function AgentSignerPanel({
               <div className="text-[10px] tracking-[0.18em] text-[#5B626C]">AUTHORIZED SIGNERS</div>
               <div className="mt-1 text-[11px] text-[#8A909B]">
                 {authorizedSignerCount > 0
-                  ? workspace.isDemo
-                    ? `${authorizedSignerCount} signer${authorizedSignerCount === 1 ? "" : "s"} configured for this governed wallet`
-                    : `${authorizedSignerCount} signer${authorizedSignerCount === 1 ? "" : "s"} verified for this governed wallet`
-                  : "No contract-verified signer yet"}
+                  ? `${authorizedSignerCount} signer${authorizedSignerCount === 1 ? "" : "s"} verified for this governed wallet`
+                  : readStatus === "error" && workspace.isDemo
+                    ? liveSignerContractRequiredCopy
+                    : hasCandidateSignerInput
+                      ? "Candidate signer ready for authorization. It is not authorized yet."
+                      : "No contract-verified signer yet"}
               </div>
             </div>
             {lastVerifiedLabel ? (
@@ -4821,9 +4808,9 @@ function AgentSignerPanel({
               </span>
             ) : null}
           </div>
-          {signerRows.length > 0 ? (
+          {displaySignerRows.length > 0 ? (
             <div className="divide-y divide-[#1E222A]">
-              {signerRows.map((row) => {
+              {displaySignerRows.map((row) => {
                 const rowAuthorized = row.verified === true;
                 const rowStale = row.verified === false || row.status === "SYNC FAILED";
                 const revokeDisabled =
@@ -4888,8 +4875,9 @@ function AgentSignerPanel({
             </div>
           ) : (
             <div className="px-3 py-4 text-[11px] text-[#8A909B]">
-              No signer authorized for this governed wallet. Add the public address controlled by
-              your agent backend below.
+              {readStatus === "error" && workspace.isDemo
+                ? liveSignerContractRequiredCopy
+                : "No signer authorized for this governed wallet. Add the public address controlled by your agent backend below."}
             </div>
           )}
         </div>
@@ -4936,7 +4924,14 @@ function AgentSignerPanel({
         ) : null}
 
         {readError ? (
-          <div className="border border-[#EC7A6B]/30 bg-[#211514] p-3 text-[11px] text-[#EC7A6B]">
+          <div
+            className={cn(
+              "border p-3 text-[11px]",
+              workspace.isDemo
+                ? "border-[#E0A04A]/30 bg-[#1d170d] text-[#E0A04A]"
+                : "border-[#EC7A6B]/30 bg-[#211514] text-[#EC7A6B]",
+            )}
+          >
             {readError}
           </div>
         ) : null}
