@@ -15,6 +15,10 @@ import { canUseDemoFallback, findWalletByLooseId, readDbOrFallback, tenantIdFor 
 
 export const walletsRouter = router({
   list: publicProcedure.query(async ({ ctx }) => {
+    if (canUseDemoFallback(ctx)) {
+      return fallbackWalletRows;
+    }
+
     const tenantId = tenantIdFor(ctx);
     const supabaseRows = await readSupabaseWallets(ctx);
 
@@ -60,6 +64,11 @@ export const walletsRouter = router({
   listAgents: publicProcedure
     .input(z.object({ walletId: looseWalletIdSchema }))
     .query(async ({ ctx, input }) => {
+      if (canUseDemoFallback(ctx)) {
+        const wallet = await findWalletByLooseId(ctx, input.walletId);
+        return fallbackAgents.filter((agent) => agent.walletId === wallet?.id);
+      }
+
       const tenantId = tenantIdFor(ctx);
       const wallet = await findWalletByLooseId(ctx, input.walletId);
       const supabaseRows = await readSupabaseAgents(ctx);
@@ -96,6 +105,11 @@ export const walletsRouter = router({
   listPolicies: publicProcedure
     .input(z.object({ walletId: looseWalletIdSchema }))
     .query(async ({ ctx, input }) => {
+      if (canUseDemoFallback(ctx)) {
+        const wallet = await findWalletByLooseId(ctx, input.walletId);
+        return fallbackPolicies.filter((policy) => policy.walletId === wallet?.id);
+      }
+
       const tenantId = tenantIdFor(ctx);
       const wallet = await findWalletByLooseId(ctx, input.walletId);
       const supabaseRows = await readSupabasePolicies(ctx, wallet);

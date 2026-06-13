@@ -11,6 +11,12 @@ export const eventsRouter = router({
   list: publicProcedure
     .input(z.object({ walletId: z.string().optional() }).merge(pageInputSchema.partial()))
     .query(async ({ ctx, input }) => {
+      if (canUseDemoFallback(ctx)) {
+        return input.walletId
+          ? fallbackEvents.filter((event) => event.walletId === input.walletId)
+          : fallbackEvents;
+      }
+
       const tenantId = tenantIdFor(ctx);
 
       if (!canUseDemoFallback(ctx)) {

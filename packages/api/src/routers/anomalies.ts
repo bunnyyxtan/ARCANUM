@@ -10,6 +10,10 @@ import { canUseDemoFallback, readDbOrFallback, tenantIdFor, writeDbOrFallback } 
 
 export const anomaliesRouter = router({
   list: publicProcedure.query(async ({ ctx }) => {
+    if (canUseDemoFallback(ctx)) {
+      return fallbackAnomalies;
+    }
+
     const tenantId = tenantIdFor(ctx);
     const supabaseRows = await readSupabaseAnomalies(ctx);
 

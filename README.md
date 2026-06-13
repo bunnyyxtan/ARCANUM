@@ -1,6 +1,6 @@
 # ARCANUM
 
-**Open, non-custodial governance for autonomous AI money on Arc.**
+**Open, non-custodial governance for autonomous AI-agent money on Arc.**
 
 ![MIT License](https://img.shields.io/badge/license-MIT-ff5a1f)
 ![Solidity / Foundry](https://img.shields.io/badge/Solidity%20%2F%20Foundry-0.8.24-2f3542)
@@ -9,39 +9,34 @@
 ![USDC](https://img.shields.io/badge/USDC-enabled-2775ca)
 ![AI Agents](https://img.shields.io/badge/AI%20Agents-governed-e0a04a)
 
-Arcanum is an open governance layer for autonomous AI agent money on Arc. It lets builders give AI agents real USDC wallets with contract-enforced policy limits, vendor controls, human escalation, anomaly protection, public badge/explorer views, and a dashboard for monitoring governed wallet activity.
+Arcanum is an open governance layer for autonomous AI-agent money on Arc. It lets builders give AI agents real USDC wallets with contract-enforced policy limits, vendor controls, human escalation, anomaly protection, public badge and explorer views, and a dashboard for monitoring governed wallet activity.
 
 AI agents are starting to make payments, buy APIs, rent compute, call tools, and route funds. A normal wallet gives an agent too much freedom. Arcanum gives agents governed wallets where every spend can be checked before money moves.
 
 GuardedWallet contracts on Arc enforce policy envelopes, vendor allowlists, spend caps, anomaly checks, and human quorum escalation. The dashboard, SDKs, indexer, and API make the system usable. The wallet contracts keep the critical rules on-chain.
 
-Public app: [https://thearcanum.in](https://thearcanum.in).
+Public app: [https://thearcanum.in](https://thearcanum.in)
 
 For local development, use the quickstart below.
 
 ## Current Status at a Glance
 
-Arcanum is a **working Arc Testnet prototype**. It is not audited, not mainnet,
-and not financial advice.
+Arcanum is a **working Arc Testnet public review build**. It is not audited, not mainnet, and not intended for production funds.
 
 What is real today:
 
 - Arc Testnet contracts are deployed and listed below.
 - The web console builds and runs with npm workspaces.
-- Wallet sign-in, dashboard routes, public explorer/badge routes, and approver
-  routes are implemented.
-- The app has read-model adapters for agents, vendors, ledger events,
-  escalations, anomalies, notifications, and public wallet profiles.
+- Wallet sign-in, dashboard routes, public explorer/badge routes, and approver routes are implemented.
+- The app has read-model adapters for agents, vendors, ledger events, escalations, anomalies, notifications, and public wallet profiles.
 - TypeScript and Python SDK packages exist for direct Arc RPC integrations.
-- Demo data is gated to the configured demo wallet; random wallets should see
-  empty/live workspace states, not seeded demo rows.
+- Demo data is gated to the configured demo wallet; random wallets and disconnected visitors see empty, live workspace states — not seeded demo rows.
 
-Still in progress:
+Currently being hardened:
 
-- The read model and indexer need more hardening before production use.
-- Some write paths, including production VendorRegistry writes, are still being
-  completed.
-- The contracts are testnet prototype code until a formal audit is published.
+- Some advanced write paths and indexer reconciliation flows are still being hardened for broader testnet usage.
+- The read model and indexer are undergoing additional resilience and recovery improvements.
+- The contracts are testnet code. A formal audit is required before any mainnet or production-funds use.
 
 ## Why Arcanum Exists
 
@@ -160,7 +155,7 @@ Provides anomaly signals used by the policy layer. It is intended to help detect
 
 ### VendorRegistry
 
-Stores vendor controls such as allowlist status, category, and policy metadata. Some production write flows for VendorRegistry are still being completed in the app.
+Stores vendor controls such as allowlist status, category, and policy metadata. Advanced write paths for VendorRegistry are being hardened for broader testnet usage.
 
 ## Quickstart
 
@@ -211,8 +206,7 @@ Minimum web development variables are documented in `apps/web/.env.example`.
 
 Never commit `.env.local`, private keys, service-role keys, deployment keys, or wallet secrets.
 
-`NEXT_PUBLIC_*` variables are visible in the browser. Only put public chain,
-contract, explorer, and anon-key values there.
+`NEXT_PUBLIC_*` variables are visible in the browser. Only put public chain, contract, explorer, and anon-key values there.
 
 ## Local Development Commands
 
@@ -244,11 +238,13 @@ Reviewer checklist before a PR:
 
 ## Demo / Current Stage
 
-Current stage: **working prototype on Arc Testnet**.
+Current stage: **Arc Testnet public review build**.
 
-The app is prepared for Vercel deployment and local development through npm workspaces. Demo data is gated to a designated demo wallet. Disconnected visitors and non-demo wallets should see empty, live, or onboarding states rather than seeded ACME demo activity.
+The app is prepared for Vercel deployment and local development through npm workspaces. Demo data is gated to a designated demo wallet. Disconnected visitors and non-demo wallets see empty, live, or onboarding states — not seeded ACME demo activity.
 
-Real on-chain WalletFactory deployment is wired for Arc Testnet. Some write paths, including production VendorRegistry writes, may still be in progress. Public explorer and badge routes are available, with fallback data kept honest when a wallet has no indexed rows.
+Real on-chain WalletFactory deployment is wired for Arc Testnet. Some advanced write paths and indexer reconciliation flows are still being hardened for broader testnet usage. Public explorer and badge routes are available, with fallback data kept honest when a wallet has no indexed rows.
+
+Arc Testnet remains the proving ground before any production-funds or mainnet path.
 
 ## Security Model
 
@@ -258,9 +254,11 @@ Real on-chain WalletFactory deployment is wired for Arc Testnet. Some write path
 - Sensitive actions can require human quorum.
 - Demo data is separated from live wallet data.
 - Supabase service-role keys are server-only.
+- `NEXT_PUBLIC_*` variables are visible in the browser — only public chain, contract, explorer, and anon-key values belong there.
 - Private keys must never be committed.
+- A formal audit is required before any mainnet or production-funds use.
 
-This repository is not an audit report. Treat the contracts as testnet prototype code unless and until a formal audit is published.
+This repository is not an audit report. Treat the contracts as testnet code unless and until a formal audit is published.
 
 ## What Arcanum Is Not
 
@@ -270,16 +268,51 @@ This repository is not an audit report. Treat the contracts as testnet prototype
 - Not a fiat on-ramp or off-ramp.
 - Not a hosted wallet provider.
 - Not financial advice.
+- Not audited. Not mainnet. Not intended for production funds.
 
 ## Roadmap
 
-- Harden the live Supabase and indexer read model.
-- Complete VendorRegistry write flows.
-- Improve public explorer and badge surfaces.
-- Add richer SDK examples.
-- Add more Doctrine and policy templates.
-- Prepare testnet user pilots.
-- Explore a mainnet path with Arc ecosystem guidance.
+Arcanum is currently focused on making governed AI-agent wallets reliable, inspectable, and safe on Arc Testnet before any mainnet path.
+
+### Testnet Hardening
+
+- Harden wallet-scoped Supabase read models for agents, vendors, policies, ledger events, escalations, anomalies, and public profiles.
+- Improve event-indexer recovery, stale-indexer reporting, and contract-event reconciliation.
+- Add stronger wallet/signer consistency checks across refreshes, wallet switching, and multi-signer states.
+- Expand failure-state handling for RPC errors, delayed indexing, failed transaction sync, and stale read-model data.
+
+### Policy and Governance
+
+- Expand Doctrine templates for API spend, model inference, compute rental, data access, treasury operations, and security monitoring.
+- Add richer per-signer and per-vendor policy controls.
+- Improve escalation workflows for quorum approvals, release/reject decisions, and approver review history.
+- Strengthen anomaly posture scoring and restraint logic for unusual agent behavior.
+
+### Developer Experience
+
+- Add deeper TypeScript and Python SDK examples for agent backends.
+- Publish example integrations for tool payments, vendor onboarding, policy simulation, and public badge embeds.
+- Improve self-hosting documentation for builders running their own API, indexer, and read model.
+- Add clearer local development, deployment, and verification guides.
+
+### Public Trust Surfaces
+
+- Improve wallet-specific explorer pages with clearer policy, signer, vendor, and activity evidence.
+- Expand public badges for governed agents, signer status, vendor policy, and escalation posture.
+- Add shareable proof pages for agent wallets used in demos, hackathons, and ecosystem reviews.
+
+### Security and Audit Path
+
+- Continue internal security reviews across contracts, API authorization, signer permissions, and read-model boundaries.
+- Add more automated tests for signer authorization, policy enforcement, vendor scoping, and escalation flows.
+- Prepare contracts and infrastructure for external audit review before any production-funds or mainnet usage.
+- Keep Arc Testnet as the proving ground until the system is mature enough for a formal mainnet path.
+
+### Arc Ecosystem Path
+
+- Run controlled testnet pilots with builders experimenting with autonomous AI payments.
+- Collect feedback from agent developers, wallet operators, and infrastructure vendors.
+- Explore mainnet deployment only after testnet reliability, security review, and ecosystem guidance are complete.
 
 ## Contributing
 

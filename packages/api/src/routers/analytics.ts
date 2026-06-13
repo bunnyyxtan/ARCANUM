@@ -2,6 +2,7 @@ import { agents, anomalies, escalations, transfers } from "@arcanum/db/schema";
 import { and, eq, gte, sql } from "drizzle-orm";
 
 import {
+  demoMetrics,
   fallbackAgents,
   fallbackAnomalies,
   fallbackEscalations,
@@ -20,6 +21,10 @@ const postureCache = new Map<string, { value: number; expiresAt: number }>();
 
 export const analyticsRouter = router({
   postureIndex: publicProcedure.query(async ({ ctx }) => {
+    if (canUseDemoFallback(ctx)) {
+      return demoMetrics.postureIndex;
+    }
+
     const tenantId = tenantIdFor(ctx);
     const actor = ctx.session?.walletAddress.toLowerCase() ?? "anonymous";
     const cacheKey = `${tenantId}:${actor}:posture`;
@@ -103,6 +108,10 @@ export const analyticsRouter = router({
   }),
 
   valueGoverned24h: publicProcedure.query(async ({ ctx }) => {
+    if (canUseDemoFallback(ctx)) {
+      return demoMetrics.valueGoverned;
+    }
+
     const tenantId = tenantIdFor(ctx);
     const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const supabaseTransfers = await readSupabaseTransfers(ctx);
@@ -132,6 +141,10 @@ export const analyticsRouter = router({
   }),
 
   activeAgents: publicProcedure.query(async ({ ctx }) => {
+    if (canUseDemoFallback(ctx)) {
+      return demoMetrics.activeAgents;
+    }
+
     const tenantId = tenantIdFor(ctx);
     const supabaseAgents = await readSupabaseAgents(ctx);
 
@@ -157,6 +170,10 @@ export const analyticsRouter = router({
   }),
 
   threatsBlocked24h: publicProcedure.query(async ({ ctx }) => {
+    if (canUseDemoFallback(ctx)) {
+      return demoMetrics.threatsBlocked30d;
+    }
+
     const tenantId = tenantIdFor(ctx);
     const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const supabaseTransfers = await readSupabaseTransfers(ctx);
@@ -196,6 +213,10 @@ export const analyticsRouter = router({
   }),
 
   pendingEscalations: publicProcedure.query(async ({ ctx }) => {
+    if (canUseDemoFallback(ctx)) {
+      return demoMetrics.pendingEscalations;
+    }
+
     const tenantId = tenantIdFor(ctx);
     const supabaseEscalations = await readSupabaseEscalations(ctx);
 

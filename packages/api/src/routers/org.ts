@@ -22,6 +22,10 @@ const fallbackOrg = {
 
 export const orgRouter = router({
   currentOrg: publicProcedure.query(async ({ ctx }) => {
+    if (canUseDemoFallback(ctx)) {
+      return fallbackOrg;
+    }
+
     const tenantId = tenantIdFor(ctx);
     const emptyOrg = orgForSession(ctx);
     if (!canUseDemoFallback(ctx)) {
@@ -41,6 +45,10 @@ export const orgRouter = router({
   }),
 
   getCurrent: publicProcedure.query(async ({ ctx }) => {
+    if (canUseDemoFallback(ctx)) {
+      return fallbackOrg;
+    }
+
     const tenantId = tenantIdFor(ctx);
     const emptyOrg = orgForSession(ctx);
     if (!canUseDemoFallback(ctx)) {
@@ -60,6 +68,10 @@ export const orgRouter = router({
   }),
 
   members: publicProcedure.query(async ({ ctx }) => {
+    if (canUseDemoFallback(ctx)) {
+      return fallbackMembers;
+    }
+
     const tenantId = tenantIdFor(ctx);
     if (!canUseDemoFallback(ctx)) {
       return [];
@@ -79,6 +91,10 @@ export const orgRouter = router({
   }),
 
   listMembers: publicProcedure.query(async ({ ctx }) => {
+    if (canUseDemoFallback(ctx)) {
+      return fallbackMembers;
+    }
+
     const tenantId = tenantIdFor(ctx);
     if (!canUseDemoFallback(ctx)) {
       return [];

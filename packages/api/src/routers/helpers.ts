@@ -68,6 +68,18 @@ export async function writeDbOrFallback<T>(
 export async function findWalletByLooseId(ctx: ApiContext, looseWalletId: string) {
   const tenantId = tenantIdFor(ctx);
   const normalized = looseWalletId.toLowerCase();
+
+  if (canUseDemoFallback(ctx)) {
+    return (
+      fallbackWalletRows.find(
+        (wallet) =>
+          wallet.id === looseWalletId ||
+          wallet.address.toLowerCase() === normalized ||
+          wallet.label.toLowerCase() === normalized,
+      ) ?? null
+    );
+  }
+
   const supabaseWallet = await readSupabaseWalletByLooseId(ctx, looseWalletId);
 
   if (supabaseWallet) {
@@ -110,6 +122,20 @@ export async function findAgentByWalletLooseId(ctx: ApiContext, looseWalletId: s
   const tenantId = tenantIdFor(ctx);
   const normalized = looseWalletId.toLowerCase();
   const wallet = await findWalletByLooseId(ctx, looseWalletId);
+
+  if (canUseDemoFallback(ctx)) {
+    return (
+      fallbackAgents.find(
+        (agent) =>
+          agent.id === looseWalletId ||
+          agent.walletId === looseWalletId ||
+          agent.signerAddress.toLowerCase() === normalized ||
+          fallbackWallets.find((item) => item.id === agent.walletId)?.address.toLowerCase() ===
+            normalized,
+      ) ?? null
+    );
+  }
+
   const supabaseAgent = await readSupabaseAgentByLooseId(ctx, looseWalletId);
 
   if (supabaseAgent) {

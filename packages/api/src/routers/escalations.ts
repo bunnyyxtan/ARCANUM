@@ -22,6 +22,12 @@ function onChainEscalationWriteOnly(): never {
 
 export const escalationsRouter = router({
   list: publicProcedure.input(escalationListInputSchema).query(async ({ ctx, input }) => {
+    if (canUseDemoFallback(ctx)) {
+      return input?.status
+        ? fallbackEscalations.filter((escalation) => escalation.status === input.status)
+        : fallbackEscalations;
+    }
+
     const tenantId = tenantIdFor(ctx);
     const status = input?.status;
     const supabaseRows = await readSupabaseEscalations(ctx, status);
@@ -60,6 +66,10 @@ export const escalationsRouter = router({
   }),
 
   byTxHash: publicProcedure.input(escalationByTxHashInputSchema).query(async ({ ctx, input }) => {
+    if (canUseDemoFallback(ctx)) {
+      return fallbackEscalations.find((escalation) => escalation.id === input.txHash) ?? null;
+    }
+
     const tenantId = tenantIdFor(ctx);
     const supabaseRow = await readSupabaseEscalationByTxHash(ctx, input.txHash);
 
