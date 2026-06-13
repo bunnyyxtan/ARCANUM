@@ -1,6 +1,6 @@
 "use client";
 
-import { arcTestnet } from "@arcanum/shared";
+import { DEFAULT_ARCANUM_DEMO_OWNER_WALLET, arcTestnet } from "@arcanum/shared";
 import {
   ArrowLeft,
   ArrowRight,
@@ -113,7 +113,7 @@ import { getSettingsWorkspaceSummary, getWorkspaceEmptyCopy } from "@/lib/worksp
 const iconStroke = 1.75;
 
 function workspaceFileRoot(workspace: Pick<ReturnType<typeof useWorkspaceMode>, "isDemo">) {
-  return workspace.isDemo ? "FILE / ACME-CAPITAL" : "FILE / ARCANUM";
+  return workspace.isDemo ? "FILE / DEMO-WORKSPACE" : "FILE / ARCANUM";
 }
 
 type AgentDisplay = {
@@ -1419,7 +1419,8 @@ export function DashboardCanvasPage() {
                 >
                   {canShowDemoWorkspace ? (
                     <div className="mt-2 flex items-center gap-1 text-[11px] text-[#6E9E7C]">
-                      <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={iconStroke} /> DEMO TREND
+                      <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={iconStroke} /> SIMULATED
+                      BALANCE
                     </div>
                   ) : null}
                 </StatTile>
@@ -1449,7 +1450,8 @@ export function DashboardCanvasPage() {
                 >
                   {canShowDemoWorkspace ? (
                     <div className="mt-2 flex items-center gap-1 text-[11px] text-[#6E9E7C]">
-                      <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={iconStroke} /> DEMO WINDOW
+                      <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={iconStroke} /> POLICY
+                      INTERVENTIONS
                     </div>
                   ) : null}
                 </StatTile>
@@ -1540,21 +1542,20 @@ export function DashboardCanvasPage() {
                       <HazardStripe />
                       <div className="flex-1 p-4">
                         <div className="flex items-center justify-between">
-                          <span className="text-[13px] text-[#EDF0F3]">RESEARCH-AGENT</span>
+                          <span className="text-[13px] text-[#EDF0F3]">CLOUD OPS AGENT</span>
                           <span className="border border-[#282C34] px-1.5 py-0.5 text-[10px] tracking-[0.1em] text-[#3FA89B]">
                             COMPUTE
                           </span>
                         </div>
                         <div className="mt-3 flex items-end gap-2">
                           <span className="font-cond text-[40px] font-semibold leading-[0.8] text-[#EDF0F3]">
-                            $73.42
+                            $96.20
                           </span>
                           <span className="mb-1 text-[11px] text-[#8A909B]">- AWS Bedrock</span>
                         </div>
                         <div className="mt-3 text-[11px] leading-relaxed text-[#8A909B]">
-                          Exceeds per-vendor daily limit{" "}
-                          <span className="text-[#D7DBE0]">($50.00)</span>. Held for approver
-                          review.
+                          Compute request exceeds the per-transaction threshold. Held for human
+                          approval.
                         </div>
                         <div className="mt-3 grid grid-cols-3 gap-2 border-t border-[#282C34] pt-3 text-[10px] tracking-[0.08em] text-[#5B626C]">
                           <div>
@@ -1563,7 +1564,7 @@ export function DashboardCanvasPage() {
                           <div>
                             DEVIATION
                             <div className="mt-0.5 text-[12px] text-[#D7DBE0]">
-                              {formatDeviation(0.3)}
+                              {formatDeviation(1.8)}
                             </div>
                           </div>
                           <div>
@@ -1574,7 +1575,7 @@ export function DashboardCanvasPage() {
                           </div>
                         </div>
                         <EscalationResolutionActions
-                          amount="$73.42"
+                          amount="$96.20"
                           counterparty="AWS Bedrock"
                           expiresAt={pendingEscalationExpiry}
                         />
@@ -1595,30 +1596,30 @@ export function DashboardCanvasPage() {
                   <div className="divide-y divide-[#1E222A]">
                     {[
                       [
-                        "DEV-AGENT-01",
-                        "02:47:12Z",
-                        "transfer -> unrecognized counterparty",
-                        formatDeviation(7.4),
+                        "TREASURY GUARD AGENT",
+                        "12:05:00Z",
+                        "unapproved treasury destination blocked",
+                        formatDeviation(4.8),
                         "FROZEN",
                         93,
                         "#FF5A1F",
                         true,
                       ],
                       [
-                        "MARKETING-AGENT",
-                        "02:31:55Z",
-                        "spend velocity +18%",
-                        formatDeviation(0.8),
+                        "CLOUD OPS AGENT",
+                        "11:08:00Z",
+                        "compute request escalated",
+                        formatDeviation(1.8),
                         "WATCH",
                         14,
                         "#E0A04A",
                         false,
                       ],
                       [
-                        "RESEARCH-AGENT",
-                        "02:12:04Z",
+                        "MARKET INTEL AGENT",
+                        "10:15:00Z",
                         "within expected band",
-                        formatDeviation(0.3),
+                        formatDeviation(0.7),
                         "NOMINAL",
                         5,
                         "#3A4250",
@@ -2066,10 +2067,10 @@ export function AgentsCanvasPage() {
   const canShowDemoWorkspace = workspace.isDemo;
   const sourceRows: readonly AgentDisplay[] = useMemo(
     () =>
-      liveAgents.data.length > 0
-        ? liveAgents.data.map(agentRowFromLive)
-        : canShowDemoWorkspace
-          ? agentRows
+      canShowDemoWorkspace
+        ? agentRows
+        : liveAgents.data.length > 0
+          ? liveAgents.data.map(agentRowFromLive)
           : [],
     [liveAgents.data, canShowDemoWorkspace],
   );
@@ -2436,6 +2437,7 @@ function WalletSignerSummary({
   isLoading: boolean;
   walletAddress: Address | null;
 }>) {
+  const workspace = useWorkspaceMode();
   const publicClient = usePublicClient({ chainId: arcTestnet.id });
   const [verifiedSigners, setVerifiedSigners] = useState<Address[]>([]);
   const [verificationStatus, setVerificationStatus] = useState<
@@ -2444,6 +2446,14 @@ function WalletSignerSummary({
 
   useEffect(() => {
     let cancelled = false;
+
+    if (workspace.isDemo) {
+      setVerifiedSigners(candidates);
+      setVerificationStatus(candidates.length > 0 ? "ready" : "idle");
+      return () => {
+        cancelled = true;
+      };
+    }
 
     if (!walletAddress || !publicClient || candidates.length === 0) {
       setVerifiedSigners([]);
@@ -2486,7 +2496,7 @@ function WalletSignerSummary({
     return () => {
       cancelled = true;
     };
-  }, [candidates, publicClient, walletAddress]);
+  }, [candidates, publicClient, walletAddress, workspace.isDemo]);
 
   if (isLoading) {
     return <span className="text-[#8A909B]">Loading signer state</span>;
@@ -2504,10 +2514,18 @@ function WalletSignerSummary({
     return <span className="text-[#EC7A6B]">Saved signer not authorized on contract</span>;
   }
   if (verifiedSigners.length === 1) {
-    return <span className="text-[#D7DBE0]">1 signer: {shortAddress(verifiedSigners[0])}</span>;
+    return (
+      <span className="text-[#D7DBE0]">
+        1 {workspace.isDemo ? "simulated signer" : "signer"}: {shortAddress(verifiedSigners[0])}
+      </span>
+    );
   }
 
-  return <span className="text-[#D7DBE0]">{verifiedSigners.length} signers authorized</span>;
+  return (
+    <span className="text-[#D7DBE0]">
+      {verifiedSigners.length} {workspace.isDemo ? "simulated signers" : "signers authorized"}
+    </span>
+  );
 }
 
 function SelectedWalletOverview({
@@ -4328,28 +4346,39 @@ function AgentSignerPanel({
         );
         const isPendingSync =
           isSyncTarget && (txStatus === "syncing" || txStatus === "sync_failed");
-        const status = isPendingSync
-          ? txStatus === "sync_failed"
-            ? "SYNC FAILED"
-            : "SYNC PENDING"
-          : readStatus === "checking" && verified === null
-            ? "VERIFYING"
+        const status = workspace.isDemo
+          ? "SIMULATED SIGNER AUTHORIZATION"
+          : isPendingSync
+            ? txStatus === "sync_failed"
+              ? "SYNC FAILED"
+              : "SYNC PENDING"
+            : readStatus === "checking" && verified === null
+              ? "VERIFYING"
+              : verified === true
+                ? "AUTHORIZED ON CONTRACT"
+                : verified === false
+                  ? "NOT AUTHORIZED ON CONTRACT"
+                  : readStatus === "error"
+                    ? "READBACK FAILED"
+                    : "SUPABASE CANDIDATE";
+        const source = workspace.isDemo
+          ? "demo fixture"
+          : isPendingSync
+            ? "recent tx"
             : verified === true
-              ? "AUTHORIZED ON CONTRACT"
-              : verified === false
-                ? "NOT AUTHORIZED ON CONTRACT"
-                : readStatus === "error"
-                  ? "READBACK FAILED"
-                  : "SUPABASE CANDIDATE";
-        const source = isPendingSync
-          ? "recent tx"
-          : verified === true
-            ? "contract verified"
-            : "Supabase candidate";
+              ? "contract verified"
+              : "Supabase candidate";
 
         return { address: candidate, source, status, verified };
       }),
-    [readStatus, lastSyncRequest, signerVerificationByAddress, txStatus, visibleSignerCandidates],
+    [
+      readStatus,
+      lastSyncRequest,
+      signerVerificationByAddress,
+      txStatus,
+      visibleSignerCandidates,
+      workspace.isDemo,
+    ],
   );
   const authorizedSignerCount = signerRows.filter((row) => row.verified === true).length;
   const lastVerifiedLabel = lastVerifiedAt
@@ -4444,6 +4473,21 @@ function AgentSignerPanel({
     let cancelled = false;
     setTxError(null);
 
+    if (workspace.isDemo) {
+      const authorizationByAddress = Object.fromEntries(
+        verificationSignerCandidates.map((signer) => [signer.toLowerCase(), true]),
+      );
+      setWalletOwner(DEFAULT_ARCANUM_DEMO_OWNER_WALLET as Address);
+      setSignerVerificationByAddress(authorizationByAddress);
+      setSignerAuthorized(usableSignerAddress ? true : null);
+      setLastVerifiedAt(null);
+      setReadStatus("ready");
+      setReadError(null);
+      return () => {
+        cancelled = true;
+      };
+    }
+
     if (!governedWalletAddress || !publicClient) {
       setWalletOwner(null);
       setSignerAuthorized(null);
@@ -4496,23 +4540,26 @@ function AgentSignerPanel({
     readLiveSignerStates,
     usableSignerAddress,
     verificationSignerCandidates,
+    workspace.isDemo,
   ]);
 
-  const managementDisabledReason = !governedWalletAddress
-    ? "Open a valid governed wallet route."
-    : !isConnected
-      ? "Connect wallet first."
-      : !workspace.isAuthenticated
-        ? "Sign in to manage the agent signer."
-        : readStatus === "checking"
-          ? "Checking governed wallet owner."
-          : readStatus === "error"
-            ? "Unable to read signer permissions from Arc Testnet."
-            : !ownerMatchesConnectedWallet
-              ? "Only the governed wallet owner can manage the agent signer."
-              : chainId !== arcTestnet.id
-                ? "Switch to Arc Testnet."
-                : null;
+  const managementDisabledReason = workspace.isDemo
+    ? "Demo signer authorization is simulated and read-only."
+    : !governedWalletAddress
+      ? "Open a valid governed wallet route."
+      : !isConnected
+        ? "Connect wallet first."
+        : !workspace.isAuthenticated
+          ? "Sign in to manage the agent signer."
+          : readStatus === "checking"
+            ? "Checking governed wallet owner."
+            : readStatus === "error"
+              ? "Unable to read signer permissions from Arc Testnet."
+              : !ownerMatchesConnectedWallet
+                ? "Only the governed wallet owner can manage the agent signer."
+                : chainId !== arcTestnet.id
+                  ? "Switch to Arc Testnet."
+                  : null;
   const signerWriteDisabledReason = managementDisabledReason ?? signerValidation;
   const signerCheckPending = Boolean(
     usableSignerAddress && signerAuthorized === null && readStatus === "checking",
@@ -4521,7 +4568,9 @@ function AgentSignerPanel({
     !signerWriteDisabledReason && !signerCheckPending && signerAuthorized === false && !isBusy;
   const canRevoke =
     !signerWriteDisabledReason && !signerCheckPending && signerAuthorized === true && !isBusy;
-  const statusCopy = signerPolicyQuery.isLoading
+  const statusCopy = workspace.isDemo
+    ? `${authorizedSignerCount} SIMULATED SIGNER${authorizedSignerCount === 1 ? "" : "S"}`
+    : signerPolicyQuery.isLoading
     ? "READING SIGNERS"
     : readStatus === "checking" && visibleSignerCandidates.length > 0
       ? "VERIFYING SIGNERS"
@@ -4754,7 +4803,9 @@ function AgentSignerPanel({
               <div className="text-[10px] tracking-[0.18em] text-[#5B626C]">AUTHORIZED SIGNERS</div>
               <div className="mt-1 text-[11px] text-[#8A909B]">
                 {authorizedSignerCount > 0
-                  ? `${authorizedSignerCount} signer${authorizedSignerCount === 1 ? "" : "s"} verified for this governed wallet`
+                  ? workspace.isDemo
+                    ? `${authorizedSignerCount} simulated signer${authorizedSignerCount === 1 ? "" : "s"} scoped to this demo governed wallet`
+                    : `${authorizedSignerCount} signer${authorizedSignerCount === 1 ? "" : "s"} verified for this governed wallet`
                   : "No contract-verified signer yet"}
               </div>
             </div>
@@ -5116,6 +5167,19 @@ export function PolicyEditorCanvasPage() {
   useEffect(() => {
     let cancelled = false;
 
+    if (workspace.isDemo) {
+      setPolicyWalletOwner(DEFAULT_ARCANUM_DEMO_OWNER_WALLET as Address);
+      setActivePolicyDraft(initialPolicyDraft);
+      setPolicyDraft(initialPolicyDraft);
+      setAnomalyFreezeThresholdBps(4_800n);
+      setPolicyPendingIndexer(false);
+      setPolicyReadStatus("ready");
+      setPolicyError(null);
+      return () => {
+        cancelled = true;
+      };
+    }
+
     if (!publicClient || !selectedGovernedWalletAddress) {
       setPolicyWalletOwner(null);
       setPolicyReadStatus(selectedGovernedWalletAddress ? "error" : "idle");
@@ -5171,25 +5235,27 @@ export function PolicyEditorCanvasPage() {
     return () => {
       cancelled = true;
     };
-  }, [publicClient, selectedGovernedWalletAddress]);
+  }, [publicClient, selectedGovernedWalletAddress, workspace.isDemo]);
 
-  const policyWriteDisabledReason = !selectedGovernedWalletAddress
-    ? walletsQuery.isLoading
-      ? "Loading governed wallets."
-      : "Create or select a governed wallet first."
-    : !isConnected
-      ? "Connect wallet first."
-      : !workspace.isAuthenticated
-        ? "Sign in to manage policy."
-        : policyReadStatus === "checking"
-          ? "Reading active policy from Arc Testnet."
-          : policyReadStatus === "error"
-            ? "Unable to read governed wallet policy on Arc Testnet."
-            : !ownerMatchesConnectedWallet
-              ? "Only the governed wallet owner can update policy."
-              : unsavedCount === 0
-                ? "No policy changes to submit."
-                : null;
+  const policyWriteDisabledReason = workspace.isDemo
+    ? "Demo doctrine is simulated and read-only."
+    : !selectedGovernedWalletAddress
+      ? walletsQuery.isLoading
+        ? "Loading governed wallets."
+        : "Create or select a governed wallet first."
+      : !isConnected
+        ? "Connect wallet first."
+        : !workspace.isAuthenticated
+          ? "Sign in to manage policy."
+          : policyReadStatus === "checking"
+            ? "Reading active policy from Arc Testnet."
+            : policyReadStatus === "error"
+              ? "Unable to read governed wallet policy on Arc Testnet."
+              : !ownerMatchesConnectedWallet
+                ? "Only the governed wallet owner can update policy."
+                : unsavedCount === 0
+                  ? "No policy changes to submit."
+                  : null;
   const policyNetworkNotice =
     isConnected && chainId !== arcTestnet.id
       ? "Wallet will be asked to switch to Arc Testnet."
@@ -5874,10 +5940,10 @@ export function VendorsCanvasPage() {
     vendorSaving || vendorSubmittingRef.current || switchPending || writePending;
   const baseRows: readonly VendorDisplay[] = useMemo(
     () =>
-      liveVendors.data.length > 0
-        ? liveVendors.data.map(vendorRowFromLive)
-        : canShowDemoWorkspace
-          ? vendors
+      canShowDemoWorkspace
+        ? vendors
+        : liveVendors.data.length > 0
+          ? liveVendors.data.map(vendorRowFromLive)
           : [],
     [liveVendors.data, canShowDemoWorkspace],
   );
@@ -5947,6 +6013,14 @@ export function VendorsCanvasPage() {
   useEffect(() => {
     let cancelled = false;
 
+    if (workspace.isDemo) {
+      setVendorWalletOwner(DEFAULT_ARCANUM_DEMO_OWNER_WALLET as Address);
+      setVendorOwnerReadStatus("ready");
+      return () => {
+        cancelled = true;
+      };
+    }
+
     if (!publicClient || !selectedGovernedWalletAddress) {
       setVendorWalletOwner(null);
       setVendorOwnerReadStatus(selectedGovernedWalletAddress ? "error" : "idle");
@@ -5982,7 +6056,7 @@ export function VendorsCanvasPage() {
     return () => {
       cancelled = true;
     };
-  }, [publicClient, selectedGovernedWalletAddress]);
+  }, [publicClient, selectedGovernedWalletAddress, workspace.isDemo]);
 
   useEffect(() => {
     if (!openVendorMenuKey) {
@@ -6018,21 +6092,23 @@ export function VendorsCanvasPage() {
     setVendorError(null);
   };
 
-  const vendorWriteDisabledReason = !selectedGovernedWalletAddress
-    ? walletsQuery.isLoading
-      ? "Loading governed wallets."
-      : "Create or select a governed wallet first."
-    : !isConnected
-      ? "Connect wallet first."
-      : !workspace.isAuthenticated
-        ? "Sign in to manage VendorRegistry."
-        : vendorOwnerReadStatus === "checking"
-          ? "Checking governed wallet owner."
-          : vendorOwnerReadStatus === "error"
-            ? "Unable to read governed wallet owner on Arc Testnet."
-            : !ownerMatchesConnectedWallet
-              ? "Only the governed wallet owner can manage vendors."
-              : null;
+  const vendorWriteDisabledReason = workspace.isDemo
+    ? "Demo vendor registry is simulated and read-only."
+    : !selectedGovernedWalletAddress
+      ? walletsQuery.isLoading
+        ? "Loading governed wallets."
+        : "Create or select a governed wallet first."
+      : !isConnected
+        ? "Connect wallet first."
+        : !workspace.isAuthenticated
+          ? "Sign in to manage VendorRegistry."
+          : vendorOwnerReadStatus === "checking"
+            ? "Checking governed wallet owner."
+            : vendorOwnerReadStatus === "error"
+              ? "Unable to read governed wallet owner on Arc Testnet."
+              : !ownerMatchesConnectedWallet
+                ? "Only the governed wallet owner can manage vendors."
+                : null;
   const vendorNetworkNotice =
     isConnected && chainId !== arcTestnet.id
       ? "Wallet will be asked to switch to Arc Testnet."
@@ -7123,10 +7199,10 @@ export function LedgerCanvasPage() {
   const canShowDemoWorkspace = workspace.isDemo;
   const baseRows: readonly LedgerDisplay[] = useMemo(
     () =>
-      liveLedger.data.length > 0
-        ? liveLedger.data.map(ledgerRowFromLive)
-        : canShowDemoWorkspace
-          ? (ledgerRows as readonly LedgerDisplay[])
+      canShowDemoWorkspace
+        ? (ledgerRows as readonly LedgerDisplay[])
+        : liveLedger.data.length > 0
+          ? liveLedger.data.map(ledgerRowFromLive)
           : [],
     [liveLedger.data, canShowDemoWorkspace],
   );
@@ -7518,10 +7594,10 @@ export function EscalationsCanvasPage() {
   const canShowDemoWorkspace = workspace.isDemo;
   const baseRows: readonly EscalationDisplay[] = useMemo(
     () =>
-      liveEscalations.data.length > 0
-        ? liveEscalations.data.map(escalationRowFromLive)
-        : canShowDemoWorkspace
-          ? escalations
+      canShowDemoWorkspace
+        ? escalations
+        : liveEscalations.data.length > 0
+          ? liveEscalations.data.map(escalationRowFromLive)
           : [],
     [liveEscalations.data, canShowDemoWorkspace],
   );
@@ -7788,10 +7864,10 @@ export function AnomaliesCanvasPage() {
   const canShowDemoWorkspace = workspace.isDemo;
   const rows: readonly AnomalyDisplay[] = useMemo(
     () =>
-      liveAnomalies.data.length > 0
-        ? liveAnomalies.data.map(anomalyRowFromLive)
-        : canShowDemoWorkspace
-          ? anomalyRows
+      canShowDemoWorkspace
+        ? anomalyRows
+        : liveAnomalies.data.length > 0
+          ? liveAnomalies.data.map(anomalyRowFromLive)
           : [],
     [liveAnomalies.data, canShowDemoWorkspace],
   );

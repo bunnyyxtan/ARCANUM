@@ -52,6 +52,12 @@ export const agentsRouter = router({
   list: publicProcedure
     .input(z.object({ status: agentStatusSchema.optional() }).optional())
     .query(async ({ ctx, input }) => {
+      if (canUseDemoFallback(ctx)) {
+        return input?.status
+          ? fallbackAgents.filter((agent) => agent.status === input.status)
+          : fallbackAgents;
+      }
+
       const tenantId = tenantIdFor(ctx);
       const status = input?.status;
       const supabaseRows = await readSupabaseAgents(ctx, status);
@@ -88,6 +94,10 @@ export const agentsRouter = router({
   }),
 
   getById: publicProcedure.input(uuidSchema).query(async ({ ctx, input }) => {
+    if (canUseDemoFallback(ctx)) {
+      return fallbackAgents.find((agent) => agent.id === input) ?? null;
+    }
+
     const tenantId = tenantIdFor(ctx);
     if (!canUseDemoFallback(ctx)) {
       return null;
@@ -110,6 +120,11 @@ export const agentsRouter = router({
   events: publicProcedure
     .input(agentByWalletInputSchema.merge(pageInputSchema.partial()))
     .query(async ({ ctx, input }) => {
+      if (canUseDemoFallback(ctx)) {
+        const agent = await findAgentByWalletLooseId(ctx, input.walletId);
+        return fallbackEvents.filter((event) => event.walletId === agent?.walletId);
+      }
+
       const tenantId = tenantIdFor(ctx);
       const agent = await findAgentByWalletLooseId(ctx, input.walletId);
       if (!canUseDemoFallback(ctx)) {
@@ -143,6 +158,11 @@ export const agentsRouter = router({
   listTransfers: publicProcedure
     .input(agentByWalletInputSchema.merge(pageInputSchema.partial()))
     .query(async ({ ctx, input }) => {
+      if (canUseDemoFallback(ctx)) {
+        const agent = await findAgentByWalletLooseId(ctx, input.walletId);
+        return fallbackTransfers.filter((transfer) => transfer.agentId === agent?.id);
+      }
+
       const tenantId = tenantIdFor(ctx);
       const agent = await findAgentByWalletLooseId(ctx, input.walletId);
       if (!canUseDemoFallback(ctx)) {
@@ -174,6 +194,11 @@ export const agentsRouter = router({
     }),
 
   policy: publicProcedure.input(agentByWalletInputSchema).query(async ({ ctx, input }) => {
+    if (canUseDemoFallback(ctx)) {
+      const wallet = await findWalletByLooseId(ctx, input.walletId);
+      return fallbackPolicies.find((policy) => policy.walletId === wallet?.id) ?? null;
+    }
+
     const tenantId = tenantIdFor(ctx);
     const wallet = await findWalletByLooseId(ctx, input.walletId);
     const supabasePolicy = await readSupabasePolicy(ctx, wallet);

@@ -17,6 +17,11 @@ function onChainPolicyWriteOnly(): never {
 
 export const policiesRouter = router({
   get: publicProcedure.input(agentByWalletInputSchema).query(async ({ ctx, input }) => {
+    if (canUseDemoFallback(ctx)) {
+      const wallet = await findWalletByLooseId(ctx, input.walletId);
+      return fallbackPolicies.find((policy) => policy.walletId === wallet?.id) ?? null;
+    }
+
     const tenantId = tenantIdFor(ctx);
     const wallet = await findWalletByLooseId(ctx, input.walletId);
     const supabasePolicy = await readSupabasePolicy(ctx, wallet);
@@ -56,6 +61,10 @@ export const policiesRouter = router({
   }),
 
   count: publicProcedure.query(async ({ ctx }) => {
+    if (canUseDemoFallback(ctx)) {
+      return fallbackPolicies.length;
+    }
+
     const tenantId = tenantIdFor(ctx);
 
     if (!canUseDemoFallback(ctx)) {

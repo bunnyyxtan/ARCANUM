@@ -37,6 +37,10 @@ function onChainVendorWriteOnly(): never {
 
 export const vendorsRouter = router({
   list: publicProcedure.query(async ({ ctx }) => {
+    if (canUseDemoFallback(ctx)) {
+      return fallbackVendors;
+    }
+
     const tenantId = tenantIdFor(ctx);
     const supabaseRows = await readSupabaseVendors(ctx);
 
@@ -66,6 +70,10 @@ export const vendorsRouter = router({
   }),
 
   byId: publicProcedure.input(vendorByIdInputSchema).query(async ({ ctx, input }) => {
+    if (canUseDemoFallback(ctx)) {
+      return fallbackVendors.find((vendor) => vendor.id === input.id) ?? null;
+    }
+
     const tenantId = tenantIdFor(ctx);
     if (!canUseDemoFallback(ctx)) {
       return null;
@@ -90,6 +98,11 @@ export const vendorsRouter = router({
   getByWallet: publicProcedure
     .input(vendorAddInputSchema.pick({ walletId: true }))
     .query(async ({ ctx, input }) => {
+      if (canUseDemoFallback(ctx)) {
+        const wallet = input.walletId ? await findWalletByLooseId(ctx, input.walletId) : null;
+        return fallbackVendors.filter((vendor) => vendor.walletId === wallet?.id);
+      }
+
       const tenantId = tenantIdFor(ctx);
       const wallet = input.walletId ? await findWalletByLooseId(ctx, input.walletId) : null;
       const supabaseRows = await readSupabaseVendors(ctx, wallet);
