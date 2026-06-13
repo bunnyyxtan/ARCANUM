@@ -5,7 +5,7 @@ import {
   ledgerByWalletInputSchema,
   ledgerListInputSchema,
 } from "@arcanum/shared";
-import { and, desc, eq, gte, lte, or } from "drizzle-orm";
+import { and, desc, eq, or } from "drizzle-orm";
 
 import { fallbackTransfers } from "../mock-fallback";
 import { readSupabaseTransfers } from "../supabase";
@@ -56,7 +56,9 @@ export const ledgerRouter = router({
 
     if (canUseDemoFallback(ctx)) {
       return fallbackTransfers
-        .filter((transfer) => transfer.walletId === wallet?.id || transfer.toAddress === input.wallet)
+        .filter(
+          (transfer) => transfer.walletId === wallet?.id || transfer.toAddress === input.wallet,
+        )
         .slice(page * pageSize, page * pageSize + pageSize);
     }
 

@@ -76,5 +76,5 @@ function agentLabel(walletId: string) {
     return "TreasuryRebalancer";
   }
 
-  return "ResearchAgent";
+  return "Research Agent";
 }

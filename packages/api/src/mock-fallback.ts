@@ -87,15 +87,15 @@ function demoTxHash(index: number) {
 export const fallbackAgents: Agent[] = [
   agent("30000000-0000-4000-8000-000000000001", 0, "research", "Research Agent", "active", 79),
   agent("30000000-0000-4000-8000-000000000002", 1, "dev", "Cloud Ops Agent", "active", 116),
-  agent("30000000-0000-4000-8000-000000000003", 2, "marketing", "Market Intel Agent", "active", 169),
   agent(
-    "30000000-0000-4000-8000-000000000004",
-    3,
-    "treasury",
-    "Treasury Guard Agent",
-    "frozen",
-    0,
+    "30000000-0000-4000-8000-000000000003",
+    2,
+    "marketing",
+    "Market Intel Agent",
+    "active",
+    169,
   ),
+  agent("30000000-0000-4000-8000-000000000004", 3, "treasury", "Treasury Guard Agent", "frozen", 0),
   agent(
     "30000000-0000-4000-8000-000000000005",
     4,
@@ -175,8 +175,11 @@ const policyInputs = [
 
 export const fallbackPolicies: Array<Policy & { doctrineStatus: string; signers: string[] }> =
   fallbackWallets.map((wallet, index) => {
-    const [perTxCap, daily24hCap, monthlyRollingCap, escalationThreshold] =
-      requiredFixtureItem(policyInputs, index, "policy");
+    const [perTxCap, daily24hCap, monthlyRollingCap, escalationThreshold] = requiredFixtureItem(
+      policyInputs,
+      index,
+      "policy",
+    );
     return {
       id: `50000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
       tenantId: FALLBACK_TENANT_ID,
@@ -196,16 +199,116 @@ export const fallbackPolicies: Array<Policy & { doctrineStatus: string; signers:
   });
 
 export const fallbackTransfers: Transfer[] = [
-  transfer(1, 3, 0, "0x1234000000000000000000000000000000005678", "500000000", "DENY", "Unapproved treasury destination blocked by allowlist.", "other", "0"),
-  transfer(2, 4, 31, "0x88e10000000000000000000000000000000007bb", "12000000", "ALLOW", "Approved security service within policy envelope.", "other", "12000000"),
-  transfer(3, 1, 54, "0x9dd400000000000000000000000000000000b71a", "96200000", "ESCALATE", "Compute request exceeds the per-transaction threshold.", "compute", "128300000"),
-  transfer(4, 0, 76, "0x4a2b000000000000000000000000000000008c0d", "64800000", "ALLOW", "Approved model provider within research policy.", "api", "126150000"),
-  transfer(5, 2, 107, "0x3f1900000000000000000000000000000000aa52", "42750000", "ALLOW", "Approved data provider within market-intelligence policy.", "data", "107750000"),
-  transfer(6, 0, 140, "0x71c700000000000000000000000000000000fe19", "18400000", "ALLOW", "Approved model provider within research policy.", "api", "61350000"),
-  transfer(7, 1, 164, "0x77fa0000000000000000000000000000000012dd", "128300000", "ALLOW", "Approved infrastructure provider within cloud-ops policy.", "compute", "128300000"),
-  transfer(8, 4, 187, "0x88e10000000000000000000000000000000007bb", "12000000", "ALLOW", "Approved security service within policy envelope.", "other", "24000000"),
-  transfer(9, 0, 211, "0x71c700000000000000000000000000000000fe19", "42950000", "ALLOW", "Approved model provider within research policy.", "api", "104300000"),
-  transfer(10, 2, 231, "0x3f1900000000000000000000000000000000aa52", "65000000", "ALLOW", "Approved data provider within market-intelligence policy.", "data", "107750000"),
+  transfer(
+    1,
+    3,
+    0,
+    "0x1234000000000000000000000000000000005678",
+    "500000000",
+    "DENY",
+    "Unapproved treasury destination blocked by allowlist.",
+    "other",
+    "0",
+  ),
+  transfer(
+    2,
+    4,
+    31,
+    "0x88e10000000000000000000000000000000007bb",
+    "12000000",
+    "ALLOW",
+    "Approved security service within policy envelope.",
+    "other",
+    "12000000",
+  ),
+  transfer(
+    3,
+    1,
+    54,
+    "0x9dd400000000000000000000000000000000b71a",
+    "96200000",
+    "ESCALATE",
+    "Compute request exceeds the per-transaction threshold.",
+    "compute",
+    "128300000",
+  ),
+  transfer(
+    4,
+    0,
+    76,
+    "0x4a2b000000000000000000000000000000008c0d",
+    "64800000",
+    "ALLOW",
+    "Approved model provider within research policy.",
+    "api",
+    "126150000",
+  ),
+  transfer(
+    5,
+    2,
+    107,
+    "0x3f1900000000000000000000000000000000aa52",
+    "42750000",
+    "ALLOW",
+    "Approved data provider within market-intelligence policy.",
+    "data",
+    "107750000",
+  ),
+  transfer(
+    6,
+    0,
+    140,
+    "0x71c700000000000000000000000000000000fe19",
+    "18400000",
+    "ALLOW",
+    "Approved model provider within research policy.",
+    "api",
+    "61350000",
+  ),
+  transfer(
+    7,
+    1,
+    164,
+    "0x77fa0000000000000000000000000000000012dd",
+    "128300000",
+    "ALLOW",
+    "Approved infrastructure provider within cloud-ops policy.",
+    "compute",
+    "128300000",
+  ),
+  transfer(
+    8,
+    4,
+    187,
+    "0x88e10000000000000000000000000000000007bb",
+    "12000000",
+    "ALLOW",
+    "Approved security service within policy envelope.",
+    "other",
+    "24000000",
+  ),
+  transfer(
+    9,
+    0,
+    211,
+    "0x71c700000000000000000000000000000000fe19",
+    "42950000",
+    "ALLOW",
+    "Approved model provider within research policy.",
+    "api",
+    "104300000",
+  ),
+  transfer(
+    10,
+    2,
+    231,
+    "0x3f1900000000000000000000000000000000aa52",
+    "65000000",
+    "ALLOW",
+    "Approved data provider within market-intelligence policy.",
+    "data",
+    "107750000",
+  ),
 ];
 
 export const fallbackEscalations: Escalation[] = [
@@ -276,9 +379,27 @@ export const fallbackEvents: Event[] = fallbackTransfers.map((item, index) => ({
 }));
 
 export const fallbackMembers: User[] = [
-  member("90000000-0000-4000-8000-000000000001", DEFAULT_ARCANUM_DEMO_OWNER_WALLET, "Maya Rao", "owner", 120),
-  member("90000000-0000-4000-8000-000000000002", "0x2c92d63f66c98bca0dd33159b43c18cb5a2b20c1", "Elias Chen", "approver", 80),
-  member("90000000-0000-4000-8000-000000000003", "0x55207c090418cb56cb909d3c58c76be0d2f5b777", "Nora Patel", "approver", 55),
+  member(
+    "90000000-0000-4000-8000-000000000001",
+    DEFAULT_ARCANUM_DEMO_OWNER_WALLET,
+    "Maya Rao",
+    "owner",
+    120,
+  ),
+  member(
+    "90000000-0000-4000-8000-000000000002",
+    "0x2c92d63f66c98bca0dd33159b43c18cb5a2b20c1",
+    "Elias Chen",
+    "council",
+    80,
+  ),
+  member(
+    "90000000-0000-4000-8000-000000000003",
+    "0x55207c090418cb56cb909d3c58c76be0d2f5b777",
+    "Nora Patel",
+    "council",
+    55,
+  ),
 ];
 
 export function walletAddressForId(walletId: string | null | undefined) {

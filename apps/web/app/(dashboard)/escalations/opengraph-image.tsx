@@ -8,7 +8,7 @@ export default function Image() {
     page: "RESTRAINT QUEUE",
     statLabel: "PENDING ESCALATIONS",
     statValue: "04",
-    detail: "$73.42 TO AWS BEDROCK / HUMAN QUORUM REQUIRED",
+    detail: "$96.20 TO AWS BEDROCK / HUMAN QUORUM REQUIRED",
     hazard: true,
   });
 }

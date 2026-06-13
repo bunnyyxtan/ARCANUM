@@ -104,7 +104,7 @@ export function GovernanceFrame({
   const showSeededBadges = workspace.dataMode === "demo";
   const visibleBellCount = showSeededBadges ? bellCount : 0;
   const orgLabel = getWorkspaceHeaderLabel(workspace.dataMode);
-  const displayFile = file.replace("ACME-CAPITAL", orgLabel);
+  const displayFile = file.replace("DEMO-WORKSPACE", orgLabel);
   const notificationItems = getWorkspaceNotificationItems(workspace.dataMode);
 
   return (

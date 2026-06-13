@@ -8,7 +8,7 @@ export const tickerInterval = {
 const liveEvents: Omit<GovernanceEvent, "id" | "timestamp">[] = [
   {
     label: "Policy envelope allowed API spend",
-    actor: "ResearchAgent",
+    actor: "Research Agent",
     counterparty: "OpenAI",
     category: "api",
     amount: 4.2,
@@ -26,10 +26,10 @@ const liveEvents: Omit<GovernanceEvent, "id" | "timestamp">[] = [
   },
   {
     label: "Compute spend approached soft threshold",
-    actor: "MarketMaker",
+    actor: "Cloud Ops Agent",
     counterparty: "AWS Bedrock",
     category: "compute",
-    amount: 73.42,
+    amount: 96.2,
     status: "escalated",
     severity: "warning",
   },

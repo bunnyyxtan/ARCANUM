@@ -4571,22 +4571,22 @@ function AgentSignerPanel({
   const statusCopy = workspace.isDemo
     ? `${authorizedSignerCount} SIMULATED SIGNER${authorizedSignerCount === 1 ? "" : "S"}`
     : signerPolicyQuery.isLoading
-    ? "READING SIGNERS"
-    : readStatus === "checking" && visibleSignerCandidates.length > 0
-      ? "VERIFYING SIGNERS"
-      : authorizedSignerCount > 0
-        ? `${authorizedSignerCount} SIGNER${authorizedSignerCount === 1 ? "" : "S"} AUTHORIZED`
-        : visibleSignerCandidates.length > 0
-          ? "SAVED SIGNER STALE"
-          : !usableSignerAddress || signerValidation
-            ? "NO SIGNER AUTHORIZED"
-            : readStatus === "checking"
-              ? "CHECKING CONTRACT"
-              : signerAuthorized
-                ? "AUTHORIZED"
-                : readStatus === "error"
-                  ? "READBACK FAILED"
-                  : "NOT AUTHORIZED";
+      ? "READING SIGNERS"
+      : readStatus === "checking" && visibleSignerCandidates.length > 0
+        ? "VERIFYING SIGNERS"
+        : authorizedSignerCount > 0
+          ? `${authorizedSignerCount} SIGNER${authorizedSignerCount === 1 ? "" : "S"} AUTHORIZED`
+          : visibleSignerCandidates.length > 0
+            ? "SAVED SIGNER STALE"
+            : !usableSignerAddress || signerValidation
+              ? "NO SIGNER AUTHORIZED"
+              : readStatus === "checking"
+                ? "CHECKING CONTRACT"
+                : signerAuthorized
+                  ? "AUTHORIZED"
+                  : readStatus === "error"
+                    ? "READBACK FAILED"
+                    : "NOT AUTHORIZED";
   const statusClassName =
     authorizedSignerCount > 0 || (signerAuthorized && usableSignerAddress)
       ? "border-[#6E9E7C]/40 text-[#6E9E7C]"
@@ -8258,7 +8258,7 @@ function SignedCard() {
             <Check className="h-8 w-8" strokeWidth={iconStroke} />
           </span>
           <div className="mt-6 font-cond text-[26px] font-bold leading-tight tracking-[0.04em] text-[#EDF0F3]">
-            RELEASED
+            SIGNATURE RECORDED
           </div>
           <div className="mt-2 text-center text-[12px] leading-relaxed text-[#8A909B]">
             Your signature is recorded.
@@ -8277,9 +8277,9 @@ function SignedCard() {
           </div>
         </div>
         <div className="mt-8 divide-y divide-[#282C34] border-y border-[#282C34] text-[12px]">
-          <InfoLine label="AMOUNT" value="$73.42" />
-          <InfoLine label="SIGNED AT" value="02:51:44Z UTC" muted />
-          <InfoLine label="SIGNER" value="0x9f4e...3B7" muted />
+          <InfoLine label="AMOUNT" value="$96.20" />
+          <InfoLine label="SIGNED AT" value="11:12:18Z UTC" muted />
+          <InfoLine label="SIGNER" value="0x70b4...72F6" muted />
         </div>
         <button
           type="button"

@@ -9,7 +9,7 @@ export default async function Image({ params }: Readonly<{ params: Promise<{ txH
   return foundryOgImage({
     page: "APPROVAL REQUEST",
     statLabel: "HELD TRANSACTION",
-    statValue: "$73.42",
+    statValue: "$96.20",
     detail: `${txHash.slice(0, 12)} / AWS BEDROCK`,
     hazard: true,
   });
