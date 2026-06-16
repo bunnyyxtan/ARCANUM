@@ -25,8 +25,8 @@ import {
 } from "viem";
 
 import {
-  ArcanumError,
   AgentNotAuthorizedError,
+  ArcanumError,
   EscalationRequiredError,
   InsufficientUSDCError,
   PolicyDeniedError,

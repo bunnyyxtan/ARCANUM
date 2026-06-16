@@ -72,15 +72,26 @@ console.log("");
 console.log(`Deployment artifact: ${existsSync(deploymentPath) ? "found" : "missing"}`);
 if (existsSync(deploymentPath)) {
   const deployment = JSON.parse(readFileSync(deploymentPath, "utf8"));
-  for (const key of ["walletFactory", "policyEngine", "escalationManager", "anomalyOracle", "vendorRegistry", "usdc"]) {
+  for (const key of [
+    "walletFactory",
+    "policyEngine",
+    "escalationManager",
+    "anomalyOracle",
+    "vendorRegistry",
+    "usdc",
+  ]) {
     console.log(`- ${key}: ${classifyAddress(deployment[key])}`);
   }
 }
 
 console.log("");
 if (hasBlockingIssue) {
-  console.log("Next step: set the missing env vars in PowerShell, then run the dry-run command from MANUAL_ARC_TESTNET_DEPLOY.md.");
+  console.log(
+    "Next step: set the missing env vars in PowerShell, then run the dry-run command from MANUAL_ARC_TESTNET_DEPLOY.md.",
+  );
   process.exitCode = 1;
 } else {
-  console.log("Next step: run forge build, forge test, then the dry-run command from MANUAL_ARC_TESTNET_DEPLOY.md.");
+  console.log(
+    "Next step: run forge build, forge test, then the dry-run command from MANUAL_ARC_TESTNET_DEPLOY.md.",
+  );
 }

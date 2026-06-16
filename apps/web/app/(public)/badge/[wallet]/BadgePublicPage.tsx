@@ -78,7 +78,11 @@ export function BadgePublicPage({ wallet }: BadgePublicPageProps) {
             href="/dashboard"
             className="flex cursor-pointer items-center gap-2.5 hover:text-[#EDF0F3]"
           >
-            <img src="/brand/arcanum-mark.png" alt="Arcanum" className="h-6 w-6 object-contain" />
+            <img
+              src="/brand/arcanum-logo.png"
+              alt="Arcanum"
+              className="h-8 w-auto object-contain"
+            />
             <span className="font-cond text-[16px] font-bold tracking-[0.18em]">ARCANUM</span>
             <span className="text-[10px] tracking-[0.16em] text-[#5B626C]">/ PUBLIC BADGE</span>
           </Link>
@@ -137,7 +141,7 @@ export function BadgePublicPage({ wallet }: BadgePublicPageProps) {
                 <div className="flex min-h-[92px] flex-col lg:flex-row lg:items-center">
                   <div className="flex min-h-[92px] w-full items-center gap-3 border-b border-[#282C34] px-5 lg:w-[190px] lg:border-b-0 lg:border-r">
                     <img
-                      src="/brand/arcanum-mark.png"
+                      src="/brand/arcanum-logo.png"
                       alt="Arcanum"
                       className="h-9 w-9 object-contain"
                     />

@@ -1,6 +1,6 @@
 "use client";
 
-import { type ArcanumWorkspaceMode, isDemoOwnerWallet } from "@arcanum/shared";
+import type { ArcanumWorkspaceMode } from "@arcanum/shared";
 import { useEffect, useState } from "react";
 import { useAccount } from "wagmi";
 
@@ -95,8 +95,6 @@ export function useWorkspaceMode() {
   let dataMode: ArcanumWorkspaceMode = "disconnected";
   if (isConnected && !signedForConnectedWallet) {
     dataMode = "connected_unsigned";
-  } else if (signedForConnectedWallet && isDemoOwnerWallet(signedAddress)) {
-    dataMode = "demo";
   } else if (signedForConnectedWallet) {
     dataMode = "live_empty";
   }
@@ -106,7 +104,7 @@ export function useWorkspaceMode() {
     dataMode,
     isAuthenticated: signedForConnectedWallet,
     isConnected,
-    isDemo: dataMode === "demo",
+    isDemo: false,
     sessionStatus: session.status,
     signedAddress,
   };

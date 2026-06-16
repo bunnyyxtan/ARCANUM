@@ -30,9 +30,6 @@ const indexedEmptyCopy: Record<WorkspaceEmptyEntity, { description: string; titl
 };
 
 export function getWorkspaceHeaderLabel(mode: ArcanumWorkspaceMode) {
-  if (mode === "demo") {
-    return "DEMO WORKSPACE";
-  }
   if (mode === "disconnected") {
     return "NO WALLET";
   }
@@ -43,9 +40,6 @@ export function getWorkspaceHeaderLabel(mode: ArcanumWorkspaceMode) {
 }
 
 export function getWorkspaceFooterLabel(mode: ArcanumWorkspaceMode) {
-  if (mode === "demo") {
-    return "DEMO WORKSPACE";
-  }
   if (mode === "disconnected") {
     return "CONNECT WALLET";
   }
@@ -60,9 +54,6 @@ export function getWorkspaceStatusColor(mode: ArcanumWorkspaceMode) {
 }
 
 export function getWorkspaceSwitcherMessage(mode: ArcanumWorkspaceMode) {
-  if (mode === "demo") {
-    return "ORG SWITCHER / Demo workspace loaded";
-  }
   if (mode === "disconnected") {
     return "ORG SWITCHER / Connect wallet to load workspace";
   }
@@ -73,14 +64,6 @@ export function getWorkspaceSwitcherMessage(mode: ArcanumWorkspaceMode) {
 }
 
 export function getWorkspaceNotificationItems(mode: ArcanumWorkspaceMode) {
-  if (mode === "demo") {
-    return [
-      ["ESCALATION", "Cloud Ops Agent compute request is waiting for quorum."],
-      ["ANOMALY", "Treasury Guard Agent remains under simulated restraint."],
-      ["WORKSPACE", "Simulated agent activity is loaded for this walkthrough."],
-    ] as const;
-  }
-
   if (mode === "disconnected") {
     return [["WORKSPACE", "Connect wallet to load your governed workspace."]] as const;
   }
@@ -111,10 +94,6 @@ export function getWorkspaceEmptyCopy(mode: ArcanumWorkspaceMode, entity: Worksp
 }
 
 export function getSettingsWorkspaceSummary(mode: ArcanumWorkspaceMode, isAuthenticated: boolean) {
-  if (mode === "demo") {
-    return { caption: "SIMULATED WALKTHROUGH", label: "DEMO WORKSPACE" };
-  }
-
   if (mode === "disconnected") {
     return { caption: "LOAD YOUR WORKSPACE", label: "CONNECT WALLET" };
   }

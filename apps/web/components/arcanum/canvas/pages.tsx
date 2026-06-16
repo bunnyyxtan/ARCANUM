@@ -1,6 +1,6 @@
 "use client";
 
-import { DEFAULT_ARCANUM_DEMO_OWNER_WALLET, arcTestnet } from "@arcanum/shared";
+import { arcTestnet } from "@arcanum/shared";
 import {
   ArrowLeft,
   ArrowRight,
@@ -1186,18 +1186,15 @@ function DashboardPostureCard({
   mode,
   posture,
 }: Readonly<{ mode: ReturnType<typeof useWorkspaceMode>["dataMode"]; posture: number }>) {
-  const active = mode === "demo" || posture > 0;
+  const active = posture > 0;
   const postureLabel = active ? (posture >= 70 ? "FORTIFIED" : "WATCHING") : "WAITING";
-  const statusLine =
-    mode === "demo"
-      ? "3 PTS / 24H"
-      : active
-        ? "LIVE INDEXED"
-        : mode === "disconnected"
-          ? "CONNECT WALLET"
-          : mode === "connected_unsigned"
-            ? "SIGN IN"
-            : "NOT STARTED";
+  const statusLine = active
+    ? "LIVE INDEXED"
+    : mode === "disconnected"
+      ? "CONNECT WALLET"
+      : mode === "connected_unsigned"
+        ? "SIGN IN"
+        : "NOT STARTED";
 
   return (
     <Surface className="relative border border-[#282C34] bg-[#181B21] p-6" index={0}>
@@ -1221,17 +1218,7 @@ function DashboardPostureCard({
       <Gauge value={posture} marker={90} markerLabel="90 Y" />
       <div className="mt-7 border-t border-[#282C34] pt-3 text-[11px] leading-relaxed text-[#8A909B]">
         {active ? (
-          mode === "demo" ? (
-            <>
-              Demo surveillance active across all subsystems.{" "}
-              <span className="text-[#FF5A1F]">
-                1 agent under <GlossaryTermInline term="RESTRAINT">restraint</GlossaryTermInline>.
-              </span>{" "}
-              Demo data visible for the configured workspace.
-            </>
-          ) : (
-            "Indexed governance posture is derived from live wallet, policy, ledger, and anomaly activity."
-          )
+          <>Live surveillance active. </>
         ) : mode === "disconnected" ? (
           "Connect a wallet to load a governed Arc Testnet workspace."
         ) : mode === "connected_unsigned" ? (
@@ -5190,7 +5177,7 @@ export function PolicyEditorCanvasPage() {
     let cancelled = false;
 
     if (workspace.isDemo) {
-      setPolicyWalletOwner(DEFAULT_ARCANUM_DEMO_OWNER_WALLET as Address);
+      setPolicyWalletOwner("0x0000000000000000000000000000000000000000");
       setActivePolicyDraft(initialPolicyDraft);
       setPolicyDraft(initialPolicyDraft);
       setAnomalyFreezeThresholdBps(4_800n);
@@ -6036,7 +6023,7 @@ export function VendorsCanvasPage() {
     let cancelled = false;
 
     if (workspace.isDemo) {
-      setVendorWalletOwner(DEFAULT_ARCANUM_DEMO_OWNER_WALLET as Address);
+      setVendorWalletOwner("0x0000000000000000000000000000000000000000");
       setVendorOwnerReadStatus("ready");
       return () => {
         cancelled = true;
@@ -8367,7 +8354,7 @@ function SignedCard() {
 function PublicLogo() {
   return (
     <div className="flex items-center justify-center gap-2">
-      <img src="/brand/arcanum-mark.png" alt="Arcanum" className="h-6 w-6 object-contain" />
+      <img src="/brand/arcanum-logo.png" alt="Arcanum" className="h-8 w-auto object-contain" />
       <span className="font-cond text-[16px] font-bold tracking-[0.18em] text-[#EDF0F3]">
         ARCANUM
       </span>
@@ -8817,7 +8804,11 @@ export function DocsCanvasPage() {
       <aside className="flex max-h-[45vh] w-full shrink-0 flex-col overflow-hidden border-b border-[#282C34] bg-[#16181D] lg:sticky lg:top-0 lg:h-screen lg:max-h-none lg:w-[268px] lg:border-b-0 lg:border-r">
         <div className="flex h-[52px] items-center gap-2.5 border-b border-[#282C34] px-5">
           <Link href="/dashboard" className="flex items-center gap-2.5 hover:text-[#EDF0F3]">
-            <img src="/brand/arcanum-mark.png" alt="Arcanum" className="h-5 w-5 object-contain" />
+            <img
+              src="/brand/arcanum-logo.png"
+              alt="Arcanum"
+              className="h-8 w-auto object-contain"
+            />
             <span className="font-cond text-[16px] font-bold tracking-[0.16em] text-[#EDF0F3]">
               ARCANUM
             </span>
