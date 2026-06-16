@@ -5,12 +5,12 @@ import { paymentIntentInputSchema } from "@arcanum/shared";
 import { PolicyDeniedError, WalletFrozenError } from "./errors";
 import {
   ArcanumClient,
-  createPaymentIntentMessage,
-  encodeExecuteUSDC,
   type ExecuteUSDCInput,
   type ExecuteUSDCResult,
   type PaymentIntentInput,
   type PaymentIntentResult,
+  createPaymentIntentMessage,
+  encodeExecuteUSDC,
 } from "./index";
 
 const paymentIntent = {
