@@ -30,26 +30,36 @@ const jetBrainsMono = JetBrains_Mono({
 });
 
 const publicOrigin = configuredPublicOrigin();
-const publicDescription = "Arc Testnet prototype for non-custodial AI agent spend governance.";
+const publicDescription =
+  "Open, non-custodial governance for autonomous agent wallets on Arc. Spending limits, vendor rules, signer control, approval flows, and risk checks before funds move.";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(publicOrigin),
-  title: "ARCANUM",
+  metadataBase: new URL("https://thearcanum.in"),
+  title: "Arcanum — Governed Wallets for Autonomous AI Money",
   description: publicDescription,
   alternates: {
-    canonical: "/",
+    canonical: "https://thearcanum.in",
   },
   openGraph: {
-    title: "ARCANUM",
+    title: "Arcanum — Governed Wallets for Autonomous AI Money",
     description: publicDescription,
-    url: publicOrigin,
+    url: "https://thearcanum.in",
     siteName: "ARCANUM",
     type: "website",
+    images: [
+      {
+        url: "https://thearcanum.in/og/arcanum-og.png",
+        width: 1200,
+        height: 630,
+        alt: "Arcanum — Governed Wallets for Autonomous AI Money",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "ARCANUM",
-    description: publicDescription,
+    title: "Arcanum — Governed Wallets for Autonomous AI Money",
+    description: "Governance layer for autonomous agent wallets on Arc.",
+    images: ["https://thearcanum.in/og/arcanum-og.png"],
   },
   icons: {
     icon: [
