@@ -41,30 +41,12 @@ function categoryLabel(category: Category) {
   return category.toUpperCase();
 }
 
-const knownAgents: Record<string, string> = {
-  "30000000-0000-4000-8000-000000000001": "Research Agent",
-  "30000000-0000-4000-8000-000000000002": "Cloud Ops Agent",
-  "30000000-0000-4000-8000-000000000003": "Market Intel Agent",
-  "30000000-0000-4000-8000-000000000004": "Treasury Guard Agent",
-  "30000000-0000-4000-8000-000000000005": "Security Monitor Agent",
-};
-
-const knownVendors: Record<string, string> = {
-  "0x71c700000000000000000000000000000000fe19": "OpenAI",
-  "0x4a2b000000000000000000000000000000008c0d": "Anthropic",
-  "0x3f1900000000000000000000000000000000aa52": "Perplexity",
-  "0x9dd400000000000000000000000000000000b71a": "AWS Bedrock",
-  "0x88e10000000000000000000000000000000007bb": "Cloudflare",
-  "0x77fa0000000000000000000000000000000012dd": "Vercel AI Gateway",
-  "0x1234000000000000000000000000000000005678": "Stripe Treasury Sandbox",
-};
-
 function agentName(agentId: string | null | undefined, fallback = "Agent") {
-  return agentId ? (knownAgents[agentId] ?? fallback) : fallback;
+  return fallback;
 }
 
 function vendorName(address: string | null | undefined) {
-  return address ? (knownVendors[address.toLowerCase()] ?? shortAddress(address)) : "Counterparty";
+  return address ? shortAddress(address) : "Counterparty";
 }
 
 function agentStatus(status: string): AgentStatus {
@@ -231,7 +213,7 @@ export function useLiveAnomalies() {
     score: Number(item.sigma),
     narrative: item.reason,
     suggestedAction: item.severity === "danger" ? "freeze" : "investigate",
-    points: [1.1, 2.4, 3.2, Number(item.sigma)],
+    points: [0, 0, 0, Number(item.sigma)],
     flaggedPoint: 3,
     timestamp: formatTimestampOrNA(item.createdAt),
   }));

@@ -3,7 +3,7 @@ import type { DocsThemeConfig } from "nextra-theme-docs";
 const config: DocsThemeConfig = {
   logo: (
     <span className="flex items-center gap-2">
-      <img src="/brand/arcanum-mark.png" alt="Arcanum" width="24" height="24" />
+      <img src="/brand/arcanum-logo.png" alt="Arcanum" width="32" height="32" />
       <span style={{ fontWeight: 800, letterSpacing: "0.18em" }}>ARCANUM</span>
     </span>
   ),

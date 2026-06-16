@@ -13,12 +13,10 @@ export const vendorAddInputSchema = z.object({
   perVendorCap: z.number().nonnegative().default(0),
 });
 
-export const vendorUpdateInputSchema = vendorAddInputSchema
-  .partial()
-  .extend({
-    id: uuidSchema,
-    status: vendorStatusSchema.optional(),
-  });
+export const vendorUpdateInputSchema = vendorAddInputSchema.partial().extend({
+  id: uuidSchema,
+  status: vendorStatusSchema.optional(),
+});
 
 export const vendorRemoveInputSchema = z.object({
   id: uuidSchema,

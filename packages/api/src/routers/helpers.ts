@@ -1,6 +1,5 @@
 import { defaultTenantId } from "@arcanum/db";
 import { agents, wallets } from "@arcanum/db/schema";
-import { isDemoOwnerWallet } from "@arcanum/shared";
 import { and, eq, or } from "drizzle-orm";
 import { isAddress } from "viem";
 
@@ -19,7 +18,7 @@ export function actorFor(ctx: ApiContext) {
 }
 
 export function canUseDemoFallback(ctx: ApiContext) {
-  return isDemoOwnerWallet(ctx.session?.walletAddress, process.env.ARCANUM_DEMO_OWNER_WALLET);
+  return false;
 }
 
 export function toUsdcBaseUnits(amount: number) {

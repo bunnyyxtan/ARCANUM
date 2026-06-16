@@ -486,7 +486,7 @@ function ConsolePreviewSection() {
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center">
                   <img
-                    src="/brand/arcanum-mark.png"
+                    src="/brand/arcanum-logo.png"
                     alt="Arcanum"
                     className="h-full w-full object-contain"
                   />
@@ -618,7 +618,7 @@ function LandingHeader() {
   return (
     <header className="flex h-[52px] items-center justify-between border-b border-[#282C34] bg-[#16181D] px-5">
       <Link href="/" className="flex items-center gap-2.5">
-        <img src="/brand/arcanum-mark.png" alt="Arcanum" className="h-5 w-5 object-contain" />
+        <img src="/brand/arcanum-logo.png" alt="Arcanum" className="h-8 w-auto object-contain" />
         <span className="font-cond text-[17px] font-bold tracking-[0.16em] text-[#EDF0F3]">
           ARCANUM
         </span>
@@ -629,7 +629,7 @@ function LandingHeader() {
           className="flex h-8 items-center gap-2 border border-[#282C34] bg-[#101216] px-3 text-[11px] tracking-[0.1em] text-[#8A909B] hover:text-[#D7DBE0]"
         >
           <BookOpen className="h-3.5 w-3.5" />
-          DOCS
+          GUIDE
         </Link>
         <a
           href="https://github.com/bunnyyxtan/ARCANUM"

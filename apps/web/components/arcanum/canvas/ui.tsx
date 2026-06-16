@@ -101,7 +101,7 @@ export function GovernanceFrame({
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const hoverProps = reduced ? {} : { initial: "rest", variants: hoverLift, whileHover: "hover" };
   const workspace = useWorkspaceMode();
-  const showSeededBadges = workspace.dataMode === "demo";
+  const showSeededBadges = false;
   const visibleBellCount = showSeededBadges ? bellCount : 0;
   const orgLabel = getWorkspaceHeaderLabel(workspace.dataMode);
   const displayFile = file.replace("DEMO-WORKSPACE", orgLabel);
@@ -125,7 +125,11 @@ export function GovernanceFrame({
             aria-label="Open dashboard"
             className="flex min-w-0 items-center gap-2.5 overflow-hidden"
           >
-            <img src="/brand/arcanum-mark.png" alt="Arcanum" className="h-5 w-5 object-contain" />
+            <img
+              src="/brand/arcanum-logo.png"
+              alt="Arcanum"
+              className="h-8 w-auto object-contain"
+            />
             <span className="truncate font-cond text-[17px] font-bold tracking-[0.16em] text-[#EDF0F3]">
               ARCANUM
             </span>
@@ -166,7 +170,7 @@ export function GovernanceFrame({
             className="hidden h-8 items-center gap-2 border border-[#282C34] bg-[#101216] px-3 text-[11px] tracking-[0.1em] text-[#8A909B] hover:text-[#D7DBE0] sm:flex"
           >
             <BookOpen className="h-3.5 w-3.5" strokeWidth={iconStroke} />
-            DOCS
+            GUIDE
           </Link>
           <Link
             href="/settings"
@@ -283,13 +287,7 @@ export function GovernanceFrame({
           {showRange ? (
             <MotionButton
               type="button"
-              onClick={() =>
-                toast.info(
-                  workspace.dataMode === "demo"
-                    ? "TIME RANGE / Demo data is fixed to 24H"
-                    : "TIME RANGE / Live read model window",
-                )
-              }
+              onClick={() => toast.info("TIME RANGE / Live read model window")}
               {...hoverProps}
               className="flex items-center gap-1.5 border border-[#282C34] px-2 py-1 text-[#8A909B] hover:text-[#D7DBE0]"
             >

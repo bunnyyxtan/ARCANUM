@@ -10,7 +10,6 @@ import type {
   Vendor,
   Wallet,
 } from "@arcanum/db/schema";
-import { isDemoOwnerWallet } from "@arcanum/shared";
 
 import type { ApiContext } from "./context";
 import { fallbackAgents, fallbackOrgId, fallbackWallets } from "./mock-fallback";
@@ -802,18 +801,10 @@ function requiredStringField(row: SupabaseRow | undefined, keys: string[], label
 }
 
 function workspaceNameForWallet(walletAddress: string) {
-  if (isDemoOwnerWallet(walletAddress, process.env.ARCANUM_DEMO_OWNER_WALLET)) {
-    return process.env.ARCANUM_DEMO_ORG_NAME ?? "Demo Workspace";
-  }
-
   return "Arcanum Workspace";
 }
 
 function workspaceSlugForWallet(walletAddress: string) {
-  if (isDemoOwnerWallet(walletAddress, process.env.ARCANUM_DEMO_OWNER_WALLET)) {
-    return process.env.ARCANUM_DEMO_ORG_SLUG ?? "demo-workspace";
-  }
-
   return `arcanum-${walletAddress.slice(2, 10)}`;
 }
 

@@ -33,7 +33,7 @@ export function DocsPage() {
     <main className="flex min-h-screen w-full bg-coal-grid text-ash">
       <aside className="flex w-docs-rail shrink-0 flex-col border-line-subtle border-r bg-panel-top">
         <div className="flex h-chrome items-center gap-2.5 border-line-subtle border-b px-5">
-          <img src="/brand/arcanum-mark.png" alt="Arcanum" className="size-5 object-contain" />
+          <img src="/brand/arcanum-logo.png" alt="Arcanum" className="h-8 w-auto object-contain" />
           <span className="font-display text-[16px] font-bold text-ash-bright tracking-[0.16em]">
             ARCANUM
           </span>
