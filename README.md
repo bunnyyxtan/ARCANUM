@@ -111,7 +111,6 @@ Explorer: [https://testnet.arcscan.app](https://testnet.arcscan.app)
 | EscalationManager | `0x6E03e0030fCeE242E2cCB77Da8D7C6c93a36A37E` |
 | AnomalyOracle | `0x7A80C967A69E1d1a6bb2286089BB5945f3274cf4` |
 | VendorRegistry | `0x4A4d419292F2E374421B45907861BBB5adA6eF82` |
-| USDC | `0x3600000000000000000000000000000000000000` |
 
 These are testnet contracts. Do not treat them as audited mainnet infrastructure.
 
