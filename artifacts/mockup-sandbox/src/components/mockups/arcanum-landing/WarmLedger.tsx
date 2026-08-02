@@ -4,32 +4,13 @@ const orange = "#ff3c00";
 
 import metamaskLogo from "./assets/metamask.png";
 import rabbyLogo from "./assets/rabby.png";
-import rainbowLogo from "./assets/rainbow.png";
 import coinbaseLogo from "./assets/coinbase.png";
-import walletConnectLogo from "./assets/walletconnect.png";
-import ledgerLogo from "./assets/ledger.png";
 
 type WalletOption = { name: string; hint: string; logo: string; tag?: string };
-const WALLET_GROUPS: { group: string; wallets: WalletOption[] }[] = [
-  {
-    group: "OPERATOR / BROWSER",
-    wallets: [
-      { name: "MetaMask", hint: "Browser extension", logo: metamaskLogo, tag: "INSTALLED" },
-      { name: "Rabby", hint: "Browser extension", logo: rabbyLogo },
-      { name: "Coinbase Wallet", hint: "Extension · mobile", logo: coinbaseLogo },
-    ],
-  },
-  {
-    group: "MOBILE / QR",
-    wallets: [
-      { name: "Rainbow", hint: "Scan with Rainbow", logo: rainbowLogo },
-      { name: "WalletConnect", hint: "Any mobile wallet", logo: walletConnectLogo },
-    ],
-  },
-  {
-    group: "HARDWARE",
-    wallets: [{ name: "Ledger", hint: "Policy-gated sessions", logo: ledgerLogo }],
-  },
+const WALLET_OPTIONS: WalletOption[] = [
+  { name: "MetaMask", hint: "Browser extension", logo: metamaskLogo, tag: "INSTALLED" },
+  { name: "Rabby", hint: "Browser extension", logo: rabbyLogo },
+  { name: "Coinbase Wallet", hint: "Extension · mobile", logo: coinbaseLogo },
 ];
 
 function Arrow() {
@@ -318,28 +299,21 @@ export function WarmLedger() {
             <div className="px-7 pb-7 pt-6">
               <h2 className="text-[26px] font-semibold leading-[1.02] tracking-[-.05em]">Connect your governed wallet.</h2>
               <p className="mt-3 text-[13.5px] leading-[1.55] text-[#655d56]">ARCANUM never takes custody. Sign in to inspect the governed ledger and manage policies.</p>
-              <div className="mt-5 space-y-4">
-                {WALLET_GROUPS.map(({ group, wallets }) => (
-                  <div key={group}>
-                    <p className="mb-2 font-mono text-[8.5px] tracking-[.18em] text-[#a39a91]">{group}</p>
-                    <div className="space-y-2">
-                      {wallets.map((option) => (
-                        <button key={option.name} type="button" onClick={() => { setChosenWallet(option); setConnecting(true); }} className="warm-wallet-option flex w-full items-center gap-3.5 border border-[#ded7d0] bg-white/50 px-3.5 py-2.5 text-left">
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center border border-[#e3dcd5] bg-white">
-                            <img src={option.logo} alt="" className="h-6 w-6 object-contain" />
-                          </span>
-                          <span className="flex-1">
-                            <span className="flex items-center gap-2">
-                              <span className="block text-[13.5px] font-semibold tracking-[-.01em]">{option.name}</span>
-                              {option.tag && <span className="rounded-full bg-[#e7f0e5] px-2 py-0.5 font-mono text-[8px] tracking-[.1em] text-[#3f653e]">{option.tag}</span>}
-                            </span>
-                            <span className="mt-0.5 block font-mono text-[9px] tracking-[.06em] text-[#a39a91]">{option.hint.toUpperCase()}</span>
-                          </span>
-                          <span className="warm-wallet-arrow font-mono text-[12px] text-[#ff3c00]">→</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+              <div className="mt-6 space-y-2.5">
+                {WALLET_OPTIONS.map((option) => (
+                  <button key={option.name} type="button" onClick={() => { setChosenWallet(option); setConnecting(true); }} className="warm-wallet-option flex w-full items-center gap-3.5 border border-[#ded7d0] bg-white/50 px-3.5 py-3 text-left">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center border border-[#e3dcd5] bg-white">
+                      <img src={option.logo} alt="" className="h-6 w-6 object-contain" />
+                    </span>
+                    <span className="flex-1">
+                      <span className="flex items-center gap-2">
+                        <span className="block text-[13.5px] font-semibold tracking-[-.01em]">{option.name}</span>
+                        {option.tag && <span className="rounded-full bg-[#e7f0e5] px-2 py-0.5 font-mono text-[8px] tracking-[.1em] text-[#3f653e]">{option.tag}</span>}
+                      </span>
+                      <span className="mt-0.5 block font-mono text-[9px] tracking-[.06em] text-[#a39a91]">{option.hint.toUpperCase()}</span>
+                    </span>
+                    <span className="warm-wallet-arrow font-mono text-[12px] text-[#ff3c00]">→</span>
+                  </button>
                 ))}
               </div>
               <div className="mt-5 flex items-center justify-between border-t border-[#e3dcd5] pt-4">
