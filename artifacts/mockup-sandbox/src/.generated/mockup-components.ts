@@ -2,14 +2,6 @@
 type ModuleMap = Record<string, () => Promise<Record<string, unknown>>>;
 export const modules: ModuleMap = {
   "./components/mockups/ArcanumFrontend.tsx": () => import("../components/mockups/ArcanumFrontend.tsx"),
-  "./components/mockups/arcanum-app/Agents.tsx": () => import("../components/mockups/arcanum-app/Agents.tsx"),
-  "./components/mockups/arcanum-app/Anomalies.tsx": () => import("../components/mockups/arcanum-app/Anomalies.tsx"),
-  "./components/mockups/arcanum-app/Dashboard.tsx": () => import("../components/mockups/arcanum-app/Dashboard.tsx"),
-  "./components/mockups/arcanum-app/Escalations.tsx": () => import("../components/mockups/arcanum-app/Escalations.tsx"),
-  "./components/mockups/arcanum-app/Ledger.tsx": () => import("../components/mockups/arcanum-app/Ledger.tsx"),
-  "./components/mockups/arcanum-app/Settings.tsx": () => import("../components/mockups/arcanum-app/Settings.tsx"),
-  "./components/mockups/arcanum-app/Status.tsx": () => import("../components/mockups/arcanum-app/Status.tsx"),
-  "./components/mockups/arcanum-app/Vendors.tsx": () => import("../components/mockups/arcanum-app/Vendors.tsx"),
   "./components/mockups/arcanum-landing/AubergineVelvet.tsx": () => import("../components/mockups/arcanum-landing/AubergineVelvet.tsx"),
   "./components/mockups/arcanum-landing/AuroraObservatory.tsx": () => import("../components/mockups/arcanum-landing/AuroraObservatory.tsx"),
   "./components/mockups/arcanum-landing/BankingGrade.tsx": () => import("../components/mockups/arcanum-landing/BankingGrade.tsx"),
@@ -30,5 +22,20 @@ export const modules: ModuleMap = {
   "./components/mockups/arcanum-landing/VaultTerminal.tsx": () => import("../components/mockups/arcanum-landing/VaultTerminal.tsx"),
   "./components/mockups/arcanum-landing/VitrineNoir.tsx": () => import("../components/mockups/arcanum-landing/VitrineNoir.tsx"),
   "./components/mockups/arcanum-landing/WarmLedger.tsx": () => import("../components/mockups/arcanum-landing/WarmLedger.tsx"),
-  "./components/mockups/arcanum-landing/WarmLedgerClassic.tsx": () => import("../components/mockups/arcanum-landing/WarmLedgerClassic.tsx")
+  "./components/mockups/arcanum-landing/WarmLedgerClassic.tsx": () => import("../components/mockups/arcanum-landing/WarmLedgerClassic.tsx"),
+  "./components/mockups/arcanum-app/AgentDetail.tsx": () => import("../components/mockups/arcanum-app/AgentDetail.tsx"),
+  "./components/mockups/arcanum-app/Agents.tsx": () => import("../components/mockups/arcanum-app/Agents.tsx"),
+  "./components/mockups/arcanum-app/Anomalies.tsx": () => import("../components/mockups/arcanum-app/Anomalies.tsx"),
+  "./components/mockups/arcanum-app/Approve.tsx": () => import("../components/mockups/arcanum-app/Approve.tsx"),
+  "./components/mockups/arcanum-app/Badge.tsx": () => import("../components/mockups/arcanum-app/Badge.tsx"),
+  "./components/mockups/arcanum-app/Dashboard.tsx": () => import("../components/mockups/arcanum-app/Dashboard.tsx"),
+  "./components/mockups/arcanum-app/Docs.tsx": () => import("../components/mockups/arcanum-app/Docs.tsx"),
+  "./components/mockups/arcanum-app/Escalations.tsx": () => import("../components/mockups/arcanum-app/Escalations.tsx"),
+  "./components/mockups/arcanum-app/Explorer.tsx": () => import("../components/mockups/arcanum-app/Explorer.tsx"),
+  "./components/mockups/arcanum-app/Glossary.tsx": () => import("../components/mockups/arcanum-app/Glossary.tsx"),
+  "./components/mockups/arcanum-app/Ledger.tsx": () => import("../components/mockups/arcanum-app/Ledger.tsx"),
+  "./components/mockups/arcanum-app/PolicyEditor.tsx": () => import("../components/mockups/arcanum-app/PolicyEditor.tsx"),
+  "./components/mockups/arcanum-app/Settings.tsx": () => import("../components/mockups/arcanum-app/Settings.tsx"),
+  "./components/mockups/arcanum-app/Status.tsx": () => import("../components/mockups/arcanum-app/Status.tsx"),
+  "./components/mockups/arcanum-app/Vendors.tsx": () => import("../components/mockups/arcanum-app/Vendors.tsx")
 };

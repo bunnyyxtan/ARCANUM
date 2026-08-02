@@ -1,0 +1,8 @@
+import { useEffect } from "react";
+
+export function ShortcutsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  useEffect(() => { if (!open) return; const onKey = (event: KeyboardEvent) => event.key === "Escape" && onClose(); window.addEventListener("keydown", onKey); return () => window.removeEventListener("keydown", onKey); }, [open, onClose]);
+  if (!open) return null;
+  const shortcuts = [["⌘ K", "Open command palette"], ["?", "Show keyboard shortcuts"], ["ESC", "Close open overlay"], ["↑ ↓", "Move through palette"]];
+  return <div className="fixed inset-0 z-[65] flex items-center justify-center bg-[rgba(41,37,34,.14)] p-5" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts" onClick={onClose}><div className="w-full max-w-[420px] border border-[#bdb4aa] bg-[#faf6f1] p-6 shadow-[12px_14px_0_#e7e0d9]" onClick={(event) => event.stopPropagation()}><div className="flex items-start justify-between border-b border-[#ded7d0] pb-4"><div><p className="font-mono text-[9px] uppercase tracking-[.17em] text-[#ff3c00]">OPERATOR / REFERENCE</p><h2 className="mt-2 text-2xl font-semibold tracking-[-.06em]">Keyboard shortcuts</h2></div><button type="button" onClick={onClose} className="font-mono text-[9px] text-[#837a72]">CLOSE</button></div><div className="divide-y divide-[#e3dcd5]">{shortcuts.map(([key, label]) => <div key={key} className="flex items-center justify-between py-4"><span className="text-[13px] text-[#655d56]">{label}</span><kbd className="border border-[#cfc5bc] bg-[#f5f0ea] px-2 py-1 font-mono text-[9px] text-[#292522]">{key}</kbd></div>)}</div></div></div>;
+}

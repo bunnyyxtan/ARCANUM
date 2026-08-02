@@ -129,7 +129,7 @@ export function Escalations() {
               </div>
               <div className="flex flex-wrap items-center gap-2 border-t border-[#ded7d0] pt-5">
                 {isPending ? <>
-                  <button onClick={() => updateStatus(item.id, "APPROVED")} className="arc-pill rounded-full bg-[#ff3c00] px-4 py-2.5 text-[10px] font-semibold text-[#faf6f1]">Approve</button>
+                   <a data-nav="APPROVE" href="#approve" className="arc-pill rounded-full bg-[#ff3c00] px-4 py-2.5 text-[10px] font-semibold text-[#faf6f1]" onClick={() => updateStatus(item.id, "APPROVED")}>Approve</a>
                   <button onClick={() => updateStatus(item.id, "REJECTED")} className="arc-pill arc-ghost rounded-full border border-[#ded7d0] px-4 py-2.5 text-[10px] font-semibold">Reject</button>
                 </> : <span className="font-mono text-[9px] tracking-[.12em] text-[#3f653e]">FINAL DECISION COMMITTED TO LEDGER</span>}
                 <button onClick={() => copyPortal(item.id)} className="ml-auto rounded-full border border-[#ded7d0] px-4 py-2.5 font-mono text-[9px] tracking-[.08em] text-[#776f68] transition-colors duration-[220ms] hover:border-[#292522] hover:text-[#292522]">Copy approver portal link</button>

@@ -9,6 +9,13 @@ import { Escalations } from './arcanum-app/Escalations';
 import { Anomalies } from './arcanum-app/Anomalies';
 import { Settings } from './arcanum-app/Settings';
 import { Status } from './arcanum-app/Status';
+import { AgentDetail } from './arcanum-app/AgentDetail';
+import { PolicyEditor } from './arcanum-app/PolicyEditor';
+import { Approve } from './arcanum-app/Approve';
+import { Explorer } from './arcanum-app/Explorer';
+import { Badge } from './arcanum-app/Badge';
+import { Docs } from './arcanum-app/Docs';
+import { Glossary } from './arcanum-app/Glossary';
 
 type PageKey =
   | 'LANDING'
@@ -19,7 +26,14 @@ type PageKey =
   | 'ESCALATIONS'
   | 'ANOMALIES'
   | 'SETTINGS'
-  | 'STATUS';
+  | 'STATUS'
+  | 'AGENT_DETAIL'
+  | 'POLICY_EDITOR'
+  | 'DOCS'
+  | 'GLOSSARY'
+  | 'EXPLORER'
+  | 'BADGE'
+  | 'APPROVE';
 
 const PAGES: Record<PageKey, () => ReactElement> = {
   LANDING: WarmLedger,
@@ -31,9 +45,14 @@ const PAGES: Record<PageKey, () => ReactElement> = {
   ANOMALIES: Anomalies,
   SETTINGS: Settings,
   STATUS: Status,
+  AGENT_DETAIL: AgentDetail,
+  POLICY_EDITOR: PolicyEditor,
+  DOCS: Docs,
+  GLOSSARY: Glossary,
+  EXPLORER: Explorer,
+  BADGE: Badge,
+  APPROVE: Approve,
 };
-
-const PAGE_KEYS = Object.keys(PAGES) as Array<PageKey>;
 
 /** Labels that appear inside the mockups' own navs / CTAs, mapped to pages. */
 const LABEL_TO_PAGE: Record<string, PageKey> = {
@@ -46,6 +65,11 @@ const LABEL_TO_PAGE: Record<string, PageKey> = {
   ANOMALIES: 'ANOMALIES',
   SETTINGS: 'SETTINGS',
   STATUS: 'STATUS',
+  DOCS: 'DOCS',
+  GUIDE: 'DOCS',
+  GLOSSARY: 'GLOSSARY',
+  EXPLORER: 'EXPLORER',
+  BADGE: 'BADGE',
   'LAUNCH DASHBOARD': 'DASHBOARD',
   'LAUNCH DASHBOARD ↗': 'DASHBOARD',
   'ARCANUM.': 'LANDING',
@@ -54,7 +78,9 @@ const LABEL_TO_PAGE: Record<string, PageKey> = {
 /**
  * Single-frame preview of the entire Warm Ledger frontend.
  * Renders each page mockup full-bleed and makes their built-in nav links
- * actually switch pages through the product's own navigation.
+ * actually switch pages. Navigation resolves in two ways:
+ * 1. an explicit `data-nav="PAGE_KEY"` attribute on the link/button, or
+ * 2. the link/button's visible label matching a known page name.
  */
 export function ArcanumFrontend() {
   const [page, setPage] = useState<PageKey>('LANDING');
@@ -70,10 +96,12 @@ export function ArcanumFrontend() {
   }, []);
 
   const onClickCapture = useCallback((e: MouseEvent<HTMLDivElement>) => {
-    const el = (e.target as HTMLElement).closest('a, button');
+    const el = (e.target as HTMLElement).closest<HTMLElement>('[data-nav], a, button');
     if (!el) return;
+    const navKey = el.dataset.nav?.trim().toUpperCase();
     const label = (el.textContent ?? '').trim().toUpperCase();
     const target =
+      (navKey && navKey in PAGES ? (navKey as PageKey) : undefined) ??
       LABEL_TO_PAGE[label] ??
       (label.startsWith('LAUNCH DASHBOARD') ? 'DASHBOARD' : undefined);
     if (target) {

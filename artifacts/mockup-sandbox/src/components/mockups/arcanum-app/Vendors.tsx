@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { Header } from "./_shared/Header";
 
 type VendorState = "APPROVED" | "BLOCKED";
@@ -60,6 +60,19 @@ export function Vendors() {
   const [showAdd, setShowAdd] = useState(false);
   const [notice, setNotice] = useState("ALLOWLIST / 30 DAY WINDOW");
   const [newName, setNewName] = useState("");
+  const [menu, setMenu] = useState<string | null>(null);
+  useEffect(() => {
+    const close = (event: KeyboardEvent) => event.key === "Escape" && setMenu(null);
+    const closeOutside = (event: PointerEvent) => {
+      if (!(event.target as HTMLElement).closest?.("[data-vendor-menu]")) setMenu(null);
+    };
+    window.addEventListener("keydown", close);
+    window.addEventListener("pointerdown", closeOutside);
+    return () => {
+      window.removeEventListener("keydown", close);
+      window.removeEventListener("pointerdown", closeOutside);
+    };
+  }, []);
   const selected = vendors.find((vendor) => vendor.name === selectedName) ?? vendors[0];
   const visible = useMemo(() => vendors.filter((vendor) => (category === "ALL" || vendor.category === category) && `${vendor.name} ${vendor.address}`.toLowerCase().includes(query.toLowerCase())), [vendors, category, query]);
 
@@ -102,14 +115,14 @@ export function Vendors() {
         <div className="hidden grid-cols-[1.1fr_.7fr_1fr_1.2fr_.8fr_.65fr] gap-4 border-b border-[#ded7d0] px-4 py-3 font-mono text-[9px] uppercase tracking-[.14em] text-[#9b9289] lg:grid"><span>Vendor</span><span>Category</span><span>Per-vendor cap</span><span>Approved by</span><span>30d volume</span><span>State</span></div>
         <div className="divide-y divide-[#e3dcd5] border-b border-[#ded7d0]">
           {visible.map((vendor, index) => (
-            <button type="button" key={vendor.name} onClick={() => { setSelectedName(vendor.name); setNotice(`${vendor.name.toUpperCase()} SELECTED · DETAIL RAIL READY`); }} style={{ "--row": index } as CSSProperties} className={`vendor-row grid w-full gap-3 px-4 py-5 text-left lg:grid-cols-[1.1fr_.7fr_1fr_1.2fr_.8fr_.65fr] lg:items-center ${selected?.name === vendor.name ? "bg-[#f5f0ea]" : ""}`}>
+             <div key={vendor.name} onClick={() => { setSelectedName(vendor.name); setNotice(`${vendor.name.toUpperCase()} SELECTED · DETAIL RAIL READY`); }} onKeyDown={(event) => event.key === "Enter" && setSelectedName(vendor.name)} role="button" tabIndex={0} style={{ "--row": index } as CSSProperties} className={`vendor-row relative grid w-full gap-3 px-4 py-5 text-left lg:grid-cols-[1.1fr_.7fr_1fr_1.2fr_.8fr_.65fr] lg:items-center ${selected?.name === vendor.name ? "bg-[#f5f0ea]" : ""}`}>
               <span><strong className="block text-[13px] font-medium">{vendor.name}</strong><small className="mt-1 block font-mono text-[9px] text-[#9b9289]">{vendor.address}</small></span>
               <span className="w-fit rounded-full border border-[#ded7d0] px-2.5 py-1 font-mono text-[9px] tracking-[.1em] text-[#655d56]">{vendor.category}</span>
               <span className="font-mono text-[11px] tabular-nums text-[#655d56]">{vendor.cap}</span>
               <span><span className="block text-[12px]">{vendor.approvedBy}</span><small className="mt-1 block font-mono text-[9px] text-[#9b9289]">{vendor.date}</small></span>
               <span className="font-mono text-[11px] tabular-nums">{vendor.volume}</span>
-              <span><StatePill state={vendor.state} /></span>
-            </button>
+               <span className="flex items-center justify-between gap-3"><StatePill state={vendor.state} /><span data-vendor-menu className="relative" onClick={(event) => event.stopPropagation()}><button type="button" aria-label={`Actions for ${vendor.name}`} aria-expanded={menu === vendor.name} onClick={() => setMenu(menu === vendor.name ? null : vendor.name)} className="flex h-7 w-7 items-center justify-center font-mono text-[16px] text-[#837a72] transition-colors hover:text-[#ff3c00]">⋯</button>{menu === vendor.name && <div role="menu" className="absolute right-0 top-8 z-20 w-[190px] border border-[#cfc5bc] bg-[#fbf8f4] p-1 shadow-[8px_10px_0_#e7e0d9]"><button type="button" onClick={() => { navigator.clipboard?.writeText(vendor.address); setNotice(`${vendor.name.toUpperCase()} ADDRESS COPIED`); setMenu(null); }} className="block w-full px-3 py-2 text-left font-mono text-[9px] hover:bg-[#f5f0ea]">COPY ADDRESS</button><button type="button" onClick={() => { setNotice(`${vendor.name.toUpperCase()} OPENED ON ARCscan`); setMenu(null); }} className="block w-full px-3 py-2 text-left font-mono text-[9px] hover:bg-[#f5f0ea]">VIEW ON ARCSCAN</button><button type="button" onClick={() => { setVendors((items) => items.map((item) => item.name === vendor.name ? { ...item, state: "BLOCKED" } : item)); setNotice(`${vendor.name.toUpperCase()} BLOCKED · CONFIRMATION RECORDED`); setMenu(null); }} className="block w-full px-3 py-2 text-left font-mono text-[9px] text-[#ff3c00] hover:bg-[#f5f0ea]">BLOCK VENDOR</button><button type="button" onClick={() => { setVendors((items) => items.filter((item) => item.name !== vendor.name)); setNotice(`${vendor.name.toUpperCase()} REMOVED FROM ALLOWLIST`); setMenu(null); }} className="block w-full px-3 py-2 text-left font-mono text-[9px] text-[#ff3c00] hover:bg-[#f5f0ea]">REMOVE VENDOR</button></div>}</span></span>
+             </div>
           ))}
           <button type="button" onClick={() => setShowAdd(true)} className="flex w-full items-center gap-3 border border-dashed border-[#ded7d0] px-4 py-5 text-left text-[#837a72] transition-colors duration-[220ms] hover:border-[#ff3c00] hover:text-[#ff3c00]"><span className="font-mono text-[13px]">+</span><span className="font-mono text-[10px] uppercase tracking-[.14em]">Add vendor to allowlist</span><span className="ml-auto font-mono text-[9px]">SIGNED APPROVAL REQUIRED</span></button>
         </div>
