@@ -56,3 +56,6 @@ __pycache__/
 
 # typescript cache
 *.tsbuildinfo
+
+# Replit chat upload scratch area
+attached_assets/
