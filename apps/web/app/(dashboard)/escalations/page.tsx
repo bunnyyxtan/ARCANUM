@@ -3,6 +3,7 @@
 import { arcTestnet } from "@arcanum/shared";
 import type { Address, Hash } from "viem";
 import {
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -53,8 +54,9 @@ type TxStage =
 function EscalationCard({
   item,
   index,
+  cardId,
   onResolved,
-}: Readonly<{ item: Escalation; index: number; onResolved: () => void }>) {
+}: Readonly<{ item: Escalation; index: number; cardId: string; onResolved: () => void }>) {
   const { address, chainId, isConnected } = useAccount();
   const publicClient = usePublicClient({ chainId: arcTestnet.id });
   const { switchChainAsync, isPending: switchPending } = useSwitchChain();
@@ -237,6 +239,7 @@ function EscalationCard({
 
   return (
     <article
+      id={cardId}
       style={{ "--card-i": index } as CSSProperties}
       className={`arc-card relative border border-[var(--wl-line-bold)] bg-[var(--wl-bg-raised)] p-5 md:p-7 ${
         isNear ? "arc-card-near" : ""
@@ -371,12 +374,42 @@ export default function EscalationsPage() {
   useWorkspaceMode();
   const liveEscalations = useLiveEscalations("PENDING");
   const [resolvedIds, setResolvedIds] = useState<ReadonlySet<string>>(new Set());
+  const [notice, setNotice] = useState("");
+  const noticeTimer = useRef<number | null>(null);
+  const showNotice = (message: string) => {
+    setNotice(message);
+    if (noticeTimer.current !== null) window.clearTimeout(noticeTimer.current);
+    noticeTimer.current = window.setTimeout(() => setNotice(""), 2600);
+  };
+  useEffect(() => {
+    return () => {
+      if (noticeTimer.current !== null) window.clearTimeout(noticeTimer.current);
+    };
+  }, []);
 
   const queue = liveEscalations.data;
-  const pendingCount = useMemo(
-    () => queue.filter((item) => !resolvedIds.has(item.id)).length,
+  const pending = useMemo(
+    () => queue.filter((item) => !resolvedIds.has(item.id)),
     [queue, resolvedIds],
   );
+  const pendingCount = pending.length;
+
+  const reviewNext = () => {
+    const next = pending[0];
+    if (!next) {
+      showNotice("The queue is clear.");
+      return;
+    }
+    showNotice(`Reviewing ${shortAddress(next.id, { head: 8, tail: 4 })}, the oldest open request.`);
+    document
+      .getElementById(`escalation-${next.id}`)
+      ?.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "auto"
+          : "smooth",
+        block: "start",
+      });
+  };
 
   const loading = liveEscalations.isLoading && queue.length === 0;
   const errored = liveEscalations.isError && queue.length === 0;
@@ -405,6 +438,24 @@ export default function EscalationsPage() {
             When an agent reaches the edge of its doctrine, a human gets the final word.
           </p>
         </div>
+        <button
+          type="button"
+          onClick={reviewNext}
+          className="arc-pill group w-fit rounded-full bg-[var(--wl-signal)] px-5 py-3 text-[11px] font-semibold text-[var(--wl-bg)]"
+        >
+          Review next{" "}
+          <span className="ml-2 transition-transform duration-[220ms] group-hover:translate-x-1">
+            ↗
+          </span>
+        </button>
+      </div>
+
+      <div role="status" aria-live="polite">
+        {notice && (
+          <div className="fixed bottom-5 left-1/2 z-20 -translate-x-1/2 border border-[var(--wl-ink)] bg-[var(--wl-ink)] px-4 py-3 font-mono text-[10px] text-[var(--wl-bg)] shadow-[0_12px_28px_rgba(var(--wl-ink-rgb),.18)]">
+            {notice}
+          </div>
+        )}
       </div>
 
       <section className="grid grid-cols-3 border-b border-[var(--wl-line)]">
@@ -460,6 +511,7 @@ export default function EscalationsPage() {
               key={item.id}
               item={item}
               index={index}
+              cardId={`escalation-${item.id}`}
               onResolved={() =>
                 setResolvedIds((current) => {
                   const next = new Set(current);

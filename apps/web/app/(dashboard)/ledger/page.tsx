@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { toast } from "sonner";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
 import { getArcscanTxUrl } from "@/lib/arcscan";
 import { categoryLabel, formatUsd, formatUsdCompact } from "@/lib/format";
@@ -91,8 +90,21 @@ export default function LedgerPage() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [selected]);
 
+  const [notice, setNotice] = useState("");
+  const noticeTimer = useRef<number | null>(null);
+  const showNotice = (message: string) => {
+    setNotice(message);
+    if (noticeTimer.current !== null) window.clearTimeout(noticeTimer.current);
+    noticeTimer.current = window.setTimeout(() => setNotice(""), 2600);
+  };
+  useEffect(() => {
+    return () => {
+      if (noticeTimer.current !== null) window.clearTimeout(noticeTimer.current);
+    };
+  }, []);
+
   const flagVendor = (counterparty: string) => {
-    toast.success(`${counterparty} flagged / review marker added for this session`);
+    showNotice(`${counterparty} flagged / review marker added for this session`);
   };
 
   const openArcscan = (hash: string) => {
@@ -100,7 +112,7 @@ export default function LedgerPage() {
     if (url) {
       window.open(url, "_blank", "noopener,noreferrer");
     } else {
-      toast.info("Transaction hash is not yet indexed on Arcscan.");
+      showNotice("Transaction hash is not yet indexed on Arcscan.");
     }
   };
 
@@ -134,7 +146,7 @@ export default function LedgerPage() {
           <button
             type="button"
             onClick={() =>
-              toast.info("Ledger window / live read model is limited to the visible 24h set.")
+              showNotice("Ledger window / live read model is limited to the visible 24h set.")
             }
             className="arc-pill group w-fit rounded-full bg-[var(--wl-signal)] px-5 py-3 text-[11px] font-semibold text-[var(--wl-bg)]"
           >
@@ -346,6 +358,11 @@ export default function LedgerPage() {
             </aside>
           )}
         </div>
+        {notice && (
+          <div role="status" className="fixed bottom-5 left-1/2 z-20 -translate-x-1/2 border border-[var(--wl-ink)] bg-[var(--wl-ink)] px-4 py-3 font-mono text-[10px] text-[var(--wl-bg)] shadow-[0_12px_28px_rgba(var(--wl-ink-rgb),.18)]">
+            {notice}
+          </div>
+        )}
       </main>
     </div>
   );

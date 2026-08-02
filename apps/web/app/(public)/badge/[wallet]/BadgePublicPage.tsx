@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+
+import { ThemeToggle } from "@/components/warm/ThemeToggle";
 import { useMemo, useState } from "react";
 import { isAddress } from "viem";
 
@@ -50,20 +52,23 @@ export function BadgePublicPage({ wallet }: Readonly<{ wallet: string }>) {
   };
 
   return (
-    <main className="mx-auto max-w-[780px] px-5 py-12 text-center md:py-20">
+    <main className="min-h-[100dvh] bg-[var(--wl-bg)] text-[var(--wl-ink)]">
       <style>{`@keyframes jewel{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}.jewel{animation:jewel 560ms cubic-bezier(.16,1,.3,1) both}@media(prefers-reduced-motion:reduce){.jewel{animation:none}}`}</style>
-      <div className="mb-8 flex items-center justify-between text-left">
-        <span className="font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)]">
-          PUBLIC TRUST MARK
-        </span>
-        <Link
-          href={explorerPath}
-          className="font-mono text-[9px] uppercase tracking-[.15em] text-[var(--wl-body)] transition hover:text-[var(--wl-signal)]"
-        >
-          ← Explorer
+      <nav className="flex items-center justify-between border-b border-[var(--wl-line)] px-5 py-5 md:px-9">
+        <Link href="/" className="text-[18px] font-bold tracking-[-.05em]">
+          ARCANUM<span className="text-[var(--wl-signal)]">.</span>
         </Link>
-      </div>
-
+        <div className="flex items-center gap-4">
+          <Link
+            href={explorerPath}
+            className="font-mono text-[9px] uppercase tracking-[.15em] text-[var(--wl-body)] transition hover:text-[var(--wl-signal)]"
+          >
+            ← Explorer
+          </Link>
+          <ThemeToggle />
+        </div>
+      </nav>
+      <div className="mx-auto max-w-[780px] px-5 py-12 text-center md:py-20">
       <p className="font-mono text-[10px] uppercase tracking-[.2em] text-[var(--wl-signal)]">
         PUBLIC TRUST MARK / EMBEDDABLE
       </p>
@@ -160,6 +165,7 @@ export function BadgePublicPage({ wallet }: Readonly<{ wallet: string }>) {
       <footer className="mt-16 border-t border-[var(--wl-line)] pt-5 text-left font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-mute)]">
         ARCANUM · GOVERNED WALLETS FOR AI AGENTS
       </footer>
+      </div>
     </main>
   );
 }

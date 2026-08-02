@@ -3,6 +3,8 @@
 import { ARC_TESTNET_EXPLORER_URL, arcTestnet } from "@arcanum/shared";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Link from "next/link";
+
+import { ThemeToggle } from "@/components/warm/ThemeToggle";
 import { useEffect, useRef, useState } from "react";
 import type { Address, Hash } from "viem";
 import { useAccount, usePublicClient, useSwitchChain, useWriteContract } from "wagmi";
@@ -261,17 +263,23 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
     : null;
 
   return (
-    <main className="mx-auto max-w-[1080px] px-5 py-10 md:px-9 md:py-16">
+    <main className="min-h-[100dvh] bg-[var(--wl-bg)] text-[var(--wl-ink)]">
       <style>{`@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}.rise{animation:rise 500ms cubic-bezier(.16,1,.3,1) both}@media(prefers-reduced-motion:reduce){.rise{animation:none}.pa-action,.pa-action *{transition:none!important;transform:none!important;box-shadow:none!important}}`}</style>
-      <div className="mb-6 flex items-center justify-between">
-        <span className="hidden font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)] sm:inline">
-          PUBLIC APPROVER PORTAL
-        </span>
-        <span className="rounded-full border border-[var(--wl-line)] px-3 py-1.5 font-mono text-[9px] tracking-[.12em] text-[var(--wl-body)]">
-          ARC TESTNET
-        </span>
-      </div>
-
+      <nav className="flex items-center justify-between border-b border-[var(--wl-line)] px-5 py-5 md:px-9">
+        <Link href="/" className="text-[18px] font-bold tracking-[-.05em]">
+          ARCANUM<span className="text-[var(--wl-signal)]">.</span>
+        </Link>
+        <div className="flex items-center gap-5">
+          <span className="hidden font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)] sm:inline">
+            PUBLIC APPROVER PORTAL
+          </span>
+          <span className="rounded-full border border-[var(--wl-line)] px-3 py-1.5 font-mono text-[9px] tracking-[.12em] text-[var(--wl-body)]">
+            ARC TESTNET
+          </span>
+          <ThemeToggle />
+        </div>
+      </nav>
+      <div className="mx-auto max-w-[1080px] px-5 py-10 md:px-9 md:py-16">
       <header className="rise border-b border-[var(--wl-line)] pb-10">
         <p className="font-mono text-[10px] uppercase tracking-[.2em] text-[var(--wl-signal)]">
           QUORUM / HUMAN SIGNATURE
@@ -457,6 +465,7 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
         </Link>
         <span>Expires in {countdown.label} · signed decisions are final</span>
       </footer>
+      </div>
     </main>
   );
 }

@@ -116,7 +116,7 @@ export function AddVendorModal({
                 value={form.name}
                 onChange={(event) => onChange({ name: event.target.value })}
                 placeholder="Qdrant Cloud"
-                className={fieldClass}
+                className="mt-2 h-9 w-full border-b border-[var(--wl-ink)] bg-transparent px-0 text-[15px] leading-[1.5] text-[var(--wl-ink)] outline-none placeholder:text-[var(--wl-mute)] focus:border-[var(--wl-signal)]"
               />
             </label>
             <label className="block">

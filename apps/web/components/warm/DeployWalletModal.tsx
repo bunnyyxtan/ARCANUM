@@ -184,8 +184,8 @@ function ResultLine({ href, label, value }: Readonly<{ href?: string; label: str
 }
 
 const fieldClass =
-  "h-9 w-full border border-[var(--wl-line)] bg-[var(--wl-bg-soft)] px-3 text-[13px] text-[var(--wl-ink)] outline-none placeholder:text-[var(--wl-mute)] focus:border-[var(--wl-signal)]";
-const fieldLabelClass = "font-mono text-[10px] uppercase tracking-[.14em] text-[var(--wl-secondary)]";
+  "w-full border-b border-[var(--wl-faint)] bg-transparent py-3 text-[15px] text-[var(--wl-ink)] outline-none placeholder:text-[var(--wl-mute)] focus:border-[var(--wl-signal)]";
+const fieldLabelClass = "font-mono text-[9px] uppercase tracking-[.14em] text-[var(--wl-secondary)]";
 
 export function DeployWalletModal({
   onClose,
@@ -462,18 +462,23 @@ export function DeployWalletModal({
       aria-modal="true"
     >
       <button type="button" aria-label="Close deploy dialog" className="fixed inset-0 -z-10 cursor-default" onClick={onClose} />
-      <section className="warm-modal-panel my-6 w-full max-w-[560px] border border-[var(--wl-line-bold)] bg-[var(--wl-bg)] shadow-[12px_14px_0_var(--wl-line-faint)]">
-        <div className="flex h-[52px] items-center justify-between border-b border-[var(--wl-line)] bg-[var(--wl-bg-soft)] px-5">
-          <div className="font-mono text-[11px] uppercase tracking-[.18em] text-[var(--wl-ink)]">
-            DEPLOY GOVERNED WALLET
+      <section className="warm-modal-panel my-6 w-full max-w-[480px] border border-[var(--wl-line-bold)] bg-[var(--wl-bg)] shadow-[12px_14px_0_var(--wl-line-faint)]">
+        <div className="flex items-start justify-between border-b border-[var(--wl-line)] p-7 pb-5">
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
+              FLEET / NEW WALLET
+            </p>
+            <h2 className="mt-4 text-[28px] font-semibold tracking-[-.05em] text-[var(--wl-ink)]">
+              Deploy governed wallet
+            </h2>
           </div>
           <button
             type="button"
             aria-label="Close deploy dialog"
             onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center border border-[var(--wl-line)] font-mono text-[12px] text-[var(--wl-secondary)] hover:text-[var(--wl-ink)]"
+            className="font-mono text-[10px] text-[var(--wl-secondary)] hover:text-[var(--wl-ink)]"
           >
-            ✕
+            CLOSE
           </button>
         </div>
         <div className="space-y-4 p-5 text-[12px] leading-relaxed text-[var(--wl-secondary)]">
@@ -487,6 +492,9 @@ export function DeployWalletModal({
                   ? "Arc Testnet contracts are ready. WalletFactory is configured for real governed wallet creation."
                   : "Wallet is connected. Switch to Arc Testnet before creating a governed wallet."
                 : "Connect and authenticate wallet to deploy a governed wallet."}
+          </p>
+          <p className="font-mono text-[9px] leading-[1.6] text-[var(--wl-mute)]">
+            A fresh wallet starts frozen. Publish a policy before it can move capital.
           </p>
           <div className="flex items-center justify-between border border-[var(--wl-line)] bg-[var(--wl-bg-soft)] px-3 py-2">
             <span
@@ -628,7 +636,7 @@ export function DeployWalletModal({
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <span className={fieldLabelClass}>WALLET OWNER</span>
-                  <div className="flex h-9 w-full items-center border border-[var(--wl-line)] bg-[var(--wl-bg-soft)] px-3 font-mono text-[11px] text-[var(--wl-ink)]">
+                  <div className="flex w-full items-center border-b border-[var(--wl-faint)] py-3 font-mono text-[13px] text-[var(--wl-ink)]">
                     {address ? shortAddress(address) : "connect wallet"}
                   </div>
                 </div>

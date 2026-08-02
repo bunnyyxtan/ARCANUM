@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
-import { toast } from "sonner";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 import { useLiveMembers, useLiveOrg } from "@/lib/live-data";
 import type { TeamMember } from "@/lib/types";
@@ -27,12 +26,25 @@ export default function SettingsPage() {
   const memberCaption =
     members.length > 0 ? "LIVE MEMBERS INDEXED" : "INVITE APPROVERS AFTER WALLET SETUP";
 
+  const [notice, setNotice] = useState("");
+  const noticeTimer = useRef<number | null>(null);
+  const showNotice = (message: string) => {
+    setNotice(message);
+    if (noticeTimer.current !== null) window.clearTimeout(noticeTimer.current);
+    noticeTimer.current = window.setTimeout(() => setNotice(""), 2800);
+  };
+  useEffect(() => {
+    return () => {
+      if (noticeTimer.current !== null) window.clearTimeout(noticeTimer.current);
+    };
+  }, []);
+
   const invite = () => {
     if (!inviteName.trim() || !inviteEmail.trim()) return;
     setInviteName("");
     setInviteEmail("");
     setInviteOpen(false);
-    toast.info(
+    showNotice(
       "Invite member / approver invitations are not enabled in this Arc Testnet deployment yet.",
     );
   };
@@ -239,12 +251,12 @@ export default function SettingsPage() {
 
       {inviteOpen && (
         <div
-          className="warm-modal-backdrop fixed inset-0 z-30 flex items-center justify-center bg-[rgba(var(--wl-ink-rgb),.18)] p-5"
+          className="fixed inset-0 z-30 flex items-center justify-center bg-[rgba(var(--wl-ink-rgb),.18)] p-5"
           role="dialog"
           aria-modal="true"
           aria-label="Invite team member"
         >
-          <div className="warm-modal-panel w-full max-w-[450px] border border-[var(--wl-line)] bg-[var(--wl-bg)] p-7 shadow-[0_24px_50px_-28px_rgba(var(--wl-ink-rgb),.6)]">
+          <div className="w-full max-w-[450px] border border-[var(--wl-line)] bg-[var(--wl-bg)] p-7 shadow-[0_24px_50px_-28px_rgba(var(--wl-ink-rgb),.6)]">
             <div className="flex items-start justify-between">
               <div>
                 <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
@@ -257,7 +269,7 @@ export default function SettingsPage() {
               <button
                 type="button"
                 onClick={() => setInviteOpen(false)}
-                className="font-mono text-[11px] uppercase tracking-[.12em] text-[var(--wl-secondary)] transition-colors hover:text-[var(--wl-ink)]"
+                className="font-mono text-[11px] text-[var(--wl-secondary)] transition-colors hover:text-[var(--wl-ink)]"
               >
                 CLOSE
               </button>
@@ -302,6 +314,11 @@ export default function SettingsPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+      {notice && (
+        <div role="status" className="fixed bottom-6 right-6 border border-[var(--wl-line)] bg-[var(--wl-bg-soft)] px-5 py-4 text-[12px] text-[var(--wl-ink)] shadow-[0_10px_30px_-20px_rgba(var(--wl-ink-rgb),.7)]">
+          {notice}
         </div>
       )}
     </main>

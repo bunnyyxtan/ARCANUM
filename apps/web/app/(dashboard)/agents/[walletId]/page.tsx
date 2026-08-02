@@ -483,7 +483,11 @@ export default function AgentDetailPage() {
           <div className="flex flex-wrap gap-2">
             <span
               title="Agent restraint changes are submitted on-chain by the governed wallet owner; this console reflects indexed state."
-              className="cursor-help rounded-full border border-[var(--wl-line)] px-4 py-2.5 font-mono text-[10px] uppercase tracking-[.1em] text-[var(--wl-secondary)]"
+              className={`cursor-help rounded-full px-4 py-2.5 font-mono text-[10px] uppercase tracking-[.1em] ${
+                frozen
+                  ? "bg-[var(--wl-ink)] text-[var(--wl-bg)]"
+                  : "border border-[var(--wl-line)] text-[var(--wl-secondary)]"
+              }`}
             >
               {frozen ? "FROZEN · ON-CHAIN RESTRAINT" : "RESTRAINT · ON-CHAIN ONLY"}
             </span>

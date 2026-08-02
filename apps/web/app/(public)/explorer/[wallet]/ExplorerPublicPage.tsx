@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+
+import { ThemeToggle } from "@/components/warm/ThemeToggle";
 import { useState } from "react";
 import { isAddress } from "viem";
 
@@ -61,20 +63,26 @@ export function ExplorerPublicPage({ wallet }: Readonly<{ wallet: string }>) {
   };
 
   return (
-    <main className="mx-auto max-w-[1120px] px-5 py-10 md:px-9 md:py-16">
+    <main className="min-h-[100dvh] bg-[var(--wl-bg)] text-[var(--wl-ink)]">
       <style>{`@keyframes enter{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}.enter{animation:enter 440ms cubic-bezier(.16,1,.3,1) both}@media(prefers-reduced-motion:reduce){.enter{animation:none}}`}</style>
-      <div className="mb-8 flex items-center justify-between">
-        <span className="hidden font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)] sm:inline">
-          PUBLIC EXPLORER · READ ONLY
-        </span>
-        <Link
-          href={badgeHref}
-          className="rounded-full border border-[var(--wl-line)] px-4 py-2 font-mono text-[9px] tracking-[.12em] transition hover:border-[var(--wl-ink)]"
-        >
-          GET BADGE ↗
+      <nav className="flex items-center justify-between border-b border-[var(--wl-line)] px-5 py-5 md:px-9">
+        <Link href="/" className="text-[18px] font-bold tracking-[-.05em]">
+          ARCANUM<span className="text-[var(--wl-signal)]">.</span>
         </Link>
-      </div>
-
+        <div className="flex items-center gap-4">
+          <span className="hidden font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)] sm:inline">
+            PUBLIC EXPLORER
+          </span>
+          <Link
+            href={badgeHref}
+            className="rounded-full border border-[var(--wl-line)] px-4 py-2 font-mono text-[9px] tracking-[.12em] transition hover:border-[var(--wl-ink)]"
+          >
+            GET BADGE ↗
+          </Link>
+          <ThemeToggle />
+        </div>
+      </nav>
+      <div className="mx-auto max-w-[1120px] px-5 py-10 md:px-9 md:py-16">
       <header className="enter border-b border-[var(--wl-line)] pb-10">
         <p className="font-mono text-[10px] uppercase tracking-[.2em] text-[var(--wl-signal)]">
           ARC / PUBLIC VERIFICATION
@@ -248,6 +256,7 @@ export function ExplorerPublicPage({ wallet }: Readonly<{ wallet: string }>) {
         <span>ARCANUM · PUBLIC READ MODEL</span>
         <span>{walletLabel} · ARC TESTNET</span>
       </footer>
+      </div>
     </main>
   );
 }
