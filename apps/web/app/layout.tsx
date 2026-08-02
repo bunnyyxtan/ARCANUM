@@ -3,32 +3,30 @@ import "./globals.css";
 import "./print.css";
 
 import type { Metadata } from "next";
-import { DM_Mono, Inter_Tight } from "next/font/google";
+import { Inter, JetBrains_Mono, Saira_Condensed } from "next/font/google";
 import type { ReactNode } from "react";
 
 import { configuredPublicOrigin } from "@/lib/public-url";
 
 import { Providers } from "./providers";
 
-const interTight = Inter_Tight({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-body",
-  weight: ["400", "500", "600", "700"],
-});
-
-const interTightDisplay = Inter_Tight({
+const sairaCondensed = Saira_Condensed({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-cond",
   weight: ["500", "600", "700"],
 });
 
-const dmMono = DM_Mono({
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-body",
+});
+
+const jetBrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-mono",
-  weight: ["400", "500"],
 });
 
 const publicOrigin = configuredPublicOrigin();
@@ -81,13 +79,9 @@ type RootLayoutProps = Readonly<{
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        {/* Synchronous on purpose: applies the persisted theme before first paint to avoid a flash. */}
-        <script src="/theme-init.js" />
-      </head>
+    <html lang="en" className="dark" suppressHydrationWarning>
       <body
-        className={`${interTight.variable} ${interTightDisplay.variable} ${dmMono.variable} bg-foundry-page text-foundry-text-body antialiased`}
+        className={`${sairaCondensed.variable} ${inter.variable} ${jetBrainsMono.variable} bg-foundry-page text-foundry-text-body antialiased`}
       >
         <Providers>{children}</Providers>
       </body>

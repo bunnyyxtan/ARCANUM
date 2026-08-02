@@ -1,277 +1,46 @@
 @import "tailwindcss";
 
 @theme {
-  /* Semantic tokens resolve to runtime Warm Ledger variables (see :root /
-     html.wl-dark below), so every utility re-themes with the toggle. */
-  --color-foundry-page: var(--wl-page);
-  --color-foundry-panel: var(--wl-panel);
-  --color-foundry-panel2: var(--wl-panel2);
-  --color-foundry-inset: var(--wl-inset);
-  --color-foundry-hairline: var(--wl-hairline);
-  --color-foundry-subrule: var(--wl-subrule);
-  --color-foundry-text-primary: var(--wl-text-primary);
-  --color-foundry-text-body: var(--wl-text-body);
-  --color-foundry-text-secondary: var(--wl-text-secondary);
-  --color-foundry-text-muted: var(--wl-text-muted);
-  --color-foundry-hazard: var(--wl-signal);
-  --color-foundry-steel: var(--wl-green);
-  --color-foundry-amber: var(--wl-amber);
-  --color-foundry-pale-red: var(--wl-red);
-  --color-foundry-tick-api: var(--wl-cat-api);
-  --color-foundry-tick-compute: var(--wl-cat-compute);
-  --color-foundry-tick-data: var(--wl-cat-data);
-  --color-foundry-tick-sub: var(--wl-cat-sub);
-  --color-foundry-tick-other: var(--wl-cat-other);
-  /* Preset color names used across components — same runtime mapping. */
-  --color-ink: var(--wl-ink-fill);
-  --color-obsidian: var(--wl-obsidian);
-  --color-coal-grid: var(--wl-page);
-  --color-panel-dark: var(--wl-panel-dark);
-  --color-panel-mid: var(--wl-panel-mid);
-  --color-panel-top: var(--wl-panel2);
-  --color-panel-raised: var(--wl-panel);
-  --color-panel-hover: var(--wl-panel-hover);
-  --color-panel-rail: var(--wl-panel-rail);
-  --color-panel-muted: var(--wl-panel-muted);
-  --color-line-subtle: var(--wl-hairline);
-  --color-line-muted: var(--wl-line-muted);
-  --color-line-strong: var(--wl-line-strong);
-  --color-line-active: var(--wl-line-active);
-  --color-ash-muted: var(--wl-text-muted);
-  --color-ash-soft: var(--wl-text-secondary);
-  --color-ash: var(--wl-text-body);
-  --color-ash-bright: var(--wl-text-primary);
-  --color-hazard: var(--wl-signal);
-  --color-hazard-dark: var(--wl-hazard-tint);
-  --color-rust: var(--wl-red);
-  --color-amber: var(--wl-amber);
-  --color-steel-green: var(--wl-green);
-  --color-steel-cyan: var(--wl-cat-compute);
-  --color-cat-api: var(--wl-cat-api);
-  --color-cat-compute: var(--wl-cat-compute);
-  --color-cat-data: var(--wl-cat-data);
-  --color-cat-subcontract: var(--wl-cat-sub);
-  --color-cat-other: var(--wl-cat-other);
-  --font-cond: "Inter Tight", system-ui, sans-serif;
-  --font-mono: "DM Mono", ui-monospace, monospace;
-  --font-body: "Inter Tight", system-ui, sans-serif;
+  --color-foundry-page: #121419;
+  --color-foundry-panel: #181b21;
+  --color-foundry-panel2: #16181d;
+  --color-foundry-inset: #101216;
+  --color-foundry-hairline: #282c34;
+  --color-foundry-subrule: #1e222a;
+  --color-foundry-text-primary: #edf0f3;
+  --color-foundry-text-body: #d7dbe0;
+  --color-foundry-text-secondary: #8a909b;
+  --color-foundry-text-muted: #5b626c;
+  --color-foundry-hazard: #ff5a1f;
+  --color-foundry-steel: #6e9e7c;
+  --color-foundry-amber: #e0a04a;
+  --color-foundry-pale-red: #ec7a6b;
+  --color-foundry-tick-api: #5e7fb5;
+  --color-foundry-tick-compute: #3fa89b;
+  --color-foundry-tick-data: #8e7cc0;
+  --color-foundry-tick-sub: #c77f45;
+  --color-foundry-tick-other: #6b7280;
+  --font-cond: "Saira Condensed", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-body: "Inter", system-ui, sans-serif;
 }
 
 :root {
-  /* Warm Ledger — light (warm paper), the default theme. */
-  color-scheme: light;
-  --arcanum-font-scale: 1;
-  --wl-page: #faf6f1;
-  --wl-panel: #fbf8f4;
-  --wl-panel2: #f5f0ea;
-  --wl-inset: #f1ebe4;
-  --wl-panel-dark: #f8f3ed;
-  --wl-panel-mid: #f7f2eb;
-  --wl-panel-hover: #f0eae3;
-  --wl-panel-rail: #ece5dd;
-  --wl-panel-muted: #e9e2db;
-  --wl-hairline: #ded7d0;
-  --wl-subrule: #e7e0d9;
-  --wl-line-muted: #e3dcd5;
-  --wl-line-strong: #cfc5bc;
-  --wl-line-active: #bdb4aa;
-  --wl-text-primary: #292522;
-  --wl-text-body: #4b4540;
-  --wl-text-secondary: #837a72;
-  --wl-text-muted: #9b9289;
-  --wl-ink-fill: #292522;
-  --wl-obsidian: #322e2b;
-  --wl-signal: #ff3c00;
-  --wl-signal-press: #d63200;
-  --wl-signal-rgb: 255, 60, 0;
-  --wl-hazard-tint: #ffede4;
-  --wl-amber: #9c6d1f;
-  --wl-amber-tint: #f9efdb;
-  --wl-red: #b3402f;
-  --wl-red-tint: #fbe9e3;
-  --wl-green: #3f653e;
-  --wl-green-tint: #e7f0e5;
-  --wl-cat-api: #48679c;
-  --wl-cat-compute: #2e7d72;
-  --wl-cat-data: #6f5fa3;
-  --wl-cat-sub: #a2632e;
-  --wl-cat-other: #837a72;
-  --wl-text-faint: #aaa199;
-  --wl-signal-soft: #ff5c26;
-  --wl-green-line: #cfe3cc;
-  --wl-amber-line: #ecd9b8;
-  --wl-blue-tint: #e9eef7;
-  --wl-blue-line: #ccd8ea;
-  --wl-cyan-tint: #ddefec;
-  --wl-grid-line: rgba(41, 37, 34, 0.045);
-  /* Warm Ledger landing/mockup vocabulary (light warm paper). */
-  --wl-bg: #faf6f1;
-  --wl-bg-raised: #fbf8f4;
-  --wl-bg-soft: #f5f0ea;
-  --wl-bg-tint: #f3ede7;
-  --wl-bg-tint2: #f3ede6;
-  --wl-bg-deep: #efe8e0;
-  --wl-bg-deep2: #eee7df;
-  --wl-surface: #ffffff;
-  --wl-glass: rgba(255, 255, 255, 0.5);
-  --wl-glass-strong: rgba(255, 255, 255, 0.6);
-  --wl-line: #ded7d0;
-  --wl-line-soft: #e3dcd5;
-  --wl-line-faint: #e7e0d9;
-  --wl-line-faint2: #e9e2db;
-  --wl-line-strong2: #d8cfc6;
-  --wl-line-bold: #cfc5bc;
-  --wl-line-bolder: #c5bbb2;
-  --wl-ink: #292522;
-  --wl-ink-soft: #322e2b;
-  --wl-strong: #5b544d;
-  --wl-strong2: #554d47;
-  --wl-strong3: #4f4842;
-  --wl-strong4: #4b4540;
-  --wl-strong5: #49423d;
-  --wl-body: #655d56;
-  --wl-secondary2: #776f68;
-  --wl-secondary: #837a72;
-  --wl-dim: #8d837b;
-  --wl-dim2: #8f857c;
-  --wl-mute: #9b9289;
-  --wl-muted: #a39a91;
-  --wl-muted2: #a69d94;
-  --wl-faint: #bdb4aa;
-  --wl-signal-deep: #d63200;
-  --wl-green-bright: #4d7b49;
-  --wl-green-soft: #72946f;
-  --wl-ink-rgb: 41, 37, 34;
-}
-
-html.wl-dark {
-  /* Warm Ledger — dark (the old ARCANUM foundry black-grid palette). */
   color-scheme: dark;
-  --wl-page: #121419;
-  --wl-panel: #181b21;
-  --wl-panel2: #16181d;
-  --wl-inset: #101216;
-  --wl-panel-dark: #14161a;
-  --wl-panel-mid: #15171b;
-  --wl-panel-hover: #1b1f26;
-  --wl-panel-rail: #1e222a;
-  --wl-panel-muted: #20242b;
-  --wl-hairline: #282c34;
-  --wl-subrule: #1e222a;
-  --wl-line-muted: #2a2e35;
-  --wl-line-strong: #343a44;
-  --wl-line-active: #3a4250;
-  --wl-text-primary: #edf0f3;
-  --wl-text-body: #d7dbe0;
-  --wl-text-secondary: #8a909b;
-  --wl-text-muted: #5b626c;
-  --wl-ink-fill: #0a0b0e;
-  --wl-obsidian: #0c0d10;
-  --wl-signal: #ff5a1f;
-  --wl-signal-press: #e04a12;
-  --wl-signal-rgb: 255, 90, 31;
-  --wl-hazard-tint: #120a05;
-  --wl-amber: #e0a04a;
-  --wl-amber-tint: #1a1207;
-  --wl-red: #ec7a6b;
-  --wl-red-tint: #211514;
-  --wl-green: #6e9e7c;
-  --wl-green-tint: rgba(110, 158, 124, 0.14);
-  --wl-cat-api: #5e7fb5;
-  --wl-cat-compute: #3fa89b;
-  --wl-cat-data: #8e7cc0;
-  --wl-cat-sub: #c77f45;
-  --wl-cat-other: #9aa1ac;
-  --wl-text-faint: #4d5560;
-  --wl-signal-soft: #ff7a45;
-  --wl-green-line: #2f4f3a;
-  --wl-amber-line: #3a2a1e;
-  --wl-blue-tint: #0f1620;
-  --wl-blue-line: #2a3340;
-  --wl-cyan-tint: #1e2a2e;
-  --wl-grid-line: rgba(255, 255, 255, 0.018);
-  /* Warm Ledger landing/mockup vocabulary (foundry dark). */
-  --wl-bg: #121419;
-  --wl-bg-raised: #16181d;
-  --wl-bg-soft: #181b21;
-  --wl-bg-tint: #14161a;
-  --wl-bg-tint2: #14161a;
-  --wl-bg-deep: #101216;
-  --wl-bg-deep2: #101216;
-  --wl-surface: #181b21;
-  --wl-glass: rgba(24, 27, 33, 0.55);
-  --wl-glass-strong: rgba(24, 27, 33, 0.65);
-  --wl-line: #282c34;
-  --wl-line-soft: #1e222a;
-  --wl-line-faint: #20242b;
-  --wl-line-faint2: #20242b;
-  --wl-line-strong2: #343a44;
-  --wl-line-bold: #3a4250;
-  --wl-line-bolder: #3a4250;
-  --wl-ink: #edf0f3;
-  --wl-ink-soft: #edf0f3;
-  --wl-strong: #d7dbe0;
-  --wl-strong2: #d7dbe0;
-  --wl-strong3: #d7dbe0;
-  --wl-strong4: #d7dbe0;
-  --wl-strong5: #d7dbe0;
-  --wl-body: #aab0b9;
-  --wl-secondary2: #9aa1ac;
-  --wl-secondary: #8a909b;
-  --wl-dim: #8a909b;
-  --wl-dim2: #8a909b;
-  --wl-mute: #7d848f;
-  --wl-muted: #6f7681;
-  --wl-muted2: #5b626c;
-  --wl-faint: #5b626c;
-  --wl-signal-deep: #e04a12;
-  --wl-green-bright: #7fb287;
-  --wl-green-soft: #6e9e7c;
-  --wl-ink-rgb: 0, 0, 0;
-}
-
-/* The old ARCANUM black grid on landing paper backgrounds in dark mode. */
-html.wl-dark [class*="bg-[var(--wl-bg)]"] {
-  background-image: repeating-linear-gradient(
-      0deg,
-      rgba(255, 255, 255, 0.018) 0 1px,
-      transparent 1px 38px
-    ), repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 38px);
-}
-
-html.wl-dark [class*="bg-[var(--wl-bg-"],
-html.wl-dark [class*="bg-[var(--wl-surface)]"] {
-  background-image: none;
-}
-
-/* Theme toggle icon swap (used by [data-theme-toggle] buttons). */
-html:not(.wl-dark) .wl-icon-sun {
-  display: none;
-}
-
-html:not(.wl-dark) .wl-icon-moon {
-  display: inline-flex;
-}
-
-html.wl-dark .wl-icon-sun {
-  display: inline-flex;
-}
-
-html.wl-dark .wl-icon-moon {
-  display: none;
+  --arcanum-font-scale: 1;
 }
 
 body {
   min-height: 100vh;
-  background-color: var(--wl-page);
-  color: var(--wl-text-body);
+  background-color: var(--color-foundry-page);
+  color: var(--color-foundry-text-body);
   font-family: var(--font-body);
   font-size: calc(16px * var(--arcanum-font-scale));
 }
 
 * {
   box-sizing: border-box;
-  border-color: var(--wl-hairline);
+  border-color: var(--color-foundry-hairline);
 }
 
 button,
@@ -298,14 +67,17 @@ textarea,
 }
 
 ::selection {
-  background: rgba(var(--wl-signal-rgb), 0.24);
-  color: var(--wl-text-primary);
+  background: rgba(255, 90, 31, 0.24);
+  color: var(--color-foundry-text-primary);
 }
 
 .bg-foundry-grid {
-  background-color: var(--wl-page);
-  background-image: repeating-linear-gradient(0deg, var(--wl-grid-line) 0 1px, transparent 1px 38px),
-    repeating-linear-gradient(90deg, var(--wl-grid-line) 0 1px, transparent 1px 38px);
+  background-color: var(--color-foundry-page);
+  background-image: repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.018) 0 1px,
+      transparent 1px 38px
+    ), repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 38px);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -365,84 +137,6 @@ textarea,
   }
   to {
     opacity: 1;
-  }
-}
-
-/* Warm Ledger shared interaction utilities (ported from mockups) */
-.warm-pill {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  box-shadow: 0 1px 2px rgba(var(--wl-ink-rgb), 0.06);
-  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 320ms
-    cubic-bezier(0.16, 1, 0.3, 1), color 220ms ease, border-color 220ms ease;
-}
-.warm-pill::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border-radius: inherit;
-  background: var(--wl-signal-deep);
-  transform: translateY(102%);
-  transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-.warm-pill:hover {
-  box-shadow: 0 10px 28px -8px rgba(var(--wl-signal-rgb), 0.38), 0 2px 6px
-    rgba(var(--wl-ink-rgb), 0.08);
-  transform: translateY(-1px);
-}
-.warm-pill:hover::before {
-  transform: translateY(0);
-}
-.warm-pill-ghost::before {
-  background: var(--wl-ink);
-}
-.warm-pill-ghost:hover {
-  color: var(--wl-bg);
-  border-color: var(--wl-ink);
-}
-.stream-row {
-  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1), background-color 220ms ease;
-}
-.stream-row:hover {
-  transform: translateX(3px);
-  background: var(--wl-bg-soft);
-}
-.warm-row-accent {
-  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 220ms ease;
-}
-.warm-row-accent:hover {
-  transform: translate3d(3px, -2px, 0);
-  box-shadow: inset 2px 0 0 var(--wl-signal);
-}
-.warm-reveal-static {
-  animation: warmIn 420ms cubic-bezier(0.16, 1, 0.3, 1) calc(var(--i, 0) * 90ms) both;
-}
-@keyframes warmIn {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .warm-reveal-static {
-    animation: none;
-  }
-  .warm-pill,
-  .warm-pill::before,
-  .stream-row,
-  .warm-row-accent {
-    transition: none;
-  }
-  .warm-pill:hover,
-  .stream-row:hover,
-  .warm-row-accent:hover {
-    transform: none;
   }
 }
 

@@ -2,8 +2,9 @@
 
 > Extracted Aug 2, 2026 from the user's design-exploration workspace (uploaded zip).
 > This is the **authoritative visual direction** for the frontend replacement.
+> Source mockups live in `design/mockups/` (8 app pages + 2 landing variants).
 > Research foundation: `design/DESIGN-RESEARCH.md` (anti-slop doctrine, state inventory, trust patterns).
-> Functional contract to preserve: the existing tRPC hooks (`lib/live-data.ts`), SIWE/wallet flow, and full route surface of `apps/web` — the redesign re-clothes them, never removes them. (Source mockups and the historical UI/UX inventory doc have been removed now that the port into `apps/web` shipped; this file is the surviving spec.)
+> Functional contract to preserve: `FRONTEND_UIUX_CONTEXT.md` §3 (tRPC hooks, SIWE/wallet flow, route surface).
 
 ---
 
@@ -124,7 +125,7 @@ the logo period. Never decorative. Positive/neutral facts stay ink or green.
 
 - Mockups are self-contained files with inline `<style>` + hardcoded hex and Google-Fonts imports. **Productionize**: tokens → `packages/config/tailwind.preset.ts` + `globals.css` CSS variables; fonts via `next/font` (Inter Tight, DM Mono); shared primitives (StatusPill, Pill/Button, Shell, KPI strip, table, drawer, modal, toast) built once in `apps/web/components/ui` — not per page.
 - Kill the 9,600-line `canvas/pages.tsx` pattern: one route = one file tree (execution guardrails, DESIGN-RESEARCH.md §7).
-- Mockups use fixture data + local state. Wire to the real tRPC hooks (`lib/live-data.ts`), SIWE/wallet flow, and the existing route surface of `apps/web`. The org chip replaces mock "HELIX-DAO" with the real org switcher; nav gains SETTINGS/STATUS access points (mockups show 6-item nav; full route surface still includes settings, status, policy editor, public approve/explorer/badge, docs, glossary — design them in this same language).
+- Mockups use fixture data + local state. Wire to the real tRPC hooks (`lib/live-data.ts`), SIWE/wallet flow, and route surface documented in `FRONTEND_UIUX_CONTEXT.md` §3. The org chip replaces mock "HELIX-DAO" with the real org switcher; nav gains SETTINGS/STATUS access points (mockups show 6-item nav; full route surface still includes settings, status, policy editor, public approve/explorer/badge, docs, glossary — design them in this same language).
 - Ship the full state inventory per surface (loading/empty/error/stale — DESIGN-RESEARCH.md §2.3): mockups show ideal + some empty states; the rest must be designed in-system (skeletons on paper, never blank-then-reload; "Updated Xs ago" staleness).
 - Money rules: tabular numerals, no optimistic UI for approvals/denials/policy changes, middle-truncated hashes with copy-on-click, meaningful friction only for irreversible actions.
 - Accessibility: WCAG 2.2 AA, focus-visible everywhere, keyboard-complete, reduced-motion branch on every animated surface. Verify at 390/768/1440.
