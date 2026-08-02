@@ -24,9 +24,9 @@ const initialQueue: Escalation[] = [
 ];
 
 const statusStyles: Record<QueueStatus, string> = {
-  PENDING: "border border-[#ff3c00] text-[#ff3c00]",
-  APPROVED: "bg-[#e7f0e5] text-[#3f653e]",
-  REJECTED: "bg-[#ff3c00] text-[#faf6f1]",
+  PENDING: "border border-[var(--wl-signal)] text-[var(--wl-signal)]",
+  APPROVED: "bg-[var(--wl-green-tint)] text-[var(--wl-green)]",
+  REJECTED: "bg-[var(--wl-signal)] text-[var(--wl-bg)]",
 };
 
 function StatusPill({ status }: { status: QueueStatus }) {
@@ -36,30 +36,30 @@ function StatusPill({ status }: { status: QueueStatus }) {
 function Shell({ children, onAction }: { children: ReactNode; onAction: () => void }) {
   const links = ["DASHBOARD", "AGENTS", "VENDORS", "LEDGER", "ESCALATIONS", "ANOMALIES"];
   return (
-    <div className="min-h-[100dvh] bg-[#faf6f1] text-[#292522]">
+    <div className="min-h-[100dvh] bg-[var(--wl-bg)] text-[var(--wl-ink)]">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter+Tight:wght@400;500;600;700&display=swap');
         .arc-escalations{font-family:'Inter Tight',sans-serif}.arc-escalations .font-mono{font-family:'DM Mono',monospace}
         .arc-pill{position:relative;isolation:isolate;overflow:hidden;transition:transform 220ms cubic-bezier(.16,1,.3,1),box-shadow 320ms cubic-bezier(.16,1,.3,1),color 220ms ease,border-color 220ms ease}
-        .arc-pill:before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;background:#d63200;transform:translateY(102%);transition:transform 320ms cubic-bezier(.16,1,.3,1)}
-        .arc-pill:hover{transform:translateY(-2px);box-shadow:0 10px 28px -8px rgba(255,60,0,.42),0 2px 6px rgba(41,37,34,.08)}.arc-pill:hover:before{transform:translateY(0)}
-        .arc-ghost:before{background:#292522}.arc-ghost:hover{color:#faf6f1;border-color:#292522;box-shadow:0 10px 28px -10px rgba(41,37,34,.35)}
-        .arc-card{animation:cardIn 420ms cubic-bezier(.16,1,.3,1) calc(var(--card-i) * 110ms) both;transition:transform 220ms cubic-bezier(.16,1,.3,1),box-shadow 220ms ease}.arc-card:hover{transform:translateY(-3px);box-shadow:10px 14px 0 #eee7df}
-        .arc-card-near{border-left:2px solid #ff3c00}.arc-card-resolved{opacity:.76}.arc-stamp{transform:rotate(-7deg);border:1px solid #3f653e;color:#3f653e}
+        .arc-pill:before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;background:var(--wl-signal-deep);transform:translateY(102%);transition:transform 320ms cubic-bezier(.16,1,.3,1)}
+        .arc-pill:hover{transform:translateY(-2px);box-shadow:0 10px 28px -8px rgba(var(--wl-signal-rgb),.42),0 2px 6px rgba(var(--wl-ink-rgb),.08)}.arc-pill:hover:before{transform:translateY(0)}
+        .arc-ghost:before{background:var(--wl-ink)}.arc-ghost:hover{color:var(--wl-bg);border-color:var(--wl-ink);box-shadow:0 10px 28px -10px rgba(var(--wl-ink-rgb),.35)}
+        .arc-card{animation:cardIn 420ms cubic-bezier(.16,1,.3,1) calc(var(--card-i) * 110ms) both;transition:transform 220ms cubic-bezier(.16,1,.3,1),box-shadow 220ms ease}.arc-card:hover{transform:translateY(-3px);box-shadow:10px 14px 0 var(--wl-bg-deep2)}
+        .arc-card-near{border-left:2px solid var(--wl-signal)}.arc-card-resolved{opacity:.76}.arc-stamp{transform:rotate(-7deg);border:1px solid var(--wl-green);color:var(--wl-green)}
         @keyframes cardIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}@media (prefers-reduced-motion:reduce){.arc-pill,.arc-card{animation:none!important;transition:none!important}.arc-card:hover,.arc-pill:hover{transform:none}}
       `}</style>
-      <Header active="ESCALATIONS" /><header className="hidden flex min-h-[68px] items-center justify-between border-b border-[#ded7d0] px-5 md:px-8">
+      <Header active="ESCALATIONS" /><header className="hidden flex min-h-[68px] items-center justify-between border-b border-[var(--wl-line)] px-5 md:px-8">
         <div className="flex min-w-0 items-center gap-7">
-          <button onClick={onAction} className="shrink-0 text-[18px] font-bold tracking-[-.05em]">ARCANUM<span className="text-[#ff3c00]">.</span></button>
+          <button onClick={onAction} className="shrink-0 text-[18px] font-bold tracking-[-.05em]">ARCANUM<span className="text-[var(--wl-signal)]">.</span></button>
           <nav className="hidden items-center gap-5 lg:flex">
-            {links.map((link) => <a key={link} href={`#${link.toLowerCase()}`} className={`relative py-6 text-[12px] font-medium text-[#655d56] transition-colors hover:text-[#292522] ${link === "ESCALATIONS" ? "text-[#292522] after:absolute after:bottom-[-1px] after:left-0 after:h-[2px] after:w-full after:bg-[#ff3c00]" : ""}`}>{link}</a>)}
+            {links.map((link) => <a key={link} href={`#${link.toLowerCase()}`} className={`relative py-6 text-[12px] font-medium text-[var(--wl-body)] transition-colors hover:text-[var(--wl-ink)] ${link === "ESCALATIONS" ? "text-[var(--wl-ink)] after:absolute after:bottom-[-1px] after:left-0 after:h-[2px] after:w-full after:bg-[var(--wl-signal)]" : ""}`}>{link}</a>)}
           </nav>
-          <span className="font-mono text-[9px] uppercase tracking-[.15em] text-[#9b9289] lg:hidden">QUEUE</span>
+          <span className="font-mono text-[9px] uppercase tracking-[.15em] text-[var(--wl-mute)] lg:hidden">QUEUE</span>
         </div>
         <div className="flex items-center gap-3">
-          <span className="hidden font-mono text-[9px] tracking-[.14em] text-[#9b9289] sm:inline">ARC TESTNET</span>
-          <button onClick={onAction} className="flex items-center gap-2 rounded-full border border-[#ded7d0] px-2 py-1.5 transition-transform duration-[220ms] hover:-translate-y-0.5 sm:px-3">
-            <span className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-[#292522] font-mono text-[9px] text-[#faf6f1]">HD</span>
+          <span className="hidden font-mono text-[9px] tracking-[.14em] text-[var(--wl-mute)] sm:inline">ARC TESTNET</span>
+          <button onClick={onAction} className="flex items-center gap-2 rounded-full border border-[var(--wl-line)] px-2 py-1.5 transition-transform duration-[220ms] hover:-translate-y-0.5 sm:px-3">
+            <span className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-[var(--wl-ink)] font-mono text-[9px] text-[var(--wl-bg)]">HD</span>
             <span className="hidden text-[12px] font-medium sm:inline">HELIX-DAO</span>
           </button>
         </div>
@@ -91,55 +91,55 @@ export function Escalations() {
   return (
     <Shell onAction={() => act(pending.length ? `Next review: ${pending[0].id}.` : "No pending escalations.")}>
       <main className="mx-auto max-w-[1400px] px-5 py-8 md:px-8 md:py-10">
-        <div className="flex flex-col justify-between gap-7 border-b border-[#ded7d0] pb-9 md:flex-row md:items-end">
+        <div className="flex flex-col justify-between gap-7 border-b border-[var(--wl-line)] pb-9 md:flex-row md:items-end">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[#ff3c00]">QUORUM / HUMAN CONTROL</p>
+            <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">QUORUM / HUMAN CONTROL</p>
             <h1 className="mt-4 text-[clamp(2.7rem,5vw,4.8rem)] font-semibold leading-[.9] tracking-[-.05em]">Escalations</h1>
-            <p className="mt-4 max-w-[560px] text-[14px] leading-[1.45] text-[#776f68]">When an agent reaches the edge of its doctrine, a human gets the final word.</p>
+            <p className="mt-4 max-w-[560px] text-[14px] leading-[1.45] text-[var(--wl-secondary2)]">When an agent reaches the edge of its doctrine, a human gets the final word.</p>
           </div>
-          <button onClick={() => act(pending.length ? `Reviewing ${pending[0].id}, the oldest open request.` : "The queue is clear.")} className="arc-pill group w-fit rounded-full bg-[#ff3c00] px-5 py-3 text-[11px] font-semibold text-[#faf6f1]">Review next <span className="ml-2 transition-transform duration-[220ms] group-hover:translate-x-1">↗</span></button>
+          <button onClick={() => act(pending.length ? `Reviewing ${pending[0].id}, the oldest open request.` : "The queue is clear.")} className="arc-pill group w-fit rounded-full bg-[var(--wl-signal)] px-5 py-3 text-[11px] font-semibold text-[var(--wl-bg)]">Review next <span className="ml-2 transition-transform duration-[220ms] group-hover:translate-x-1">↗</span></button>
         </div>
 
-        <section className="grid grid-cols-3 border-b border-[#ded7d0]">
-          <div className="py-6"><p className="font-mono text-[9px] tracking-[.15em] text-[#9b9289]">PENDING</p><p className="mt-3 text-[34px] font-medium tracking-[-.05em] text-[#ff3c00]">{pending.length}</p></div>
-          <div className="border-l border-[#ded7d0] py-6 pl-5 md:pl-7"><p className="font-mono text-[9px] tracking-[.15em] text-[#9b9289]">APPROVED / 7D</p><p className="mt-3 text-[34px] font-medium tracking-[-.05em]">11</p></div>
-          <div className="border-l border-[#ded7d0] py-6 pl-5 md:pl-7"><p className="font-mono text-[9px] tracking-[.15em] text-[#9b9289]">EXPIRED</p><p className="mt-3 text-[34px] font-medium tracking-[-.05em]">1</p></div>
+        <section className="grid grid-cols-3 border-b border-[var(--wl-line)]">
+          <div className="py-6"><p className="font-mono text-[9px] tracking-[.15em] text-[var(--wl-mute)]">PENDING</p><p className="mt-3 text-[34px] font-medium tracking-[-.05em] text-[var(--wl-signal)]">{pending.length}</p></div>
+          <div className="border-l border-[var(--wl-line)] py-6 pl-5 md:pl-7"><p className="font-mono text-[9px] tracking-[.15em] text-[var(--wl-mute)]">APPROVED / 7D</p><p className="mt-3 text-[34px] font-medium tracking-[-.05em]">11</p></div>
+          <div className="border-l border-[var(--wl-line)] py-6 pl-5 md:pl-7"><p className="font-mono text-[9px] tracking-[.15em] text-[var(--wl-mute)]">EXPIRED</p><p className="mt-3 text-[34px] font-medium tracking-[-.05em]">1</p></div>
         </section>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-2">
           {queue.map((item, index) => {
             const isPending = item.status === "PENDING";
             const isNear = item.id === "ESC-042";
-            return <article key={item.id} style={{ "--card-i": index } as CSSProperties} className={`arc-card relative border border-[#cfc5bc] bg-[#fbf8f4] p-5 md:p-7 ${isNear ? "arc-card-near" : ""} ${!isPending ? "arc-card-resolved" : ""} ${index === 2 ? "lg:col-span-2 lg:max-w-[calc(50%-12px)]" : ""}`}>
-              <div className="flex items-start justify-between gap-4 border-b border-[#ded7d0] pb-5">
-                <div><p className="font-mono text-[9px] tracking-[.16em] text-[#ff3c00]">{item.id} · HUMAN REVIEW</p><h2 className="mt-3 text-[21px] font-medium tracking-[-.045em]">{item.agent}</h2></div>
+            return <article key={item.id} style={{ "--card-i": index } as CSSProperties} className={`arc-card relative border border-[var(--wl-line-bold)] bg-[var(--wl-bg-raised)] p-5 md:p-7 ${isNear ? "arc-card-near" : ""} ${!isPending ? "arc-card-resolved" : ""} ${index === 2 ? "lg:col-span-2 lg:max-w-[calc(50%-12px)]" : ""}`}>
+              <div className="flex items-start justify-between gap-4 border-b border-[var(--wl-line)] pb-5">
+                <div><p className="font-mono text-[9px] tracking-[.16em] text-[var(--wl-signal)]">{item.id} · HUMAN REVIEW</p><h2 className="mt-3 text-[21px] font-medium tracking-[-.045em]">{item.agent}</h2></div>
                 <div className="flex items-center gap-3"><StatusPill status={item.status} />{!isPending && <span className="arc-stamp px-2 py-1 font-mono text-[8px] tracking-[.12em]">RECORDED</span>}</div>
               </div>
               <div className="grid gap-7 py-6 md:grid-cols-[1fr_1.1fr]">
                 <div>
-                  <p className="font-mono text-[9px] uppercase tracking-[.13em] text-[#9b9289]">REQUEST</p>
-                  <p className="mt-3 text-[27px] font-medium tracking-[-.05em]">{item.amount} <span className="text-[#9b9289]">→</span> {item.vendor}</p>
-                  <p className="mt-4 text-[13px] text-[#655d56]">Reason: <span className="font-medium text-[#292522]">{item.reason}</span></p>
+                  <p className="font-mono text-[9px] uppercase tracking-[.13em] text-[var(--wl-mute)]">REQUEST</p>
+                  <p className="mt-3 text-[27px] font-medium tracking-[-.05em]">{item.amount} <span className="text-[var(--wl-mute)]">→</span> {item.vendor}</p>
+                  <p className="mt-4 text-[13px] text-[var(--wl-body)]">Reason: <span className="font-medium text-[var(--wl-ink)]">{item.reason}</span></p>
                 </div>
-                <div className="border-l border-[#ded7d0] pl-5 md:pl-7">
-                  <p className="font-mono text-[9px] uppercase tracking-[.13em] text-[#9b9289]">QUORUM / 2 SIGNATURES</p>
-                  <div className="mt-4 flex gap-2"><div className="flex min-h-[62px] flex-1 flex-col justify-between border border-[#bdb4aa] bg-[#f5f0ea] p-3"><span className="font-mono text-[9px] text-[#3f653e]">SIGNED</span><span className="text-[11px] font-medium">{item.signedBy}</span><span className="font-mono text-[8px] text-[#9b9289]">{item.signedAt}</span></div><div className={`flex min-h-[62px] flex-1 flex-col justify-between border border-dashed p-3 ${isPending ? "border-[#ff3c00]" : "border-[#ded7d0]"}`}><span className="font-mono text-[9px] text-[#9b9289]">{isPending ? "AWAITING" : "CLOSED"}</span><span className="text-[11px] text-[#776f68]">{isPending ? "operator signature" : "queue closed"}</span><span className="font-mono text-[8px] text-[#9b9289]">{isPending ? "—" : "recorded"}</span></div></div>
-                  <div className="mt-5 flex items-baseline justify-between border-t border-[#ded7d0] pt-4"><span className="font-mono text-[9px] tracking-[.12em] text-[#9b9289]">EXPIRY</span><span className={`font-mono text-[12px] tabular-nums ${isNear ? "text-[#ff3c00]" : "text-[#655d56]"}`}>{item.expiresIn}</span></div>
+                <div className="border-l border-[var(--wl-line)] pl-5 md:pl-7">
+                  <p className="font-mono text-[9px] uppercase tracking-[.13em] text-[var(--wl-mute)]">QUORUM / 2 SIGNATURES</p>
+                  <div className="mt-4 flex gap-2"><div className="flex min-h-[62px] flex-1 flex-col justify-between border border-[var(--wl-faint)] bg-[var(--wl-bg-soft)] p-3"><span className="font-mono text-[9px] text-[var(--wl-green)]">SIGNED</span><span className="text-[11px] font-medium">{item.signedBy}</span><span className="font-mono text-[8px] text-[var(--wl-mute)]">{item.signedAt}</span></div><div className={`flex min-h-[62px] flex-1 flex-col justify-between border border-dashed p-3 ${isPending ? "border-[var(--wl-signal)]" : "border-[var(--wl-line)]"}`}><span className="font-mono text-[9px] text-[var(--wl-mute)]">{isPending ? "AWAITING" : "CLOSED"}</span><span className="text-[11px] text-[var(--wl-secondary2)]">{isPending ? "operator signature" : "queue closed"}</span><span className="font-mono text-[8px] text-[var(--wl-mute)]">{isPending ? "—" : "recorded"}</span></div></div>
+                  <div className="mt-5 flex items-baseline justify-between border-t border-[var(--wl-line)] pt-4"><span className="font-mono text-[9px] tracking-[.12em] text-[var(--wl-mute)]">EXPIRY</span><span className={`font-mono text-[12px] tabular-nums ${isNear ? "text-[var(--wl-signal)]" : "text-[var(--wl-body)]"}`}>{item.expiresIn}</span></div>
                 </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2 border-t border-[#ded7d0] pt-5">
+              <div className="flex flex-wrap items-center gap-2 border-t border-[var(--wl-line)] pt-5">
                 {isPending ? <>
-                   <a data-nav="APPROVE" href="#approve" className="arc-pill rounded-full bg-[#ff3c00] px-4 py-2.5 text-[10px] font-semibold text-[#faf6f1]" onClick={() => updateStatus(item.id, "APPROVED")}>Approve</a>
-                  <button onClick={() => updateStatus(item.id, "REJECTED")} className="arc-pill arc-ghost rounded-full border border-[#ded7d0] px-4 py-2.5 text-[10px] font-semibold">Reject</button>
-                </> : <span className="font-mono text-[9px] tracking-[.12em] text-[#3f653e]">FINAL DECISION COMMITTED TO LEDGER</span>}
-                <button onClick={() => copyPortal(item.id)} className="ml-auto rounded-full border border-[#ded7d0] px-4 py-2.5 font-mono text-[9px] tracking-[.08em] text-[#776f68] transition-colors duration-[220ms] hover:border-[#292522] hover:text-[#292522]">Copy approver portal link</button>
+                   <a data-nav="APPROVE" href="#approve" className="arc-pill rounded-full bg-[var(--wl-signal)] px-4 py-2.5 text-[10px] font-semibold text-[var(--wl-bg)]" onClick={() => updateStatus(item.id, "APPROVED")}>Approve</a>
+                  <button onClick={() => updateStatus(item.id, "REJECTED")} className="arc-pill arc-ghost rounded-full border border-[var(--wl-line)] px-4 py-2.5 text-[10px] font-semibold">Reject</button>
+                </> : <span className="font-mono text-[9px] tracking-[.12em] text-[var(--wl-green)]">FINAL DECISION COMMITTED TO LEDGER</span>}
+                <button onClick={() => copyPortal(item.id)} className="ml-auto rounded-full border border-[var(--wl-line)] px-4 py-2.5 font-mono text-[9px] tracking-[.08em] text-[var(--wl-secondary2)] transition-colors duration-[220ms] hover:border-[var(--wl-ink)] hover:text-[var(--wl-ink)]">Copy approver portal link</button>
               </div>
-              <div className="mt-5 font-mono text-[9px] text-[#9b9289]">CREATED {item.created} <span className="mx-2 text-[#ded7d0]">·</span> EXPIRES {item.expiry}</div>
+              <div className="mt-5 font-mono text-[9px] text-[var(--wl-mute)]">CREATED {item.created} <span className="mx-2 text-[var(--wl-line)]">·</span> EXPIRES {item.expiry}</div>
             </article>;
           })}
         </div>
       </main>
-      {notice && <div className="fixed bottom-5 left-1/2 z-20 -translate-x-1/2 border border-[#292522] bg-[#292522] px-4 py-3 font-mono text-[10px] text-[#faf6f1] shadow-[0_12px_28px_rgba(41,37,34,.18)]">{notice}</div>}
+      {notice && <div className="fixed bottom-5 left-1/2 z-20 -translate-x-1/2 border border-[var(--wl-ink)] bg-[var(--wl-ink)] px-4 py-3 font-mono text-[10px] text-[var(--wl-bg)] shadow-[0_12px_28px_rgba(var(--wl-ink-rgb),.18)]">{notice}</div>}
     </Shell>
   );
 }

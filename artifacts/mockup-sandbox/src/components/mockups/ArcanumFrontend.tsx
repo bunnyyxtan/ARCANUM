@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useState, type MouseEvent, type ReactElement } from 'react';
+import { useCallback, useEffect, useRef, useState, type MouseEvent, type ReactElement } from 'react';
+
+import './arcanum-app/_shared/warm-theme.css';
 
 import { WarmLedger } from './arcanum-landing/WarmLedger';
 import Dashboard from './arcanum-app/Dashboard';
@@ -84,6 +86,8 @@ const LABEL_TO_PAGE: Record<string, PageKey> = {
  */
 export function ArcanumFrontend() {
   const [page, setPage] = useState<PageKey>('LANDING');
+  const [dark, setDark] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
   const Active = PAGES[page];
 
   // Keep the URL hash in sync with the rendered page so the address bar
@@ -91,6 +95,19 @@ export function ArcanumFrontend() {
   useEffect(() => {
     history.replaceState(null, '', page === 'LANDING' ? window.location.pathname : `#${page.toLowerCase()}`);
   }, [page]);
+
+  // Paint the document body too, so overscroll and the area behind the
+  // wrapper match the active theme. Colors come from the --wl-bg token on
+  // the root element so the palette lives only in warm-theme.css.
+  useEffect(() => {
+    const root = rootRef.current;
+    if (root) document.body.style.backgroundColor = getComputedStyle(root).getPropertyValue('--wl-bg').trim();
+    document.body.style.colorScheme = dark ? 'dark' : 'light';
+    return () => {
+      document.body.style.backgroundColor = '';
+      document.body.style.colorScheme = '';
+    };
+  }, [dark]);
 
   useEffect(() => {
     const onConnected = () => {
@@ -102,6 +119,13 @@ export function ArcanumFrontend() {
   }, []);
 
   const onClickCapture = useCallback((e: MouseEvent<HTMLDivElement>) => {
+    const themeToggle = (e.target as HTMLElement).closest<HTMLElement>('[data-theme-toggle]');
+    if (themeToggle) {
+      e.preventDefault();
+      e.stopPropagation();
+      setDark((value) => !value);
+      return;
+    }
     const el = (e.target as HTMLElement).closest<HTMLElement>('[data-nav], a, button');
     if (!el) return;
     const navKey = el.dataset.nav?.trim().toUpperCase();
@@ -123,7 +147,7 @@ export function ArcanumFrontend() {
   }, [page]);
 
   return (
-    <div onClickCapture={onClickCapture}>
+    <div ref={rootRef} className={`wl-root${dark ? ' wl-dark' : ''}`} onClickCapture={onClickCapture}>
       <Active key={page} />
     </div>
   );
