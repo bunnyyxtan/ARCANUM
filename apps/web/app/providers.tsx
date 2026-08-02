@@ -9,7 +9,6 @@ import { Toaster } from "sonner";
 import { WagmiProvider } from "wagmi";
 
 import { WalletAuthBridge } from "@/components/arcanum/WalletAuthBridge";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import { TelemetryProvider } from "@/lib/telemetry";
 import { createTrpcClient, trpc } from "@/lib/trpc";
 import { wagmiConfig } from "@/lib/wagmi";
@@ -47,8 +46,7 @@ export function Providers({ children }: ProvidersProps) {
             })}
           >
             <TelemetryProvider>
-              <TooltipProvider delayDuration={200}>
-                <WalletAuthBridge />
+              <WalletAuthBridge />
                 {children}
                 <Toaster
                   theme="dark"
@@ -64,7 +62,6 @@ export function Providers({ children }: ProvidersProps) {
                     },
                   }}
                 />
-              </TooltipProvider>
             </TelemetryProvider>
           </RainbowKitProvider>
         </trpc.Provider>
