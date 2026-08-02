@@ -5,6 +5,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { useAccount, useDisconnect } from "wagmi";
 
+import { useLiveAnomalies, useLiveEscalations } from "@/lib/live-data";
+
 import { CommandPalette } from "./CommandPalette";
 import { ShortcutsDialog } from "./ShortcutsDialog";
 import { ThemeToggle } from "./ThemeToggle";
@@ -29,10 +31,28 @@ export function Header({ children }: HeaderProps) {
   const router = useRouter();
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
+  const { data: pendingEscalations } = useLiveEscalations("PENDING");
+  const { data: anomalies } = useLiveAnomalies();
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState(false);
   const [shortcuts, setShortcuts] = useState(false);
   const [copiedAddress, setCopiedAddress] = useState(false);
+
+  const inboxItems = [
+    ...pendingEscalations.slice(0, 3).map((item) => ({
+      kind: "ESCALATION" as const,
+      text: `${item.id} is awaiting operator approval`,
+      time: item.expiresIn ? `expires ${item.expiresIn}` : "pending",
+      href: `/escalations`,
+    })),
+    ...anomalies.slice(0, 3).map((item) => ({
+      kind: "ANOMALY" as const,
+      text: `${item.agentName} crossed the ${item.score.toFixed(1)}σ threshold`,
+      time: item.timestamp,
+      href: `/anomalies`,
+    })),
+  ].slice(0, 4);
+  const inboxCount = inboxItems.length;
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -90,6 +110,74 @@ export function Header({ children }: HeaderProps) {
       <div className="flex shrink-0 items-center gap-3">
         <span className="hidden font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)] sm:inline">ARC TESTNET</span>
         <ThemeToggle />
+        <div className="relative" data-notifications>
+          <button
+            type="button"
+            aria-label="Governance notifications"
+            aria-expanded={notifications}
+            onClick={() => setNotifications((value) => !value)}
+            className="relative flex h-8 w-8 items-center justify-center text-[var(--wl-body)] transition-transform duration-[220ms] hover:-translate-y-0.5 hover:text-[var(--wl-signal)]"
+          >
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 20 20"
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.4"
+            >
+              <path d="M4.5 8.5a5.5 5.5 0 0 1 11 0c0 5 2 5 2 6H2.5c0-1 2-1 2-6ZM8 17h4" />
+            </svg>
+            {inboxCount > 0 && (
+              <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-[var(--wl-signal)]" />
+            )}
+          </button>
+          {notifications && (
+            <div
+              role="dialog"
+              aria-label="Recent governance events"
+              className="absolute right-0 top-[calc(100%+10px)] z-30 w-[300px] border border-[var(--wl-line-bold)] bg-[var(--wl-bg-raised)] p-4 shadow-[12px_14px_0_var(--wl-line-faint)]"
+            >
+              <div className="flex items-center justify-between border-b border-[var(--wl-line)] pb-3">
+                <p className="font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-signal)]">
+                  INBOX / GOVERNANCE
+                </p>
+                <span className="font-mono text-[9px] text-[var(--wl-mute)]">
+                  {String(inboxCount).padStart(2, "0")} NEW
+                </span>
+              </div>
+              {inboxCount === 0 ? (
+                <p className="py-8 text-center font-mono text-[9px] uppercase tracking-[.14em] text-[var(--wl-mute)]">
+                  INBOX CLEAR · NO PENDING GOVERNANCE
+                </p>
+              ) : (
+                <div className="divide-y divide-[var(--wl-line-soft)]">
+                  {inboxItems.map((item, index) => (
+                    <button
+                      type="button"
+                      key={`${item.kind}-${index}`}
+                      onClick={() => {
+                        setNotifications(false);
+                        router.push(item.href);
+                      }}
+                      className="block w-full py-3 text-left transition-colors hover:text-[var(--wl-signal)]"
+                    >
+                      <span className="font-mono text-[9px] tracking-[.13em] text-[var(--wl-signal)]">
+                        {item.kind}
+                      </span>
+                      <span className="mt-1 block text-[12px] leading-[1.35] text-[var(--wl-ink)]">
+                        {item.text}
+                      </span>
+                      <span className="mt-1 block font-mono text-[9px] text-[var(--wl-mute)]">
+                        {item.time}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
         <CommandPalette />
         <div className="relative" data-account-menu>
           <button

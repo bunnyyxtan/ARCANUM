@@ -214,6 +214,53 @@ html.wl-dark .wl-icon-moon { display: none; }
   box-shadow: 0 10px 28px -10px rgba(var(--wl-ink-rgb), 0.4);
 }
 
+/* Aliases used across the in-app pages (same treatment as warm-pill / -ghost). */
+.warm-button {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(var(--wl-ink-rgb), 0.06);
+  transition:
+    transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 320ms cubic-bezier(0.16, 1, 0.3, 1),
+    color 220ms ease,
+    border-color 220ms ease;
+}
+.warm-button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--wl-signal-deep);
+  transform: translateY(102%);
+  transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.warm-button:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 10px 28px -8px rgba(var(--wl-signal-rgb), 0.42),
+    0 2px 6px rgba(var(--wl-ink-rgb), 0.08);
+}
+.warm-button:hover::before {
+  transform: translateY(0);
+}
+.warm-ghost::before {
+  background: var(--wl-ink);
+}
+.warm-ghost:hover {
+  color: var(--wl-bg);
+  border-color: var(--wl-ink);
+  box-shadow: 0 10px 28px -10px rgba(var(--wl-ink-rgb), 0.4);
+}
+
+/* Entrance stagger indexes (in-app pages animate on mount). */
+.warm-reveal-1 { --i: 1; }
+.warm-reveal-2 { --i: 2; }
+.warm-reveal-3 { --i: 3; }
+.warm-reveal-4 { --i: 4; }
+.warm-reveal-5 { --i: 5; }
+
 .warm-link {
   position: relative;
 }
@@ -485,6 +532,8 @@ html.wl-dark .wl-icon-moon { display: none; }
   }
   .warm-pill,
   .warm-pill::before,
+  .warm-button,
+  .warm-button::before,
   .warm-active-dot,
   .warm-interaction,
   .approval-chip {

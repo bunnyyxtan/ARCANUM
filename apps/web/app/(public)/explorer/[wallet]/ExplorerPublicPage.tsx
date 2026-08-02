@@ -62,6 +62,7 @@ export function ExplorerPublicPage({ wallet }: Readonly<{ wallet: string }>) {
 
   return (
     <main className="mx-auto max-w-[1120px] px-5 py-10 md:px-9 md:py-16">
+      <style>{`@keyframes enter{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}.enter{animation:enter 440ms cubic-bezier(.16,1,.3,1) both}@media(prefers-reduced-motion:reduce){.enter{animation:none}}`}</style>
       <div className="mb-8 flex items-center justify-between">
         <span className="hidden font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)] sm:inline">
           PUBLIC EXPLORER · READ ONLY
@@ -74,7 +75,7 @@ export function ExplorerPublicPage({ wallet }: Readonly<{ wallet: string }>) {
         </Link>
       </div>
 
-      <header className="warm-reveal border-b border-[var(--wl-line)] pb-10">
+      <header className="enter border-b border-[var(--wl-line)] pb-10">
         <p className="font-mono text-[10px] uppercase tracking-[.2em] text-[var(--wl-signal)]">
           ARC / PUBLIC VERIFICATION
         </p>
@@ -104,7 +105,10 @@ export function ExplorerPublicPage({ wallet }: Readonly<{ wallet: string }>) {
         </div>
       </header>
 
-      <section className="warm-reveal delay-1 grid border-b border-[var(--wl-line)] md:grid-cols-[1.15fr_.85fr]">
+      <section
+        className="enter grid border-b border-[var(--wl-line)] md:grid-cols-[1.15fr_.85fr]"
+        style={{ animationDelay: "100ms" }}
+      >
         <div className="py-8 md:pr-10">
           <p className="font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)]">
             WALLET IDENTITY
@@ -156,7 +160,7 @@ export function ExplorerPublicPage({ wallet }: Readonly<{ wallet: string }>) {
         </div>
       </section>
 
-      <section className="warm-reveal delay-2 pt-10">
+      <section className="enter pt-10" style={{ animationDelay: "180ms" }}>
         <div className="flex items-end justify-between border-b border-[var(--wl-line)] pb-4">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">

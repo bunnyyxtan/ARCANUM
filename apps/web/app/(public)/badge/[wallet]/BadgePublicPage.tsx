@@ -51,6 +51,7 @@ export function BadgePublicPage({ wallet }: Readonly<{ wallet: string }>) {
 
   return (
     <main className="mx-auto max-w-[780px] px-5 py-12 text-center md:py-20">
+      <style>{`@keyframes jewel{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}.jewel{animation:jewel 560ms cubic-bezier(.16,1,.3,1) both}@media(prefers-reduced-motion:reduce){.jewel{animation:none}}`}</style>
       <div className="mb-8 flex items-center justify-between text-left">
         <span className="font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)]">
           PUBLIC TRUST MARK
@@ -72,7 +73,7 @@ export function BadgePublicPage({ wallet }: Readonly<{ wallet: string }>) {
         <span className="text-[var(--wl-dim)]">with a public record.</span>
       </h1>
 
-      <section className="mx-auto mt-14 max-w-[560px] border border-[var(--wl-line-bold)] bg-[var(--wl-bg-raised)] p-8 shadow-[14px_18px_0_var(--wl-bg-deep2)] md:p-14">
+      <section className="jewel mx-auto mt-14 max-w-[560px] border border-[var(--wl-line-bold)] bg-[var(--wl-bg-raised)] p-8 shadow-[14px_18px_0_var(--wl-bg-deep2)] md:p-14">
         <div className="mx-auto flex max-w-[360px] items-center gap-4 border-2 border-[var(--wl-ink)] px-5 py-5 text-left">
           <span className="flex h-12 w-12 shrink-0 items-center justify-center bg-[var(--wl-signal)] font-mono text-[15px] font-medium text-[var(--wl-bg)]">
             A.

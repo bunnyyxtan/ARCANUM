@@ -438,7 +438,7 @@ export default function PolicyEditorPage() {
   return (
     <main
       className="min-h-[100dvh] bg-[var(--wl-bg)] text-[var(--wl-ink)]"
-      style={{ fontFamily: "'Inter Tight',sans-serif" }}
+
     >
       <style>{`
         .policy-in{animation:policyIn 560ms cubic-bezier(.16,1,.3,1) calc(var(--i,0)*80ms) both}@keyframes policyIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}

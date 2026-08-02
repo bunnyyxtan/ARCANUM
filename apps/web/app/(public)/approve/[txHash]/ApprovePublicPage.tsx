@@ -262,6 +262,7 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
 
   return (
     <main className="mx-auto max-w-[1080px] px-5 py-10 md:px-9 md:py-16">
+      <style>{`@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}.rise{animation:rise 500ms cubic-bezier(.16,1,.3,1) both}@media(prefers-reduced-motion:reduce){.rise{animation:none}.pa-action,.pa-action *{transition:none!important;transform:none!important;box-shadow:none!important}}`}</style>
       <div className="mb-6 flex items-center justify-between">
         <span className="hidden font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)] sm:inline">
           PUBLIC APPROVER PORTAL
@@ -271,7 +272,7 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
         </span>
       </div>
 
-      <header className="warm-reveal border-b border-[var(--wl-line)] pb-10">
+      <header className="rise border-b border-[var(--wl-line)] pb-10">
         <p className="font-mono text-[10px] uppercase tracking-[.2em] text-[var(--wl-signal)]">
           QUORUM / HUMAN SIGNATURE
         </p>
@@ -294,7 +295,8 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
       </header>
 
       <section
-        className="warm-reveal delay-1 mt-10 grid border border-[var(--wl-line-bold)] bg-[var(--wl-bg-raised)] shadow-[12px_14px_0_var(--wl-bg-deep2)] md:grid-cols-[1.15fr_.85fr]"
+        className="rise mt-10 grid border border-[var(--wl-line-bold)] bg-[var(--wl-bg-raised)] shadow-[12px_14px_0_var(--wl-bg-deep2)] md:grid-cols-[1.15fr_.85fr]"
+        style={{ animationDelay: "100ms" }}
       >
         <div className="p-6 md:p-10">
           <div className="flex items-start justify-between border-b border-[var(--wl-line)] pb-6">
@@ -373,17 +375,27 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
                   type="button"
                   onClick={() => void submit("approve")}
                   disabled={actionsDisabled}
-                  className="warm-pill rounded-full bg-[var(--wl-signal)] px-5 py-3 text-[11px] font-semibold text-[var(--wl-bg)] transition disabled:cursor-not-allowed disabled:opacity-40"
+                  className="pa-action group relative overflow-hidden rounded-full bg-[var(--wl-signal)] px-5 py-3 text-[11px] font-semibold text-[var(--wl-bg)] transition duration-[220ms] hover:-translate-y-0.5 hover:shadow-[0_10px_26px_-9px_rgba(var(--wl-signal-rgb),.5)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-none"
                 >
-                  {!isConnected ? "Connect to approve" : "Approve transaction"}
+                  <span className="relative z-10">
+                    {!isConnected ? "Connect to approve" : "Approve transaction"}{" "}
+                    <span className="ml-2 inline-block transition-transform duration-[220ms] group-hover:translate-x-1 group-disabled:translate-x-0">
+                      ↗
+                    </span>
+                  </span>
                 </button>
                 <button
                   type="button"
                   onClick={() => void submit("reject")}
                   disabled={actionsDisabled}
-                  className="rounded-full border border-[var(--wl-line)] px-5 py-3 text-[11px] font-semibold text-[var(--wl-ink)] transition hover:border-[var(--wl-ink)] disabled:cursor-not-allowed disabled:opacity-40"
+                  className="pa-action group relative overflow-hidden rounded-full border border-[var(--wl-line)] px-5 py-3 text-[11px] font-semibold text-[var(--wl-ink)] transition duration-[220ms] hover:-translate-y-0.5 hover:border-[var(--wl-ink)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
                 >
-                  Reject
+                  <span className="relative z-10">
+                    Reject{" "}
+                    <span className="ml-2 inline-block transition-transform duration-[220ms] group-hover:translate-x-1 group-disabled:translate-x-0">
+                      ↗
+                    </span>
+                  </span>
                 </button>
               </div>
               {statusLine && (

@@ -40,7 +40,7 @@ export default function SettingsPage() {
   return (
     <main
       className="min-h-[100dvh] bg-[var(--wl-bg)] text-[var(--wl-ink)]"
-      style={{ fontFamily: "'Inter Tight', sans-serif" }}
+
     >
       <style>{`
         .member-row{transition:transform 220ms cubic-bezier(.16,1,.3,1),background-color 220ms ease}

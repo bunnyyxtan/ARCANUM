@@ -82,7 +82,7 @@ export default function LandingPage() {
   return (
     <main
       className="min-h-[100dvh] overflow-hidden bg-[var(--wl-bg)] text-[var(--wl-ink)]"
-      style={{ fontFamily: "'Inter Tight', sans-serif" }}
+
     >
       <aside className="fixed bottom-0 left-0 top-0 z-20 hidden w-[86px] flex-col items-center justify-between border-r border-[var(--wl-line)] bg-[var(--wl-bg)] py-7 lg:flex">
         <MagneticAnchor href="#" className="text-[17px] font-bold tracking-[-.045em]">

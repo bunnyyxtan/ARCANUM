@@ -238,9 +238,9 @@ function EscalationCard({
   return (
     <article
       style={{ "--card-i": index } as CSSProperties}
-      className={`esc-card relative border border-[var(--wl-line-bold)] bg-[var(--wl-bg-raised)] p-5 md:p-7 ${
-        isNear ? "border-l-2 border-l-[var(--wl-signal)]" : ""
-      } ${resolved ? "opacity-75" : ""}`}
+      className={`arc-card relative border border-[var(--wl-line-bold)] bg-[var(--wl-bg-raised)] p-5 md:p-7 ${
+        isNear ? "arc-card-near" : ""
+      } ${resolved ? "arc-card-resolved" : ""}`}
     >
       <div className="flex items-start justify-between gap-4 border-b border-[var(--wl-line)] pb-5">
         <div>
@@ -249,19 +249,26 @@ function EscalationCard({
           </p>
           <h2 className="mt-3 text-[21px] font-medium tracking-[-.045em]">{item.agentName}</h2>
         </div>
-        <span
-          className={`rounded-full px-2.5 py-1 font-mono text-[9px] tracking-[.12em] ${
-            resolved
-              ? "bg-[var(--wl-green-tint)] text-[var(--wl-green)]"
-              : "border border-[var(--wl-signal)] text-[var(--wl-signal)]"
-          }`}
-        >
-          {resolved
-            ? lastAction === "approve"
-              ? "APPROVED"
-              : "REJECTED"
-            : "PENDING"}
-        </span>
+        <div className="flex items-center gap-3">
+          <span
+            className={`rounded-full px-2.5 py-1 font-mono text-[9px] tracking-[.12em] ${
+              resolved
+                ? "bg-[var(--wl-green-tint)] text-[var(--wl-green)]"
+                : "border border-[var(--wl-signal)] text-[var(--wl-signal)]"
+            }`}
+          >
+            {resolved
+              ? lastAction === "approve"
+                ? "APPROVED"
+                : "REJECTED"
+              : "PENDING"}
+          </span>
+          {resolved && (
+            <span className="arc-stamp px-2 py-1 font-mono text-[8px] tracking-[.12em]">
+              RECORDED
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-7 py-6 md:grid-cols-[1fr_1.1fr]">
@@ -310,7 +317,7 @@ function EscalationCard({
               type="button"
               disabled={actionsDisabled}
               onClick={(event) => void submitResolution("approve", event)}
-              className="warm-pill rounded-full bg-[var(--wl-signal)] px-4 py-2.5 text-[10px] font-semibold text-[var(--wl-bg)] disabled:cursor-not-allowed disabled:opacity-55"
+              className="arc-pill rounded-full bg-[var(--wl-signal)] px-4 py-2.5 text-[10px] font-semibold text-[var(--wl-bg)] disabled:cursor-not-allowed disabled:opacity-55"
             >
               Approve
             </button>
@@ -318,7 +325,7 @@ function EscalationCard({
               type="button"
               disabled={actionsDisabled}
               onClick={(event) => void submitResolution("reject", event)}
-              className="warm-pill warm-pill-ghost rounded-full border border-[var(--wl-line)] px-4 py-2.5 text-[10px] font-semibold disabled:cursor-not-allowed disabled:opacity-55"
+              className="arc-pill arc-ghost rounded-full border border-[var(--wl-line)] px-4 py-2.5 text-[10px] font-semibold disabled:cursor-not-allowed disabled:opacity-55"
             >
               Reject
             </button>
@@ -377,10 +384,13 @@ export default function EscalationsPage() {
   return (
     <div className="mx-auto max-w-[1400px] px-5 py-8 md:px-8 md:py-10">
       <style>{`
-        .esc-card{animation:escCardIn 420ms cubic-bezier(.16,1,.3,1) calc(var(--card-i) * 110ms) both;transition:transform 220ms cubic-bezier(.16,1,.3,1),box-shadow 220ms ease}
-        .esc-card:hover{transform:translateY(-3px);box-shadow:10px 14px 0 var(--wl-bg-deep2)}
-        @keyframes escCardIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
-        @media (prefers-reduced-motion:reduce){.esc-card{animation:none!important;transition:none!important}.esc-card:hover{transform:none}}
+        .arc-pill{position:relative;isolation:isolate;overflow:hidden;transition:transform 220ms cubic-bezier(.16,1,.3,1),box-shadow 320ms cubic-bezier(.16,1,.3,1),color 220ms ease,border-color 220ms ease}
+        .arc-pill:before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;background:var(--wl-signal-deep);transform:translateY(102%);transition:transform 320ms cubic-bezier(.16,1,.3,1)}
+        .arc-pill:hover{transform:translateY(-2px);box-shadow:0 10px 28px -8px rgba(var(--wl-signal-rgb),.42),0 2px 6px rgba(var(--wl-ink-rgb),.08)}.arc-pill:hover:before{transform:translateY(0)}
+        .arc-ghost:before{background:var(--wl-ink)}.arc-ghost:hover{color:var(--wl-bg);border-color:var(--wl-ink);box-shadow:0 10px 28px -10px rgba(var(--wl-ink-rgb),.35)}
+        .arc-card{animation:cardIn 420ms cubic-bezier(.16,1,.3,1) calc(var(--card-i) * 110ms) both;transition:transform 220ms cubic-bezier(.16,1,.3,1),box-shadow 220ms ease}.arc-card:hover{transform:translateY(-3px);box-shadow:10px 14px 0 var(--wl-bg-deep2)}
+        .arc-card-near{border-left:2px solid var(--wl-signal)}.arc-card-resolved{opacity:.76}.arc-stamp{transform:rotate(-7deg);border:1px solid var(--wl-green);color:var(--wl-green)}
+        @keyframes cardIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}@media (prefers-reduced-motion:reduce){.arc-pill,.arc-card{animation:none!important;transition:none!important}.arc-card:hover,.arc-pill:hover{transform:none}}
       `}</style>
 
       <div className="flex flex-col justify-between gap-7 border-b border-[var(--wl-line)] pb-9 md:flex-row md:items-end">

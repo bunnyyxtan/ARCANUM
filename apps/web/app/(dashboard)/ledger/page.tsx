@@ -107,16 +107,15 @@ export default function LedgerPage() {
   return (
     <div className="arc-ledger">
       <style>{`
-        .arc-row{transition:transform 220ms cubic-bezier(.16,1,.3,1),background-color 220ms ease,box-shadow 220ms ease}
-        .arc-row:hover{transform:translate3d(3px,-1px,0);background:var(--wl-bg-raised);box-shadow:inset 2px 0 0 var(--wl-signal)}
-        .arc-row-selected{background:var(--wl-bg-soft);box-shadow:inset 2px 0 0 var(--wl-signal)}
-        .arc-drawer{animation:drawerIn 420ms cubic-bezier(.16,1,.3,1) both}
-        @keyframes drawerIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
         .arc-pill{position:relative;isolation:isolate;overflow:hidden;transition:transform 220ms cubic-bezier(.16,1,.3,1),box-shadow 320ms cubic-bezier(.16,1,.3,1),color 220ms ease,border-color 220ms ease}
         .arc-pill:before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;background:var(--wl-signal-deep);transform:translateY(102%);transition:transform 320ms cubic-bezier(.16,1,.3,1)}
         .arc-pill:hover{transform:translateY(-2px);box-shadow:0 10px 28px -8px rgba(var(--wl-signal-rgb),.42),0 2px 6px rgba(var(--wl-ink-rgb),.08)}.arc-pill:hover:before{transform:translateY(0)}
-        .arc-ghost:before{background:var(--wl-ink)}.arc-ghost:hover{color:var(--wl-bg);border-color:var(--wl-ink)}
-        @media (prefers-reduced-motion:reduce){.arc-pill,.arc-drawer{animation:none!important;transition:none!important}.arc-row:hover,.arc-pill:hover{transform:none}}
+        .arc-ghost:before{background:var(--wl-ink)}.arc-ghost:hover{color:var(--wl-bg);border-color:var(--wl-ink);box-shadow:0 10px 28px -10px rgba(var(--wl-ink-rgb),.35)}
+        .arc-row{animation:arcRowIn 420ms cubic-bezier(.16,1,.3,1) calc(var(--row-i) * 55ms) both;transition:transform 220ms cubic-bezier(.16,1,.3,1),background-color 220ms ease,box-shadow 220ms ease}
+        .arc-row:hover{transform:translate3d(3px,-1px,0);background:var(--wl-bg-raised);box-shadow:inset 2px 0 0 var(--wl-signal)}.arc-row-selected{background:var(--wl-bg-soft);box-shadow:inset 2px 0 0 var(--wl-signal)}
+        @keyframes arcRowIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+        .arc-drawer{animation:drawerIn 420ms cubic-bezier(.16,1,.3,1) both}@keyframes drawerIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+        @media (prefers-reduced-motion:reduce){.arc-pill,.arc-row,.arc-drawer{animation:none!important;transition:none!important}.arc-row:hover,.arc-pill:hover{transform:none}}
       `}</style>
 
       <main className="mx-auto max-w-[1400px] px-5 py-8 md:px-8 md:py-10">

@@ -68,7 +68,7 @@ export default function AgentsPage() {
   return (
     <main
       className="min-h-[100dvh] bg-[var(--wl-bg)] text-[var(--wl-ink)]"
-      style={{ fontFamily: "'Inter Tight', sans-serif" }}
+
     >
       <style>{`
         .agents-reveal{animation:agentsIn 420ms cubic-bezier(.16,1,.3,1) calc(var(--i,0) * 90ms) both}@keyframes agentsIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}

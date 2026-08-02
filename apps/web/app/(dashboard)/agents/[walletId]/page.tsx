@@ -428,16 +428,33 @@ export default function AgentDetailPage() {
   const dailyLimit = agent?.dailyLimit ?? 0;
   const capWidth = dailyLimit > 0 ? Math.min(1, dailySpend / dailyLimit) : 0;
 
+  // Derived behavior stats — computed from the live indexed decision record.
+  const behaviorTotal = decisions.reduce((sum, d) => sum + d.amount, 0);
+  const behaviorAvg = decisions.length > 0 ? behaviorTotal / decisions.length : 0;
+  const behaviorPeak = decisions.reduce((max, d) => Math.max(max, d.amount), 0);
+  const restraints = decisions.filter(
+    (d) => d.status === "rejected" || d.status === "escalated" || d.status === "frozen",
+  ).length;
+  const authorizedVendors = Array.from(
+    new Set(
+      decisions
+        .filter((d) => d.status === "approved")
+        .map((d) => d.counterparty)
+        .filter(Boolean),
+    ),
+  ).slice(0, 6);
+  const behaviorBars = decisions.slice(0, 20).reverse();
+
   return (
     <main
       className="min-h-[100dvh] bg-[var(--wl-bg)] text-[var(--wl-ink)]"
-      style={{ fontFamily: "'Inter Tight', sans-serif" }}
+
     >
       <style>{`
         .detail-in{animation:detailIn 420ms cubic-bezier(.16,1,.3,1) calc(var(--i,0)*75ms) both}@keyframes detailIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
         .decision-row{transition:transform 220ms cubic-bezier(.16,1,.3,1),background-color 220ms ease}.decision-row:hover{transform:translateX(3px);background:var(--wl-bg-soft)}
-        .bar{height:5px;background:var(--wl-line-soft)}.bar span{display:block;height:100%;background:var(--wl-ink);transform-origin:left}
-        @media(prefers-reduced-motion:reduce){.detail-in{animation:none}.decision-row{transition:none}}
+        .bar{height:5px;background:var(--wl-line-soft)}.bar span{display:block;height:100%;background:var(--wl-ink);transform-origin:left;animation:barIn 700ms cubic-bezier(.16,1,.3,1) both}@keyframes barIn{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+        @media(prefers-reduced-motion:reduce){.detail-in,.bar span{animation:none}.decision-row{transition:none}.behavior-bar{transition:none!important;transform:none!important}}
       `}</style>
       <div className="mx-auto max-w-[1400px] px-5 py-9 md:px-8 md:py-10">
         <div
@@ -511,7 +528,70 @@ export default function AgentDetailPage() {
 
         <section className="grid gap-10 pt-10 xl:grid-cols-[minmax(0,1.5fr)_minmax(340px,.8fr)]">
           <div className="detail-in" style={{ "--i": 3 } as CSSProperties}>
-            <div className="mt-2 flex items-end justify-between border-b border-[var(--wl-line)] pb-4">
+            <div className="flex items-end justify-between border-b border-[var(--wl-line)] pb-4">
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-[.17em] text-[var(--wl-signal)]">
+                  BEHAVIOR / INDEXED
+                </p>
+                <h2 className="mt-2 text-[22px] font-medium tracking-[-.045em]">Spending behavior</h2>
+              </div>
+              <span className="font-mono text-[9px] uppercase tracking-[.13em] text-[var(--wl-mute)]">
+                USD · UTC
+              </span>
+            </div>
+            <div className="grid grid-cols-2 border-b border-[var(--wl-line)] py-6 sm:grid-cols-4">
+              {(
+                [
+                  ["INDEXED TOTAL", formatUsd(behaviorTotal)],
+                  ["AVG. TX", formatUsd(behaviorAvg)],
+                  ["PEAK TX", formatUsd(behaviorPeak)],
+                  ["RESTRAINTS", restraints.toString().padStart(2, "0")],
+                ] as const
+              ).map(([label, value]) => (
+                <div key={label} className="mb-4 sm:mb-0">
+                  <p className="font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-mute)]">
+                    {label}
+                  </p>
+                  <p className="mt-2 font-mono text-[14px] tabular-nums">{value}</p>
+                </div>
+              ))}
+            </div>
+            {behaviorBars.length > 0 ? (
+              <>
+                <div className="flex h-[180px] items-end gap-2 border-b border-[var(--wl-line)] px-2 py-6">
+                  {behaviorBars.map((row) => {
+                    const ratio = behaviorPeak > 0 ? row.amount / behaviorPeak : 0;
+                    const restrained =
+                      row.status === "rejected" ||
+                      row.status === "escalated" ||
+                      row.status === "frozen";
+                    return (
+                      <div key={row.id} className="group flex h-full flex-1 items-end">
+                        <span
+                          className={`behavior-bar w-full origin-bottom transition-transform duration-[420ms] group-hover:scale-y-110 ${restrained ? "bg-[var(--wl-signal)]" : "bg-[var(--wl-ink)]"}`}
+                          style={{ height: `${Math.max(4, ratio * 100)}%` }}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex justify-between pt-3 font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-mute)]">
+                  <span>{behaviorBars[0]?.timestamp ?? "—"}</span>
+                  <span>{behaviorBars[behaviorBars.length - 1]?.timestamp ?? "—"}</span>
+                </div>
+              </>
+            ) : (
+              <div className="border-b border-[var(--wl-line)] py-10 text-center">
+                <p className="font-mono text-[10px] uppercase tracking-[.14em] text-[var(--wl-secondary)]">
+                  No spend indexed yet
+                </p>
+                <p className="mx-auto mt-3 max-w-[360px] text-[12px] leading-[1.5] text-[var(--wl-body)]">
+                  Behavior charts populate once this governed wallet settles payments on Arc Testnet.
+                </p>
+              </div>
+            )}
+
+            <div className="mt-10 flex items-end justify-between border-b border-[var(--wl-line)] pb-4">
               <div>
                 <p className="font-mono text-[10px] uppercase tracking-[.17em] text-[var(--wl-signal)]">
                   DECISIONS / RECENT
@@ -622,6 +702,28 @@ export default function AgentDetailPage() {
               <div className="bar mt-3">
                 <span style={{ transform: `scaleX(${capWidth})` }} />
               </div>
+            </div>
+
+            <div className="border-b border-[var(--wl-line)] py-6">
+              <p className="font-mono text-[9px] uppercase tracking-[.14em] text-[var(--wl-secondary)]">
+                AUTHORIZED VENDORS
+              </p>
+              {authorizedVendors.length > 0 ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {authorizedVendors.map((vendor) => (
+                    <span
+                      key={vendor}
+                      className="rounded-full border border-[var(--wl-line-bold)] px-2.5 py-1.5 font-mono text-[9px] text-[var(--wl-body)]"
+                    >
+                      {vendor}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-3 font-mono text-[9px] text-[var(--wl-mute)]">
+                  No settled counterparties indexed yet.
+                </p>
+              )}
             </div>
 
             <AgentSignerPanel governedWalletAddress={governedWalletAddress} />
