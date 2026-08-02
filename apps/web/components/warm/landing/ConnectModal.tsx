@@ -100,7 +100,9 @@ export function ConnectModal({ open, onClose }: { open: boolean; onClose: () => 
       role="dialog"
       aria-modal="true"
       aria-label="Connect wallet"
-      onClick={close}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) close();
+      }}
     >
       <div
         className="warm-modal-panel w-full max-w-[440px] border border-[var(--wl-line-strong2)] bg-[var(--wl-bg)] shadow-[0_24px_60px_-16px_rgba(var(--wl-ink-rgb),.35)]"

@@ -73,7 +73,7 @@ type RootLayoutProps = Readonly<{
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
       <body className={`${interTight.variable} ${dmMono.variable} antialiased`}>
         <Script src="/theme-init.js" strategy="beforeInteractive" />
         <Providers>{children}</Providers>

@@ -171,7 +171,7 @@ export default function LandingPage() {
               </p>
             </Reveal>
             <Reveal kind="headline" className="delay-1">
-              <h1 className="mt-8 max-w-[880px] text-[clamp(4.4rem,10.5vw,10.5rem)] font-semibold leading-[.8] tracking-[-.045em]">
+              <h1 className="mt-8 max-w-[880px] text-[clamp(3.4rem,10.5vw,10.5rem)] font-semibold leading-[.8] tracking-[-.045em]">
                 Autonomous<br />
                 <span className="text-[var(--wl-dim)]">spend,</span>{" "}
                 <em className="not-italic text-[var(--wl-ink)]">accounted.</em>
@@ -364,7 +364,7 @@ export default function LandingPage() {
                   className="hidden font-mono text-[80px] leading-none tracking-[-.045em] text-[var(--wl-line-soft)] lg:block"
                 />
               </div>
-              <h2 className="mt-8 max-w-[950px] text-[clamp(4rem,9vw,9rem)] font-semibold leading-[.78] tracking-[-.045em]">
+              <h2 className="mt-8 max-w-[950px] text-[clamp(3rem,9vw,9rem)] font-semibold leading-[.78] tracking-[-.045em]">
                 Let agents move.<br />
                 <span className="text-[var(--wl-dim)]">Keep the final word.</span>
               </h2>
