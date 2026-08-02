@@ -1,0 +1,466 @@
+"use client";
+
+import { arcTestnet } from "@arcanum/shared";
+import type { Address, Hash } from "viem";
+import {
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
+import { useAccount, usePublicClient, useSwitchChain, useWriteContract } from "wagmi";
+import { toast } from "sonner";
+
+import { useWorkspaceMode } from "@/lib/auth-session";
+import { getArcscanTxUrl } from "@/lib/arcscan";
+import { escalationManagerAbi, escalationStatusLabels } from "@/lib/contracts";
+import { isConfiguredAddress, isZeroAddress, shortAddress } from "@/lib/format/address";
+import { formatUsd } from "@/lib/format/money";
+import { useLiveEscalations } from "@/lib/live-data";
+import { trpc } from "@/lib/trpc";
+import type { Escalation } from "@/lib/types";
+
+function isTxHashValue(value: string | null | undefined): value is `0x${string}` {
+  return Boolean(value && /^0x[a-fA-F0-9]{64}$/.test(value));
+}
+
+function errorMessage(error: unknown) {
+  if (typeof error === "object" && error !== null && "shortMessage" in error) {
+    return String((error as { shortMessage?: unknown }).shortMessage);
+  }
+  return error instanceof Error ? error.message : "Transaction failed. Please retry.";
+}
+
+function allowTrustedMutation(action: string, event: ReactMouseEvent<HTMLElement>) {
+  if (event.nativeEvent.isTrusted) {
+    return true;
+  }
+  if (process.env.NODE_ENV !== "production") {
+    console.warn(`[Arcanum] Blocked ${action}: mutations require an explicit trusted click.`);
+  }
+  return false;
+}
+
+type TxStage =
+  | "idle"
+  | "checking"
+  | "wallet"
+  | "confirming"
+  | "pending_indexer"
+  | "error";
+
+function EscalationCard({
+  item,
+  index,
+  onResolved,
+}: Readonly<{ item: Escalation; index: number; onResolved: () => void }>) {
+  const { address, chainId, isConnected } = useAccount();
+  const publicClient = usePublicClient({ chainId: arcTestnet.id });
+  const { switchChainAsync, isPending: switchPending } = useSwitchChain();
+  const { writeContractAsync, isPending: writePending } = useWriteContract();
+  const utils = trpc.useUtils();
+  const submittingRef = useRef(false);
+
+  const [txStage, setTxStage] = useState<TxStage>("idle");
+  const [lastAction, setLastAction] = useState<"approve" | "reject" | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [contractTxHash, setContractTxHash] = useState<Hash | null>(null);
+
+  const escalationManagerAddress = isConfiguredAddress(process.env.NEXT_PUBLIC_ESCALATION_MANAGER)
+    ? (process.env.NEXT_PUBLIC_ESCALATION_MANAGER as Address)
+    : null;
+  const escalationId = isTxHashValue(item.id) ? item.id : null;
+
+  const isBusy =
+    submittingRef.current ||
+    switchPending ||
+    writePending ||
+    txStage === "checking" ||
+    txStage === "wallet" ||
+    txStage === "confirming";
+
+  const disabledReason = !escalationId
+    ? "Indexed escalation id is missing."
+    : !escalationManagerAddress
+      ? "EscalationManager address is not configured."
+      : !publicClient
+        ? "Arc Testnet RPC is unavailable."
+        : !isConnected || !address
+          ? "Connect the approver wallet first."
+          : null;
+
+  const actionsDisabled = Boolean(disabledReason) || isBusy || txStage === "pending_indexer";
+  const statusLine =
+    actionError ??
+    (txStage === "pending_indexer"
+      ? "Contract confirmed. Waiting for indexer sync."
+      : txStage === "checking"
+        ? "Checking approver permission on Arc Testnet."
+        : disabledReason);
+
+  const amountLabel = formatUsd(item.amount);
+  const isNear = item.expiryPercent < 10;
+  const resolved = txStage === "pending_indexer";
+
+  const readEscalationPreflight = async () => {
+    if (!escalationManagerAddress || !escalationId || !publicClient || !address) {
+      throw new Error(disabledReason ?? "Escalation action is unavailable.");
+    }
+
+    const detail = await publicClient.readContract({
+      address: escalationManagerAddress,
+      abi: escalationManagerAbi,
+      functionName: "getEscalation",
+      args: [escalationId],
+    });
+    const wallet = detail[0] as Address;
+    const status = escalationStatusLabels[Number(detail[8])] ?? "EXPIRED";
+
+    if (isZeroAddress(wallet)) {
+      throw new Error("Escalation was not found on Arc Testnet.");
+    }
+    if (status !== "PENDING") {
+      throw new Error(`Escalation is already ${status.toLowerCase()}.`);
+    }
+
+    const expiresAtMs = Number(detail[5]) * 1000;
+    if (Number.isFinite(expiresAtMs) && Date.now() >= expiresAtMs) {
+      throw new Error("Escalation is expired. Expired requests cannot be approved or rejected.");
+    }
+
+    const [requiredSigner, alreadySigned] = await Promise.all([
+      publicClient.readContract({
+        address: escalationManagerAddress,
+        abi: escalationManagerAbi,
+        functionName: "isRequiredSigner",
+        args: [wallet, address],
+      }),
+      publicClient.readContract({
+        address: escalationManagerAddress,
+        abi: escalationManagerAbi,
+        functionName: "signed",
+        args: [escalationId, address],
+      }),
+    ]);
+
+    if (!requiredSigner) {
+      throw new Error("Connected wallet is not an authorized approver for this escalation.");
+    }
+    if (alreadySigned) {
+      throw new Error("This approver has already voted on this escalation.");
+    }
+
+    return { signaturesCount: Number(detail[7]), threshold: Number(detail[6]) };
+  };
+
+  const submitResolution = async (
+    action: "approve" | "reject",
+    event: ReactMouseEvent<HTMLButtonElement>,
+  ) => {
+    if (!allowTrustedMutation(`escalations.${action}`, event)) {
+      return;
+    }
+    if (actionsDisabled || submittingRef.current || !escalationManagerAddress || !escalationId) {
+      return;
+    }
+
+    submittingRef.current = true;
+    setLastAction(action);
+    setActionError(null);
+    setContractTxHash(null);
+    setTxStage("checking");
+
+    try {
+      const preflight = await readEscalationPreflight();
+
+      if (chainId !== arcTestnet.id) {
+        setTxStage("wallet");
+        await switchChainAsync({ chainId: arcTestnet.id });
+      }
+
+      setTxStage("wallet");
+      const hash = await writeContractAsync({
+        address: escalationManagerAddress,
+        abi: escalationManagerAbi,
+        functionName: action,
+        args: [escalationId],
+        chainId: arcTestnet.id,
+      });
+      setContractTxHash(hash);
+      setTxStage("confirming");
+
+      const receipt = await publicClient?.waitForTransactionReceipt({ hash, confirmations: 1 });
+      if (receipt?.status !== "success") {
+        throw new Error("Escalation transaction reverted.");
+      }
+
+      await utils.escalations.list.invalidate();
+      setTxStage("pending_indexer");
+      onResolved();
+
+      if (action === "approve") {
+        const nextCount = preflight.signaturesCount + 1;
+        toast.success(
+          nextCount >= preflight.threshold
+            ? "ESCALATION APPROVED / QUORUM REACHED"
+            : `ESCALATION APPROVED / ${nextCount} OF ${preflight.threshold} QUORUM`,
+          {
+            description:
+              nextCount >= preflight.threshold
+                ? `Release for ${amountLabel} to ${item.counterparty} executed in the approval transaction. Pending indexer sync.`
+                : `Vote for ${amountLabel} to ${item.counterparty} confirmed on-chain. Pending indexer sync.`,
+          },
+        );
+      } else {
+        toast.success("ESCALATION REJECTED", {
+          description: `Rejection for ${amountLabel} to ${item.counterparty} confirmed on-chain. Pending indexer sync.`,
+        });
+      }
+    } catch (caught) {
+      setTxStage("error");
+      const message = errorMessage(caught);
+      setActionError(message);
+      toast.error("ESCALATION ACTION FAILED", { description: message });
+    } finally {
+      submittingRef.current = false;
+    }
+  };
+
+  const copyPortal = () => {
+    const link = `${window.location.origin}/approve/${item.id}`;
+    if (navigator.clipboard) {
+      void navigator.clipboard.writeText(link);
+    }
+    toast.success("Approver portal link copied.");
+  };
+
+  return (
+    <article
+      style={{ "--card-i": index } as CSSProperties}
+      className={`esc-card relative border border-[var(--wl-line-bold)] bg-[var(--wl-bg-raised)] p-5 md:p-7 ${
+        isNear ? "border-l-2 border-l-[var(--wl-signal)]" : ""
+      } ${resolved ? "opacity-75" : ""}`}
+    >
+      <div className="flex items-start justify-between gap-4 border-b border-[var(--wl-line)] pb-5">
+        <div>
+          <p className="font-mono text-[9px] tracking-[.16em] text-[var(--wl-signal)]">
+            {shortAddress(item.id, { head: 8, tail: 4 })} · HUMAN REVIEW
+          </p>
+          <h2 className="mt-3 text-[21px] font-medium tracking-[-.045em]">{item.agentName}</h2>
+        </div>
+        <span
+          className={`rounded-full px-2.5 py-1 font-mono text-[9px] tracking-[.12em] ${
+            resolved
+              ? "bg-[var(--wl-green-tint)] text-[var(--wl-green)]"
+              : "border border-[var(--wl-signal)] text-[var(--wl-signal)]"
+          }`}
+        >
+          {resolved
+            ? lastAction === "approve"
+              ? "APPROVED"
+              : "REJECTED"
+            : "PENDING"}
+        </span>
+      </div>
+
+      <div className="grid gap-7 py-6 md:grid-cols-[1fr_1.1fr]">
+        <div>
+          <p className="font-mono text-[9px] uppercase tracking-[.13em] text-[var(--wl-mute)]">REQUEST</p>
+          <p className="mt-3 text-[27px] font-medium tracking-[-.05em]">
+            {amountLabel} <span className="text-[var(--wl-mute)]">→</span> {item.counterparty}
+          </p>
+          <p className="mt-4 text-[13px] text-[var(--wl-body)]">
+            Reason: <span className="font-medium text-[var(--wl-ink)]">{item.reason}</span>
+          </p>
+        </div>
+        <div className="border-l border-[var(--wl-line)] pl-5 md:pl-7">
+          <p className="font-mono text-[9px] uppercase tracking-[.13em] text-[var(--wl-mute)]">
+            QUORUM / {item.quorumRequired} SIGNATURES
+          </p>
+          <div className="mt-4 flex gap-2">
+            <div className="flex min-h-[62px] flex-1 flex-col justify-between border border-[var(--wl-faint)] bg-[var(--wl-bg-soft)] p-3">
+              <span className="font-mono text-[9px] text-[var(--wl-green)]">SIGNED</span>
+              <span className="text-[11px] font-medium">{item.quorumCurrent}</span>
+              <span className="font-mono text-[8px] text-[var(--wl-mute)]">of {item.quorumRequired}</span>
+            </div>
+            <div className="flex min-h-[62px] flex-1 flex-col justify-between border border-dashed border-[var(--wl-signal)] p-3">
+              <span className="font-mono text-[9px] text-[var(--wl-mute)]">AWAITING</span>
+              <span className="text-[11px] text-[var(--wl-secondary2)]">operator signature</span>
+              <span className="font-mono text-[8px] text-[var(--wl-mute)]">—</span>
+            </div>
+          </div>
+          <div className="mt-5 flex items-baseline justify-between border-t border-[var(--wl-line)] pt-4">
+            <span className="font-mono text-[9px] tracking-[.12em] text-[var(--wl-mute)]">EXPIRY</span>
+            <span
+              className={`font-mono text-[12px] tabular-nums ${
+                isNear ? "text-[var(--wl-signal)]" : "text-[var(--wl-body)]"
+              }`}
+            >
+              {item.expiresIn}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 border-t border-[var(--wl-line)] pt-5">
+        {!resolved ? (
+          <>
+            <button
+              type="button"
+              disabled={actionsDisabled}
+              onClick={(event) => void submitResolution("approve", event)}
+              className="warm-pill rounded-full bg-[var(--wl-signal)] px-4 py-2.5 text-[10px] font-semibold text-[var(--wl-bg)] disabled:cursor-not-allowed disabled:opacity-55"
+            >
+              Approve
+            </button>
+            <button
+              type="button"
+              disabled={actionsDisabled}
+              onClick={(event) => void submitResolution("reject", event)}
+              className="warm-pill warm-pill-ghost rounded-full border border-[var(--wl-line)] px-4 py-2.5 text-[10px] font-semibold disabled:cursor-not-allowed disabled:opacity-55"
+            >
+              Reject
+            </button>
+          </>
+        ) : (
+          <span className="font-mono text-[9px] tracking-[.12em] text-[var(--wl-green)]">
+            FINAL DECISION COMMITTED TO LEDGER
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={copyPortal}
+          className="ml-auto rounded-full border border-[var(--wl-line)] px-4 py-2.5 font-mono text-[9px] tracking-[.08em] text-[var(--wl-secondary2)] transition-colors duration-[220ms] hover:border-[var(--wl-ink)] hover:text-[var(--wl-ink)]"
+        >
+          Copy approver portal link
+        </button>
+      </div>
+
+      {statusLine ? (
+        <div
+          className={`mt-4 font-mono text-[9px] tracking-[.12em] ${
+            actionError ? "text-[var(--wl-red)]" : "text-[var(--wl-mute)]"
+          }`}
+        >
+          {statusLine}
+        </div>
+      ) : null}
+      {contractTxHash && getArcscanTxUrl(contractTxHash) ? (
+        <a
+          href={getArcscanTxUrl(contractTxHash) ?? undefined}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-2 block font-mono text-[9px] tracking-[.12em] text-[var(--wl-secondary)] hover:text-[var(--wl-ink)]"
+        >
+          OPEN VOTE TX ↗
+        </a>
+      ) : null}
+    </article>
+  );
+}
+
+export default function EscalationsPage() {
+  useWorkspaceMode();
+  const liveEscalations = useLiveEscalations("PENDING");
+  const [resolvedIds, setResolvedIds] = useState<ReadonlySet<string>>(new Set());
+
+  const queue = liveEscalations.data;
+  const pendingCount = useMemo(
+    () => queue.filter((item) => !resolvedIds.has(item.id)).length,
+    [queue, resolvedIds],
+  );
+
+  const loading = liveEscalations.isLoading && queue.length === 0;
+  const errored = liveEscalations.isError && queue.length === 0;
+
+  return (
+    <div className="mx-auto max-w-[1400px] px-5 py-8 md:px-8 md:py-10">
+      <style>{`
+        .esc-card{animation:escCardIn 420ms cubic-bezier(.16,1,.3,1) calc(var(--card-i) * 110ms) both;transition:transform 220ms cubic-bezier(.16,1,.3,1),box-shadow 220ms ease}
+        .esc-card:hover{transform:translateY(-3px);box-shadow:10px 14px 0 var(--wl-bg-deep2)}
+        @keyframes escCardIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+        @media (prefers-reduced-motion:reduce){.esc-card{animation:none!important;transition:none!important}.esc-card:hover{transform:none}}
+      `}</style>
+
+      <div className="flex flex-col justify-between gap-7 border-b border-[var(--wl-line)] pb-9 md:flex-row md:items-end">
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
+            QUORUM / HUMAN CONTROL
+          </p>
+          <h1 className="mt-4 text-[clamp(2.7rem,5vw,4.8rem)] font-semibold leading-[.9] tracking-[-.05em]">
+            Escalations
+          </h1>
+          <p className="mt-4 max-w-[560px] text-[14px] leading-[1.45] text-[var(--wl-secondary2)]">
+            When an agent reaches the edge of its doctrine, a human gets the final word.
+          </p>
+        </div>
+      </div>
+
+      <section className="grid grid-cols-3 border-b border-[var(--wl-line)]">
+        <div className="py-6">
+          <p className="font-mono text-[9px] tracking-[.15em] text-[var(--wl-mute)]">PENDING</p>
+          <p className="mt-3 text-[34px] font-medium tracking-[-.05em] text-[var(--wl-signal)]">
+            {pendingCount}
+          </p>
+        </div>
+        <div className="border-l border-[var(--wl-line)] py-6 pl-5 md:pl-7">
+          <p className="font-mono text-[9px] tracking-[.15em] text-[var(--wl-mute)]">IN QUEUE</p>
+          <p className="mt-3 text-[34px] font-medium tracking-[-.05em]">{queue.length}</p>
+        </div>
+        <div className="border-l border-[var(--wl-line)] py-6 pl-5 md:pl-7">
+          <p className="font-mono text-[9px] tracking-[.15em] text-[var(--wl-mute)]">RESOLVED</p>
+          <p className="mt-3 text-[34px] font-medium tracking-[-.05em]">{resolvedIds.size}</p>
+        </div>
+      </section>
+
+      <div className="mt-8 grid gap-6 lg:grid-cols-2">
+        {loading ? (
+          [0, 1].map((card) => (
+            <div
+              key={card}
+              className="border border-[var(--wl-line-bold)] bg-[var(--wl-bg-raised)] p-5 md:p-7"
+            >
+              <div className="h-4 w-40 animate-pulse rounded bg-[var(--wl-line-soft)]" />
+              <div className="mt-6 h-8 w-3/4 animate-pulse rounded bg-[var(--wl-line-soft)]" />
+              <div className="mt-4 h-4 w-2/3 animate-pulse rounded bg-[var(--wl-line-soft)]" />
+              <div className="mt-8 h-10 w-full animate-pulse rounded bg-[var(--wl-line-soft)]" />
+            </div>
+          ))
+        ) : errored ? (
+          <div className="lg:col-span-2 border border-dashed border-[var(--wl-line)] p-12 text-center">
+            <p className="font-mono text-[10px] uppercase tracking-[.14em] text-[var(--wl-signal)]">
+              ESCALATION QUERY FAILED
+            </p>
+            <button
+              type="button"
+              onClick={() => void liveEscalations.refetch()}
+              className="mt-3 font-mono text-[10px] tracking-[.12em] text-[var(--wl-secondary)] hover:text-[var(--wl-ink)]"
+            >
+              RETRY
+            </button>
+          </div>
+        ) : queue.length === 0 ? (
+          <div className="lg:col-span-2 border border-dashed border-[var(--wl-line)] p-12 text-center font-mono text-[10px] tracking-[.14em] text-[var(--wl-secondary)]">
+            QUEUE CLEAR · NO PENDING ESCALATIONS
+          </div>
+        ) : (
+          queue.map((item, index) => (
+            <EscalationCard
+              key={item.id}
+              item={item}
+              index={index}
+              onResolved={() =>
+                setResolvedIds((current) => {
+                  const next = new Set(current);
+                  next.add(item.id);
+                  return next;
+                })
+              }
+            />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}

@@ -1,20 +1,323 @@
 @import "tailwindcss";
 
 /*
- * Frontend UI removed pending the Warm Ledger redesign.
- * Old foundry theme is preserved on the `pre-frontend-delete-backup` branch.
+ * ARCANUM — Warm Ledger design system.
+ * Light (default): warm paper. Dark (html.wl-dark): the original foundry
+ * black-grid — #121419 base, 38px grid of 1px white lines @ 1.8% opacity,
+ * hazard orange accents. All UI must use --wl-* tokens; never raw hexes.
  */
 
 @theme {
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
-  --font-body: "Inter", system-ui, sans-serif;
+  --font-body: var(--font-inter-tight), "Inter Tight", system-ui, sans-serif;
+  --font-mono: var(--font-dm-mono), "DM Mono", ui-monospace, monospace;
+  --font-sans: var(--font-inter-tight), "Inter Tight", system-ui, sans-serif;
+}
+
+:root {
+  color-scheme: light;
+  /* backgrounds */
+  --wl-bg: #faf6f1;
+  --wl-bg-raised: #fbf8f4;
+  --wl-bg-soft: #f5f0ea;
+  --wl-bg-tint: #f3ede7;
+  --wl-bg-tint2: #f3ede6;
+  --wl-bg-deep: #efe8e0;
+  --wl-bg-deep2: #eee7df;
+  --wl-surface: #ffffff;
+  --wl-glass: rgba(255, 255, 255, 0.5);
+  --wl-glass-strong: rgba(255, 255, 255, 0.6);
+  /* lines / borders */
+  --wl-line: #ded7d0;
+  --wl-line-soft: #e3dcd5;
+  --wl-line-faint: #e7e0d9;
+  --wl-line-faint2: #e9e2db;
+  --wl-line-strong: #d8d0c8;
+  --wl-line-strong2: #d8cfc6;
+  --wl-line-bold: #cfc5bc;
+  --wl-line-bolder: #c5bbb2;
+  /* text */
+  --wl-ink: #292522;
+  --wl-ink-soft: #322e2b;
+  --wl-strong: #5b544d;
+  --wl-strong2: #554d47;
+  --wl-strong3: #4f4842;
+  --wl-strong4: #4b4540;
+  --wl-strong5: #49423d;
+  --wl-body: #655d56;
+  --wl-secondary2: #776f68;
+  --wl-secondary: #837a72;
+  --wl-dim: #8d837b;
+  --wl-dim2: #8f857c;
+  --wl-mute: #9b9289;
+  --wl-muted: #a39a91;
+  --wl-muted2: #a69d94;
+  --wl-faint: #bdb4aa;
+  /* accents */
+  --wl-signal: #ff3c00;
+  --wl-signal-deep: #d63200;
+  --wl-green: #3f653e;
+  --wl-green-bright: #4d7b49;
+  --wl-green-soft: #72946f;
+  --wl-green-tint: #e7f0e5;
+  --wl-amber: #a8742c;
+  --wl-red: #b3402a;
+  /* rgb channels for rgba() shadows / scrims / glows */
+  --wl-ink-rgb: 41, 37, 34;
+  --wl-signal-rgb: 255, 60, 0;
+}
+
+html.wl-dark {
+  color-scheme: dark;
+  /* backgrounds — foundry scale */
+  --wl-bg: #121419;
+  --wl-bg-raised: #16181d;
+  --wl-bg-soft: #181b21;
+  --wl-bg-tint: #14161a;
+  --wl-bg-tint2: #14161a;
+  --wl-bg-deep: #101216;
+  --wl-bg-deep2: #101216;
+  --wl-surface: #181b21;
+  --wl-glass: rgba(24, 27, 33, 0.55);
+  --wl-glass-strong: rgba(24, 27, 33, 0.65);
+  /* lines / borders */
+  --wl-line: #282c34;
+  --wl-line-soft: #1e222a;
+  --wl-line-faint: #20242b;
+  --wl-line-faint2: #20242b;
+  --wl-line-strong: #343a44;
+  --wl-line-strong2: #343a44;
+  --wl-line-bold: #3a4250;
+  --wl-line-bolder: #3a4250;
+  /* text */
+  --wl-ink: #edf0f3;
+  --wl-ink-soft: #edf0f3;
+  --wl-strong: #d7dbe0;
+  --wl-strong2: #d7dbe0;
+  --wl-strong3: #d7dbe0;
+  --wl-strong4: #d7dbe0;
+  --wl-strong5: #d7dbe0;
+  --wl-body: #aab0b9;
+  --wl-secondary2: #9aa1ac;
+  --wl-secondary: #8a909b;
+  --wl-dim: #8a909b;
+  --wl-dim2: #8a909b;
+  --wl-mute: #7d848f;
+  --wl-muted: #6f7681;
+  --wl-muted2: #5b626c;
+  --wl-faint: #5b626c;
+  /* accents — hazard orange */
+  --wl-signal: #ff5a1f;
+  --wl-signal-deep: #e04a12;
+  --wl-green: #6e9e7c;
+  --wl-green-bright: #7fb287;
+  --wl-green-soft: #6e9e7c;
+  --wl-green-tint: rgba(110, 158, 124, 0.14);
+  --wl-amber: #e0a04a;
+  --wl-red: #ec7a6b;
+  /* rgb channels */
+  --wl-ink-rgb: 0, 0, 0;
+  --wl-signal-rgb: 255, 90, 31;
 }
 
 * {
   box-sizing: border-box;
+  border-color: var(--wl-line);
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   min-height: 100vh;
+  background-color: var(--wl-bg);
+  color: var(--wl-ink);
   font-family: var(--font-body);
+}
+
+/* The old ARCANUM black grid, applied to the page shell and any full-page
+   paper background in dark mode. */
+html.wl-dark body,
+html.wl-dark [class*="bg-[var(--wl-bg)]"] {
+  background-image: repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.018) 0 1px,
+      transparent 1px 38px
+    ),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 38px);
+}
+
+/* Panels / tints sit flat, like the old foundry panels. */
+html.wl-dark [class*="bg-[var(--wl-bg-"],
+html.wl-dark [class*="bg-[var(--wl-surface)]"] {
+  background-image: none;
+}
+
+/* Theme toggle icon swap */
+.wl-icon-sun { display: none; }
+.wl-icon-moon { display: inline-flex; }
+html.wl-dark .wl-icon-sun { display: inline-flex; }
+html.wl-dark .wl-icon-moon { display: none; }
+
+/* ------------------------------------------------------------------ */
+/* Warm Ledger interaction primitives (shared across landing + app)    */
+/* ------------------------------------------------------------------ */
+
+.warm-interaction {
+  --mag-x: 0px;
+  --mag-y: 0px;
+  transform: translate3d(var(--mag-x), var(--mag-y), 0);
+  transition:
+    transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    color 220ms ease,
+    border-color 220ms ease;
+}
+.warm-interaction:active {
+  transform: translate3d(var(--mag-x), calc(var(--mag-y) + 2px), 0);
+}
+
+.warm-pill {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(var(--wl-ink-rgb), 0.06);
+  transition:
+    transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 320ms cubic-bezier(0.16, 1, 0.3, 1),
+    color 220ms ease,
+    border-color 220ms ease;
+}
+.warm-pill::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--wl-signal-deep);
+  transform: translateY(102%);
+  transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.warm-pill:hover {
+  box-shadow:
+    0 10px 28px -8px rgba(var(--wl-signal-rgb), 0.45),
+    0 2px 6px rgba(var(--wl-ink-rgb), 0.08);
+}
+.warm-pill:hover::before {
+  transform: translateY(0);
+}
+.warm-pill-ghost::before {
+  background: var(--wl-ink);
+}
+.warm-pill-ghost:hover {
+  color: var(--wl-bg);
+  border-color: var(--wl-ink);
+  box-shadow: 0 10px 28px -10px rgba(var(--wl-ink-rgb), 0.4);
+}
+
+.warm-link {
+  position: relative;
+}
+.warm-link::after {
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background: var(--wl-signal);
+  content: "";
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.warm-link:hover::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
+/* Reveal-on-scroll */
+.warm-reveal {
+  will-change: transform, opacity;
+}
+.warm-reveal.warm-armed:not(.is-visible) {
+  opacity: 0;
+  transform: translateY(16px);
+  clip-path: inset(0 0 12% 0);
+}
+.warm-reveal.is-visible {
+  animation: warmIn 420ms cubic-bezier(0.16, 1, 0.3, 1) calc(var(--i, 0) * 120ms) both;
+}
+.warm-reveal[data-reveal-kind="headline"].warm-armed:not(.is-visible) {
+  clip-path: inset(0 0 100% 0);
+  transform: translateY(11px);
+}
+.warm-reveal[data-reveal-kind="headline"].is-visible {
+  animation: warmHeadline 560ms cubic-bezier(0.16, 1, 0.3, 1) calc(var(--i, 0) * 120ms) both;
+}
+.delay-1 { --i: 1; }
+.delay-2 { --i: 2; }
+.delay-3 { --i: 3; }
+
+@keyframes warmIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes warmHeadline {
+  from { opacity: 0; transform: translateY(11px); clip-path: inset(0 0 100% 0); }
+  to { opacity: 1; transform: translateY(0); clip-path: inset(0 0 0 0); }
+}
+
+/* Modals */
+@keyframes warmModalBackdrop {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes warmModalPanel {
+  from { opacity: 0; transform: translateY(18px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes warmScan {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(340%); }
+}
+.warm-modal-backdrop {
+  animation: warmModalBackdrop 260ms ease both;
+  backdrop-filter: blur(3px);
+}
+.warm-modal-panel {
+  animation: warmModalPanel 380ms cubic-bezier(0.16, 1, 0.3, 1) 60ms both;
+}
+
+.warm-wallet-option {
+  transition:
+    border-color 200ms ease,
+    background 200ms ease,
+    transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.warm-wallet-option:hover {
+  border-color: var(--wl-ink);
+  background: var(--wl-bg-tint2);
+  transform: translateX(3px);
+}
+.warm-wallet-option:hover .warm-wallet-arrow {
+  opacity: 1;
+  transform: translateX(0);
+}
+.warm-wallet-arrow {
+  opacity: 0;
+  transform: translateX(-6px);
+  transition:
+    opacity 200ms ease,
+    transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .warm-modal-backdrop,
+  .warm-modal-panel,
+  .warm-reveal.is-visible {
+    animation: none;
+  }
+  .warm-pill,
+  .warm-pill::before {
+    transition: none;
+  }
 }

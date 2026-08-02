@@ -2,23 +2,25 @@ import "@rainbow-me/rainbowkit/styles.css";
 import "./globals.css";
 
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { DM_Mono, Inter_Tight } from "next/font/google";
+import Script from "next/script";
 import type { ReactNode } from "react";
 
 import { configuredPublicOrigin } from "@/lib/public-url";
 
 import { Providers } from "./providers";
 
-const inter = Inter({
+const interTight = Inter_Tight({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-body",
+  variable: "--font-inter-tight",
 });
 
-const jetBrainsMono = JetBrains_Mono({
+const dmMono = DM_Mono({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-mono",
+  weight: ["400", "500"],
+  variable: "--font-dm-mono",
 });
 
 const publicOrigin = configuredPublicOrigin();
@@ -72,7 +74,8 @@ type RootLayoutProps = Readonly<{
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} ${jetBrainsMono.variable} antialiased`}>
+      <body className={`${interTight.variable} ${dmMono.variable} antialiased`}>
+        <Script src="/theme-init.js" strategy="beforeInteractive" />
         <Providers>{children}</Providers>
       </body>
     </html>
