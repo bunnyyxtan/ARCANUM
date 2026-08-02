@@ -1,833 +1,606 @@
-import {
-  AlertTriangle,
-  ArrowRight,
-  Ban,
-  BookOpen,
-  Check,
-  ChevronRight,
-  Eye,
-  Flag,
-  Github,
-  Globe,
-  Lock,
-  ScrollText,
-  Search,
-  Shield,
-  ShieldAlert,
-  ShieldCheck,
-  ShieldHalf,
-  Snowflake,
-  TriangleAlert,
-  Users,
-  Wallet,
-  Zap,
-} from "lucide-react";
+"use client";
+
 import Link from "next/link";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
+
+import { ThemeToggle } from "@/components/arcanum/ThemeToggle";
+
+const orange = "var(--wl-signal)";
+const GITHUB_URL = "https://github.com/bunnyyxtan/ARCANUM";
 
 /* -------------------------------------------------------------------------- */
-/*  SECTION 1 — FOUNDRY-style Hero                                            */
+/*  Shared primitives (ported from the Warm Ledger design)                     */
 /* -------------------------------------------------------------------------- */
-function HeroSection() {
+
+function Arrow() {
   return (
-    <section className="relative border-b border-[#282C34]">
-      {/* Scanline overlay for depth */}
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage:
-            "repeating-linear-gradient(0deg, transparent 0px, transparent 2px, rgba(255,255,255,0.04) 2px, rgba(255,255,255,0.04) 3px)",
-        }}
-      />
-
-      <div className="mx-auto grid max-w-[1280px] grid-cols-1 gap-8 px-5 py-16 lg:grid-cols-[1fr_minmax(0,460px)] lg:gap-12 lg:py-24">
-        {/* Left — copy block */}
-        <div className="flex flex-col justify-center">
-          <div className="inline-flex items-center gap-2.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[#FF5A1F]">
-            <span className="h-1.5 w-1.5 animate-pulse bg-[#FF5A1F]" />
-            BUILT ON ARC
-          </div>
-
-          <h1 className="mt-5 font-cond text-[42px] font-bold leading-[1.05] tracking-[0.02em] text-[#EDF0F3] sm:text-[52px] lg:text-[60px]">
-            The doctrine layer for agentic wallets on Arc.
-          </h1>
-
-          <p className="mt-5 max-w-[540px] font-body text-[15px] leading-[1.7] text-[#8A909B]">
-            Give AI agents real USDC wallets on Arc — governed by spend limits, vendor allowlists,
-            anomaly checks, and human escalation.
-          </p>
-
-          <div className="mt-8 flex flex-wrap items-center gap-3">
-            <Link
-              href="/dashboard"
-              className="inline-flex h-11 items-center gap-2 bg-[#FF5A1F] px-6 font-mono text-[12px] font-semibold uppercase tracking-[0.12em] text-[#121419] transition-all hover:brightness-110 hover:shadow-[0_0_24px_rgba(255,90,31,0.3)]"
-            >
-              Launch Dashboard
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-            <Link
-              href="/docs"
-              className="inline-flex h-11 items-center gap-2 border border-[#282C34] bg-[#181B21] px-6 font-mono text-[12px] uppercase tracking-[0.12em] text-[#8A909B] transition-colors hover:border-[#3A4250] hover:text-[#D7DBE0]"
-            >
-              <BookOpen className="h-3.5 w-3.5" />
-              Read Docs
-            </Link>
-            <a
-              href="https://github.com/bunnyyxtan/ARCANUM"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex h-11 cursor-pointer items-center gap-2 border border-[#282C34] bg-[#181B21] px-5 font-mono text-[12px] uppercase tracking-[0.12em] text-[#5B626C] transition-colors hover:border-[#3A4250] hover:text-[#8A909B]"
-            >
-              <Github className="h-3.5 w-3.5" />
-              GitHub
-            </a>
-          </div>
-        </div>
-
-        {/* Right — mini FOUNDRY console preview cards */}
-        <div className="flex flex-col gap-3">
-          {/* Posture card */}
-          <div className="relative border border-[#282C34] bg-[#181B21] p-5">
-            <CornerAccents />
-            <div className="text-[10px] uppercase tracking-[0.22em] text-[#5B626C]">
-              GOVERNANCE POSTURE
-            </div>
-            <div className="mt-2 flex items-end gap-3">
-              <span className="font-cond text-[56px] font-bold leading-[0.8] text-[#EDF0F3]">
-                87
-              </span>
-              <div className="mb-1">
-                <div className="text-[13px] font-semibold tracking-[0.06em] text-[#FF5A1F]">
-                  FORTIFIED
-                </div>
-                <div className="mt-0.5 text-[10px] text-[#8A909B]">↑ 3 PTS / 24H</div>
-              </div>
-            </div>
-            <GaugeBar value={87} />
-          </div>
-
-          {/* Metrics row */}
-          <div className="grid grid-cols-2 gap-3">
-            <MiniStat label="VALUE GOVERNED" value="$1,247,392" caption="04 WALLETS ACTIVE" />
-            <MiniStat label="ACTIVE AGENTS" value="04" caption="01 UNDER RESTRAINT" accentCaption />
-          </div>
-
-          {/* Recent decision record */}
-          <div className="border border-[#282C34] bg-[#181B21]">
-            <div className="flex h-8 items-center justify-between border-b border-[#282C34] px-4">
-              <span className="text-[10px] uppercase tracking-[0.18em] text-[#8A909B]">
-                LATEST DECISION
-              </span>
-              <span className="text-[10px] tracking-[0.12em] text-[#5B626C]">02:47:12Z</span>
-            </div>
-            <div className="space-y-2 px-4 py-3 text-[11px]">
-              <div className="flex items-center justify-between">
-                <span className="text-[#8A909B]">Cloud Ops Agent to AWS Bedrock</span>
-                <span className="flex items-center gap-1 text-[#6E9E7C]">
-                  <Check className="h-3 w-3" /> APPROVED
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[#8A909B]">RESEARCH-02 to AWS Bedrock</span>
-                <span className="flex items-center gap-1 text-[#E0A04A]">
-                  <TriangleAlert className="h-3 w-3" /> ESCALATED
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[#8A909B]">TRADE-BOT-03 to Unknown</span>
-                <span className="flex items-center gap-1 text-[#FF5A1F]">
-                  <Ban className="h-3 w-3" /> REJECTED
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
+    <span
+      aria-hidden="true"
+      className="ml-2 inline-block transition-transform duration-[220ms] group-hover:translate-x-1"
+    >
+      ↗
+    </span>
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/*  SECTION 2 — Problem Panel                                                 */
-/* -------------------------------------------------------------------------- */
-function ProblemSection() {
-  const problems = [
-    {
-      icon: AlertTriangle,
-      label: "OVERSPEND RISK",
-      body: "An uncapped wallet lets an agent drain treasury in a single run.",
-      color: "#FF5A1F",
-    },
-    {
-      icon: Ban,
-      label: "UNAPPROVED VENDORS",
-      body: "Agents route payments to unknown counterparties with no review.",
-      color: "#FF5A1F",
-    },
-    {
-      icon: Search,
-      label: "NO AUDIT TRAIL",
-      body: "Spend decisions happen off-chain with zero provenance or accountability.",
-      color: "#E0A04A",
-    },
-    {
-      icon: Users,
-      label: "NO HUMAN APPROVAL",
-      body: "High-value or anomalous transactions execute without escalation.",
-      color: "#E0A04A",
-    },
-    {
-      icon: Eye,
-      label: "NO PUBLIC PROOF",
-      body: "Stakeholders cannot verify governance posture or spending behavior.",
-      color: "#5B626C",
-    },
-  ] as const;
-
+function GitHubMark({ className = "h-3.5 w-3.5" }: { className?: string }) {
   return (
-    <section className="border-b border-[#282C34]">
-      <div className="mx-auto max-w-[1280px] px-5 py-16 lg:py-20">
-        <SectionEyebrow>THE PROBLEM</SectionEyebrow>
-        <h2 className="mt-3 font-cond text-[28px] font-bold tracking-[0.02em] text-[#EDF0F3] sm:text-[34px]">
-          AI agents move money. Normal wallets give them too much freedom.
-        </h2>
-        <p className="mt-3 max-w-[640px] text-[14px] leading-[1.65] text-[#8A909B]">
-          Autonomous agents can call APIs, buy data, rent compute, and settle payments. Teams need
-          policy before funds move.
-        </p>
-
-        <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          {problems.map((item) => (
-            <div key={item.label} className="border border-[#282C34] bg-[#181B21] p-4">
-              <item.icon className="h-4 w-4" style={{ color: item.color }} />
-              <div className="mt-3 text-[10px] uppercase tracking-[0.18em] text-[#EDF0F3]">
-                {item.label}
-              </div>
-              <p className="mt-2 text-[12px] leading-[1.5] text-[#5B626C]">{item.body}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
+    <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className={`inline-block shrink-0 ${className}`}>
+      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.5 7.5 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
+    </svg>
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/*  SECTION 3 — System Loop                                                   */
-/* -------------------------------------------------------------------------- */
-function SystemLoopSection() {
-  const steps = [
-    {
-      num: "01",
-      label: "DEPLOY WALLET",
-      desc: "Create a GuardedWallet on Arc with an owner signer.",
-    },
-    { num: "02", label: "ATTACH DOCTRINE", desc: "Set spend limits, category caps, quorum rules." },
-    {
-      num: "03",
-      label: "APPROVE VENDORS",
-      desc: "Allowlist counterparties and vendor categories.",
-    },
-    { num: "04", label: "AGENT PAYS", desc: "Agent attempts a USDC payment through the wallet." },
-    {
-      num: "05",
-      label: "POLICY ENGINE",
-      desc: "Doctrine allows, denies, or escalates the transaction.",
-    },
-    { num: "06", label: "PUBLIC POSTURE", desc: "Governance badge and explorer prove compliance." },
-  ] as const;
-
+function BookIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
   return (
-    <section className="border-b border-[#282C34]">
-      <div className="mx-auto max-w-[1280px] px-5 py-16 lg:py-20">
-        <SectionEyebrow>HOW ARCANUM WORKS</SectionEyebrow>
-        <h2 className="mt-3 font-cond text-[28px] font-bold tracking-[0.02em] text-[#EDF0F3] sm:text-[34px]">
-          The governance loop
-        </h2>
-        <p className="mt-3 max-w-[540px] text-[14px] leading-[1.65] text-[#8A909B]">
-          Every payment flows through on-chain policy before settlement.
-        </p>
-
-        <div className="mt-8 grid grid-cols-1 gap-px bg-[#282C34] sm:grid-cols-2 lg:grid-cols-3">
-          {steps.map((step) => (
-            <div key={step.num} className="flex gap-4 bg-[#121419] p-5">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center border border-[#282C34] bg-[#181B21] font-mono text-[12px] text-[#FF5A1F]">
-                {step.num}
-              </span>
-              <div>
-                <div className="text-[11px] uppercase tracking-[0.16em] text-[#EDF0F3]">
-                  {step.label}
-                </div>
-                <p className="mt-1 text-[12px] leading-[1.55] text-[#5B626C]">{step.desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Visual connection line */}
-        <div className="mt-6 flex items-center gap-3 text-[10px] uppercase tracking-[0.14em] text-[#5B626C]">
-          <div className="h-px flex-1 bg-[#282C34]" />
-          <span className="flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 bg-[#FF5A1F]" />
-            CONTINUOUS GOVERNANCE LOOP
-          </span>
-          <div className="h-px flex-1 bg-[#282C34]" />
-        </div>
-      </div>
-    </section>
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={`inline-block shrink-0 ${className}`}
+    >
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+    </svg>
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/*  SECTION 4 — Product Modules                                               */
-/* -------------------------------------------------------------------------- */
-function ProductModulesSection() {
-  const modules = [
-    {
-      icon: Wallet,
-      label: "GUARDEDWALLET",
-      desc: "Non-custodial smart-contract wallet with embedded policy hooks. Every outbound transfer is evaluated before settlement.",
-      accent: true,
-    },
-    {
-      icon: ScrollText,
-      label: "DOCTRINE ENGINE",
-      desc: "On-chain policy envelopes — spend limits, category caps, vendor allowlists, escalation thresholds. Immutable once deployed.",
-      accent: true,
-    },
-    {
-      icon: ShieldCheck,
-      label: "VENDOR REGISTRY",
-      desc: "Allowlist and categorize approved counterparties. Payments to unapproved vendors are blocked or escalated automatically.",
-      accent: false,
-    },
-    {
-      icon: Flag,
-      label: "RESTRAINT QUEUE",
-      desc: "Escalated transactions wait for human quorum approval. Time-bounded with configurable expiry and auto-deny.",
-      accent: false,
-    },
-    {
-      icon: Globe,
-      label: "PUBLIC EXPLORER & BADGE",
-      desc: "Sharable governance posture. Stakeholders, auditors, and DAOs can verify agent behavior on-chain without special access.",
-      accent: false,
-    },
-  ] as const;
+type MagneticAnchorProps = {
+  children: ReactNode;
+  className?: string;
+  href: string;
+  rel?: string;
+  target?: string;
+};
 
-  return (
-    <section className="border-b border-[#282C34]">
-      <div className="mx-auto max-w-[1280px] px-5 py-16 lg:py-20">
-        <SectionEyebrow>PRODUCT MODULES</SectionEyebrow>
-        <h2 className="mt-3 font-cond text-[28px] font-bold tracking-[0.02em] text-[#EDF0F3] sm:text-[34px]">
-          Everything an autonomous wallet needs
-        </h2>
-
-        <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {modules.map((mod) => (
-            <div key={mod.label} className="relative border border-[#282C34] bg-[#181B21] p-5">
-              {mod.accent ? (
-                <div className="absolute inset-y-0 left-0 w-[3px] bg-[#FF5A1F]" />
-              ) : null}
-              <mod.icon className="h-4 w-4 text-[#8A909B]" />
-              <div className="mt-3 text-[11px] uppercase tracking-[0.18em] text-[#EDF0F3]">
-                {mod.label}
-              </div>
-              <p className="mt-2 text-[13px] leading-[1.55] text-[#5B626C]">{mod.desc}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/*  SECTION 5 — Why Arc                                                       */
-/* -------------------------------------------------------------------------- */
-function WhyArcSection() {
-  const points = [
-    {
-      label: "USDC-NATIVE",
-      desc: "Gas and settlement in USDC. No volatile token exposure for treasury operations.",
-    },
-    {
-      label: "EVM-COMPATIBLE",
-      desc: "Standard Solidity toolchain. Deploy with Hardhat, Foundry, or the Arcanum SDK.",
-    },
-    {
-      label: "STABLECOIN CONTEXT",
-      desc: "Purpose-built for financial applications where deterministic settlement matters.",
-    },
-    {
-      label: "FAST FINALITY",
-      desc: "Sub-second block times with predictable settlement for time-sensitive operations.",
-    },
-  ] as const;
-
-  return (
-    <section className="border-b border-[#282C34]">
-      <div className="mx-auto max-w-[1280px] px-5 py-16 lg:py-20">
-        <SectionEyebrow>WHY ARC</SectionEyebrow>
-        <h2 className="mt-3 font-cond text-[28px] font-bold tracking-[0.02em] text-[#EDF0F3] sm:text-[34px]">
-          Built native to Arc
-        </h2>
-
-        <div className="mt-8 grid grid-cols-1 gap-px bg-[#282C34] sm:grid-cols-2 lg:grid-cols-4">
-          {points.map((item) => (
-            <div key={item.label} className="bg-[#121419] p-5">
-              <div className="flex items-center gap-2">
-                <span className="h-1.5 w-1.5 bg-[#FF5A1F]" />
-                <span className="text-[11px] uppercase tracking-[0.16em] text-[#EDF0F3]">
-                  {item.label}
-                </span>
-              </div>
-              <p className="mt-2 text-[12px] leading-[1.55] text-[#5B626C]">{item.desc}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/*  SECTION 6 — Console Preview                                               */
-/* -------------------------------------------------------------------------- */
-function ConsolePreviewSection() {
-  return (
-    <section className="border-b border-[#282C34]">
-      <div className="mx-auto max-w-[1280px] px-5 py-16 lg:py-20">
-        <SectionEyebrow>INSIDE THE CONSOLE</SectionEyebrow>
-        <h2 className="mt-3 font-cond text-[28px] font-bold tracking-[0.02em] text-[#EDF0F3] sm:text-[34px]">
-          Governance at a glance
-        </h2>
-        <p className="mt-3 max-w-[540px] text-[14px] leading-[1.65] text-[#8A909B]">
-          The FOUNDRY console gives operators full visibility into agent spend, policy enforcement,
-          escalation queues, and public posture.
-        </p>
-
-        <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {/* Dashboard metrics */}
-          <PreviewCard title="DASHBOARD METRICS">
-            <div className="grid grid-cols-2 gap-px bg-[#282C34]">
-              <div className="bg-[#14161A] p-3">
-                <div className="text-[9px] uppercase tracking-[0.18em] text-[#5B626C]">
-                  DAILY SPEND
-                </div>
-                <div className="mt-1 font-cond text-[24px] font-semibold text-[#EDF0F3]">
-                  $4,218
-                </div>
-                <div className="mt-0.5 text-[9px] text-[#6E9E7C]">WITHIN LIMITS</div>
-              </div>
-              <div className="bg-[#14161A] p-3">
-                <div className="text-[9px] uppercase tracking-[0.18em] text-[#5B626C]">
-                  DECISIONS / 24H
-                </div>
-                <div className="mt-1 font-cond text-[24px] font-semibold text-[#EDF0F3]">47</div>
-                <div className="mt-0.5 text-[9px] text-[#8A909B]">44 APPROVED / 2 ESCALATED</div>
-              </div>
-              <div className="bg-[#14161A] p-3">
-                <div className="text-[9px] uppercase tracking-[0.18em] text-[#5B626C]">
-                  ANOMALY SCORE
-                </div>
-                <div className="mt-1 font-cond text-[24px] font-semibold text-[#EDF0F3]">
-                  0.3 deviation
-                </div>
-                <div className="mt-0.5 text-[9px] text-[#6E9E7C]">BASELINE</div>
-              </div>
-              <div className="bg-[#14161A] p-3">
-                <div className="text-[9px] uppercase tracking-[0.18em] text-[#5B626C]">
-                  ESCALATION QUEUE
-                </div>
-                <div className="mt-1 font-cond text-[24px] font-semibold text-[#FF5A1F]">01</div>
-                <div className="mt-0.5 text-[9px] text-[#E0A04A]">AWAITING QUORUM</div>
-              </div>
-            </div>
-          </PreviewCard>
-
-          {/* Policy editor */}
-          <PreviewCard title="DOCTRINE EDITOR">
-            <div className="space-y-2 p-3 font-mono text-[11px]">
-              <PolicyLine label="PER-TX CAP" value="$100.00 USDC" />
-              <PolicyLine label="DAILY CAP" value="$1,000.00 USDC" />
-              <PolicyLine label="MONTHLY CAP" value="$30,000.00 USDC" />
-              <PolicyLine label="ESCALATION" value="$50.00 USDC" accent />
-              <PolicyLine label="QUORUM" value="2 / 3 SIGNERS" />
-              <PolicyLine label="VENDOR ALLOWLIST" value="REQUIRED" green />
-              <PolicyLine label="ANOMALY THRESHOLD" value="5.0 deviation" accent />
-            </div>
-          </PreviewCard>
-
-          {/* Restraint queue */}
-          <PreviewCard title="RESTRAINT QUEUE">
-            <div className="divide-y divide-[#1E222A]">
-              <EscalationRow
-                agent="RESEARCH-02"
-                amount="$847.00"
-                vendor="AWS Bedrock"
-                status="AWAITING"
-                time="04:12:33"
-                statusColor="#E0A04A"
-              />
-              <EscalationRow
-                agent="CLOUD OPS AGENT"
-                amount="$2,100.00"
-                vendor="Anthropic"
-                status="APPROVED"
-                time="SETTLED"
-                statusColor="#6E9E7C"
-              />
-            </div>
-          </PreviewCard>
-
-          {/* Public badge */}
-          <PreviewCard title="PUBLIC BADGE / EXPLORER">
-            <div className="p-3">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center">
-                  <img
-                    src="/brand/arcanum-logo.png"
-                    alt="Arcanum"
-                    className="h-full w-full object-contain"
-                  />
-                </div>
-                <div>
-                  <div className="text-[12px] font-semibold tracking-[0.08em] text-[#EDF0F3]">
-                    DEMO WORKSPACE
-                  </div>
-                  <div className="text-[10px] text-[#8A909B]">GOVERNANCE SCORE: 87 / FORTIFIED</div>
-                </div>
-              </div>
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                <BadgeStat label="AGENTS" value="04" />
-                <BadgeStat label="VIOLATIONS" value="00" />
-                <BadgeStat label="UPTIME" value="99.2%" />
-              </div>
-              <div className="mt-3 text-[10px] text-[#5B626C]">
-                Shareable link / On-chain verification / No authentication required
-              </div>
-            </div>
-          </PreviewCard>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/*  SECTION 7 — Trust Pillars                                                 */
-/* -------------------------------------------------------------------------- */
-function TrustPillarsSection() {
-  const pillars = [
-    {
-      icon: Lock,
-      label: "NON-CUSTODIAL",
-      desc: "Owners always control their keys. Arcanum never holds funds.",
-    },
-    {
-      icon: Github,
-      label: "OPEN-SOURCE",
-      desc: "MIT licensed. Audit the code, fork the protocol, verify on-chain.",
-    },
-    {
-      icon: Globe,
-      label: "SELF-HOSTABLE",
-      desc: "Run the full stack on your infrastructure. No vendor lock-in.",
-    },
-    {
-      icon: ScrollText,
-      label: "ON-CHAIN POLICY",
-      desc: "Doctrine contracts are immutable and publicly verifiable.",
-    },
-    {
-      icon: ShieldAlert,
-      label: "NO FAKE APPROVALS",
-      desc: "Policy engine cannot be bypassed. Every decision is recorded.",
-    },
-    {
-      icon: Users,
-      label: "HUMAN ESCALATION",
-      desc: "Configurable quorum. Humans approve what policy cannot decide.",
-    },
-  ] as const;
-
-  return (
-    <section className="border-b border-[#282C34]">
-      <div className="mx-auto max-w-[1280px] px-5 py-16 lg:py-20">
-        <SectionEyebrow>TRUST ARCHITECTURE</SectionEyebrow>
-        <h2 className="mt-3 font-cond text-[28px] font-bold tracking-[0.02em] text-[#EDF0F3] sm:text-[34px]">
-          Built for verification, not permission
-        </h2>
-
-        <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {pillars.map((pillar) => (
-            <div key={pillar.label} className="flex gap-4 border border-[#282C34] bg-[#181B21] p-4">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center border border-[#282C34] bg-[#14161A]">
-                <pillar.icon className="h-4 w-4 text-[#8A909B]" />
-              </div>
-              <div>
-                <div className="text-[11px] uppercase tracking-[0.16em] text-[#EDF0F3]">
-                  {pillar.label}
-                </div>
-                <p className="mt-1 text-[12px] leading-[1.5] text-[#5B626C]">{pillar.desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/*  SECTION 8 — Final CTA                                                     */
-/* -------------------------------------------------------------------------- */
-function FinalCTASection() {
-  return (
-    <section className="relative">
-      <div className="mx-auto max-w-[1280px] px-5 py-20 text-center lg:py-28">
-        <div className="text-[10px] uppercase tracking-[0.2em] text-[#5B626C]">ARCANUM</div>
-        <h2 className="mx-auto mt-4 max-w-[640px] font-cond text-[28px] font-bold tracking-[0.02em] text-[#EDF0F3] sm:text-[36px]">
-          Arcanum turns autonomous wallets into governed economic actors.
-        </h2>
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-          <Link
-            href="/dashboard"
-            className="inline-flex h-12 items-center gap-2 bg-[#FF5A1F] px-7 font-mono text-[13px] font-semibold uppercase tracking-[0.12em] text-[#121419] transition-all hover:brightness-110 hover:shadow-[0_0_24px_rgba(255,90,31,0.3)]"
-          >
-            Launch Dashboard
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-          <Link
-            href="/docs"
-            className="inline-flex h-12 items-center gap-2 border border-[#282C34] bg-[#181B21] px-7 font-mono text-[13px] uppercase tracking-[0.12em] text-[#8A909B] transition-colors hover:border-[#3A4250] hover:text-[#D7DBE0]"
-          >
-            <BookOpen className="h-4 w-4" />
-            Read Docs
-          </Link>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/*  Shared helpers                                                             */
-/* -------------------------------------------------------------------------- */
-function LandingHeader() {
-  return (
-    <header className="flex h-[52px] items-center justify-between border-b border-[#282C34] bg-[#16181D] px-5">
-      <Link href="/" className="flex items-center gap-2.5">
-        <img src="/brand/arcanum-logo.png" alt="Arcanum" className="h-8 w-auto object-contain" />
-        <span className="font-cond text-[17px] font-bold tracking-[0.16em] text-[#EDF0F3]">
-          ARCANUM
-        </span>
+function MagneticAnchor({ children, className = "", href, rel, target }: MagneticAnchorProps) {
+  const onMove = (event: ReactPointerEvent<HTMLAnchorElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = Math.max(-4, Math.min(4, (event.clientX - (rect.left + rect.width / 2)) * 0.08));
+    const y = Math.max(-4, Math.min(4, (event.clientY - (rect.top + rect.height / 2)) * 0.08));
+    event.currentTarget.style.setProperty("--mag-x", `${x}px`);
+    event.currentTarget.style.setProperty("--mag-y", `${y}px`);
+  };
+  const reset = (event: ReactPointerEvent<HTMLAnchorElement>) => {
+    event.currentTarget.style.setProperty("--mag-x", "0px");
+    event.currentTarget.style.setProperty("--mag-y", "0px");
+  };
+  const cls = `warm-interaction ${className}`;
+  if (href.startsWith("/")) {
+    return (
+      <Link href={href} onPointerMove={onMove} onPointerLeave={reset} className={cls}>
+        {children}
       </Link>
-      <div className="flex items-center gap-3">
-        <Link
-          href="/docs"
-          className="flex h-8 items-center gap-2 border border-[#282C34] bg-[#101216] px-3 text-[11px] tracking-[0.1em] text-[#8A909B] hover:text-[#D7DBE0]"
-        >
-          <BookOpen className="h-3.5 w-3.5" />
-          GUIDE
-        </Link>
-        <a
-          href="https://github.com/bunnyyxtan/ARCANUM"
-          target="_blank"
-          rel="noreferrer"
-          className="flex h-8 cursor-pointer items-center gap-2 border border-[#282C34] bg-[#101216] px-3 text-[11px] tracking-[0.1em] text-[#5B626C] hover:text-[#8A909B]"
-        >
-          <Github className="h-3.5 w-3.5" />
-          GITHUB
-        </a>
-        <Link
-          href="/dashboard"
-          className="flex h-8 items-center gap-2 bg-[#FF5A1F] px-4 font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-[#121419] transition-all hover:brightness-110"
-        >
-          LAUNCH DASHBOARD
-          <ChevronRight className="h-3 w-3" />
-        </Link>
-      </div>
-    </header>
-  );
-}
-
-function LandingFooter() {
+    );
+  }
   return (
-    <footer className="flex h-8 items-center justify-between border-t border-[#282C34] bg-[#16181D] px-5 text-[10px] tracking-[0.12em] text-[#5B626C]">
-      <div className="flex items-center gap-4">
-        <span className="flex items-center gap-1.5 text-[#6E9E7C]">
-          <span className="h-1.5 w-1.5 bg-[#6E9E7C]" />
-          ARC TESTNET
-        </span>
-        <span>OPEN PROTOCOL</span>
-        <span className="text-[#343A44]">|</span>
-        <span>MIT LICENSE</span>
-      </div>
-      <div className="flex items-center gap-4">
-        <span>ARCANUM v0.9.2</span>
-      </div>
-    </footer>
-  );
-}
-
-function SectionEyebrow({ children }: Readonly<{ children: string }>) {
-  return (
-    <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-[#FF5A1F]">
-      <span className="h-px w-4 bg-[#FF5A1F]" />
+    <a href={href} rel={rel} target={target} onPointerMove={onMove} onPointerLeave={reset} className={cls}>
       {children}
-    </div>
+    </a>
   );
 }
 
-function CornerAccents() {
+function StatusPill({ status }: { status: "ALLOWED" | "BLOCKED" | "ESCALATED" }) {
+  const styles = {
+    ALLOWED: "bg-[var(--wl-green-tint)] text-[var(--wl-green)]",
+    BLOCKED: "bg-[var(--wl-signal)] text-white",
+    ESCALATED: "border border-[var(--wl-signal)] text-[var(--wl-signal)]",
+  };
   return (
-    <>
-      <span className="absolute left-1.5 top-1.5 h-3 w-3 border-l-2 border-t-2 border-[#FF5A1F]" />
-      <span className="absolute right-1.5 top-1.5 h-3 w-3 border-r-2 border-t-2 border-[#FF5A1F]" />
-      <span className="absolute bottom-1.5 left-1.5 h-3 w-3 border-b-2 border-l-2 border-[#FF5A1F]" />
-      <span className="absolute bottom-1.5 right-1.5 h-3 w-3 border-b-2 border-r-2 border-[#FF5A1F]" />
-    </>
+    <span
+      className={`warm-status warm-status-${status.toLowerCase()} rounded-full px-2.5 py-1 font-mono text-[9px] tracking-[.12em] ${styles[status]}`}
+    >
+      <span>{status}</span>
+      {status === "ESCALATED" && <span className="approval-chip">HUMAN</span>}
+    </span>
   );
 }
 
-function GaugeBar({ value }: Readonly<{ value: number }>) {
-  return (
-    <div className="mt-4">
-      <div className="flex items-center justify-between text-[8px] uppercase tracking-[0.18em] text-[#5B626C]">
-        <span>00</span>
-        <span>POSTURE GAUGE</span>
-        <span>100</span>
-      </div>
-      <div className="relative mt-1.5 h-5">
-        <div
-          className="absolute inset-x-0 top-1/2 h-5 -translate-y-1/2"
-          style={{
-            background: "repeating-linear-gradient(90deg,#2A2E35 0 1px,transparent 1px 13px)",
-          }}
-        />
-        <div
-          className="absolute top-1/2 h-[3px] -translate-y-1/2 bg-[#3A4250]"
-          style={{ left: 0, width: `${value}%` }}
-        />
-        <div
-          className="absolute bottom-0 top-0 w-[2px] bg-[#FF5A1F]"
-          style={{ left: `${value}%` }}
-        />
-      </div>
-    </div>
-  );
-}
+const LEDGER_ROWS = [
+  { agent: "procurement-bot", vendor: "AWS", amount: "$184.20", detail: "0x3f…9a2c", status: "ALLOWED" as const, time: "09:41:08" },
+  { agent: "support-agent", vendor: "OpenAI", amount: "$740.00", detail: "0x71…4be1", status: "BLOCKED" as const, time: "09:41:12" },
+  { agent: "growth-bot", vendor: "Anthropic", amount: "$2,100.00", detail: "0xa8…c912", status: "ESCALATED" as const, time: "09:41:16" },
+  { agent: "procurement-bot", vendor: "AWS", amount: "$316.40", detail: "0x3f…9a2c", status: "ALLOWED" as const, time: "09:41:19" },
+];
 
-function MiniStat({
-  label,
-  value,
-  caption,
-  accentCaption = false,
-}: Readonly<{ label: string; value: string; caption: string; accentCaption?: boolean }>) {
+function LedgerRows({ dark = false }: { dark?: boolean }) {
+  const rows = LEDGER_ROWS;
+  const [visible, setVisible] = useState(2);
+  useEffect(() => {
+    const id = window.setInterval(() => setVisible((v) => (v >= rows.length ? 1 : v + 1)), 2500);
+    return () => window.clearInterval(id);
+  }, [rows.length]);
+  const line = dark ? "border-[var(--wl-strong2)]" : "border-[var(--wl-line)]";
+  const quiet = dark ? "text-[var(--wl-dim2)]" : "text-[var(--wl-mute)]";
   return (
-    <div className="border border-[#282C34] bg-[#181B21] p-4">
-      <div className="text-[9px] uppercase tracking-[0.18em] text-[#5B626C]">{label}</div>
-      <div className="mt-1.5 font-cond text-[28px] font-semibold leading-none text-[#EDF0F3]">
-        {value}
+    <div className={`overflow-hidden border ${line} ${dark ? "bg-[var(--wl-ink-soft)]" : "bg-[var(--wl-bg-raised)]"}`}>
+      <div className={`flex items-center justify-between border-b px-5 py-4 ${line}`}>
+        <span className={`font-mono text-[10px] uppercase tracking-[.18em] ${quiet}`}>Live governed ledger</span>
+        <span className={`font-mono text-[10px] ${quiet}`}>ARC / USDC</span>
       </div>
       <div
-        className={`mt-1 text-[9px] tracking-[0.08em] ${accentCaption ? "text-[#FF5A1F]" : "text-[#5B626C]"}`}
+        className={`grid grid-cols-[1.3fr_1fr_.9fr_1fr_auto] gap-3 border-b px-5 py-3 font-mono text-[9px] uppercase tracking-[.13em] ${line} ${quiet}`}
       >
-        {caption}
+        <span>Agent</span>
+        <span>Vendor</span>
+        <span>Amount</span>
+        <span>Wallet</span>
+        <span>Verdict</span>
+      </div>
+      <div className={`divide-y ${dark ? "divide-[var(--wl-strong4)]" : "divide-[var(--wl-line-faint)]"}`}>
+        {rows.map((r, i) => (
+          <div
+            key={r.time}
+            style={{ "--row-i": i } as CSSProperties}
+            className={`warm-ledger-row grid grid-cols-[1.3fr_1fr_.9fr_1fr_auto] items-center gap-3 px-5 py-4 ${i < visible ? "is-live" : "is-quiet"}`}
+          >
+            <div>
+              <div className={`text-[12px] font-medium ${dark ? "text-[var(--wl-bg-tint)]" : "text-[var(--wl-ink)]"}`}>{r.agent}</div>
+              <div className={`mt-1 font-mono text-[9px] ${quiet}`}>{r.time} UTC</div>
+            </div>
+            <span className={`text-[12px] ${dark ? "text-[var(--wl-line-bolder)]" : "text-[var(--wl-strong)]"}`}>{r.vendor}</span>
+            <span className={`font-mono text-[12px] tabular-nums ${dark ? "text-[var(--wl-bg-tint)]" : "text-[var(--wl-ink)]"}`}>{r.amount}</span>
+            <span className={`font-mono text-[10px] ${quiet}`}>{r.detail}</span>
+            <StatusPill status={r.status} />
+          </div>
+        ))}
+      </div>
+      <div className={`flex items-center justify-between border-t px-5 py-3 ${line}`}>
+        <span className={`font-mono text-[9px] ${quiet}`}>policy/v4.18 · 42ms median</span>
+        <span className="font-mono text-[9px] text-[var(--wl-green-soft)]">● streaming</span>
       </div>
     </div>
   );
 }
 
-function PreviewCard({ title, children }: Readonly<{ title: string; children: React.ReactNode }>) {
+function Reveal({ children, className = "", kind = "default" }: { children: ReactNode; className?: string; kind?: "default" | "headline" }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+    const reveal = () => setVisible(true);
+    const inInitialViewport = node.getBoundingClientRect().top < window.innerHeight * 1.12;
+    setArmed(true);
+    let observer: IntersectionObserver | undefined;
+    if ("IntersectionObserver" in window) {
+      observer = new IntersectionObserver(
+        ([entry]) => {
+          if (entry?.isIntersecting) {
+            reveal();
+            observer?.disconnect();
+          }
+        },
+        { threshold: 0.12, rootMargin: "0px 0px -7% 0px" },
+      );
+      observer.observe(node);
+    } else {
+      reveal();
+    }
+    if (inInitialViewport) reveal();
+    // IO is the choreography trigger, but never allow a failed observer to strand content.
+    const fallback = window.setTimeout(reveal, inInitialViewport ? 720 : 1320);
+    return () => {
+      observer?.disconnect();
+      window.clearTimeout(fallback);
+    };
+  }, []);
+  const index = className.includes("delay-1") ? 1 : className.includes("delay-2") ? 2 : className.includes("delay-3") ? 3 : 0;
   return (
-    <div className="border border-[#282C34] bg-[#181B21]">
-      <div className="flex h-8 items-center justify-between border-b border-[#282C34] px-4">
-        <span className="text-[10px] uppercase tracking-[0.18em] text-[#8A909B]">{title}</span>
-        <span className="h-1.5 w-1.5 bg-[#6E9E7C]" />
-      </div>
+    <div
+      ref={ref}
+      data-reveal-kind={kind}
+      className={`warm-reveal ${armed ? "warm-armed" : ""} ${visible ? "is-visible" : ""} ${className}`}
+      style={{ "--i": index } as CSSProperties}
+    >
       {children}
     </div>
   );
 }
 
-function PolicyLine({
-  label,
-  value,
-  accent = false,
-  green = false,
-}: Readonly<{ label: string; value: string; accent?: boolean; green?: boolean }>) {
+function SectionNumber({ value, className = "" }: { value: string; className?: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [shown, setShown] = useState("00");
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+    let timer = 0;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return;
+        const target = Number(value);
+        let current = 0;
+        timer = window.setInterval(() => {
+          current += 1;
+          setShown(String(Math.min(current, target)).padStart(2, "0"));
+          if (current >= target) window.clearInterval(timer);
+        }, 75);
+        observer.disconnect();
+      },
+      { threshold: 0.5 },
+    );
+    observer.observe(node);
+    return () => {
+      observer.disconnect();
+      window.clearInterval(timer);
+    };
+  }, [value]);
   return (
-    <div className="flex items-center justify-between">
-      <span className="text-[#5B626C]">{label}</span>
-      <span className={accent ? "text-[#FF5A1F]" : green ? "text-[#6E9E7C]" : "text-[#D7DBE0]"}>
-        {value}
-      </span>
-    </div>
-  );
-}
-
-function EscalationRow({
-  agent,
-  amount,
-  vendor,
-  status,
-  time,
-  statusColor,
-}: Readonly<{
-  agent: string;
-  amount: string;
-  vendor: string;
-  status: string;
-  time: string;
-  statusColor: string;
-}>) {
-  return (
-    <div className="flex items-center justify-between px-4 py-2.5 text-[11px]">
-      <div className="flex items-center gap-3">
-        <span className="text-[#EDF0F3]">{agent}</span>
-        <span className="text-[#5B626C]">/</span>
-        <span className="text-[#8A909B]">{vendor}</span>
-        <span className="text-[#D7DBE0]">{amount}</span>
-      </div>
-      <div className="flex items-center gap-2">
-        <span className="font-mono text-[10px] tracking-[0.08em]" style={{ color: statusColor }}>
-          {status}
-        </span>
-        <span className="text-[10px] text-[#5B626C]">{time}</span>
-      </div>
-    </div>
-  );
-}
-
-function BadgeStat({ label, value }: Readonly<{ label: string; value: string }>) {
-  return (
-    <div className="border border-[#282C34] bg-[#14161A] p-2 text-center">
-      <div className="font-cond text-[16px] font-semibold text-[#EDF0F3]">{value}</div>
-      <div className="text-[8px] uppercase tracking-[0.14em] text-[#5B626C]">{label}</div>
-    </div>
+    <span ref={ref} className={`warm-section-number tabular-nums ${className}`}>
+      {shown}
+    </span>
   );
 }
 
 /* -------------------------------------------------------------------------- */
 /*  Main export                                                                */
 /* -------------------------------------------------------------------------- */
+
 export function LandingPage() {
+  const [activeSection, setActiveSection] = useState("");
+  const [capitalGoverned, setCapitalGoverned] = useState(82.4);
+  const gridRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const ids = ["governed", "policies", "record", "contact"];
+    const sections = ids.map((id) => document.getElementById(id)).filter(Boolean) as HTMLElement[];
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible?.target.id) setActiveSection(visible.target.id);
+      },
+      { threshold: [0.2, 0.45, 0.7], rootMargin: "-12% 0px -45% 0px" },
+    );
+    sections.forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
+  }, []);
+  useEffect(() => {
+    const capitalTimer = window.setInterval(
+      () => setCapitalGoverned((value) => (value >= 87.8 ? 82.4 : Number((value + 0.1).toFixed(1)))),
+      1800,
+    );
+    return () => {
+      window.clearInterval(capitalTimer);
+    };
+  }, []);
+  useEffect(() => {
+    let frame = 0;
+    const onScroll = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(() => {
+        if (gridRef.current) gridRef.current.style.transform = `translate3d(0, ${Math.min(window.scrollY * 0.045, 28)}px, 0)`;
+        frame = 0;
+      });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.cancelAnimationFrame(frame);
+    };
+  }, []);
+  const railRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const rail = railRef.current;
+    if (!rail) return;
+    const link = rail.querySelector<HTMLAnchorElement>(`a[href="#${activeSection}"]`);
+    if (link) {
+      rail.style.setProperty("--dot-y", `${link.offsetTop + (link.offsetHeight - 9) / 2}px`);
+      rail.style.setProperty("--dot-o", "1");
+    } else {
+      rail.style.setProperty("--dot-o", "0");
+    }
+  }, [activeSection]);
   return (
-    <div className="flex min-h-screen flex-col bg-foundry-grid font-mono text-[#D7DBE0]">
-      <LandingHeader />
-      <main className="flex-1">
-        <HeroSection />
-        <ProblemSection />
-        <SystemLoopSection />
-        <ProductModulesSection />
-        <WhyArcSection />
-        <ConsolePreviewSection />
-        <TrustPillarsSection />
-        <FinalCTASection />
-      </main>
-      <LandingFooter />
-    </div>
+    <main
+      className="min-h-[100dvh] overflow-hidden bg-[var(--wl-bg)] font-body text-[var(--wl-ink)]"
+      style={{ fontFamily: "var(--font-body), 'Inter Tight', sans-serif" }}
+    >
+      <style>{`
+        .warm-reveal{will-change:transform,opacity;}.warm-reveal.warm-armed:not(.is-visible){opacity:0;transform:translateY(16px);clip-path:inset(0 0 12% 0)}.warm-reveal.is-visible{animation:warmIn 420ms cubic-bezier(.16,1,.3,1) calc(var(--i,0) * 120ms) both}.warm-reveal[data-reveal-kind="headline"].warm-armed:not(.is-visible){clip-path:inset(0 0 100% 0);transform:translateY(11px)}.warm-reveal[data-reveal-kind="headline"].is-visible{animation:warmHeadline 560ms cubic-bezier(.16,1,.3,1) calc(var(--i,0) * 120ms) both}
+        .delay-1{--i:1}.delay-2{--i:2}.delay-3{--i:3}
+        @keyframes warmIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}@keyframes warmHeadline{from{opacity:0;transform:translateY(11px);clip-path:inset(0 0 100% 0)}to{opacity:1;transform:translateY(0);clip-path:inset(0 0 0 0)}}
+        html{scroll-behavior:smooth;scroll-snap-type:y proximity}section{scroll-margin-top:20px}
+        .warm-interaction{--mag-x:0px;--mag-y:0px;transform:translate3d(var(--mag-x),var(--mag-y),0);transition:transform 220ms cubic-bezier(.16,1,.3,1),color 220ms ease,border-color 220ms ease}.warm-interaction:active{transform:translate3d(var(--mag-x),calc(var(--mag-y) + 2px),0)}.warm-pill{position:relative;isolation:isolate;overflow:hidden;box-shadow:0 1px 2px rgba(var(--wl-ink-rgb),.06);transition:transform 220ms cubic-bezier(.16,1,.3,1),box-shadow 320ms cubic-bezier(.16,1,.3,1),color 220ms ease,border-color 220ms ease}.warm-pill::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;background:var(--wl-signal-deep);transform:translateY(102%);transition:transform 320ms cubic-bezier(.16,1,.3,1)}.warm-pill:hover{box-shadow:0 10px 28px -8px rgba(var(--wl-signal-rgb),.45),0 2px 6px rgba(var(--wl-ink-rgb),.08)}.warm-pill:hover::before{transform:translateY(0)}.warm-pill-ghost::before{background:var(--wl-ink)}.warm-pill-ghost:hover{color:var(--wl-bg);border-color:var(--wl-ink);box-shadow:0 10px 28px -10px rgba(var(--wl-ink-rgb),.4)}@media (prefers-reduced-motion:reduce){.warm-pill,.warm-pill::before{transition:none}}.warm-link{position:relative}.warm-link::after{position:absolute;bottom:-4px;left:0;width:100%;height:1px;background:${orange};content:"";transform:scaleX(0);transform-origin:right;transition:transform 220ms cubic-bezier(.16,1,.3,1)}.warm-link:hover::after{transform:scaleX(1);transform-origin:left}
+        .warm-ledger-row{opacity:.3;transform:translateY(8px);transition:transform 220ms cubic-bezier(.16,1,.3,1),opacity 220ms ease}.warm-ledger-row.is-live{opacity:1;transform:translateY(0);animation:ledgerIn 420ms cubic-bezier(.16,1,.3,1) calc(var(--row-i) * 120ms) both}.warm-ledger-row:hover{transform:translate3d(2px,-2px,0);box-shadow:inset 1px 0 0 ${orange}}.warm-ledger-row.is-quiet{opacity:.26}
+        @keyframes ledgerIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}.warm-status{display:inline-flex;align-items:center;gap:5px}.warm-status-blocked{animation:blockedSlam 420ms cubic-bezier(.16,1,.3,1) 240ms both}.warm-status-escalated{overflow:hidden}.approval-chip{display:inline-block;max-width:0;opacity:0;transform:translateX(-8px);transition:max-width 420ms cubic-bezier(.16,1,.3,1),transform 420ms cubic-bezier(.16,1,.3,1),opacity 220ms ease}.warm-ledger-row.is-live .approval-chip{max-width:45px;opacity:1;transform:translateX(0)}@keyframes blockedSlam{0%,100%{transform:translateX(0)}20%{transform:translateX(-1px)}40%{transform:translateX(1px)}60%{transform:translateX(-1px)}}
+        .warm-section-number{display:inline-block;opacity:0;transform:translateY(12px);animation:numberIn 420ms cubic-bezier(.16,1,.3,1) 180ms both}.warm-reveal.is-visible .warm-section-number{opacity:1;transform:translateY(0)}@keyframes numberIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}.warm-policy-doc{position:relative;transform:scale(.96);}.warm-reveal.is-visible .warm-policy-doc{animation:policyIn 560ms cubic-bezier(.16,1,.3,1) 120ms both}.warm-policy-doc::before{position:absolute;top:-1px;left:-1px;width:100%;height:2px;background:${orange};content:"";transform:scaleX(0);transform-origin:left}.warm-reveal.is-visible .warm-policy-doc::before{animation:lineDraw 420ms cubic-bezier(.16,1,.3,1) 220ms both}@keyframes policyIn{from{opacity:.8;transform:scale(.96)}to{opacity:1;transform:scale(1)}}@keyframes lineDraw{from{transform:scaleX(0)}to{transform:scaleX(1)}}.warm-period{display:inline-block;animation:periodPulse 420ms cubic-bezier(.16,1,.3,1) 420ms both}@keyframes periodPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
+        .warm-active-dot{position:absolute;top:0;left:-5px;width:3px;height:9px;background:${orange};opacity:var(--dot-o,0);transform:translateY(var(--dot-y,0px));transition:transform 220ms cubic-bezier(.16,1,.3,1),opacity 220ms ease}.warm-nav-dot{position:relative;z-index:1;transition:color 220ms ease}.warm-nav-dot[data-active="true"]{color:${orange}}
+        @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto;scroll-snap-type:none}.warm-reveal,.warm-reveal[data-reveal-kind="headline"],.warm-ledger-row,.warm-policy-doc,.warm-section-number{animation:none!important;transform:none!important;clip-path:none!important}.warm-reveal{opacity:1!important}.warm-reveal.is-visible,.warm-ledger-row.is-live,.warm-section-number{opacity:1}.warm-active-dot{transition:none}.warm-interaction{transition:none}}
+      `}</style>
+
+      <aside className="fixed bottom-0 left-0 top-0 z-20 hidden w-[86px] flex-col items-center justify-between border-r border-[var(--wl-line)] bg-[var(--wl-bg)] py-7 lg:flex">
+        <MagneticAnchor href="#" className="text-[17px] font-bold tracking-[-.045em]">
+          ARCANUM<span className="text-[var(--wl-signal)]">.</span>
+        </MagneticAnchor>
+        <div className="font-mono text-[9px] tracking-[.18em] text-[var(--wl-mute)]" style={{ writingMode: "vertical-rl" }}>
+          ARC · GOVERNED
+        </div>
+        <div ref={railRef} className="relative flex flex-col items-center gap-6 font-mono text-[9px] text-[var(--wl-secondary)]">
+          <span className="warm-active-dot" aria-hidden="true" />
+          <MagneticAnchor href="#governed" className="warm-nav-dot">01</MagneticAnchor>
+          <MagneticAnchor href="#policies" className="warm-nav-dot">02</MagneticAnchor>
+          <MagneticAnchor href="#record" className="warm-nav-dot">03</MagneticAnchor>
+          <MagneticAnchor href="#contact" className="warm-nav-dot">04</MagneticAnchor>
+        </div>
+      </aside>
+
+      <div className="lg:pl-[86px]">
+        <nav className="flex items-center justify-between border-b border-[var(--wl-line)] px-6 py-5 lg:hidden">
+          <MagneticAnchor href="#" className="text-[18px] font-bold tracking-[-.05em]">
+            ARCANUM<span className="text-[var(--wl-signal)]">.</span>
+          </MagneticAnchor>
+          <div className="flex items-center gap-2">
+            <ThemeToggle className="flex h-8 w-8 items-center justify-center text-[var(--wl-body)] transition-colors hover:text-[var(--wl-signal)]" />
+            <MagneticAnchor href="/dashboard" className="warm-pill group rounded-full bg-[var(--wl-signal)] px-5 py-2.5 text-[11px] font-semibold text-white">
+              Launch Dashboard<Arrow />
+            </MagneticAnchor>
+          </div>
+        </nav>
+        <div className="hidden h-[68px] items-center justify-between border-b border-[var(--wl-line)] pl-10 pr-6 lg:flex">
+          <span className="text-[13px] font-medium tracking-[-.01em] text-[var(--wl-body)]">
+            Governed wallets for AI agents<span className="text-[var(--wl-mute)]"> · USDC on Arc</span>
+          </span>
+          <div className="flex items-center">
+            <MagneticAnchor
+              href="/docs"
+              className="warm-link mx-4 inline-flex items-center gap-2 text-[13px] font-medium tracking-[-.01em] text-[var(--wl-body)] transition-colors hover:text-[var(--wl-ink)]"
+            >
+              <BookIcon className="h-[15px] w-[15px] text-[var(--wl-mute)]" />
+              Read Docs
+            </MagneticAnchor>
+            <MagneticAnchor
+              href={GITHUB_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="warm-link mx-4 inline-flex items-center gap-2 text-[13px] font-medium tracking-[-.01em] text-[var(--wl-body)] transition-colors hover:text-[var(--wl-ink)]"
+            >
+              <GitHubMark className="h-[15px] w-[15px] text-[var(--wl-mute)]" />
+              GitHub
+            </MagneticAnchor>
+            <span className="mx-4 h-5 w-px bg-[var(--wl-line)]" aria-hidden="true" />
+            <ThemeToggle className="mx-1 flex h-8 w-8 items-center justify-center text-[var(--wl-body)] transition-colors hover:text-[var(--wl-signal)]" />
+            <MagneticAnchor
+              href="/dashboard"
+              className="warm-pill group ml-2 rounded-full bg-[var(--wl-signal)] px-6 py-2.5 text-[13px] font-semibold tracking-[-.01em] text-white"
+            >
+              Launch Dashboard<Arrow />
+            </MagneticAnchor>
+          </div>
+        </div>
+
+        <section id="ledger" className="relative min-h-[780px] border-b border-[var(--wl-line)] px-6 py-16 lg:px-10 lg:py-20">
+          <div
+            ref={gridRef}
+            className="pointer-events-none absolute inset-0 opacity-60 will-change-transform"
+            style={{
+              backgroundImage:
+                "linear-gradient(var(--wl-line-faint2) 1px, transparent 1px), linear-gradient(90deg, var(--wl-line-faint2) 1px, transparent 1px)",
+              backgroundSize: "72px 72px",
+              maskImage: "linear-gradient(to bottom, black, transparent 80%)",
+            }}
+          />
+          <div className="relative mx-auto max-w-[1400px]">
+            <Reveal>
+              <p className="font-mono text-[10px] uppercase tracking-[.22em] text-[var(--wl-signal)]">Governed autonomy / Arc blockchain</p>
+            </Reveal>
+            <Reveal kind="headline" className="delay-1">
+              <h1 className="mt-8 max-w-[880px] text-[clamp(4.4rem,10.5vw,10.5rem)] font-semibold leading-[.8] tracking-[-.045em]">
+                Autonomous
+                <br />
+                <span className="text-[var(--wl-dim)]">spend,</span> <em className="not-italic text-[var(--wl-ink)]">accounted.</em>
+              </h1>
+            </Reveal>
+            <Reveal className="delay-2">
+              <div className="mt-12">
+                <p className="max-w-[420px] text-[16px] leading-[1.45] text-[var(--wl-body)]">
+                  Every dollar is checked, recorded, and visibly governed before it moves.
+                </p>
+                <div className="mt-7 flex flex-wrap items-center gap-4">
+                  <MagneticAnchor href="/dashboard" className="warm-pill group rounded-full bg-[var(--wl-signal)] px-6 py-3.5 text-[12px] font-semibold text-white">
+                    Launch Dashboard<Arrow />
+                  </MagneticAnchor>
+                  <MagneticAnchor
+                    href="/docs"
+                    className="warm-pill warm-pill-ghost inline-flex items-center gap-2 rounded-full border border-[var(--wl-line)] px-6 py-3.5 text-[12px] font-semibold text-[var(--wl-ink)]"
+                  >
+                    <BookIcon />
+                    Read Docs
+                  </MagneticAnchor>
+                  <MagneticAnchor
+                    href={GITHUB_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="warm-link inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[.12em] text-[var(--wl-secondary)] transition-colors hover:text-[var(--wl-ink)]"
+                  >
+                    <GitHubMark />
+                    GitHub ↗
+                  </MagneticAnchor>
+                </div>
+              </div>
+            </Reveal>
+            <div className="relative mt-20 lg:ml-[15%] lg:mt-24">
+              <Reveal className="delay-3">
+                <LedgerRows />
+              </Reveal>
+              <div className="absolute bottom-full right-0 mb-5 hidden w-[200px] border-l border-[var(--wl-signal)] pl-4 text-[10px] leading-[1.4] text-[var(--wl-signal)] lg:block">
+                THE LIVE RECORD
+                <br />
+                <span className="text-[var(--wl-secondary)]">Not a demo. A transaction deciding itself in public.</span>
+                <strong className="mt-4 block font-mono text-[20px] font-medium tabular-nums text-[var(--wl-ink)]">${capitalGoverned.toFixed(1)}k</strong>
+                <span className="block font-mono text-[8px] uppercase tracking-[.12em] text-[var(--wl-secondary)]">capital governed</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="governed" className="border-b border-[var(--wl-line)] bg-[var(--wl-bg-soft)] px-6 py-24 lg:px-10 lg:py-32">
+          <div className="mx-auto grid max-w-[1400px] gap-16 lg:grid-cols-[240px_1fr]">
+            <Reveal>
+              <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">01 / The control loop</p>
+              <SectionNumber value="1" className="mt-28 hidden font-mono text-[80px] leading-none tracking-[-.045em] text-[var(--wl-line-strong)] lg:block" />
+            </Reveal>
+            <Reveal className="delay-1">
+              <h2 className="max-w-[700px] text-[clamp(3rem,6vw,6.2rem)] font-semibold leading-[.84] tracking-[-.045em]">
+                A dollar earns
+                <br />
+                its way through.
+              </h2>
+              <div className="mt-20 grid border-t border-[var(--wl-faint)] md:grid-cols-3">
+                {[
+                  ["01", "Policy check", "Caps, vendors, destinations. Evaluated in 42ms."],
+                  ["02", "Allow or block", "The wallet moves only when the policy says so."],
+                  ["03", "Escalate to human", "Unusual spend pauses. You decide, not the model."],
+                ].map(([n, t, d]) => (
+                  <div key={n} className="border-b border-[var(--wl-faint)] py-7 md:border-b-0 md:border-r md:px-8 md:pt-8 md:first:pl-0 md:last:border-r-0 md:last:pr-0">
+                    <span className="font-mono text-[10px] text-[var(--wl-signal)]">{n}</span>
+                    <h3 className="mt-14 text-[21px] font-medium tracking-[-.04em]">{t}</h3>
+                    <p className="mt-3 max-w-[190px] text-[12px] leading-[1.45] text-[var(--wl-secondary2)]">{d}</p>
+                  </div>
+                ))}
+              </div>
+            </Reveal>
+          </div>
+        </section>
+
+        <section id="policies" className="border-b border-[var(--wl-line)] px-6 py-28 lg:px-10 lg:py-36">
+          <div className="mx-auto max-w-[1400px]">
+            <Reveal>
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">02 / Policy surface</p>
+                  <h2 className="mt-7 text-[clamp(3rem,6vw,6rem)] font-semibold leading-[.84] tracking-[-.045em]">
+                    The rulebook,
+                    <br />
+                    <span className="text-[var(--wl-dim)]">made executable.</span>
+                  </h2>
+                </div>
+                <SectionNumber value="2" className="hidden font-mono text-[80px] leading-none tracking-[-.045em] text-[var(--wl-line-soft)] lg:block" />
+              </div>
+            </Reveal>
+            <Reveal className="delay-1">
+              <div className="warm-policy-doc relative mt-24 max-w-[930px] border border-[var(--wl-line-bold)] bg-[var(--wl-bg-raised)] p-7 shadow-[14px_18px_0_var(--wl-bg-deep2)] lg:ml-[12%] lg:p-12">
+                <div className="flex justify-between border-b border-[var(--wl-line)] pb-5 font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)]">
+                  <span>POLICY / PROCUREMENT-BOT</span>
+                  <span>v4.18 · ACTIVE</span>
+                </div>
+                <div className="mt-10 grid gap-9 font-mono text-[12px] leading-[1.8] md:grid-cols-[1fr_1fr]">
+                  <div>
+                    <span className="text-[var(--wl-mute)]">when</span>
+                    <br />
+                    <span className="text-[var(--wl-signal)]">transaction.vendor</span> in
+                    <br />
+                    <span className="ml-5">[ AWS, OpenAI ]</span>
+                    <br />
+                    <span className="text-[var(--wl-signal)]">and amount</span> ≤ <span className="text-[var(--wl-signal)]">$500</span>
+                  </div>
+                  <div>
+                    <span className="text-[var(--wl-mute)]">then</span>
+                    <br />
+                    <span className="text-[var(--wl-green-bright)]">ALLOW</span> · record to ledger
+                    <br />
+                    <span className="text-[var(--wl-mute)]">otherwise</span>
+                    <br />
+                    <span className="text-[var(--wl-signal)]">ESCALATE</span> · ask human operator
+                  </div>
+                </div>
+                <div className="mt-10 flex justify-between border-t border-[var(--wl-line)] pt-5 text-[10px] text-[var(--wl-secondary)]">
+                  <span>daily cap $5,000 · USDC only</span>
+                  <span className="text-[var(--wl-green-bright)]">✓ signed by operator</span>
+                </div>
+              </div>
+            </Reveal>
+          </div>
+        </section>
+
+        <section id="record" className="bg-[var(--wl-ink)] px-6 py-28 text-[var(--wl-bg)] lg:px-10 lg:py-32">
+          <div className="mx-auto grid max-w-[1400px] gap-16 lg:grid-cols-[240px_1fr]">
+            <Reveal>
+              <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">03 / Trust surface</p>
+              <SectionNumber value="3" className="mt-28 hidden font-mono text-[80px] leading-none tracking-[-.045em] text-[var(--wl-strong5)] lg:block" />
+            </Reveal>
+            <Reveal className="delay-1">
+              <div className="flex flex-col justify-between gap-10 md:flex-row md:items-end">
+                <h2 className="max-w-[680px] text-[clamp(3rem,6vw,6rem)] font-semibold leading-[.84] tracking-[-.045em]">
+                  Nothing moves
+                  <br />
+                  <span className="text-[var(--wl-dim2)]">in the dark.</span>
+                </h2>
+                <p className="max-w-[240px] text-[12px] leading-[1.5] text-[var(--wl-muted2)]">
+                  A quiet, immutable record of what your agents tried, what policy decided, and who stepped in.
+                </p>
+              </div>
+              <div className="mt-16">
+                <LedgerRows dark />
+              </div>
+            </Reveal>
+          </div>
+        </section>
+
+        <section id="contact" className="px-6 py-32 lg:px-10 lg:py-44">
+          <Reveal>
+            <div className="mx-auto max-w-[1400px] border-b border-[var(--wl-line)] pb-24">
+              <div className="flex items-start justify-between">
+                <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">04 / Trust is the product</p>
+                <SectionNumber value="4" className="hidden font-mono text-[80px] leading-none tracking-[-.045em] text-[var(--wl-line-soft)] lg:block" />
+              </div>
+              <h2 className="mt-8 max-w-[950px] text-[clamp(4rem,9vw,9rem)] font-semibold leading-[.78] tracking-[-.045em]">
+                Let agents move.
+                <br />
+                <span className="text-[var(--wl-dim)]">Keep the final word.</span>
+              </h2>
+              <div className="mt-14 flex flex-col gap-8 lg:ml-[42%] lg:flex-row lg:items-center">
+                <p className="max-w-[290px] text-[15px] leading-[1.5] text-[var(--wl-body)]">
+                  Built for finance and engineering teams who need autonomy without giving up the ledger.
+                </p>
+                <div className="flex flex-wrap items-center gap-4">
+                  <MagneticAnchor href="/dashboard" className="warm-pill group w-fit rounded-full bg-[var(--wl-signal)] px-6 py-3.5 text-[12px] font-semibold text-white">
+                    Launch Dashboard<Arrow />
+                  </MagneticAnchor>
+                  <MagneticAnchor
+                    href="/docs"
+                    className="warm-pill warm-pill-ghost inline-flex w-fit items-center gap-2 rounded-full border border-[var(--wl-line)] px-6 py-3.5 text-[12px] font-semibold text-[var(--wl-ink)]"
+                  >
+                    <BookIcon />
+                    Read Docs
+                  </MagneticAnchor>
+                </div>
+              </div>
+            </div>
+          </Reveal>
+        </section>
+        <footer className="flex flex-col justify-between gap-6 px-6 pb-10 text-[11px] text-[var(--wl-secondary)] lg:flex-row lg:px-10">
+          <span className="font-semibold tracking-[-.04em] text-[var(--wl-ink)]">
+            ARCANUM<span className="warm-period text-[var(--wl-signal)]">.</span>
+          </span>
+          <div className="flex gap-7">
+            <MagneticAnchor href="/docs" className="warm-link inline-flex items-center gap-1.5 hover:text-[var(--wl-signal)]">
+              <BookIcon className="h-3 w-3" />
+              Documentation
+            </MagneticAnchor>
+            <MagneticAnchor href={GITHUB_URL} target="_blank" rel="noreferrer" className="warm-link inline-flex items-center gap-1.5 hover:text-[var(--wl-signal)]">
+              <GitHubMark className="h-3 w-3" />
+              GitHub
+            </MagneticAnchor>
+            <MagneticAnchor href="/dashboard" className="warm-link hover:text-[var(--wl-signal)]">
+              Dashboard
+            </MagneticAnchor>
+            <span className="font-mono">© 2025 ARCANUM</span>
+          </div>
+        </footer>
+      </div>
+    </main>
   );
 }

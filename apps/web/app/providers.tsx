@@ -1,13 +1,14 @@
 "use client";
 
 import { arcTestnet } from "@arcanum/shared";
-import { RainbowKitProvider, darkTheme } from "@rainbow-me/rainbowkit";
+import { RainbowKitProvider, darkTheme, lightTheme } from "@rainbow-me/rainbowkit";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { Toaster } from "sonner";
 import { WagmiProvider } from "wagmi";
 
+import { useArcanumTheme } from "@/components/arcanum/ThemeToggle";
 import { WalletAuthBridge } from "@/components/arcanum/WalletAuthBridge";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { TelemetryProvider } from "@/lib/telemetry";
@@ -31,6 +32,13 @@ export function Providers({ children }: ProvidersProps) {
       }),
   );
   const [trpcClient] = useState(() => createTrpcClient());
+  const { dark } = useArcanumTheme();
+  const rainbowThemeOptions = {
+    accentColor: "var(--wl-signal)",
+    accentColorForeground: dark ? "var(--wl-page)" : "#ffffff",
+    borderRadius: "none",
+    fontStack: "system",
+  } as const;
 
   return (
     <WagmiProvider config={wagmiConfig}>
@@ -39,28 +47,23 @@ export function Providers({ children }: ProvidersProps) {
           <RainbowKitProvider
             initialChain={arcTestnet}
             modalSize="compact"
-            theme={darkTheme({
-              accentColor: "var(--color-hazard)",
-              accentColorForeground: "var(--color-coal-grid)",
-              borderRadius: "none",
-              fontStack: "system",
-            })}
+            theme={dark ? darkTheme(rainbowThemeOptions) : lightTheme(rainbowThemeOptions)}
           >
             <TelemetryProvider>
               <TooltipProvider delayDuration={200}>
                 <WalletAuthBridge />
                 {children}
                 <Toaster
-                  theme="dark"
+                  theme={dark ? "dark" : "light"}
                   toastOptions={{
                     style: {
-                      background: "#15171B",
-                      border: "1px solid #282C34",
-                      color: "#D7DBE0",
+                      background: "var(--wl-panel-mid)",
+                      border: "1px solid var(--wl-hairline)",
+                      color: "var(--wl-text-body)",
                       fontFamily: "var(--font-mono)",
                     },
                     classNames: {
-                      error: "text-[#FF5A1F]",
+                      error: "text-[var(--wl-signal)]",
                     },
                   }}
                 />

@@ -117,24 +117,24 @@ export function CommandPalette() {
       <button
         type="button"
         aria-label="Close command palette"
-        className="fixed inset-0 z-[70] cursor-default bg-[#0a0b0e]/72"
+        className="fixed inset-0 z-[70] cursor-default bg-[var(--wl-ink-fill)]/72"
         onClick={() => setOpen(false)}
       />
       <CommandPrimitive
         label="ARCANUM command palette"
-        className="arcanum-command-palette fixed left-1/2 top-[92px] z-[80] w-[720px] max-w-[calc(100vw-40px)] -translate-x-1/2 border border-[#282C34] bg-[#15171B] font-mono text-[#D7DBE0] shadow-[0_24px_80px_rgba(0,0,0,0.72)]"
+        className="arcanum-command-palette fixed left-1/2 top-[92px] z-[80] w-[720px] max-w-[calc(100vw-40px)] -translate-x-1/2 border border-[var(--wl-hairline)] bg-[var(--wl-panel-mid)] font-mono text-[var(--wl-text-body)] shadow-[0_24px_80px_rgba(0,0,0,0.72)]"
       >
-        <div className="flex h-12 items-center gap-3 border-b border-[#282C34] px-4">
-          <Search className="h-4 w-4 text-[#5B626C]" strokeWidth={1.75} />
+        <div className="flex h-12 items-center gap-3 border-b border-[var(--wl-hairline)] px-4">
+          <Search className="h-4 w-4 text-[var(--wl-text-muted)]" strokeWidth={1.75} />
           <CommandPrimitive.Input
             autoFocus
-            className="h-full flex-1 bg-transparent text-[13px] text-[#EDF0F3] outline-none placeholder:text-[#5B626C]"
+            className="h-full flex-1 bg-transparent text-[13px] text-[var(--wl-text-primary)] outline-none placeholder:text-[var(--wl-text-muted)]"
             placeholder="Search agents, vendors, escalations, actions..."
           />
           <KeyHint>ESC</KeyHint>
         </div>
         <CommandPrimitive.List className="max-h-[520px] overflow-y-auto p-2">
-          <CommandPrimitive.Empty className="px-3 py-8 text-center font-cond text-[18px] tracking-[0.1em] text-[#FF5A1F]">
+          <CommandPrimitive.Empty className="px-3 py-8 text-center font-cond text-[18px] tracking-[0.1em] text-[var(--wl-signal)]">
             NO COMMAND MATCH
           </CommandPrimitive.Empty>
 
@@ -157,7 +157,7 @@ export function CommandPalette() {
               >
                 <ShieldAlert className="h-3.5 w-3.5" strokeWidth={1.75} />
                 <span>{agent.name}</span>
-                <span className="ml-auto text-[10px] text-[#5B626C]">{agent.wallet}</span>
+                <span className="ml-auto text-[10px] text-[var(--wl-text-muted)]">{agent.wallet}</span>
               </PaletteItem>
             ))}
           </PaletteGroup>
@@ -171,7 +171,7 @@ export function CommandPalette() {
               >
                 <ListChecks className="h-3.5 w-3.5" strokeWidth={1.75} />
                 <span>{vendor.name}</span>
-                <span className="ml-auto text-[10px] text-[#5B626C]">{vendor.address}</span>
+                <span className="ml-auto text-[10px] text-[var(--wl-text-muted)]">{vendor.address}</span>
               </PaletteItem>
             ))}
           </PaletteGroup>
@@ -179,7 +179,7 @@ export function CommandPalette() {
           <PaletteGroup heading="ESCALATIONS">
             {escalationItems.map((item) => (
               <PaletteItem key={item.href} value={item.search} onSelect={() => navigate(item.href)}>
-                <ShieldAlert className="h-3.5 w-3.5 text-[#FF5A1F]" strokeWidth={1.75} />
+                <ShieldAlert className="h-3.5 w-3.5 text-[var(--wl-signal)]" strokeWidth={1.75} />
                 <span>{item.label}</span>
               </PaletteItem>
             ))}
@@ -232,7 +232,7 @@ function PaletteGroup({ heading, children }: Readonly<{ heading: string; childre
   return (
     <CommandPrimitive.Group
       heading={heading}
-      className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:font-cond [&_[cmdk-group-heading]]:text-[13px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:tracking-[0.22em] [&_[cmdk-group-heading]]:text-[#8A909B]"
+      className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:font-cond [&_[cmdk-group-heading]]:text-[13px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:tracking-[0.22em] [&_[cmdk-group-heading]]:text-[var(--wl-text-secondary)]"
     >
       {children}
     </CommandPrimitive.Group>
@@ -250,7 +250,7 @@ function PaletteItem({
       onSelect={onSelect}
       className={cn(
         "flex h-9 cursor-pointer items-center gap-2 px-3 text-[12px] outline-none",
-        "aria-selected:bg-[#1B1F26] aria-selected:text-[#EDF0F3] text-[#D7DBE0]",
+        "aria-selected:bg-[var(--wl-panel-hover)] aria-selected:text-[var(--wl-text-primary)] text-[var(--wl-text-body)]",
       )}
     >
       {children}
@@ -260,7 +260,7 @@ function PaletteItem({
 
 function KeyHint({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <span className="ml-auto border border-[#282C34] bg-[#101216] px-1.5 py-0.5 font-mono text-[10px] tracking-[0.08em] text-[#8A909B]">
+    <span className="ml-auto border border-[var(--wl-hairline)] bg-[var(--wl-inset)] px-1.5 py-0.5 font-mono text-[10px] tracking-[0.08em] text-[var(--wl-text-secondary)]">
       {children}
     </span>
   );

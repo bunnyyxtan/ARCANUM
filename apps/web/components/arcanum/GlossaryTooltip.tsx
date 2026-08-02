@@ -38,19 +38,19 @@ export function GlossaryTermInline({
       <TooltipTrigger asChild>
         <Link
           href="/glossary"
-          className="border-b border-dotted border-[#5B626C] text-inherit decoration-dotted hover:border-[#FF5A1F] hover:text-[#EDF0F3]"
+          className="border-b border-dotted border-[var(--wl-text-muted)] text-inherit decoration-dotted hover:border-[var(--wl-signal)] hover:text-[var(--wl-text-primary)]"
         >
           {children ?? term}
         </Link>
       </TooltipTrigger>
-      <TooltipContent className="max-w-xs border-[#282C34] bg-[#15171B] p-3 text-[#D7DBE0]">
-        <div className="font-cond text-[13px] font-semibold tracking-[0.16em] text-[#FF5A1F]">
+      <TooltipContent className="max-w-xs border-[var(--wl-hairline)] bg-[var(--wl-panel-mid)] p-3 text-[var(--wl-text-body)]">
+        <div className="font-cond text-[13px] font-semibold tracking-[0.16em] text-[var(--wl-signal)]">
           {term}
         </div>
-        <p className="mt-1 font-body text-[12px] leading-relaxed text-[#D7DBE0]">
+        <p className="mt-1 font-body text-[12px] leading-relaxed text-[var(--wl-text-body)]">
           {glossary[term]}
         </p>
-        <div className="mt-2 font-mono text-[9px] tracking-[0.12em] text-[#5B626C]">
+        <div className="mt-2 font-mono text-[9px] tracking-[0.12em] text-[var(--wl-text-muted)]">
           {glossaryCaption}
         </div>
       </TooltipContent>

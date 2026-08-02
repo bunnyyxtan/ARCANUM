@@ -110,12 +110,12 @@ export function KeyboardShortcuts() {
 
   return (
     <Sheet open={helpOpen} onOpenChange={setHelpOpen}>
-      <SheetContent className="arcanum-shortcuts-sheet w-[460px] border-[#282C34] bg-[#15171B] p-0 font-mono text-[#D7DBE0]">
-        <SheetHeader className="border-b border-[#282C34] px-5 py-4">
-          <SheetTitle className="font-cond text-[24px] font-bold tracking-[0.08em] text-[#EDF0F3]">
+      <SheetContent className="arcanum-shortcuts-sheet w-[460px] border-[var(--wl-hairline)] bg-[var(--wl-panel-mid)] p-0 font-mono text-[var(--wl-text-body)]">
+        <SheetHeader className="border-b border-[var(--wl-hairline)] px-5 py-4">
+          <SheetTitle className="font-cond text-[24px] font-bold tracking-[0.08em] text-[var(--wl-text-primary)]">
             KEYBOARD SHORTCUTS
           </SheetTitle>
-          <SheetDescription className="text-[12px] text-[#8A909B]">
+          <SheetDescription className="text-[12px] text-[var(--wl-text-secondary)]">
             Operator navigation and demo controls.
           </SheetDescription>
         </SheetHeader>
@@ -145,10 +145,10 @@ export function KeyboardShortcuts() {
 function ShortcutGroup({ title, children }: Readonly<{ title: string; children: ReactNode }>) {
   return (
     <section>
-      <div className="font-cond text-[13px] font-semibold tracking-[0.22em] text-[#8A909B]">
+      <div className="font-cond text-[13px] font-semibold tracking-[0.22em] text-[var(--wl-text-secondary)]">
         {title}
       </div>
-      <div className="mt-2 divide-y divide-[#1E222A] border border-[#282C34]">{children}</div>
+      <div className="mt-2 divide-y divide-[var(--wl-subrule)] border border-[var(--wl-hairline)]">{children}</div>
     </section>
   );
 }
@@ -156,7 +156,7 @@ function ShortcutGroup({ title, children }: Readonly<{ title: string; children: 
 function Shortcut({ keys, label }: Readonly<{ keys: readonly string[]; label: string }>) {
   return (
     <div className="flex h-10 items-center justify-between px-3 text-[12px]">
-      <span className="text-[#D7DBE0]">{label}</span>
+      <span className="text-[var(--wl-text-body)]">{label}</span>
       <span className="flex items-center gap-1">
         {keys.map((key) => (
           <KeyHint key={key}>{key}</KeyHint>
@@ -168,7 +168,7 @@ function Shortcut({ keys, label }: Readonly<{ keys: readonly string[]; label: st
 
 function KeyHint({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <span className="border border-[#282C34] bg-[#101216] px-1.5 py-0.5 text-[10px] tracking-[0.08em] text-[#8A909B]">
+    <span className="border border-[var(--wl-hairline)] bg-[var(--wl-inset)] px-1.5 py-0.5 text-[10px] tracking-[0.08em] text-[var(--wl-text-secondary)]">
       {children}
     </span>
   );

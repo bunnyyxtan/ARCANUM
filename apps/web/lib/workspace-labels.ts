@@ -50,7 +50,7 @@ export function getWorkspaceFooterLabel(mode: ArcanumWorkspaceMode) {
 }
 
 export function getWorkspaceStatusColor(mode: ArcanumWorkspaceMode) {
-  return mode === "disconnected" || mode === "connected_unsigned" ? "#E0A04A" : "#6E9E7C";
+  return mode === "disconnected" || mode === "connected_unsigned" ? "var(--wl-amber)" : "var(--wl-green)";
 }
 
 export function getWorkspaceSwitcherMessage(mode: ArcanumWorkspaceMode) {
