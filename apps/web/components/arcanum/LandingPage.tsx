@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import {
+  type CSSProperties,
+  type ReactNode,
+  type PointerEvent as ReactPointerEvent,
   useEffect,
   useRef,
   useState,
-  type CSSProperties,
-  type PointerEvent as ReactPointerEvent,
-  type ReactNode,
 } from "react";
 
 import { ThemeToggle } from "@/components/arcanum/ThemeToggle";
@@ -32,7 +32,12 @@ function Arrow() {
 
 function GitHubMark({ className = "h-3.5 w-3.5" }: { className?: string }) {
   return (
-    <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className={`inline-block shrink-0 ${className}`}>
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 16 16"
+      fill="currentColor"
+      className={`inline-block shrink-0 ${className}`}
+    >
       <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.5 7.5 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
     </svg>
   );
@@ -85,7 +90,14 @@ function MagneticAnchor({ children, className = "", href, rel, target }: Magneti
     );
   }
   return (
-    <a href={href} rel={rel} target={target} onPointerMove={onMove} onPointerLeave={reset} className={cls}>
+    <a
+      href={href}
+      rel={rel}
+      target={target}
+      onPointerMove={onMove}
+      onPointerLeave={reset}
+      className={cls}
+    >
       {children}
     </a>
   );
@@ -108,10 +120,38 @@ function StatusPill({ status }: { status: "ALLOWED" | "BLOCKED" | "ESCALATED" })
 }
 
 const LEDGER_ROWS = [
-  { agent: "procurement-bot", vendor: "AWS", amount: "$184.20", detail: "0x3f…9a2c", status: "ALLOWED" as const, time: "09:41:08" },
-  { agent: "support-agent", vendor: "OpenAI", amount: "$740.00", detail: "0x71…4be1", status: "BLOCKED" as const, time: "09:41:12" },
-  { agent: "growth-bot", vendor: "Anthropic", amount: "$2,100.00", detail: "0xa8…c912", status: "ESCALATED" as const, time: "09:41:16" },
-  { agent: "procurement-bot", vendor: "AWS", amount: "$316.40", detail: "0x3f…9a2c", status: "ALLOWED" as const, time: "09:41:19" },
+  {
+    agent: "procurement-bot",
+    vendor: "AWS",
+    amount: "$184.20",
+    detail: "0x3f…9a2c",
+    status: "ALLOWED" as const,
+    time: "09:41:08",
+  },
+  {
+    agent: "support-agent",
+    vendor: "OpenAI",
+    amount: "$740.00",
+    detail: "0x71…4be1",
+    status: "BLOCKED" as const,
+    time: "09:41:12",
+  },
+  {
+    agent: "growth-bot",
+    vendor: "Anthropic",
+    amount: "$2,100.00",
+    detail: "0xa8…c912",
+    status: "ESCALATED" as const,
+    time: "09:41:16",
+  },
+  {
+    agent: "procurement-bot",
+    vendor: "AWS",
+    amount: "$316.40",
+    detail: "0x3f…9a2c",
+    status: "ALLOWED" as const,
+    time: "09:41:19",
+  },
 ];
 
 function LedgerRows({ dark = false }: { dark?: boolean }) {
@@ -124,9 +164,13 @@ function LedgerRows({ dark = false }: { dark?: boolean }) {
   const line = dark ? "border-[var(--wl-strong2)]" : "border-[var(--wl-line)]";
   const quiet = dark ? "text-[var(--wl-dim2)]" : "text-[var(--wl-mute)]";
   return (
-    <div className={`overflow-hidden border ${line} ${dark ? "bg-[var(--wl-ink-soft)]" : "bg-[var(--wl-bg-raised)]"}`}>
+    <div
+      className={`overflow-hidden border ${line} ${dark ? "bg-[var(--wl-ink-soft)]" : "bg-[var(--wl-bg-raised)]"}`}
+    >
       <div className={`flex items-center justify-between border-b px-5 py-4 ${line}`}>
-        <span className={`font-mono text-[10px] uppercase tracking-[.18em] ${quiet}`}>Live governed ledger</span>
+        <span className={`font-mono text-[10px] uppercase tracking-[.18em] ${quiet}`}>
+          Live governed ledger
+        </span>
         <span className={`font-mono text-[10px] ${quiet}`}>ARC / USDC</span>
       </div>
       <div
@@ -138,7 +182,9 @@ function LedgerRows({ dark = false }: { dark?: boolean }) {
         <span>Wallet</span>
         <span>Verdict</span>
       </div>
-      <div className={`divide-y ${dark ? "divide-[var(--wl-strong4)]" : "divide-[var(--wl-line-faint)]"}`}>
+      <div
+        className={`divide-y ${dark ? "divide-[var(--wl-strong4)]" : "divide-[var(--wl-line-faint)]"}`}
+      >
         {rows.map((r, i) => (
           <div
             key={r.time}
@@ -146,11 +192,23 @@ function LedgerRows({ dark = false }: { dark?: boolean }) {
             className={`warm-ledger-row grid grid-cols-[1.3fr_1fr_.9fr_1fr_auto] items-center gap-3 px-5 py-4 ${i < visible ? "is-live" : "is-quiet"}`}
           >
             <div>
-              <div className={`text-[12px] font-medium ${dark ? "text-[var(--wl-bg-tint)]" : "text-[var(--wl-ink)]"}`}>{r.agent}</div>
+              <div
+                className={`text-[12px] font-medium ${dark ? "text-[var(--wl-bg-tint)]" : "text-[var(--wl-ink)]"}`}
+              >
+                {r.agent}
+              </div>
               <div className={`mt-1 font-mono text-[9px] ${quiet}`}>{r.time} UTC</div>
             </div>
-            <span className={`text-[12px] ${dark ? "text-[var(--wl-line-bolder)]" : "text-[var(--wl-strong)]"}`}>{r.vendor}</span>
-            <span className={`font-mono text-[12px] tabular-nums ${dark ? "text-[var(--wl-bg-tint)]" : "text-[var(--wl-ink)]"}`}>{r.amount}</span>
+            <span
+              className={`text-[12px] ${dark ? "text-[var(--wl-line-bolder)]" : "text-[var(--wl-strong)]"}`}
+            >
+              {r.vendor}
+            </span>
+            <span
+              className={`font-mono text-[12px] tabular-nums ${dark ? "text-[var(--wl-bg-tint)]" : "text-[var(--wl-ink)]"}`}
+            >
+              {r.amount}
+            </span>
             <span className={`font-mono text-[10px] ${quiet}`}>{r.detail}</span>
             <StatusPill status={r.status} />
           </div>
@@ -164,7 +222,11 @@ function LedgerRows({ dark = false }: { dark?: boolean }) {
   );
 }
 
-function Reveal({ children, className = "", kind = "default" }: { children: ReactNode; className?: string; kind?: "default" | "headline" }) {
+function Reveal({
+  children,
+  className = "",
+  kind = "default",
+}: { children: ReactNode; className?: string; kind?: "default" | "headline" }) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
   const [armed, setArmed] = useState(false);
@@ -197,7 +259,13 @@ function Reveal({ children, className = "", kind = "default" }: { children: Reac
       window.clearTimeout(fallback);
     };
   }, []);
-  const index = className.includes("delay-1") ? 1 : className.includes("delay-2") ? 2 : className.includes("delay-3") ? 3 : 0;
+  const index = className.includes("delay-1")
+    ? 1
+    : className.includes("delay-2")
+      ? 2
+      : className.includes("delay-3")
+        ? 3
+        : 0;
   return (
     <div
       ref={ref}
@@ -264,12 +332,15 @@ export function LandingPage() {
       },
       { threshold: [0.2, 0.45, 0.7], rootMargin: "-12% 0px -45% 0px" },
     );
-    sections.forEach((section) => observer.observe(section));
+    for (const section of sections) {
+      observer.observe(section);
+    }
     return () => observer.disconnect();
   }, []);
   useEffect(() => {
     const capitalTimer = window.setInterval(
-      () => setCapitalGoverned((value) => (value >= 87.8 ? 82.4 : Number((value + 0.1).toFixed(1)))),
+      () =>
+        setCapitalGoverned((value) => (value >= 87.8 ? 82.4 : Number((value + 0.1).toFixed(1)))),
       1800,
     );
     return () => {
@@ -281,7 +352,8 @@ export function LandingPage() {
     const onScroll = () => {
       if (frame) return;
       frame = window.requestAnimationFrame(() => {
-        if (gridRef.current) gridRef.current.style.transform = `translate3d(0, ${Math.min(window.scrollY * 0.045, 28)}px, 0)`;
+        if (gridRef.current)
+          gridRef.current.style.transform = `translate3d(0, ${Math.min(window.scrollY * 0.045, 28)}px, 0)`;
         frame = 0;
       });
     };
@@ -325,15 +397,29 @@ export function LandingPage() {
         <MagneticAnchor href="#" className="text-[17px] font-bold tracking-[-.045em]">
           ARCANUM<span className="text-[var(--wl-signal)]">.</span>
         </MagneticAnchor>
-        <div className="font-mono text-[9px] tracking-[.18em] text-[var(--wl-mute)]" style={{ writingMode: "vertical-rl" }}>
+        <div
+          className="font-mono text-[9px] tracking-[.18em] text-[var(--wl-mute)]"
+          style={{ writingMode: "vertical-rl" }}
+        >
           ARC · GOVERNED
         </div>
-        <div ref={railRef} className="relative flex flex-col items-center gap-6 font-mono text-[9px] text-[var(--wl-secondary)]">
+        <div
+          ref={railRef}
+          className="relative flex flex-col items-center gap-6 font-mono text-[9px] text-[var(--wl-secondary)]"
+        >
           <span className="warm-active-dot" aria-hidden="true" />
-          <MagneticAnchor href="#governed" className="warm-nav-dot">01</MagneticAnchor>
-          <MagneticAnchor href="#policies" className="warm-nav-dot">02</MagneticAnchor>
-          <MagneticAnchor href="#record" className="warm-nav-dot">03</MagneticAnchor>
-          <MagneticAnchor href="#contact" className="warm-nav-dot">04</MagneticAnchor>
+          <MagneticAnchor href="#governed" className="warm-nav-dot">
+            01
+          </MagneticAnchor>
+          <MagneticAnchor href="#policies" className="warm-nav-dot">
+            02
+          </MagneticAnchor>
+          <MagneticAnchor href="#record" className="warm-nav-dot">
+            03
+          </MagneticAnchor>
+          <MagneticAnchor href="#contact" className="warm-nav-dot">
+            04
+          </MagneticAnchor>
         </div>
       </aside>
 
@@ -344,14 +430,19 @@ export function LandingPage() {
           </MagneticAnchor>
           <div className="flex items-center gap-2">
             <ThemeToggle className="flex h-8 w-8 items-center justify-center text-[var(--wl-body)] transition-colors hover:text-[var(--wl-signal)]" />
-            <MagneticAnchor href="/dashboard" className="warm-pill group rounded-full bg-[var(--wl-signal)] px-5 py-2.5 text-[11px] font-semibold text-white">
-              Launch Dashboard<Arrow />
+            <MagneticAnchor
+              href="/dashboard"
+              className="warm-pill group rounded-full bg-[var(--wl-signal)] px-5 py-2.5 text-[11px] font-semibold text-white"
+            >
+              Launch Dashboard
+              <Arrow />
             </MagneticAnchor>
           </div>
         </nav>
         <div className="hidden h-[68px] items-center justify-between border-b border-[var(--wl-line)] pl-10 pr-6 lg:flex">
           <span className="text-[13px] font-medium tracking-[-.01em] text-[var(--wl-body)]">
-            Governed wallets for AI agents<span className="text-[var(--wl-mute)]"> · USDC on Arc</span>
+            Governed wallets for AI agents
+            <span className="text-[var(--wl-mute)]"> · USDC on Arc</span>
           </span>
           <div className="flex items-center">
             <MagneticAnchor
@@ -376,12 +467,16 @@ export function LandingPage() {
               href="/dashboard"
               className="warm-pill group ml-2 rounded-full bg-[var(--wl-signal)] px-6 py-2.5 text-[13px] font-semibold tracking-[-.01em] text-white"
             >
-              Launch Dashboard<Arrow />
+              Launch Dashboard
+              <Arrow />
             </MagneticAnchor>
           </div>
         </div>
 
-        <section id="ledger" className="relative min-h-[780px] border-b border-[var(--wl-line)] px-6 py-16 lg:px-10 lg:py-20">
+        <section
+          id="ledger"
+          className="relative min-h-[780px] border-b border-[var(--wl-line)] px-6 py-16 lg:px-10 lg:py-20"
+        >
           <div
             ref={gridRef}
             className="pointer-events-none absolute inset-0 opacity-60 will-change-transform"
@@ -394,13 +489,16 @@ export function LandingPage() {
           />
           <div className="relative mx-auto max-w-[1400px]">
             <Reveal>
-              <p className="font-mono text-[10px] uppercase tracking-[.22em] text-[var(--wl-signal)]">Governed autonomy / Arc blockchain</p>
+              <p className="font-mono text-[10px] uppercase tracking-[.22em] text-[var(--wl-signal)]">
+                Governed autonomy / Arc blockchain
+              </p>
             </Reveal>
             <Reveal kind="headline" className="delay-1">
               <h1 className="mt-8 max-w-[880px] text-[clamp(4.4rem,10.5vw,10.5rem)] font-semibold leading-[.8] tracking-[-.045em]">
                 Autonomous
                 <br />
-                <span className="text-[var(--wl-dim)]">spend,</span> <em className="not-italic text-[var(--wl-ink)]">accounted.</em>
+                <span className="text-[var(--wl-dim)]">spend,</span>{" "}
+                <em className="not-italic text-[var(--wl-ink)]">accounted.</em>
               </h1>
             </Reveal>
             <Reveal className="delay-2">
@@ -409,8 +507,12 @@ export function LandingPage() {
                   Every dollar is checked, recorded, and visibly governed before it moves.
                 </p>
                 <div className="mt-7 flex flex-wrap items-center gap-4">
-                  <MagneticAnchor href="/dashboard" className="warm-pill group rounded-full bg-[var(--wl-signal)] px-6 py-3.5 text-[12px] font-semibold text-white">
-                    Launch Dashboard<Arrow />
+                  <MagneticAnchor
+                    href="/dashboard"
+                    className="warm-pill group rounded-full bg-[var(--wl-signal)] px-6 py-3.5 text-[12px] font-semibold text-white"
+                  >
+                    Launch Dashboard
+                    <Arrow />
                   </MagneticAnchor>
                   <MagneticAnchor
                     href="/docs"
@@ -438,19 +540,33 @@ export function LandingPage() {
               <div className="absolute bottom-full right-0 mb-5 hidden w-[200px] border-l border-[var(--wl-signal)] pl-4 text-[10px] leading-[1.4] text-[var(--wl-signal)] lg:block">
                 THE LIVE RECORD
                 <br />
-                <span className="text-[var(--wl-secondary)]">Not a demo. A transaction deciding itself in public.</span>
-                <strong className="mt-4 block font-mono text-[20px] font-medium tabular-nums text-[var(--wl-ink)]">${capitalGoverned.toFixed(1)}k</strong>
-                <span className="block font-mono text-[8px] uppercase tracking-[.12em] text-[var(--wl-secondary)]">capital governed</span>
+                <span className="text-[var(--wl-secondary)]">
+                  Not a demo. A transaction deciding itself in public.
+                </span>
+                <strong className="mt-4 block font-mono text-[20px] font-medium tabular-nums text-[var(--wl-ink)]">
+                  ${capitalGoverned.toFixed(1)}k
+                </strong>
+                <span className="block font-mono text-[8px] uppercase tracking-[.12em] text-[var(--wl-secondary)]">
+                  capital governed
+                </span>
               </div>
             </div>
           </div>
         </section>
 
-        <section id="governed" className="border-b border-[var(--wl-line)] bg-[var(--wl-bg-soft)] px-6 py-24 lg:px-10 lg:py-32">
+        <section
+          id="governed"
+          className="border-b border-[var(--wl-line)] bg-[var(--wl-bg-soft)] px-6 py-24 lg:px-10 lg:py-32"
+        >
           <div className="mx-auto grid max-w-[1400px] gap-16 lg:grid-cols-[240px_1fr]">
             <Reveal>
-              <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">01 / The control loop</p>
-              <SectionNumber value="1" className="mt-28 hidden font-mono text-[80px] leading-none tracking-[-.045em] text-[var(--wl-line-strong)] lg:block" />
+              <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
+                01 / The control loop
+              </p>
+              <SectionNumber
+                value="1"
+                className="mt-28 hidden font-mono text-[80px] leading-none tracking-[-.045em] text-[var(--wl-line-strong)] lg:block"
+              />
             </Reveal>
             <Reveal className="delay-1">
               <h2 className="max-w-[700px] text-[clamp(3rem,6vw,6.2rem)] font-semibold leading-[.84] tracking-[-.045em]">
@@ -464,10 +580,15 @@ export function LandingPage() {
                   ["02", "Allow or block", "The wallet moves only when the policy says so."],
                   ["03", "Escalate to human", "Unusual spend pauses. You decide, not the model."],
                 ].map(([n, t, d]) => (
-                  <div key={n} className="border-b border-[var(--wl-faint)] py-7 md:border-b-0 md:border-r md:px-8 md:pt-8 md:first:pl-0 md:last:border-r-0 md:last:pr-0">
+                  <div
+                    key={n}
+                    className="border-b border-[var(--wl-faint)] py-7 md:border-b-0 md:border-r md:px-8 md:pt-8 md:first:pl-0 md:last:border-r-0 md:last:pr-0"
+                  >
                     <span className="font-mono text-[10px] text-[var(--wl-signal)]">{n}</span>
                     <h3 className="mt-14 text-[21px] font-medium tracking-[-.04em]">{t}</h3>
-                    <p className="mt-3 max-w-[190px] text-[12px] leading-[1.45] text-[var(--wl-secondary2)]">{d}</p>
+                    <p className="mt-3 max-w-[190px] text-[12px] leading-[1.45] text-[var(--wl-secondary2)]">
+                      {d}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -475,19 +596,27 @@ export function LandingPage() {
           </div>
         </section>
 
-        <section id="policies" className="border-b border-[var(--wl-line)] px-6 py-28 lg:px-10 lg:py-36">
+        <section
+          id="policies"
+          className="border-b border-[var(--wl-line)] px-6 py-28 lg:px-10 lg:py-36"
+        >
           <div className="mx-auto max-w-[1400px]">
             <Reveal>
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">02 / Policy surface</p>
+                  <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
+                    02 / Policy surface
+                  </p>
                   <h2 className="mt-7 text-[clamp(3rem,6vw,6rem)] font-semibold leading-[.84] tracking-[-.045em]">
                     The rulebook,
                     <br />
                     <span className="text-[var(--wl-dim)]">made executable.</span>
                   </h2>
                 </div>
-                <SectionNumber value="2" className="hidden font-mono text-[80px] leading-none tracking-[-.045em] text-[var(--wl-line-soft)] lg:block" />
+                <SectionNumber
+                  value="2"
+                  className="hidden font-mono text-[80px] leading-none tracking-[-.045em] text-[var(--wl-line-soft)] lg:block"
+                />
               </div>
             </Reveal>
             <Reveal className="delay-1">
@@ -504,7 +633,8 @@ export function LandingPage() {
                     <br />
                     <span className="ml-5">[ AWS, OpenAI ]</span>
                     <br />
-                    <span className="text-[var(--wl-signal)]">and amount</span> ≤ <span className="text-[var(--wl-signal)]">$500</span>
+                    <span className="text-[var(--wl-signal)]">and amount</span> ≤{" "}
+                    <span className="text-[var(--wl-signal)]">$500</span>
                   </div>
                   <div>
                     <span className="text-[var(--wl-mute)]">then</span>
@@ -525,11 +655,19 @@ export function LandingPage() {
           </div>
         </section>
 
-        <section id="record" className="bg-[var(--wl-ink)] px-6 py-28 text-[var(--wl-bg)] lg:px-10 lg:py-32">
+        <section
+          id="record"
+          className="bg-[var(--wl-ink)] px-6 py-28 text-[var(--wl-bg)] lg:px-10 lg:py-32"
+        >
           <div className="mx-auto grid max-w-[1400px] gap-16 lg:grid-cols-[240px_1fr]">
             <Reveal>
-              <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">03 / Trust surface</p>
-              <SectionNumber value="3" className="mt-28 hidden font-mono text-[80px] leading-none tracking-[-.045em] text-[var(--wl-strong5)] lg:block" />
+              <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
+                03 / Trust surface
+              </p>
+              <SectionNumber
+                value="3"
+                className="mt-28 hidden font-mono text-[80px] leading-none tracking-[-.045em] text-[var(--wl-strong5)] lg:block"
+              />
             </Reveal>
             <Reveal className="delay-1">
               <div className="flex flex-col justify-between gap-10 md:flex-row md:items-end">
@@ -539,7 +677,8 @@ export function LandingPage() {
                   <span className="text-[var(--wl-dim2)]">in the dark.</span>
                 </h2>
                 <p className="max-w-[240px] text-[12px] leading-[1.5] text-[var(--wl-muted2)]">
-                  A quiet, immutable record of what your agents tried, what policy decided, and who stepped in.
+                  A quiet, immutable record of what your agents tried, what policy decided, and who
+                  stepped in.
                 </p>
               </div>
               <div className="mt-16">
@@ -553,8 +692,13 @@ export function LandingPage() {
           <Reveal>
             <div className="mx-auto max-w-[1400px] border-b border-[var(--wl-line)] pb-24">
               <div className="flex items-start justify-between">
-                <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">04 / Trust is the product</p>
-                <SectionNumber value="4" className="hidden font-mono text-[80px] leading-none tracking-[-.045em] text-[var(--wl-line-soft)] lg:block" />
+                <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
+                  04 / Trust is the product
+                </p>
+                <SectionNumber
+                  value="4"
+                  className="hidden font-mono text-[80px] leading-none tracking-[-.045em] text-[var(--wl-line-soft)] lg:block"
+                />
               </div>
               <h2 className="mt-8 max-w-[950px] text-[clamp(4rem,9vw,9rem)] font-semibold leading-[.78] tracking-[-.045em]">
                 Let agents move.
@@ -563,11 +707,16 @@ export function LandingPage() {
               </h2>
               <div className="mt-14 flex flex-col gap-8 lg:ml-[42%] lg:flex-row lg:items-center">
                 <p className="max-w-[290px] text-[15px] leading-[1.5] text-[var(--wl-body)]">
-                  Built for finance and engineering teams who need autonomy without giving up the ledger.
+                  Built for finance and engineering teams who need autonomy without giving up the
+                  ledger.
                 </p>
                 <div className="flex flex-wrap items-center gap-4">
-                  <MagneticAnchor href="/dashboard" className="warm-pill group w-fit rounded-full bg-[var(--wl-signal)] px-6 py-3.5 text-[12px] font-semibold text-white">
-                    Launch Dashboard<Arrow />
+                  <MagneticAnchor
+                    href="/dashboard"
+                    className="warm-pill group w-fit rounded-full bg-[var(--wl-signal)] px-6 py-3.5 text-[12px] font-semibold text-white"
+                  >
+                    Launch Dashboard
+                    <Arrow />
                   </MagneticAnchor>
                   <MagneticAnchor
                     href="/docs"
@@ -586,11 +735,19 @@ export function LandingPage() {
             ARCANUM<span className="warm-period text-[var(--wl-signal)]">.</span>
           </span>
           <div className="flex gap-7">
-            <MagneticAnchor href="/docs" className="warm-link inline-flex items-center gap-1.5 hover:text-[var(--wl-signal)]">
+            <MagneticAnchor
+              href="/docs"
+              className="warm-link inline-flex items-center gap-1.5 hover:text-[var(--wl-signal)]"
+            >
               <BookIcon className="h-3 w-3" />
               Documentation
             </MagneticAnchor>
-            <MagneticAnchor href={GITHUB_URL} target="_blank" rel="noreferrer" className="warm-link inline-flex items-center gap-1.5 hover:text-[var(--wl-signal)]">
+            <MagneticAnchor
+              href={GITHUB_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="warm-link inline-flex items-center gap-1.5 hover:text-[var(--wl-signal)]"
+            >
               <GitHubMark className="h-3 w-3" />
               GitHub
             </MagneticAnchor>

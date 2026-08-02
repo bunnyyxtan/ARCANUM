@@ -83,13 +83,8 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* Apply the persisted theme before first paint to avoid a flash. */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html:
-              "try{if(localStorage.getItem('arcanum-theme')==='dark'){document.documentElement.classList.add('wl-dark','dark')}}catch(e){}",
-          }}
-        />
+        {/* Synchronous on purpose: applies the persisted theme before first paint to avoid a flash. */}
+        <script src="/theme-init.js" />
       </head>
       <body
         className={`${interTight.variable} ${interTightDisplay.variable} ${dmMono.variable} bg-foundry-page text-foundry-text-body antialiased`}

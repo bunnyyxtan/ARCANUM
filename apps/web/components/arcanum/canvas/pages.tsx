@@ -39,11 +39,7 @@ import {
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type {
-  CSSProperties,
-  MouseEvent as ReactMouseEvent,
-  ReactNode,
-} from "react";
+import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import {
@@ -55,12 +51,7 @@ import {
   toBytes,
 } from "viem";
 import type { Address, Hash } from "viem";
-import {
-  useAccount,
-  usePublicClient,
-  useSwitchChain,
-  useWriteContract,
-} from "wagmi";
+import { useAccount, usePublicClient, useSwitchChain, useWriteContract } from "wagmi";
 
 import { GlossaryTermInline } from "@/components/arcanum/GlossaryTooltip";
 import {
@@ -113,26 +104,16 @@ import {
   useLiveVendors,
 } from "@/lib/live-data";
 import { MotionButton, MotionDiv, MotionMain } from "@/lib/motion-elements";
-import {
-  enterFade,
-  enterRise,
-  hoverLift,
-  useReducedMotion,
-} from "@/lib/motion/motion-config";
+import { enterFade, enterRise, hoverLift, useReducedMotion } from "@/lib/motion/motion-config";
 import { configuredPublicOrigin } from "@/lib/public-url";
 import { matchesSearch, normalizeSearch } from "@/lib/table-state";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import {
-  getSettingsWorkspaceSummary,
-  getWorkspaceEmptyCopy,
-} from "@/lib/workspace-labels";
+import { getSettingsWorkspaceSummary, getWorkspaceEmptyCopy } from "@/lib/workspace-labels";
 
 const iconStroke = 1.75;
 
-function workspaceFileRoot(
-  workspace: Pick<ReturnType<typeof useWorkspaceMode>, "isDemo">
-) {
+function workspaceFileRoot(workspace: Pick<ReturnType<typeof useWorkspaceMode>, "isDemo">) {
   return workspace.isDemo ? "FILE / DEMO-WORKSPACE" : "FILE / ARCANUM";
 }
 
@@ -168,17 +149,9 @@ type VendorDisplay = readonly [
   readonly string[],
   boolean,
   string,
-  VendorDisplayMeta?
+  VendorDisplayMeta?,
 ];
-type LedgerDisplay = readonly [
-  string,
-  string,
-  string,
-  string,
-  string,
-  string,
-  string?
-];
+type LedgerDisplay = readonly [string, string, string, string, string, string, string?];
 type EscalationDisplay = readonly [
   string,
   string,
@@ -190,7 +163,7 @@ type EscalationDisplay = readonly [
   boolean,
   string,
   string,
-  string?
+  string?,
 ];
 type AnomalyDisplay = {
   id?: string;
@@ -215,21 +188,18 @@ function signerCandidatesFromPolicy(policy: unknown): Address[] {
     typeof policy === "object" &&
     "signers" in policy &&
     Array.isArray((policy as { signers?: unknown }).signers)
-      ? (policy as { signers: unknown[] }).signers ?? []
+      ? ((policy as { signers: unknown[] }).signers ?? [])
       : [];
 
   const normalized = signers
     .filter((value): value is string => typeof value === "string")
     .map((value) => value.trim().toLowerCase())
-    .filter(
-      (value): value is Address => isEvmAddress(value) && !isZeroAddress(value)
-    );
+    .filter((value): value is Address => isEvmAddress(value) && !isZeroAddress(value));
 
   return Array.from(new Set(normalized));
 }
 
-const fallbackEscalationHash =
-  "0xeeee000000000000000000000000000000000000000000000000000000000001";
+const fallbackEscalationHash = "0xeeee000000000000000000000000000000000000000000000000000000000001";
 const fallbackAnomalyId = "70000000-0000-4000-8000-000000000001";
 const sampleAgentWallet = "0x4F8C39A7D2B1E84F3aF20a91dDb83a7B7A4eA3B7";
 const walletAlias: Record<string, string> = {
@@ -470,12 +440,7 @@ const escalationManagerAbi = [
     stateMutability: "view",
   },
 ] as const;
-const escalationStatusLabels = [
-  "PENDING",
-  "EXECUTED",
-  "REJECTED",
-  "EXPIRED",
-] as const;
+const escalationStatusLabels = ["PENDING", "EXECUTED", "REJECTED", "EXPIRED"] as const;
 
 const allPolicyCategoriesMask = 31n;
 
@@ -592,18 +557,13 @@ const initialPolicyDraft: PolicyDraftState = {
   requireAllowlist: true,
 };
 
-function allowTrustedMutation(
-  action: string,
-  event: ReactMouseEvent<HTMLElement>
-) {
+function allowTrustedMutation(action: string, event: ReactMouseEvent<HTMLElement>) {
   if (event.nativeEvent.isTrusted) {
     return true;
   }
 
   if (process.env.NODE_ENV !== "production") {
-    console.warn(
-      `[Arcanum] Blocked ${action}: mutations require an explicit trusted click.`
-    );
+    console.warn(`[Arcanum] Blocked ${action}: mutations require an explicit trusted click.`);
   }
 
   return false;
@@ -628,9 +588,7 @@ function configuredAddress(value: string | undefined): Address | null {
 function parseUsdcInput(value: string, label: string) {
   const trimmed = value.trim();
   if (!/^\d+(\.\d{1,6})?$/.test(trimmed)) {
-    throw new Error(
-      `${label} must be a positive USDC amount with up to 6 decimals.`
-    );
+    throw new Error(`${label} must be a positive USDC amount with up to 6 decimals.`);
   }
 
   const parsed = parseUnits(trimmed, 6);
@@ -644,9 +602,7 @@ function parseUsdcInput(value: string, label: string) {
 function parseUsdcCapInput(value: string, label: string) {
   const trimmed = value.trim();
   if (!/^\d+(\.\d{1,6})?$/.test(trimmed)) {
-    throw new Error(
-      `${label} must be a non-negative USDC amount with up to 6 decimals.`
-    );
+    throw new Error(`${label} must be a non-negative USDC amount with up to 6 decimals.`);
   }
 
   return parseUnits(trimmed, 6);
@@ -685,7 +641,7 @@ function categoriesFromMask(mask: bigint) {
   return new Set(
     doctrineCategoryOptions
       .filter((category) => (mask & doctrineCategoryBit(category.value)) !== 0n)
-      .map((category) => category.value)
+      .map((category) => category.value),
   );
 }
 
@@ -703,20 +659,15 @@ function buildPolicyEnvelope(draft: PolicyDraftState): PolicyEnvelopeValue {
   const normalized = normalizePolicyDraft(draft);
   const perTxCap = parseUsdcInput(normalized.perTxCap, "Per transaction cap");
   const daily24hCap = parseUsdcInput(normalized.dailyCap, "Daily cap");
-  const monthlyRollingCap = parseUsdcInput(
-    normalized.monthlyCap,
-    "Monthly cap"
-  );
+  const monthlyRollingCap = parseUsdcInput(normalized.monthlyCap, "Monthly cap");
   const escalationThreshold = parseUsdcInput(
     normalized.escalationThreshold,
-    "Escalation threshold"
+    "Escalation threshold",
   );
   const allowedCategories = categoryMaskFromDraft(normalized.enabledCategories);
 
   if (perTxCap > daily24hCap) {
-    throw new Error(
-      "Per transaction cap must be less than or equal to the daily cap."
-    );
+    throw new Error("Per transaction cap must be less than or equal to the daily cap.");
   }
 
   if (daily24hCap > monthlyRollingCap) {
@@ -724,9 +675,7 @@ function buildPolicyEnvelope(draft: PolicyDraftState): PolicyEnvelopeValue {
   }
 
   if (escalationThreshold > perTxCap) {
-    throw new Error(
-      "Escalation threshold must be less than or equal to the per transaction cap."
-    );
+    throw new Error("Escalation threshold must be less than or equal to the per transaction cap.");
   }
 
   if (allowedCategories === 0n) {
@@ -747,8 +696,7 @@ function policyDraftFromEnvelope(policy: readonly unknown[]): PolicyDraftState {
   const perTxCap = typeof policy[0] === "bigint" ? policy[0] : 0n;
   const daily24hCap = typeof policy[1] === "bigint" ? policy[1] : 0n;
   const monthlyRollingCap = typeof policy[2] === "bigint" ? policy[2] : 0n;
-  const allowedCategories =
-    typeof policy[3] === "bigint" ? policy[3] : allPolicyCategoriesMask;
+  const allowedCategories = typeof policy[3] === "bigint" ? policy[3] : allPolicyCategoriesMask;
   const escalationThreshold = typeof policy[4] === "bigint" ? policy[4] : 0n;
   const requireAllowlist = typeof policy[5] === "boolean" ? policy[5] : true;
 
@@ -773,29 +721,15 @@ function policyDiffRows(active: PolicyDraftState, draft: PolicyDraftState) {
       .join(", ");
 
   if (normalizedActive.perTxCap !== normalizedDraft.perTxCap) {
-    rows.push([
-      "PER-TX CAP",
-      `$${normalizedActive.perTxCap}`,
-      `$${normalizedDraft.perTxCap}`,
-    ]);
+    rows.push(["PER-TX CAP", `$${normalizedActive.perTxCap}`, `$${normalizedDraft.perTxCap}`]);
   }
   if (normalizedActive.dailyCap !== normalizedDraft.dailyCap) {
-    rows.push([
-      "DAILY CAP",
-      `$${normalizedActive.dailyCap}`,
-      `$${normalizedDraft.dailyCap}`,
-    ]);
+    rows.push(["DAILY CAP", `$${normalizedActive.dailyCap}`, `$${normalizedDraft.dailyCap}`]);
   }
   if (normalizedActive.monthlyCap !== normalizedDraft.monthlyCap) {
-    rows.push([
-      "MONTHLY CAP",
-      `$${normalizedActive.monthlyCap}`,
-      `$${normalizedDraft.monthlyCap}`,
-    ]);
+    rows.push(["MONTHLY CAP", `$${normalizedActive.monthlyCap}`, `$${normalizedDraft.monthlyCap}`]);
   }
-  if (
-    normalizedActive.escalationThreshold !== normalizedDraft.escalationThreshold
-  ) {
+  if (normalizedActive.escalationThreshold !== normalizedDraft.escalationThreshold) {
     rows.push([
       "ESCALATION THRESHOLD",
       `$${normalizedActive.escalationThreshold}`,
@@ -850,15 +784,10 @@ function buildWalletPolicy(form: DeployWalletFormState) {
   const perTxCap = parseUsdcInput(form.perTxCap, "Per transaction cap");
   const daily24hCap = parseUsdcInput(form.dailyCap, "Daily cap");
   const monthlyRollingCap = parseUsdcInput(form.monthlyCap, "Monthly cap");
-  const escalationThreshold = parseUsdcInput(
-    form.escalationAmount,
-    "Escalation amount"
-  );
+  const escalationThreshold = parseUsdcInput(form.escalationAmount, "Escalation amount");
 
   if (perTxCap > daily24hCap) {
-    throw new Error(
-      "Per transaction cap must be less than or equal to the daily cap."
-    );
+    throw new Error("Per transaction cap must be less than or equal to the daily cap.");
   }
 
   if (daily24hCap > monthlyRollingCap) {
@@ -880,9 +809,7 @@ function errorMessage(error: unknown) {
     return String((error as { shortMessage?: unknown }).shortMessage);
   }
 
-  return error instanceof Error
-    ? error.message
-    : "Transaction failed. Please retry.";
+  return error instanceof Error ? error.message : "Transaction failed. Please retry.";
 }
 
 function walletCreatedFromReceipt(logs: readonly unknown[]) {
@@ -904,29 +831,20 @@ function amountLabel(value: number) {
 }
 
 function agentRowKey(agent: AgentDisplay) {
-  return (
-    agent.fullWallet ??
-    agent.id ??
-    `${agent.name}-${agent.wallet}`
-  ).toLowerCase();
+  return (agent.fullWallet ?? agent.id ?? `${agent.name}-${agent.wallet}`).toLowerCase();
 }
 
 function governedWalletAddressFromAgent(agent: AgentDisplay): Address | null {
-  const candidate =
-    agent.fullWallet ?? walletAlias[agent.wallet] ?? agent.wallet;
+  const candidate = agent.fullWallet ?? walletAlias[agent.wallet] ?? agent.wallet;
   return isEvmAddress(candidate) ? (candidate as Address) : null;
 }
 
 function vendorRowKey(vendor: VendorDisplay) {
-  return `${String(vendor[1])}-${String(vendor[2])}-${String(
-    vendor[3]
-  )}`.toLowerCase();
+  return `${String(vendor[1])}-${String(vendor[2])}-${String(vendor[3])}`.toLowerCase();
 }
 
 function ledgerRowKey(row: LedgerDisplay) {
-  return (
-    row[6] ?? `${row[0]}-${row[1]}-${row[2]}-${row[4]}-${row[5]}`
-  ).toLowerCase();
+  return (row[6] ?? `${row[0]}-${row[1]}-${row[2]}-${row[4]}-${row[5]}`).toLowerCase();
 }
 
 function escalationRowKey(row: EscalationDisplay) {
@@ -957,16 +875,14 @@ function statusLabel(value: string) {
   return "IDLE";
 }
 
-function agentRowFromLive(
-  agent: ReturnType<typeof useLiveAgents>["data"][number]
-): AgentDisplay {
+function agentRowFromLive(agent: ReturnType<typeof useLiveAgents>["data"][number]): AgentDisplay {
   const status = statusLabel(agent.status);
   const postureColor =
     status === "FROZEN"
       ? "var(--wl-signal)"
       : agent.posture > 0
-      ? "var(--wl-green)"
-      : "var(--wl-text-secondary)";
+        ? "var(--wl-green)"
+        : "var(--wl-text-secondary)";
   const spendWidth =
     agent.dailyLimit > 0
       ? Math.min(100, Math.round((agent.dailySpend / agent.dailyLimit) * 100))
@@ -991,7 +907,7 @@ function agentRowFromLive(
 }
 
 const vendorInitialsByName = new Map<string, string>(
-  vendors.map(([initials, name]) => [name.toLowerCase(), initials])
+  vendors.map(([initials, name]) => [name.toLowerCase(), initials]),
 );
 
 function vendorInitials(name: string) {
@@ -1009,16 +925,14 @@ function vendorInitials(name: string) {
 }
 
 function vendorRowFromLive(
-  vendor: ReturnType<typeof useLiveVendors>["data"][number]
+  vendor: ReturnType<typeof useLiveVendors>["data"][number],
 ): VendorDisplay {
   return [
     vendorInitials(vendor.name),
     vendor.name,
     vendor.address,
     categoryLabel(vendor.category),
-    vendor.approvedBy.length > 0
-      ? vendor.approvedBy.map(approvedByLabel)
-      : ["OWNER"],
+    vendor.approvedBy.length > 0 ? vendor.approvedBy.map(approvedByLabel) : ["OWNER"],
     vendor.confidential,
     vendor.lastUsed,
     {
@@ -1031,9 +945,7 @@ function vendorRowFromLive(
   ];
 }
 
-function ledgerRowFromLive(
-  entry: ReturnType<typeof useLiveLedger>["data"][number]
-): LedgerDisplay {
+function ledgerRowFromLive(entry: ReturnType<typeof useLiveLedger>["data"][number]): LedgerDisplay {
   const statusMap = {
     approved: "APPROVED",
     escalated: "ESCALATED",
@@ -1053,7 +965,7 @@ function ledgerRowFromLive(
 }
 
 function escalationRowFromLive(
-  item: ReturnType<typeof useLiveEscalations>["data"][number]
+  item: ReturnType<typeof useLiveEscalations>["data"][number],
 ): EscalationDisplay {
   return [
     item.agentName.toUpperCase(),
@@ -1071,7 +983,7 @@ function escalationRowFromLive(
 }
 
 function anomalyRowFromLive(
-  item: ReturnType<typeof useLiveAnomalies>["data"][number]
+  item: ReturnType<typeof useLiveAnomalies>["data"][number],
 ): AnomalyDisplay {
   const critical = item.score >= 5;
 
@@ -1101,7 +1013,7 @@ function CountdownText({
         className,
         countdown.isSoon && "text-[var(--wl-red)]",
         countdown.isExpired && "text-[var(--wl-signal)]",
-        countdown.isMissing && "text-[var(--wl-secondary)]"
+        countdown.isMissing && "text-[var(--wl-secondary)]",
       )}
     >
       {countdown.label}
@@ -1122,9 +1034,7 @@ function routeParamString(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
-function resolveGovernedWalletAddress(
-  value: string | string[] | undefined
-): Address | null {
+function resolveGovernedWalletAddress(value: string | string[] | undefined): Address | null {
   const raw = routeParamString(value);
   if (!raw) {
     return null;
@@ -1141,23 +1051,18 @@ function resolveGovernedWalletAddress(
   return isEvmAddress(candidate) ? (candidate as Address) : null;
 }
 
-function isTxHashValue(
-  value: string | null | undefined
-): value is `0x${string}` {
+function isTxHashValue(value: string | null | undefined): value is `0x${string}` {
   return /^0x[a-fA-F0-9]{64}$/.test(value ?? "");
 }
 
-function Main({
-  children,
-  className,
-}: Readonly<{ children: ReactNode; className?: string }>) {
+function Main({ children, className }: Readonly<{ children: ReactNode; className?: string }>) {
   const reduced = useReducedMotion();
 
   return (
     <MotionMain
       className={cn(
         "arcanum-content warm-reveal-static min-w-0 max-w-[1440px] space-y-6 overflow-x-clip px-4 py-8 sm:px-8 sm:py-10 lg:px-10",
-        className
+        className,
       )}
       variants={reduced ? undefined : enterRise}
       initial={reduced ? false : "hidden"}
@@ -1199,7 +1104,7 @@ function SectionTabs({ items }: Readonly<{ items: readonly string[] }>) {
             "relative flex h-10 items-center px-3 transition-colors",
             index === 0
               ? "text-[var(--wl-ink)]"
-              : "text-[var(--wl-secondary)] hover:text-[var(--wl-ink)]"
+              : "text-[var(--wl-secondary)] hover:text-[var(--wl-ink)]",
           )}
         >
           {item}
@@ -1233,7 +1138,7 @@ function CategoryBudget({
         <span
           className={cn(
             "flex items-center gap-1.5",
-            muted ? "text-[var(--wl-mute)]" : "text-[var(--wl-secondary)]"
+            muted ? "text-[var(--wl-mute)]" : "text-[var(--wl-secondary)]",
           )}
         >
           <span
@@ -1244,11 +1149,7 @@ function CategoryBudget({
           />
           {label}
         </span>
-        <span
-          className={muted ? "text-[var(--wl-mute)]" : "text-[var(--wl-body)]"}
-        >
-          {amount}
-        </span>
+        <span className={muted ? "text-[var(--wl-mute)]" : "text-[var(--wl-body)]"}>{amount}</span>
       </div>
       <div className="relative mt-1.5 h-1.5 w-full bg-[var(--wl-panel-muted)]">
         <div
@@ -1294,18 +1195,14 @@ function EventRow({
         "grid items-center border-b border-[var(--wl-line-soft)] px-4 py-2.5",
         compact
           ? "grid-cols-[84px_56px_minmax(96px,1fr)_minmax(110px,1fr)_92px_104px]"
-          : "grid-cols-[84px_148px_58px_minmax(96px,1fr)_minmax(110px,1fr)_92px_104px]"
+          : "grid-cols-[84px_148px_58px_minmax(96px,1fr)_minmax(110px,1fr)_92px_104px]",
       )}
     >
       <span className="text-[var(--wl-mute)]">{time}</span>
-      {!compact ? (
-        <span className="text-[var(--wl-ink)]">{agentOrCategory}</span>
-      ) : null}
+      {!compact ? <span className="text-[var(--wl-ink)]">{agentOrCategory}</span> : null}
       <CategoryTick category={category ?? "OTHER"} label={category} />
       <span className="text-[var(--wl-secondary)]">{action}</span>
-      <span
-        className={danger ? "text-[var(--wl-signal)]" : "text-[var(--wl-body)]"}
-      >
+      <span className={danger ? "text-[var(--wl-signal)]" : "text-[var(--wl-body)]"}>
         {counterparty}
       </span>
       <span className="text-right text-[var(--wl-body)]">{amount}</span>
@@ -1322,18 +1219,14 @@ function DashboardPostureCard({
   posture: number;
 }>) {
   const active = posture > 0;
-  const postureLabel = active
-    ? posture >= 70
-      ? "FORTIFIED"
-      : "WATCHING"
-    : "WAITING";
+  const postureLabel = active ? (posture >= 70 ? "FORTIFIED" : "WATCHING") : "WAITING";
   const statusLine = active
     ? "LIVE INDEXED"
     : mode === "disconnected"
-    ? "CONNECT WALLET"
-    : mode === "connected_unsigned"
-    ? "SIGN IN"
-    : "NOT STARTED";
+      ? "CONNECT WALLET"
+      : mode === "connected_unsigned"
+        ? "SIGN IN"
+        : "NOT STARTED";
 
   return (
     <Surface
@@ -1342,9 +1235,7 @@ function DashboardPostureCard({
     >
       <CornerMarks />
       <div className="text-[10px] tracking-[0.28em] text-[var(--wl-mute)]">
-        <GlossaryTermInline term="POSTURE INDEX">
-          POSTURE INDEX
-        </GlossaryTermInline>
+        <GlossaryTermInline term="POSTURE INDEX">POSTURE INDEX</GlossaryTermInline>
       </div>
       <div className="mt-1 flex items-end gap-4">
         <span className="font-cond text-[112px] font-bold leading-[0.74] text-[var(--wl-ink)]">
@@ -1355,11 +1246,7 @@ function DashboardPostureCard({
             {postureLabel}
           </div>
           <div className="mt-1 flex items-center gap-1 text-[11px] text-[var(--wl-secondary)]">
-            <ArrowUpRight
-              className="h-3.5 w-3.5 rotate-90"
-              strokeWidth={iconStroke}
-            />{" "}
-            {statusLine}
+            <ArrowUpRight className="h-3.5 w-3.5 rotate-90" strokeWidth={iconStroke} /> {statusLine}
           </div>
         </div>
       </div>
@@ -1390,28 +1277,20 @@ function DashboardOnboardingCard({
           primary: null,
         }
       : mode === "connected_unsigned"
-      ? {
-          title: "Sign in to load workspace",
-          body: "Sign the wallet challenge to load live governed wallets, policy state, vendors, and ledger activity.",
-          primary: null,
-        }
-      : {
-          title: "Deploy your first governed wallet",
-          body: "Create a policy-controlled testnet USDC/EURC wallet for autonomous agents on Arc.",
-          primary: { href: "/agents", label: "Deploy governed wallet" },
-        };
+        ? {
+            title: "Sign in to load workspace",
+            body: "Sign the wallet challenge to load live governed wallets, policy state, vendors, and ledger activity.",
+            primary: null,
+          }
+        : {
+            title: "Deploy your first governed wallet",
+            body: "Create a policy-controlled testnet USDC/EURC wallet for autonomous agents on Arc.",
+            primary: { href: "/agents", label: "Deploy governed wallet" },
+          };
 
   const steps = [
-    [
-      "01",
-      "Deploy governed wallet",
-      "Create an owner-managed GuardedWallet on Arc Testnet.",
-    ],
-    [
-      "02",
-      "Add agent signer",
-      "Authorize the public address controlled by your agent backend.",
-    ],
+    ["01", "Deploy governed wallet", "Create an owner-managed GuardedWallet on Arc Testnet."],
+    ["02", "Add agent signer", "Authorize the public address controlled by your agent backend."],
     [
       "03",
       "Add vendor + policy",
@@ -1456,18 +1335,13 @@ function DashboardOnboardingCard({
         </div>
         <div className="grid gap-2">
           {steps.map(([number, title, description]) => (
-            <div
-              key={number}
-              className="border border-[var(--wl-line)] bg-[var(--wl-bg-tint)] p-3"
-            >
+            <div key={number} className="border border-[var(--wl-line)] bg-[var(--wl-bg-tint)] p-3">
               <div className="flex items-center gap-3">
                 <span className="flex h-7 w-7 items-center justify-center border border-[var(--wl-line-active)] font-mono text-[10px] text-[var(--wl-secondary)]">
                   {number}
                 </span>
                 <div>
-                  <div className="text-[12px] tracking-[0.12em] text-[var(--wl-body)]">
-                    {title}
-                  </div>
+                  <div className="text-[12px] tracking-[0.12em] text-[var(--wl-body)]">{title}</div>
                   <div className="mt-1 font-body text-[12px] leading-relaxed text-[var(--wl-secondary)]">
                     {description}
                   </div>
@@ -1505,9 +1379,7 @@ function EmptyActivityPreview() {
           className="border border-[var(--wl-line)] bg-[var(--wl-bg-raised)] p-5"
           index={index + 2}
         >
-          <div className="text-[10px] tracking-[0.2em] text-[var(--wl-mute)]">
-            {item.title}
-          </div>
+          <div className="text-[10px] tracking-[0.2em] text-[var(--wl-mute)]">{item.title}</div>
           <div className="mt-2 font-cond text-[20px] font-semibold text-[var(--wl-body)]">
             Awaiting activity
           </div>
@@ -1526,9 +1398,7 @@ export function DashboardCanvasPage() {
   const liveAgents = useLiveAgents();
   const liveEscalations = useLiveEscalations("PENDING");
   const canShowDemoWorkspace = workspace.isDemo;
-  const governedWalletCount = canShowDemoWorkspace
-    ? agentRows.length
-    : liveAgents.data.length;
+  const governedWalletCount = canShowDemoWorkspace ? agentRows.length : liveAgents.data.length;
   const hasLiveDashboardData =
     metrics.valueGoverned > 0 ||
     metrics.activeAgents > 0 ||
@@ -1545,10 +1415,7 @@ export function DashboardCanvasPage() {
     governedWalletCount === 0 &&
     !hasLiveDashboardData;
   const dashboardRows = canShowDemoWorkspace ? dashboardEvents : [];
-  const posture =
-    canShowDemoWorkspace || metrics.postureIndex > 0
-      ? metrics.postureIndex || 87
-      : 0;
+  const posture = canShowDemoWorkspace || metrics.postureIndex > 0 ? metrics.postureIndex || 87 : 0;
   const pendingEscalationCount = canShowDemoWorkspace
     ? metrics.pendingEscalations || 1
     : metrics.pendingEscalations;
@@ -1556,14 +1423,8 @@ export function DashboardCanvasPage() {
     nearestExpiry(liveEscalations.data.map((item) => item.expiresAt)) ??
     (canShowDemoWorkspace ? String(escalations[0]?.[6] ?? "") : null);
   const ledgerEmptyState = getWorkspaceEmptyCopy(workspace.dataMode, "ledger");
-  const escalationEmptyState = getWorkspaceEmptyCopy(
-    workspace.dataMode,
-    "escalations"
-  );
-  const anomalyEmptyState = getWorkspaceEmptyCopy(
-    workspace.dataMode,
-    "anomalies"
-  );
+  const escalationEmptyState = getWorkspaceEmptyCopy(workspace.dataMode, "escalations");
+  const anomalyEmptyState = getWorkspaceEmptyCopy(workspace.dataMode, "anomalies");
 
   return (
     <GovernanceFrame
@@ -1576,10 +1437,7 @@ export function DashboardCanvasPage() {
             <DashboardOnboardingCard mode={workspace.dataMode} />
           ) : (
             <>
-              <DashboardPostureCard
-                mode={workspace.dataMode}
-                posture={posture}
-              />
+              <DashboardPostureCard mode={workspace.dataMode} posture={posture} />
               <Surface
                 className="grid grid-cols-1 divide-y divide-[var(--wl-line)] border border-[var(--wl-line)] bg-[var(--wl-bg-raised)] sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-4"
                 index={1}
@@ -1587,18 +1445,12 @@ export function DashboardCanvasPage() {
                 <StatTile
                   label="VALUE GOVERNED"
                   value={<>${metrics.valueGoverned.toLocaleString("en-US")}</>}
-                  caption={`${String(governedWalletCount).padStart(
-                    2,
-                    "0"
-                  )} GOVERNED WALLETS`}
+                  caption={`${String(governedWalletCount).padStart(2, "0")} GOVERNED WALLETS`}
                 >
                   {canShowDemoWorkspace ? (
                     <div className="mt-2 flex items-center gap-1 text-[11px] text-[var(--wl-green)]">
-                      <ArrowUpRight
-                        className="h-3.5 w-3.5"
-                        strokeWidth={iconStroke}
-                      />{" "}
-                      SIMULATED BALANCE
+                      <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={iconStroke} /> SIMULATED
+                      BALANCE
                     </div>
                   ) : null}
                 </StatTile>
@@ -1607,23 +1459,16 @@ export function DashboardCanvasPage() {
                   value={String(metrics.activeAgents).padStart(2, "0")}
                   caption={
                     <span>
-                      {canShowDemoWorkspace
-                        ? "05 DEPLOYED / "
-                        : "LIVE INDEXED / "}
+                      {canShowDemoWorkspace ? "05 DEPLOYED / " : "LIVE INDEXED / "}
                       <span className="text-[var(--wl-signal)]">
-                        {canShowDemoWorkspace
-                          ? "01 FROZEN"
-                          : "INDEXED RESTRAINTS"}
+                        {canShowDemoWorkspace ? "01 FROZEN" : "INDEXED RESTRAINTS"}
                       </span>
                     </span>
                   }
                 >
                   <div className="mt-3 flex gap-1">
                     {[0, 1, 2, 3].map((item) => (
-                      <span
-                        key={item}
-                        className="h-2.5 w-5 bg-[var(--wl-line-active)]"
-                      />
+                      <span key={item} className="h-2.5 w-5 bg-[var(--wl-line-active)]" />
                     ))}
                     {canShowDemoWorkspace ? (
                       <span className="h-2.5 w-5 bg-[var(--wl-signal)]" />
@@ -1633,19 +1478,12 @@ export function DashboardCanvasPage() {
                 <StatTile
                   label="THREATS BLOCKED"
                   value={String(metrics.threatsBlocked)}
-                  caption={
-                    canShowDemoWorkspace
-                      ? "30D WINDOW"
-                      : "INDEXED POLICY DENIALS"
-                  }
+                  caption={canShowDemoWorkspace ? "30D WINDOW" : "INDEXED POLICY DENIALS"}
                 >
                   {canShowDemoWorkspace ? (
                     <div className="mt-2 flex items-center gap-1 text-[11px] text-[var(--wl-green)]">
-                      <ArrowUpRight
-                        className="h-3.5 w-3.5"
-                        strokeWidth={iconStroke}
-                      />{" "}
-                      POLICY INTERVENTIONS
+                      <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={iconStroke} /> POLICY
+                      INTERVENTIONS
                     </div>
                   ) : null}
                 </StatTile>
@@ -1653,9 +1491,7 @@ export function DashboardCanvasPage() {
                   label="PENDING ESCALATIONS"
                   value={String(pendingEscalationCount).padStart(2, "0")}
                   valueClassName={
-                    pendingEscalationCount > 0
-                      ? "text-[var(--wl-signal)]"
-                      : undefined
+                    pendingEscalationCount > 0 ? "text-[var(--wl-signal)]" : undefined
                   }
                   caption={
                     pendingEscalationCount > 0 ? (
@@ -1687,17 +1523,10 @@ export function DashboardCanvasPage() {
           <EmptyActivityPreview />
         ) : (
           <section className="grid grid-cols-1 gap-4 2xl:grid-cols-[1fr_minmax(0,432px)]">
-            <Surface
-              className="border border-[var(--wl-line)] bg-[var(--wl-bg-raised)]"
-              index={2}
-            >
+            <Surface className="border border-[var(--wl-line)] bg-[var(--wl-bg-raised)]" index={2}>
               <PanelHeader
                 title="GOVERNED EVENT STREAM"
-                meta={
-                  canShowDemoWorkspace
-                    ? "DEMO DATA / 24H WINDOW"
-                    : "LIVE READ MODEL"
-                }
+                meta={canShowDemoWorkspace ? "DEMO DATA / 24H WINDOW" : "LIVE READ MODEL"}
               />
               <div className="overflow-x-auto">
                 <div className="min-w-[860px]">
@@ -1713,10 +1542,7 @@ export function DashboardCanvasPage() {
                   <div className="text-[12px]">
                     {dashboardRows.length > 0 ? (
                       dashboardRows.map((event) => (
-                        <EventRow
-                          key={`${event[0]}-${event[1]}-${event[3]}`}
-                          row={event}
-                        />
+                        <EventRow key={`${event[0]}-${event[1]}-${event[3]}`} row={event} />
                       ))
                     ) : (
                       <EmptyState
@@ -1729,15 +1555,13 @@ export function DashboardCanvasPage() {
               </div>
               <div className="flex h-9 items-center justify-between border-t border-[var(--wl-line)] px-4 text-[10px] tracking-[0.14em] text-[var(--wl-mute)]">
                 <span>
-                  SHOWING {dashboardRows.length} /{" "}
-                  {canShowDemoWorkspace ? "DEMO" : "LIVE"}
+                  SHOWING {dashboardRows.length} / {canShowDemoWorkspace ? "DEMO" : "LIVE"}
                 </span>
                 <Link
                   href="/ledger"
                   className="flex items-center gap-1 text-[var(--wl-secondary)] hover:text-[var(--wl-body)]"
                 >
-                  OPEN FULL LEDGER{" "}
-                  <ArrowUpRight className="h-3 w-3" strokeWidth={iconStroke} />
+                  OPEN FULL LEDGER <ArrowUpRight className="h-3 w-3" strokeWidth={iconStroke} />
                 </Link>
               </div>
             </Surface>
@@ -1755,9 +1579,7 @@ export function DashboardCanvasPage() {
                       <HazardStripe />
                       <div className="flex-1 p-4">
                         <div className="flex items-center justify-between">
-                          <span className="text-[13px] text-[var(--wl-ink)]">
-                            CLOUD OPS AGENT
-                          </span>
+                          <span className="text-[13px] text-[var(--wl-ink)]">CLOUD OPS AGENT</span>
                           <span className="border border-[var(--wl-line)] px-1.5 py-0.5 text-[10px] tracking-[0.1em] text-[var(--wl-cat-compute)]">
                             COMPUTE
                           </span>
@@ -1771,15 +1593,13 @@ export function DashboardCanvasPage() {
                           </span>
                         </div>
                         <div className="mt-3 text-[11px] leading-relaxed text-[var(--wl-secondary)]">
-                          Compute request exceeds the per-transaction threshold.
-                          Held for human approval.
+                          Compute request exceeds the per-transaction threshold. Held for human
+                          approval.
                         </div>
                         <div className="mt-3 grid grid-cols-3 gap-2 border-t border-[var(--wl-line)] pt-3 text-[10px] tracking-[0.08em] text-[var(--wl-mute)]">
                           <div>
                             QUORUM
-                            <div className="mt-0.5 text-[12px] text-[var(--wl-body)]">
-                              1 / 2
-                            </div>
+                            <div className="mt-0.5 text-[12px] text-[var(--wl-body)]">1 / 2</div>
                           </div>
                           <div>
                             DEVIATION
@@ -1845,67 +1665,50 @@ export function DashboardCanvasPage() {
                         "var(--wl-line-active)",
                         false,
                       ],
-                    ].map(
-                      ([
-                        agent,
-                        time,
-                        label,
-                        score,
-                        state,
-                        width,
-                        color,
-                        danger,
-                      ]) => (
-                        <div
-                          key={String(agent)}
-                          className={cn(
-                            "flex items-center gap-3 px-4 py-3",
-                            danger && "bg-[var(--wl-amber-tint)]"
-                          )}
-                        >
-                          <div className="w-28">
-                            <div className="text-[12px] text-[var(--wl-ink)]">
-                              {agent}
-                            </div>
-                            <div className="text-[10px] tracking-[0.08em] text-[var(--wl-mute)]">
-                              {time}
-                            </div>
-                          </div>
-                          <div className="flex-1">
-                            <div className="h-1.5 w-full bg-[var(--wl-panel-muted)]">
-                              <div
-                                className="h-full"
-                                style={{
-                                  width: `${width}%`,
-                                  background: String(color),
-                                }}
-                              />
-                            </div>
-                            <div className="mt-1 text-[10px] text-[var(--wl-secondary)]">
-                              {label}
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div
-                              className="font-cond text-[18px] font-semibold"
-                              style={{ color: String(color) }}
-                            >
-                              {score}
-                            </div>
-                            <div
-                              className={cn(
-                                "text-[9px] tracking-[0.12em]",
-                                danger
-                                  ? "text-[var(--wl-signal)]"
-                                  : "text-[var(--wl-secondary)]"
-                              )}
-                            >
-                              {state}
-                            </div>
+                    ].map(([agent, time, label, score, state, width, color, danger]) => (
+                      <div
+                        key={String(agent)}
+                        className={cn(
+                          "flex items-center gap-3 px-4 py-3",
+                          danger && "bg-[var(--wl-amber-tint)]",
+                        )}
+                      >
+                        <div className="w-28">
+                          <div className="text-[12px] text-[var(--wl-ink)]">{agent}</div>
+                          <div className="text-[10px] tracking-[0.08em] text-[var(--wl-mute)]">
+                            {time}
                           </div>
                         </div>
-                      )
-                    )}
+                        <div className="flex-1">
+                          <div className="h-1.5 w-full bg-[var(--wl-panel-muted)]">
+                            <div
+                              className="h-full"
+                              style={{
+                                width: `${width}%`,
+                                background: String(color),
+                              }}
+                            />
+                          </div>
+                          <div className="mt-1 text-[10px] text-[var(--wl-secondary)]">{label}</div>
+                        </div>
+                        <div className="text-right">
+                          <div
+                            className="font-cond text-[18px] font-semibold"
+                            style={{ color: String(color) }}
+                          >
+                            {score}
+                          </div>
+                          <div
+                            className={cn(
+                              "text-[9px] tracking-[0.12em]",
+                              danger ? "text-[var(--wl-signal)]" : "text-[var(--wl-secondary)]",
+                            )}
+                          >
+                            {state}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ) : (
                   <EmptyState
@@ -1919,12 +1722,7 @@ export function DashboardCanvasPage() {
                 <PanelHeader title="BUDGET BURN-DOWN" meta="DAILY ENVELOPE" />
                 {canShowDemoWorkspace ? (
                   <div className="space-y-3.5 p-4">
-                    <CategoryBudget
-                      label="API"
-                      category="API"
-                      amount="$612 / $1,500"
-                      width={41}
-                    />
+                    <CategoryBudget label="API" category="API" amount="$612 / $1,500" width={41} />
                     <CategoryBudget
                       label="COMPUTE"
                       category="COMPUTE"
@@ -1945,12 +1743,8 @@ export function DashboardCanvasPage() {
                       width={30}
                     />
                     <div className="flex items-center justify-between border-t border-[var(--wl-line)] pt-3 text-[11px] tracking-[0.08em]">
-                      <span className="text-[var(--wl-mute)]">
-                        TOTAL / 37% OF ENVELOPE
-                      </span>
-                      <span className="text-[var(--wl-body)]">
-                        $1,666 / $3,500
-                      </span>
+                      <span className="text-[var(--wl-mute)]">TOTAL / 37% OF ENVELOPE</span>
+                      <span className="text-[var(--wl-body)]">$1,666 / $3,500</span>
                     </div>
                   </div>
                 ) : (
@@ -1999,7 +1793,7 @@ function ActionButton({
           ? "border border-[var(--wl-signal)]/50 text-[var(--wl-signal)] hover:bg-[var(--wl-amber-tint)]"
           : "bg-[var(--wl-line-muted)] text-[var(--wl-ink)] hover:bg-[var(--wl-line-strong)]",
         disabled && "cursor-not-allowed opacity-55",
-        className
+        className,
       )}
     >
       {icon}
@@ -2039,15 +1833,11 @@ function EscalationResolutionActions({
   const utils = trpc.useUtils();
   const submittingRef = useRef(false);
   const [txStage, setTxStage] = useState<EscalationTxStage>("idle");
-  const [lastAction, setLastAction] = useState<"approve" | "reject" | null>(
-    null
-  );
+  const [lastAction, setLastAction] = useState<"approve" | "reject" | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [contractTxHash, setContractTxHash] = useState<Hash | null>(null);
   const countdown = useCountdownState(expiresAt);
-  const escalationManagerAddress = configuredAddress(
-    process.env.NEXT_PUBLIC_ESCALATION_MANAGER
-  );
+  const escalationManagerAddress = configuredAddress(process.env.NEXT_PUBLIC_ESCALATION_MANAGER);
   const escalationId = isTxHashValue(txHash) ? txHash : null;
   const demoFixture = workspace.isDemo && txHash === fallbackEscalationHash;
   const isBusy =
@@ -2062,33 +1852,27 @@ function EscalationResolutionActions({
     (!escalationId
       ? "Indexed escalation id is missing."
       : !escalationManagerAddress
-      ? "EscalationManager address is not configured."
-      : demoFixture
-      ? "Demo escalation is read-only until backed by an indexed Arc Testnet escalation."
-      : !publicClient
-      ? "Arc Testnet RPC is unavailable."
-      : !isConnected || !address
-      ? "Connect the approver wallet first."
-      : countdown.isExpired
-      ? "Escalation is expired. Expired requests cannot be approved or rejected."
-      : null);
-  const actionsDisabled =
-    Boolean(disabledReason) || isBusy || txStage === "pending_indexer";
+        ? "EscalationManager address is not configured."
+        : demoFixture
+          ? "Demo escalation is read-only until backed by an indexed Arc Testnet escalation."
+          : !publicClient
+            ? "Arc Testnet RPC is unavailable."
+            : !isConnected || !address
+              ? "Connect the approver wallet first."
+              : countdown.isExpired
+                ? "Escalation is expired. Expired requests cannot be approved or rejected."
+                : null);
+  const actionsDisabled = Boolean(disabledReason) || isBusy || txStage === "pending_indexer";
   const statusLine =
     actionError ??
     (txStage === "pending_indexer"
       ? "Contract confirmed. Waiting for indexer sync."
       : txStage === "checking"
-      ? "Checking approver permission on Arc Testnet."
-      : disabledReason);
+        ? "Checking approver permission on Arc Testnet."
+        : disabledReason);
 
   const readEscalationPreflight = async () => {
-    if (
-      !escalationManagerAddress ||
-      !escalationId ||
-      !publicClient ||
-      !address
-    ) {
+    if (!escalationManagerAddress || !escalationId || !publicClient || !address) {
       throw new Error(disabledReason ?? "Escalation action is unavailable.");
     }
 
@@ -2110,9 +1894,7 @@ function EscalationResolutionActions({
 
     const expiresAtMs = Number(detail[5]) * 1000;
     if (Number.isFinite(expiresAtMs) && Date.now() >= expiresAtMs) {
-      throw new Error(
-        "Escalation is expired. Expired requests cannot be approved or rejected."
-      );
+      throw new Error("Escalation is expired. Expired requests cannot be approved or rejected.");
     }
 
     const [requiredSigner, alreadySigned] = await Promise.all([
@@ -2131,9 +1913,7 @@ function EscalationResolutionActions({
     ]);
 
     if (!requiredSigner) {
-      throw new Error(
-        "Connected wallet is not an authorized approver for this escalation."
-      );
+      throw new Error("Connected wallet is not an authorized approver for this escalation.");
     }
     if (alreadySigned) {
       throw new Error("This approver has already voted on this escalation.");
@@ -2147,17 +1927,12 @@ function EscalationResolutionActions({
 
   const submitResolution = async (
     action: "approve" | "reject",
-    event: ReactMouseEvent<HTMLButtonElement>
+    event: ReactMouseEvent<HTMLButtonElement>,
   ) => {
     if (!allowTrustedMutation(`escalations.${action}`, event)) {
       return;
     }
-    if (
-      actionsDisabled ||
-      submittingRef.current ||
-      !escalationManagerAddress ||
-      !escalationId
-    ) {
+    if (actionsDisabled || submittingRef.current || !escalationManagerAddress || !escalationId) {
       return;
     }
 
@@ -2208,7 +1983,7 @@ function EscalationResolutionActions({
               nextCount >= preflight.threshold
                 ? `Release for ${amount} to ${counterparty} executed in the approval transaction. Pending indexer sync.`
                 : `Vote for ${amount} to ${counterparty} confirmed on-chain. Pending indexer sync.`,
-          }
+          },
         );
       } else {
         toast.success("ESCALATION REJECTED", {
@@ -2235,9 +2010,7 @@ function EscalationResolutionActions({
           className={buttonClassName}
           icon={<X className="h-3.5 w-3.5" strokeWidth={iconStroke} />}
         >
-          {txStage === "pending_indexer" && lastAction === "reject"
-            ? "REJECTED"
-            : "REJECT"}
+          {txStage === "pending_indexer" && lastAction === "reject" ? "REJECTED" : "REJECT"}
         </ActionButton>
         <ActionButton
           disabled={actionsDisabled}
@@ -2245,16 +2018,14 @@ function EscalationResolutionActions({
           className={buttonClassName}
           icon={<Check className="h-3.5 w-3.5" strokeWidth={iconStroke} />}
         >
-          {txStage === "pending_indexer" && lastAction === "approve"
-            ? "APPROVED"
-            : "APPROVE"}
+          {txStage === "pending_indexer" && lastAction === "approve" ? "APPROVED" : "APPROVE"}
         </ActionButton>
       </div>
       {statusLine ? (
         <div
           className={cn(
             "text-center text-[9px] tracking-[0.12em]",
-            actionError ? "text-[var(--wl-red)]" : "text-[var(--wl-mute)]"
+            actionError ? "text-[var(--wl-red)]" : "text-[var(--wl-mute)]",
           )}
         >
           {statusLine}
@@ -2310,10 +2081,7 @@ function EmptyState({
   );
 }
 
-function ErrorState({
-  cause,
-  onRetry,
-}: Readonly<{ cause: string; onRetry?: () => void }>) {
+function ErrorState({ cause, onRetry }: Readonly<{ cause: string; onRetry?: () => void }>) {
   return (
     <div className="px-4 py-8 text-center">
       <div className="font-cond text-[18px] font-semibold tracking-[0.08em] text-[var(--wl-signal)]">
@@ -2347,19 +2115,15 @@ export function AgentsCanvasPage() {
       canShowDemoWorkspace
         ? agentRows
         : liveAgents.data.length > 0
-        ? liveAgents.data.map(agentRowFromLive)
-        : [],
-    [liveAgents.data, canShowDemoWorkspace]
+          ? liveAgents.data.map(agentRowFromLive)
+          : [],
+    [liveAgents.data, canShowDemoWorkspace],
   );
-  const baseRows = useMemo(
-    () => [...createdAgents, ...sourceRows],
-    [createdAgents, sourceRows]
-  );
+  const baseRows = useMemo(() => [...createdAgents, ...sourceRows], [createdAgents, sourceRows]);
   const rows = useMemo(() => {
     const query = normalizeSearch(agentQuery);
     return baseRows.filter((agent) => {
-      const statusMatches =
-        statusFilter === "ALL" || agent.status === statusFilter;
+      const statusMatches = statusFilter === "ALL" || agent.status === statusFilter;
       const queryMatches = matchesSearch(query, [
         agent.name,
         agent.wallet,
@@ -2382,28 +2146,22 @@ export function AgentsCanvasPage() {
       FROZEN: baseRows.filter((agent) => agent.status === "FROZEN").length,
       IDLE: baseRows.filter((agent) => agent.status === "IDLE").length,
     }),
-    [baseRows]
+    [baseRows],
   );
   const frozenAgent = baseRows.find((agent) => agent.status === "FROZEN");
   const averagePosture =
     baseRows.length > 0
-      ? Math.round(
-          baseRows.reduce((sum, agent) => sum + agent.posture, 0) /
-            baseRows.length
-        )
+      ? Math.round(baseRows.reduce((sum, agent) => sum + agent.posture, 0) / baseRows.length)
       : 0;
   const emptyAgents = getWorkspaceEmptyCopy(workspace.dataMode, "agents");
   const selectedAgent =
-    baseRows.find((agent) => agentRowKey(agent) === selectedAgentKey) ??
-    baseRows[0] ??
-    null;
+    baseRows.find((agent) => agentRowKey(agent) === selectedAgentKey) ?? baseRows[0] ?? null;
   const selectedWalletAddress = selectedAgent
     ? governedWalletAddressFromAgent(selectedAgent)
     : null;
   const selectedLedger = useLiveLedgerByWallet(selectedWalletAddress);
   const selectedWalletKey = selectedAgent ? agentRowKey(selectedAgent) : null;
-  const showAgentWorkspace =
-    baseRows.length > 0 || agentFiltersActive || liveAgents.isError;
+  const showAgentWorkspace = baseRows.length > 0 || agentFiltersActive || liveAgents.isError;
 
   useEffect(() => {
     if (baseRows.length === 0) {
@@ -2412,10 +2170,7 @@ export function AgentsCanvasPage() {
     }
 
     const firstAgent = baseRows[0];
-    if (
-      firstAgent &&
-      !baseRows.some((agent) => agentRowKey(agent) === selectedAgentKey)
-    ) {
+    if (firstAgent && !baseRows.some((agent) => agentRowKey(agent) === selectedAgentKey)) {
       setSelectedAgentKey(agentRowKey(firstAgent));
     }
   }, [baseRows, selectedAgentKey]);
@@ -2424,12 +2179,10 @@ export function AgentsCanvasPage() {
     setCreatedAgents((previous) => {
       const walletKey = result.wallet.toLowerCase();
       const label = result.label.trim() || "GovernedWallet";
-      const baseName =
-        label.toUpperCase().replaceAll(/\s+/g, "") || "GOVERNEDWALLET";
+      const baseName = label.toUpperCase().replaceAll(/\s+/g, "") || "GOVERNEDWALLET";
       const displayName = previous.some(
         (agent) =>
-          agent.name === baseName &&
-          (agent.fullWallet ?? agent.id)?.toLowerCase() !== walletKey
+          agent.name === baseName && (agent.fullWallet ?? agent.id)?.toLowerCase() !== walletKey,
       )
         ? `${baseName}-${result.wallet.slice(-4).toUpperCase()}`
         : baseName;
@@ -2450,16 +2203,14 @@ export function AgentsCanvasPage() {
         last: "No indexed activity yet",
       };
       const existingIndex = previous.findIndex(
-        (agent) => (agent.fullWallet ?? agent.id)?.toLowerCase() === walletKey
+        (agent) => (agent.fullWallet ?? agent.id)?.toLowerCase() === walletKey,
       );
 
       if (existingIndex === -1) {
         return [pendingAgent, ...previous];
       }
 
-      return previous.map((agent, index) =>
-        index === existingIndex ? pendingAgent : agent
-      );
+      return previous.map((agent, index) => (index === existingIndex ? pendingAgent : agent));
     });
     setSelectedAgentKey(result.wallet.toLowerCase());
   };
@@ -2480,10 +2231,7 @@ export function AgentsCanvasPage() {
   }, [deployOpen]);
 
   return (
-    <GovernanceFrame
-      active="agents"
-      file={`${workspaceFileRoot(workspace)} / GOVERNANCE / AGENTS`}
-    >
+    <GovernanceFrame active="agents" file={`${workspaceFileRoot(workspace)} / GOVERNANCE / AGENTS`}>
       <Main>
         {showAgentWorkspace ? (
           <>
@@ -2493,15 +2241,10 @@ export function AgentsCanvasPage() {
                 value={String(agentCounts.ALL).padStart(2, "0")}
                 caption="GOVERNED WALLETS"
               />
-              <StatTile
-                label="ACTIVE"
-                value={String(agentCounts.ACTIVE).padStart(2, "0")}
-              >
+              <StatTile label="ACTIVE" value={String(agentCounts.ACTIVE).padStart(2, "0")}>
                 <div className="mt-2 flex items-center gap-1 text-[10px] tracking-[0.08em] text-[var(--wl-green)]">
                   <span className="h-1.5 w-1.5 bg-[var(--wl-green)]" />{" "}
-                  {agentCounts.ACTIVE > 0
-                    ? "SURVEILLANCE LIVE"
-                    : "SIGNER SETUP NEEDED"}
+                  {agentCounts.ACTIVE > 0 ? "SURVEILLANCE LIVE" : "SIGNER SETUP NEEDED"}
                 </div>
               </StatTile>
               <StatTile
@@ -2519,10 +2262,7 @@ export function AgentsCanvasPage() {
               />
               <StatTile label="FLEET POSTURE" value={String(averagePosture)}>
                 <div className="mt-2 flex items-center gap-1 text-[10px] tracking-[0.08em] text-[var(--wl-secondary)]">
-                  <ArrowUpRight
-                    className="h-3 w-3 rotate-90"
-                    strokeWidth={iconStroke}
-                  />{" "}
+                  <ArrowUpRight className="h-3 w-3 rotate-90" strokeWidth={iconStroke} />{" "}
                   {averagePosture > 0 ? "LIVE READ MODEL" : "NO ACTIVITY"}
                 </div>
               </StatTile>
@@ -2530,30 +2270,27 @@ export function AgentsCanvasPage() {
 
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-1.5 text-[11px] tracking-[0.1em]">
-                {(["ALL", "ACTIVE", "FROZEN", "IDLE"] as const).map(
-                  (filter) => {
-                    const count = agentCounts[filter];
-                    const selected = statusFilter === filter;
-                    return (
-                      <button
-                        type="button"
-                        key={filter}
-                        onClick={() => setStatusFilter(filter)}
-                        className={cn(
-                          "border px-3 py-1.5",
-                          selected
-                            ? "border-[var(--wl-line-active)] bg-[var(--wl-bg-soft)] text-[var(--wl-ink)]"
-                            : filter === "IDLE"
+                {(["ALL", "ACTIVE", "FROZEN", "IDLE"] as const).map((filter) => {
+                  const count = agentCounts[filter];
+                  const selected = statusFilter === filter;
+                  return (
+                    <button
+                      type="button"
+                      key={filter}
+                      onClick={() => setStatusFilter(filter)}
+                      className={cn(
+                        "border px-3 py-1.5",
+                        selected
+                          ? "border-[var(--wl-line-active)] bg-[var(--wl-bg-soft)] text-[var(--wl-ink)]"
+                          : filter === "IDLE"
                             ? "border-[var(--wl-line)] text-[var(--wl-mute)] hover:text-[var(--wl-secondary)]"
-                            : "border-[var(--wl-line)] text-[var(--wl-secondary)] hover:text-[var(--wl-body)]"
-                        )}
-                      >
-                        {filter}{" "}
-                        <span className="text-[var(--wl-mute)]">{count}</span>
-                      </button>
-                    );
-                  }
-                )}
+                            : "border-[var(--wl-line)] text-[var(--wl-secondary)] hover:text-[var(--wl-body)]",
+                      )}
+                    >
+                      {filter} <span className="text-[var(--wl-mute)]">{count}</span>
+                    </button>
+                  );
+                })}
               </div>
               <label className="flex h-9 min-w-[220px] max-w-[360px] flex-1 items-center gap-2 border border-[var(--wl-line)] bg-[var(--wl-bg-tint)] px-3 text-[var(--wl-mute)]">
                 <Search className="h-3.5 w-3.5" strokeWidth={iconStroke} />
@@ -2569,8 +2306,7 @@ export function AgentsCanvasPage() {
                 onClick={() => setDeployOpen(true)}
                 className="flex h-9 shrink-0 items-center gap-2 border border-[var(--wl-line-active)] px-4 text-[11px] tracking-[0.12em] text-[var(--wl-body)] hover:border-[var(--wl-signal)] hover:text-[var(--wl-signal)]"
               >
-                <Plus className="h-3.5 w-3.5" strokeWidth={iconStroke} /> DEPLOY
-                GOVERNED WALLET
+                <Plus className="h-3.5 w-3.5" strokeWidth={iconStroke} /> DEPLOY GOVERNED WALLET
               </button>
             </div>
 
@@ -2628,9 +2364,7 @@ export function AgentsCanvasPage() {
                     })
                   ) : agentFiltersActive && baseRows.length > 0 ? (
                     <EmptyState
-                      actionLabel={
-                        agentQuery.trim() ? "CLEAR SEARCH" : "RESET FILTERS"
-                      }
+                      actionLabel={agentQuery.trim() ? "CLEAR SEARCH" : "RESET FILTERS"}
                       description={
                         agentQuery.trim()
                           ? `No agents match "${agentQuery.trim()}". Clear search or try another term.`
@@ -2640,17 +2374,13 @@ export function AgentsCanvasPage() {
                       title="NO AGENTS MATCH THIS FILTER"
                     />
                   ) : (
-                    <EmptyState
-                      description={emptyAgents.description}
-                      title={emptyAgents.title}
-                    />
+                    <EmptyState description={emptyAgents.description} title={emptyAgents.title} />
                   )}
                   <div className="flex h-9 items-center justify-between border-t border-[var(--wl-line)] px-4 text-[10px] tracking-[0.14em] text-[var(--wl-mute)]">
                     <span>
                       {String(agentCounts.ALL).padStart(2, "0")} WALLETS /{" "}
                       {String(agentCounts.ACTIVE).padStart(2, "0")} ACTIVE /{" "}
-                      {String(agentCounts.FROZEN).padStart(2, "0")} UNDER
-                      RESTRAINT
+                      {String(agentCounts.FROZEN).padStart(2, "0")} UNDER RESTRAINT
                     </span>
                     <span>FLEET POSTURE {averagePosture} / 100</span>
                   </div>
@@ -2659,10 +2389,7 @@ export function AgentsCanvasPage() {
             </div>
           </>
         ) : (
-          <AgentsFirstRunPanel
-            mode={workspace.dataMode}
-            onDeploy={() => setDeployOpen(true)}
-          />
+          <AgentsFirstRunPanel mode={workspace.dataMode} onDeploy={() => setDeployOpen(true)} />
         )}
       </Main>
       {deployOpen ? (
@@ -2692,10 +2419,7 @@ function AgentsSetupGrid({
 }>) {
   return (
     <section className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,0.92fr)_minmax(380px,1.08fr)] 2xl:grid-cols-[minmax(280px,0.82fr)_minmax(440px,1.05fr)_minmax(300px,0.78fr)]">
-      <SelectedWalletOverview
-        agent={selectedAgent}
-        walletAddress={selectedWalletAddress}
-      />
+      <SelectedWalletOverview agent={selectedAgent} walletAddress={selectedWalletAddress} />
       <AgentSignerPanel governedWalletAddress={selectedWalletAddress} />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
         <DoctrineMiniSnapshot agent={selectedAgent} />
@@ -2728,16 +2452,12 @@ function AgentsOperationsGrid({
           <ReadinessRow
             href="/vendors"
             label="VENDORS"
-            state={
-              vendorCount > 0
-                ? `${vendorCount} configured`
-                : "Add approved vendor"
-            }
+            state={vendorCount > 0 ? `${vendorCount} configured` : "Add approved vendor"}
             tone={vendorCount > 0 ? "ready" : "action"}
           />
           <ReadinessRow
             href={`/agents/${encodeURIComponent(
-              selectedAgent.fullWallet ?? selectedAgent.id ?? ""
+              selectedAgent.fullWallet ?? selectedAgent.id ?? "",
             )}/policy`}
             label="POLICY"
             state={selectedAgent.doctrine || "Configure policy"}
@@ -2746,11 +2466,7 @@ function AgentsOperationsGrid({
           <ReadinessRow
             href="/ledger"
             label="ACTIVITY"
-            state={
-              ledgerRows.length > 0
-                ? `${ledgerRows.length} indexed`
-                : "No activity yet"
-            }
+            state={ledgerRows.length > 0 ? `${ledgerRows.length} indexed` : "No activity yet"}
             tone={ledgerRows.length > 0 ? "ready" : "quiet"}
           />
         </div>
@@ -2780,9 +2496,7 @@ function WalletSignerSummary({
 
     if (!walletAddress || !publicClient || candidates.length === 0) {
       setVerifiedSigners([]);
-      setVerificationStatus(
-        walletAddress && candidates.length > 0 ? "error" : "idle"
-      );
+      setVerificationStatus(walletAddress && candidates.length > 0 ? "error" : "idle");
       return () => {
         cancelled = true;
       };
@@ -2806,7 +2520,7 @@ function WalletSignerSummary({
             })) as boolean;
 
             return authorized ? candidate : null;
-          })
+          }),
         );
       })
       .then((results) => {
@@ -2814,11 +2528,7 @@ function WalletSignerSummary({
           return;
         }
 
-        setVerifiedSigners(
-          results.filter((candidate): candidate is Address =>
-            Boolean(candidate)
-          )
-        );
+        setVerifiedSigners(results.filter((candidate): candidate is Address => Boolean(candidate)));
         setVerificationStatus("ready");
       })
       .catch(() => {
@@ -2836,55 +2546,31 @@ function WalletSignerSummary({
   }, [candidates, publicClient, walletAddress]);
 
   if (isLoading) {
-    return (
-      <span className="text-[var(--wl-secondary)]">Loading signer state</span>
-    );
+    return <span className="text-[var(--wl-secondary)]">Loading signer state</span>;
   }
   if (candidates.length === 0) {
-    return (
-      <span className="text-[var(--wl-secondary)]">No signer authorized</span>
-    );
+    return <span className="text-[var(--wl-secondary)]">No signer authorized</span>;
   }
   if (verificationStatus === "checking") {
-    return (
-      <span className="text-[var(--wl-amber)]">
-        Verifying saved signer on Arc Testnet
-      </span>
-    );
+    return <span className="text-[var(--wl-amber)]">Verifying saved signer on Arc Testnet</span>;
   }
   if (verificationStatus === "error") {
     return (
-      <span
-        className={
-          workspace.isDemo ? "text-[var(--wl-amber)]" : "text-[var(--wl-red)]"
-        }
-      >
-        {workspace.isDemo
-          ? liveSignerContractRequiredCopy
-          : "Signer readback unavailable"}
+      <span className={workspace.isDemo ? "text-[var(--wl-amber)]" : "text-[var(--wl-red)]"}>
+        {workspace.isDemo ? liveSignerContractRequiredCopy : "Signer readback unavailable"}
       </span>
     );
   }
   if (verifiedSigners.length === 0) {
-    return (
-      <span className="text-[var(--wl-red)]">
-        Saved signer not authorized on contract
-      </span>
-    );
+    return <span className="text-[var(--wl-red)]">Saved signer not authorized on contract</span>;
   }
   if (verifiedSigners.length === 1) {
     return (
-      <span className="text-[var(--wl-body)]">
-        1 signer: {shortAddress(verifiedSigners[0])}
-      </span>
+      <span className="text-[var(--wl-body)]">1 signer: {shortAddress(verifiedSigners[0])}</span>
     );
   }
 
-  return (
-    <span className="text-[var(--wl-body)]">
-      {verifiedSigners.length} signers authorized
-    </span>
-  );
+  return <span className="text-[var(--wl-body)]">{verifiedSigners.length} signers authorized</span>;
 }
 
 function SelectedWalletOverview({
@@ -2900,11 +2586,11 @@ function SelectedWalletOverview({
       refetchOnWindowFocus: true,
       retry: false,
       staleTime: 30_000,
-    }
+    },
   );
   const signerCandidates = useMemo(
     () => signerCandidatesFromPolicy(signerPolicyQuery.data),
-    [signerPolicyQuery.data]
+    [signerPolicyQuery.data],
   );
   const copyWallet = async () => {
     if (!walletAddress) {
@@ -2920,9 +2606,7 @@ function SelectedWalletOverview({
       toast.error("GOVERNED WALLET COPY FAILED");
     }
   };
-  const agentHref = `/agents/${encodeURIComponent(
-    walletAddress ?? agent.id ?? agent.wallet
-  )}`;
+  const agentHref = `/agents/${encodeURIComponent(walletAddress ?? agent.id ?? agent.wallet)}`;
   const explorerHref = walletAddress ? `/explorer/${walletAddress}` : null;
 
   return (
@@ -2945,20 +2629,14 @@ function SelectedWalletOverview({
                   {walletAddress ?? "No governed wallet address"}
                 </span>
                 {walletAddress ? (
-                  <Copy
-                    className="h-3.5 w-3.5 shrink-0"
-                    strokeWidth={iconStroke}
-                  />
+                  <Copy className="h-3.5 w-3.5 shrink-0" strokeWidth={iconStroke} />
                 ) : null}
               </button>
               <div className="mt-2 flex max-w-full items-center gap-2 text-[11px]">
                 <span className="shrink-0 text-[10px] tracking-[0.14em] text-[var(--wl-mute)]">
                   SIGNER
                 </span>
-                <span
-                  className="min-w-0 truncate"
-                  title={signerCandidates.join(", ")}
-                >
+                <span className="min-w-0 truncate" title={signerCandidates.join(", ")}>
                   <WalletSignerSummary
                     candidates={signerCandidates}
                     isLoading={signerPolicyQuery.isLoading}
@@ -3008,8 +2686,7 @@ function SelectedWalletOverview({
             href={agentHref}
             className="flex h-8 items-center gap-1.5 border border-[var(--wl-line)] px-3 text-[10px] tracking-[0.12em] text-[var(--wl-body)] hover:border-[var(--wl-signal)] hover:text-[var(--wl-signal)]"
           >
-            VIEW DETAILS{" "}
-            <ArrowUpRight className="h-3 w-3" strokeWidth={iconStroke} />
+            VIEW DETAILS <ArrowUpRight className="h-3 w-3" strokeWidth={iconStroke} />
           </Link>
           <Link
             href={`${agentHref}/policy`}
@@ -3038,13 +2715,8 @@ function WalletMetric({
 }: Readonly<{ accent?: string; label: string; value: string }>) {
   return (
     <div className="border border-[var(--wl-line)] bg-[var(--wl-bg-soft)] p-3">
-      <div className="text-[9px] tracking-[0.16em] text-[var(--wl-mute)]">
-        {label}
-      </div>
-      <div
-        className="mt-1 truncate text-[13px] text-[var(--wl-body)]"
-        style={{ color: accent }}
-      >
+      <div className="text-[9px] tracking-[0.16em] text-[var(--wl-mute)]">{label}</div>
+      <div className="mt-1 truncate text-[13px] text-[var(--wl-body)]" style={{ color: accent }}>
         {value}
       </div>
     </div>
@@ -3064,16 +2736,9 @@ function DoctrineMiniSnapshot({ agent }: Readonly<{ agent: AgentDisplay }>) {
       <PanelHeader title="DOCTRINE SNAPSHOT" meta="POLICY CONTROL" />
       <div className="divide-y divide-[var(--wl-line-soft)] text-[12px]">
         {rows.map(([label, value]) => (
-          <div
-            key={label}
-            className="flex items-center justify-between gap-3 px-4 py-3"
-          >
-            <span className="text-[10px] tracking-[0.14em] text-[var(--wl-mute)]">
-              {label}
-            </span>
-            <span className="min-w-0 truncate text-[var(--wl-body)]">
-              {value}
-            </span>
+          <div key={label} className="flex items-center justify-between gap-3 px-4 py-3">
+            <span className="text-[10px] tracking-[0.14em] text-[var(--wl-mute)]">{label}</span>
+            <span className="min-w-0 truncate text-[var(--wl-body)]">{value}</span>
           </div>
         ))}
       </div>
@@ -3095,16 +2760,8 @@ function WalletSetupRail({
   const steps = [
     ["01", "Governed wallet", selectedWalletAddress ? "selected" : "missing"],
     ["02", "Agent signer", "configure in panel"],
-    [
-      "03",
-      "Vendor allowlist",
-      vendorCount > 0 ? `${vendorCount} configured` : "add vendor",
-    ],
-    [
-      "04",
-      "Activity",
-      ledgerCount > 0 ? `${ledgerCount} indexed` : "no activity yet",
-    ],
+    ["03", "Vendor allowlist", vendorCount > 0 ? `${vendorCount} configured` : "add vendor"],
+    ["04", "Activity", ledgerCount > 0 ? `${ledgerCount} indexed` : "no activity yet"],
   ] as const;
 
   return (
@@ -3112,18 +2769,13 @@ function WalletSetupRail({
       <PanelHeader title="SETUP SEQUENCE" meta="NEXT ACTIONS" />
       <div className="space-y-3 p-4">
         {steps.map(([index, label, state]) => (
-          <div
-            key={label}
-            className="grid grid-cols-[34px_minmax(0,1fr)] gap-3"
-          >
+          <div key={label} className="grid grid-cols-[34px_minmax(0,1fr)] gap-3">
             <div className="flex h-7 w-7 items-center justify-center border border-[var(--wl-line)] text-[10px] text-[var(--wl-secondary)]">
               {index}
             </div>
             <div className="min-w-0">
               <div className="text-[12px] text-[var(--wl-body)]">{label}</div>
-              <div className="text-[10px] tracking-[0.12em] text-[var(--wl-mute)]">
-                {state}
-              </div>
+              <div className="text-[10px] tracking-[0.12em] text-[var(--wl-mute)]">{state}</div>
             </div>
           </div>
         ))}
@@ -3133,8 +2785,7 @@ function WalletSetupRail({
             onClick={onDeploy}
             className="flex h-8 items-center gap-1.5 border border-[var(--wl-line)] px-3 text-[10px] tracking-[0.12em] text-[var(--wl-secondary)] hover:border-[var(--wl-signal)] hover:text-[var(--wl-signal)]"
           >
-            <Plus className="h-3.5 w-3.5" strokeWidth={iconStroke} /> DEPLOY
-            ANOTHER
+            <Plus className="h-3.5 w-3.5" strokeWidth={iconStroke} /> DEPLOY ANOTHER
           </button>
           <Link
             href="/vendors?action=add"
@@ -3148,18 +2799,12 @@ function WalletSetupRail({
   );
 }
 
-function RecentWalletActivity({
-  ledgerRows,
-}: Readonly<{ ledgerRows: AgentLedgerRows }>) {
+function RecentWalletActivity({ ledgerRows }: Readonly<{ ledgerRows: AgentLedgerRows }>) {
   return (
     <div className="border border-[var(--wl-line)] bg-[var(--wl-bg-raised)]">
       <PanelHeader
         title="RECENT WALLET ACTIVITY"
-        meta={
-          ledgerRows.length > 0
-            ? `${ledgerRows.length} INDEXED`
-            : "EMPTY LIVE STATE"
-        }
+        meta={ledgerRows.length > 0 ? `${ledgerRows.length} INDEXED` : "EMPTY LIVE STATE"}
       />
       {ledgerRows.length > 0 ? (
         <div className="divide-y divide-[var(--wl-line-soft)] text-[12px]">
@@ -3169,9 +2814,7 @@ function RecentWalletActivity({
               className="grid grid-cols-[minmax(0,1fr)_90px_104px] items-center gap-3 px-4 py-3"
             >
               <div className="min-w-0">
-                <div className="truncate text-[var(--wl-body)]">
-                  {entry.counterparty}
-                </div>
+                <div className="truncate text-[var(--wl-body)]">{entry.counterparty}</div>
                 <div className="mt-0.5 text-[10px] tracking-[0.1em] text-[var(--wl-mute)]">
                   {entry.category.toUpperCase()} / {entry.timestamp}
                 </div>
@@ -3211,17 +2854,15 @@ function ReadinessRow({
       href={href}
       className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-[var(--wl-bg-soft)]"
     >
-      <span className="text-[10px] tracking-[0.14em] text-[var(--wl-mute)]">
-        {label}
-      </span>
+      <span className="text-[10px] tracking-[0.14em] text-[var(--wl-mute)]">{label}</span>
       <span
         className={cn(
           "min-w-0 truncate text-right text-[11px]",
           tone === "ready"
             ? "text-[var(--wl-green)]"
             : tone === "action"
-            ? "text-[var(--wl-signal)]"
-            : "text-[var(--wl-secondary)]"
+              ? "text-[var(--wl-signal)]"
+              : "text-[var(--wl-secondary)]",
         )}
       >
         {state}
@@ -3245,33 +2886,21 @@ function AgentsFirstRunPanel({
           primary: "CONNECT IN HEADER",
         }
       : mode === "connected_unsigned"
-      ? {
-          title: "Sign in to load governed wallets",
-          body: "Sign the wallet challenge before Arcanum loads private wallet, signer, vendor, and policy state.",
-          primary: "SIGN IN REQUIRED",
-        }
-      : {
-          title: "Deploy your first governed wallet",
-          body: "Create a policy-controlled Arc Testnet wallet, then authorize the public signer address controlled by your agent backend.",
-          primary: "DEPLOY GOVERNED WALLET",
-        };
+        ? {
+            title: "Sign in to load governed wallets",
+            body: "Sign the wallet challenge before Arcanum loads private wallet, signer, vendor, and policy state.",
+            primary: "SIGN IN REQUIRED",
+          }
+        : {
+            title: "Deploy your first governed wallet",
+            body: "Create a policy-controlled Arc Testnet wallet, then authorize the public signer address controlled by your agent backend.",
+            primary: "DEPLOY GOVERNED WALLET",
+          };
 
   const steps = [
-    [
-      "01",
-      "Deploy governed wallet",
-      "Create the owner-controlled wallet on Arc Testnet.",
-    ],
-    [
-      "02",
-      "Authorize agent signer",
-      "Add the public address controlled by your agent backend.",
-    ],
-    [
-      "03",
-      "Add vendor + policy",
-      "Define approved destinations and spending limits.",
-    ],
+    ["01", "Deploy governed wallet", "Create the owner-controlled wallet on Arc Testnet."],
+    ["02", "Authorize agent signer", "Add the public address controlled by your agent backend."],
+    ["03", "Add vendor + policy", "Define approved destinations and spending limits."],
   ] as const;
 
   return (
@@ -3306,8 +2935,7 @@ function AgentsFirstRunPanel({
               href="/docs"
               className="flex h-9 items-center gap-2 border border-[var(--wl-line)] px-3 text-[10px] tracking-[0.14em] text-[var(--wl-secondary)] hover:border-[var(--wl-line-active)] hover:text-[var(--wl-body)]"
             >
-              VIEW SETUP GUIDE{" "}
-              <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={iconStroke} />
+              VIEW SETUP GUIDE <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={iconStroke} />
             </Link>
           </div>
         </div>
@@ -3347,43 +2975,27 @@ function DeployAgentModal({
   const { writeContractAsync, isPending: writePending } = useWriteContract();
   const recordCreatedWallet = trpc.agents.recordCreatedWallet.useMutation();
   const deployment = deployContractStatus();
-  const walletFactoryAddress = configuredAddress(
-    process.env.NEXT_PUBLIC_WALLET_FACTORY
-  );
+  const walletFactoryAddress = configuredAddress(process.env.NEXT_PUBLIC_WALLET_FACTORY);
   const missingLabels = deployment.contracts
     .filter((contract) => !contract.configured)
     .map((contract) => contract.label);
-  const [form, setForm] = useState<DeployWalletFormState>(
-    initialDeployWalletForm
-  );
+  const [form, setForm] = useState<DeployWalletFormState>(initialDeployWalletForm);
   const [txHash, setTxHash] = useState<Hash | null>(null);
   const [createdWallet, setCreatedWallet] = useState<Address | null>(null);
   const [predictedWallet, setPredictedWallet] = useState<Address | null>(null);
-  const [status, setStatus] = useState<
-    "idle" | "confirming" | "success" | "error"
-  >("idle");
+  const [status, setStatus] = useState<"idle" | "confirming" | "success" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const [persistenceState, setPersistenceState] = useState<
     "idle" | "saving" | "supabase" | "supabase_failed" | "supabase_unconfigured"
   >("idle");
-  const [persistenceMessage, setPersistenceMessage] = useState<string | null>(
-    null
-  );
-  const [pendingSyncInput, setPendingSyncInput] =
-    useState<CreatedWalletSyncInput | null>(null);
+  const [persistenceMessage, setPersistenceMessage] = useState<string | null>(null);
+  const [pendingSyncInput, setPendingSyncInput] = useState<CreatedWalletSyncInput | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [advancedGovernanceOpen, setAdvancedGovernanceOpen] = useState(false);
   const submittingRef = useRef(false);
   const readyForTransaction =
-    deployment.ready &&
-    walletFactoryAddress !== null &&
-    isConnected &&
-    chainId === arcTestnet.id;
-  const isBusy =
-    writePending ||
-    switchPending ||
-    status === "confirming" ||
-    submittingRef.current;
+    deployment.ready && walletFactoryAddress !== null && isConnected && chainId === arcTestnet.id;
+  const isBusy = writePending || switchPending || status === "confirming" || submittingRef.current;
   const primaryDisabled =
     isBusy ||
     !deployment.ready ||
@@ -3402,10 +3014,7 @@ function DeployAgentModal({
     }));
   }, [address]);
 
-  const updateForm = (
-    key: keyof DeployWalletFormState,
-    value: string | boolean
-  ) => {
+  const updateForm = (key: keyof DeployWalletFormState, value: string | boolean) => {
     setForm((current) => ({ ...current, [key]: value }));
   };
   const resetForAnotherWallet = () => {
@@ -3434,8 +3043,8 @@ function DeployAgentModal({
       setPersistenceMessage(
         persisted.dataSource === "supabase"
           ? null
-          : persisted.message ??
-              "Wallet deployed on-chain, but Supabase sync failed. Save this wallet address and retry sync."
+          : (persisted.message ??
+              "Wallet deployed on-chain, but Supabase sync failed. Save this wallet address and retry sync."),
       );
       return persisted.dataSource;
     } catch (persistError) {
@@ -3443,15 +3052,13 @@ function DeployAgentModal({
       setPersistenceState("supabase_failed");
       setPersistenceMessage(
         message ||
-          "Wallet deployed on-chain, but Supabase sync failed. Save this wallet address and retry sync."
+          "Wallet deployed on-chain, but Supabase sync failed. Save this wallet address and retry sync.",
       );
       return "supabase_failed" as const;
     }
   };
 
-  const handleCreateWallet = async (
-    event: ReactMouseEvent<HTMLButtonElement>
-  ) => {
+  const handleCreateWallet = async (event: ReactMouseEvent<HTMLButtonElement>) => {
     if (!allowTrustedMutation("walletFactory.createWallet", event)) {
       return;
     }
@@ -3475,9 +3082,7 @@ function DeployAgentModal({
     }
 
     if (!deployment.ready || !walletFactoryAddress) {
-      setError(
-        "Configure deployed contract addresses before creating a governed wallet."
-      );
+      setError("Configure deployed contract addresses before creating a governed wallet.");
       setStatus("error");
       return;
     }
@@ -3509,25 +3114,15 @@ function DeployAgentModal({
       }
 
       const policy = buildWalletPolicy(form);
-      const signers = parseAddressList(
-        form.signerAddresses,
-        address,
-        "Agent signers"
-      );
-      const council = parseAddressList(
-        form.councilAddresses,
-        address,
-        "Escalation council"
-      );
+      const signers = parseAddressList(form.signerAddresses, address, "Agent signers");
+      const council = parseAddressList(form.councilAddresses, address, "Escalation council");
       const quorum = Number.parseInt(form.quorum, 10);
       if (!Number.isInteger(quorum) || quorum < 1 || quorum > 255) {
         throw new Error("Quorum must be a whole number between 1 and 255.");
       }
 
       if (quorum > council.length) {
-        throw new Error(
-          "Quorum cannot be greater than the number of council addresses."
-        );
+        throw new Error("Quorum cannot be greater than the number of council addresses.");
       }
 
       const nonce = await publicClient.readContract({
@@ -3606,27 +3201,23 @@ function DeployAgentModal({
   const primaryLabel = !deployment.ready
     ? "DEPLOYMENT CONFIG REQUIRED"
     : !isConnected
-    ? "CONNECT WALLET FIRST"
-    : chainId !== arcTestnet.id
-    ? switchPending
-      ? "SWITCHING NETWORK"
-      : "SWITCH TO ARC TESTNET"
-    : status === "confirming" || writePending
-    ? txHash
-      ? "WAITING FOR RECEIPT"
-      : "CONFIRM IN WALLET"
-    : "CREATE GOVERNED WALLET";
+      ? "CONNECT WALLET FIRST"
+      : chainId !== arcTestnet.id
+        ? switchPending
+          ? "SWITCHING NETWORK"
+          : "SWITCH TO ARC TESTNET"
+        : status === "confirming" || writePending
+          ? txHash
+            ? "WAITING FOR RECEIPT"
+            : "CONFIRM IN WALLET"
+          : "CREATE GOVERNED WALLET";
 
-  const hasSuccess =
-    status === "success" && createdWallet !== null && txHash !== null;
-  const createdAgentHref = createdWallet
-    ? `/agents/${createdWallet}`
-    : "/agents";
+  const hasSuccess = status === "success" && createdWallet !== null && txHash !== null;
+  const createdAgentHref = createdWallet ? `/agents/${createdWallet}` : "/agents";
   const createdWalletArcscanUrl = getArcscanAddressUrl(createdWallet);
   const txArcscanUrl = getArcscanTxUrl(txHash);
   const persistenceFailed =
-    persistenceState === "supabase_failed" ||
-    persistenceState === "supabase_unconfigured";
+    persistenceState === "supabase_failed" || persistenceState === "supabase_unconfigured";
 
   const copyCreatedWallet = async () => {
     if (!createdWallet) {
@@ -3670,22 +3261,16 @@ function DeployAgentModal({
                   missingLabels.length === 1 ? "is" : "are"
                 } configured in the frontend environment.`
               : isConnected
-              ? chainId === arcTestnet.id
-                ? "Arc Testnet contracts are ready. WalletFactory is configured for real governed wallet creation."
-                : "Wallet is connected. Switch to Arc Testnet before creating a governed wallet."
-              : "Connect and authenticate wallet to deploy a governed wallet."}
+                ? chainId === arcTestnet.id
+                  ? "Arc Testnet contracts are ready. WalletFactory is configured for real governed wallet creation."
+                  : "Wallet is connected. Switch to Arc Testnet before creating a governed wallet."
+                : "Connect and authenticate wallet to deploy a governed wallet."}
           </p>
           <div className="flex items-center justify-between border border-[var(--wl-line)] bg-[var(--wl-bg-tint)] px-3 py-2">
             <span
-              className={
-                deployment.ready
-                  ? "text-[var(--wl-green)]"
-                  : "text-[var(--wl-signal)]"
-              }
+              className={deployment.ready ? "text-[var(--wl-green)]" : "text-[var(--wl-signal)]"}
             >
-              {deployment.ready
-                ? "ARC TESTNET CONTRACTS READY"
-                : "DEPLOYMENT CONFIG INCOMPLETE"}
+              {deployment.ready ? "ARC TESTNET CONTRACTS READY" : "DEPLOYMENT CONFIG INCOMPLETE"}
             </span>
             <button
               type="button"
@@ -3702,27 +3287,19 @@ function DeployAgentModal({
                   key={contract.label}
                   className="grid grid-cols-[170px_minmax(0,1fr)_72px] items-center gap-3 text-[10px] tracking-[0.12em]"
                 >
-                  <span className="text-[var(--wl-mute)]">
-                    {contract.label}
-                  </span>
+                  <span className="text-[var(--wl-mute)]">{contract.label}</span>
                   <span
                     className={cn(
                       "min-w-0 truncate font-mono",
-                      contract.configured
-                        ? "text-[var(--wl-body)]"
-                        : "text-[var(--wl-signal)]"
+                      contract.configured ? "text-[var(--wl-body)]" : "text-[var(--wl-signal)]",
                     )}
                     title={contract.value ?? "not configured"}
                   >
-                    {contract.configured
-                      ? shortAddress(contract.value ?? "")
-                      : "MISSING"}
+                    {contract.configured ? shortAddress(contract.value ?? "") : "MISSING"}
                   </span>
                   <span
                     className={
-                      contract.configured
-                        ? "text-[var(--wl-green)]"
-                        : "text-[var(--wl-signal)]"
+                      contract.configured ? "text-[var(--wl-green)]" : "text-[var(--wl-signal)]"
                     }
                   >
                     {contract.configured ? "READY" : "MISSING"}
@@ -3735,9 +3312,7 @@ function DeployAgentModal({
             <div
               className={cn(
                 "space-y-4 border bg-[var(--wl-green-tint)] p-4",
-                persistenceFailed
-                  ? "border-[var(--wl-amber)]"
-                  : "border-[var(--wl-green-line)]"
+                persistenceFailed ? "border-[var(--wl-amber)]" : "border-[var(--wl-green-line)]",
               )}
             >
               <div>
@@ -3751,10 +3326,10 @@ function DeployAgentModal({
                   {persistenceState === "supabase"
                     ? "PENDING INDEXER SYNC - SAVED TO SUPABASE"
                     : persistenceState === "saving"
-                    ? "PENDING INDEXER SYNC - SAVING READ MODEL"
-                    : persistenceFailed
-                    ? "ON-CHAIN DEPLOYED - SUPABASE SYNC FAILED"
-                    : "PENDING INDEXER SYNC"}
+                      ? "PENDING INDEXER SYNC - SAVING READ MODEL"
+                      : persistenceFailed
+                        ? "ON-CHAIN DEPLOYED - SUPABASE SYNC FAILED"
+                        : "PENDING INDEXER SYNC"}
                 </div>
               </div>
               {persistenceFailed ? (
@@ -3769,11 +3344,7 @@ function DeployAgentModal({
                   value={createdWallet}
                   href={createdWalletArcscanUrl ?? undefined}
                 />
-                <DeployResultLine
-                  label="TX HASH"
-                  value={txHash}
-                  href={txArcscanUrl ?? undefined}
-                />
+                <DeployResultLine label="TX HASH" value={txHash} href={txArcscanUrl ?? undefined} />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <Link
@@ -3805,9 +3376,7 @@ function DeployAgentModal({
                     disabled={recordCreatedWallet.isPending}
                     className="flex h-9 cursor-pointer items-center justify-center border border-[var(--wl-amber)] text-[11px] tracking-[0.12em] text-[var(--wl-amber)] hover:bg-[var(--wl-amber)] hover:text-[var(--wl-obsidian)] disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {recordCreatedWallet.isPending
-                      ? "SYNCING SUPABASE"
-                      : "RETRY SUPABASE SYNC"}
+                    {recordCreatedWallet.isPending ? "SYNCING SUPABASE" : "RETRY SUPABASE SYNC"}
                   </button>
                 ) : null}
                 <button
@@ -3815,7 +3384,7 @@ function DeployAgentModal({
                   onClick={resetForAnotherWallet}
                   className={cn(
                     "flex h-9 cursor-pointer items-center justify-center border border-[var(--wl-line-active)] text-[11px] tracking-[0.12em] text-[var(--wl-body)] hover:border-[var(--wl-signal)] hover:text-[var(--wl-signal)]",
-                    persistenceFailed ? "col-span-2" : ""
+                    persistenceFailed ? "col-span-2" : "",
                   )}
                 >
                   CREATE ANOTHER WALLET
@@ -3862,26 +3431,17 @@ function DeployAgentModal({
                   </span>
                   <input
                     value={form.label}
-                    onChange={(event) =>
-                      updateForm("label", event.target.value)
-                    }
+                    onChange={(event) => updateForm("label", event.target.value)}
                     className="h-9 w-full border border-[var(--wl-line)] bg-[var(--wl-bg-tint)] px-3 text-[var(--wl-body)] outline-none placeholder:text-[var(--wl-mute)]"
                   />
                 </label>
-                <label
-                  className={cn(
-                    "space-y-1",
-                    !advancedGovernanceOpen && "hidden"
-                  )}
-                >
+                <label className={cn("space-y-1", !advancedGovernanceOpen && "hidden")}>
                   <span className="text-[10px] tracking-[0.14em] text-[var(--wl-mute)]">
                     QUORUM
                   </span>
                   <input
                     value={form.quorum}
-                    onChange={(event) =>
-                      updateForm("quorum", event.target.value)
-                    }
+                    onChange={(event) => updateForm("quorum", event.target.value)}
                     inputMode="numeric"
                     className="h-9 w-full border border-[var(--wl-line)] bg-[var(--wl-bg-tint)] px-3 text-[var(--wl-body)] outline-none placeholder:text-[var(--wl-mute)]"
                   />
@@ -3892,9 +3452,7 @@ function DeployAgentModal({
                   </span>
                   <input
                     value={form.perTxCap}
-                    onChange={(event) =>
-                      updateForm("perTxCap", event.target.value)
-                    }
+                    onChange={(event) => updateForm("perTxCap", event.target.value)}
                     inputMode="decimal"
                     className="h-9 w-full border border-[var(--wl-line)] bg-[var(--wl-bg-tint)] px-3 text-[var(--wl-body)] outline-none placeholder:text-[var(--wl-mute)]"
                   />
@@ -3905,65 +3463,42 @@ function DeployAgentModal({
                   </span>
                   <input
                     value={form.dailyCap}
-                    onChange={(event) =>
-                      updateForm("dailyCap", event.target.value)
-                    }
+                    onChange={(event) => updateForm("dailyCap", event.target.value)}
                     inputMode="decimal"
                     className="h-9 w-full border border-[var(--wl-line)] bg-[var(--wl-bg-tint)] px-3 text-[var(--wl-body)] outline-none placeholder:text-[var(--wl-mute)]"
                   />
                 </label>
-                <label
-                  className={cn(
-                    "space-y-1",
-                    !advancedGovernanceOpen && "hidden"
-                  )}
-                >
+                <label className={cn("space-y-1", !advancedGovernanceOpen && "hidden")}>
                   <span className="text-[10px] tracking-[0.14em] text-[var(--wl-mute)]">
                     MONTHLY CAP / USDC
                   </span>
                   <input
                     value={form.monthlyCap}
-                    onChange={(event) =>
-                      updateForm("monthlyCap", event.target.value)
-                    }
+                    onChange={(event) => updateForm("monthlyCap", event.target.value)}
                     inputMode="decimal"
                     className="h-9 w-full border border-[var(--wl-line)] bg-[var(--wl-bg-tint)] px-3 text-[var(--wl-body)] outline-none placeholder:text-[var(--wl-mute)]"
                   />
                 </label>
-                <label
-                  className={cn(
-                    "space-y-1",
-                    !advancedGovernanceOpen && "hidden"
-                  )}
-                >
+                <label className={cn("space-y-1", !advancedGovernanceOpen && "hidden")}>
                   <span className="text-[10px] tracking-[0.14em] text-[var(--wl-mute)]">
                     ESCALATE ABOVE / USDC
                   </span>
                   <input
                     value={form.escalationAmount}
-                    onChange={(event) =>
-                      updateForm("escalationAmount", event.target.value)
-                    }
+                    onChange={(event) => updateForm("escalationAmount", event.target.value)}
                     inputMode="decimal"
                     className="h-9 w-full border border-[var(--wl-line)] bg-[var(--wl-bg-tint)] px-3 text-[var(--wl-body)] outline-none placeholder:text-[var(--wl-mute)]"
                   />
                 </label>
               </div>
-              <div
-                className={cn(
-                  "grid grid-cols-2 gap-3",
-                  !advancedGovernanceOpen && "hidden"
-                )}
-              >
+              <div className={cn("grid grid-cols-2 gap-3", !advancedGovernanceOpen && "hidden")}>
                 <label className="space-y-1">
                   <span className="text-[10px] tracking-[0.14em] text-[var(--wl-mute)]">
                     AGENT SIGNERS / COMMA SEPARATED
                   </span>
                   <input
                     value={form.signerAddresses}
-                    onChange={(event) =>
-                      updateForm("signerAddresses", event.target.value)
-                    }
+                    onChange={(event) => updateForm("signerAddresses", event.target.value)}
                     placeholder={address ?? "0x..."}
                     className="h-9 w-full border border-[var(--wl-line)] bg-[var(--wl-bg-tint)] px-3 font-mono text-[11px] text-[var(--wl-body)] outline-none placeholder:text-[var(--wl-mute)]"
                   />
@@ -3974,9 +3509,7 @@ function DeployAgentModal({
                   </span>
                   <input
                     value={form.councilAddresses}
-                    onChange={(event) =>
-                      updateForm("councilAddresses", event.target.value)
-                    }
+                    onChange={(event) => updateForm("councilAddresses", event.target.value)}
                     placeholder={address ?? "0x..."}
                     className="h-9 w-full border border-[var(--wl-line)] bg-[var(--wl-bg-tint)] px-3 font-mono text-[11px] text-[var(--wl-body)] outline-none placeholder:text-[var(--wl-mute)]"
                   />
@@ -3985,15 +3518,13 @@ function DeployAgentModal({
               <label
                 className={cn(
                   "flex items-center gap-2 text-[10px] tracking-[0.14em] text-[var(--wl-secondary)]",
-                  !advancedGovernanceOpen && "hidden"
+                  !advancedGovernanceOpen && "hidden",
                 )}
               >
                 <input
                   type="checkbox"
                   checked={form.requireAllowlist}
-                  onChange={(event) =>
-                    updateForm("requireAllowlist", event.target.checked)
-                  }
+                  onChange={(event) => updateForm("requireAllowlist", event.target.checked)}
                   className="h-3.5 w-3.5 accent-[var(--wl-signal)]"
                 />
                 REQUIRE VENDOR ALLOWLIST / ALL CATEGORIES ENABLED
@@ -4001,10 +3532,7 @@ function DeployAgentModal({
               {predictedWallet || txHash || createdWallet ? (
                 <div className="space-y-2 border border-[var(--wl-line)] bg-[var(--wl-bg-tint)] p-3 text-[10px] tracking-[0.12em]">
                   {predictedWallet ? (
-                    <DeployResultLine
-                      label="PREDICTED WALLET"
-                      value={predictedWallet}
-                    />
+                    <DeployResultLine label="PREDICTED WALLET" value={predictedWallet} />
                   ) : null}
                   {txHash ? (
                     <DeployResultLine
@@ -4022,8 +3550,7 @@ function DeployAgentModal({
                   ) : null}
                   {status === "success" ? (
                     <div className="pt-1 text-[var(--wl-green)]">
-                      CREATED ON ARC TESTNET / INDEXER OR READ MODEL STATE MAY
-                      LAG
+                      CREATED ON ARC TESTNET / INDEXER OR READ MODEL STATE MAY LAG
                     </div>
                   ) : null}
                 </div>
@@ -4041,16 +3568,16 @@ function DeployAgentModal({
                   !deployment.ready
                     ? "Configure deployed contract addresses before deploying a governed wallet."
                     : !isConnected
-                    ? "Connect wallet first."
-                    : chainId !== arcTestnet.id
-                    ? "Switch wallet network to Arc Testnet."
-                    : "Create a GuardedWallet on Arc Testnet."
+                      ? "Connect wallet first."
+                      : chainId !== arcTestnet.id
+                        ? "Switch wallet network to Arc Testnet."
+                        : "Create a GuardedWallet on Arc Testnet."
                 }
                 className={cn(
                   "flex h-9 w-full items-center justify-center border text-[11px] tracking-[0.12em]",
                   primaryDisabled
                     ? "cursor-not-allowed border-[var(--wl-line)] text-[var(--wl-mute)] opacity-70"
-                    : "cursor-pointer border-[var(--wl-line-active)] text-[var(--wl-body)] hover:border-[var(--wl-signal)] hover:text-[var(--wl-signal)]"
+                    : "cursor-pointer border-[var(--wl-line-active)] text-[var(--wl-body)] hover:border-[var(--wl-signal)] hover:text-[var(--wl-signal)]",
                 )}
               >
                 {primaryLabel}
@@ -4098,10 +3625,7 @@ function DeployResultLine({
           {shortAddress(value)}
         </a>
       ) : (
-        <span
-          className="min-w-0 truncate font-mono text-[var(--wl-body)]"
-          title={value}
-        >
+        <span className="min-w-0 truncate font-mono text-[var(--wl-body)]" title={value}>
           {shortAddress(value)}
         </span>
       )}
@@ -4131,8 +3655,7 @@ function AgentRegisterRow({
   const freeze = trpc.agents.freeze.useMutation();
   const unfreeze = trpc.agents.unfreeze.useMutation();
   const frozen = status === "FROZEN";
-  const walletId =
-    agent.fullWallet ?? walletAlias[agent.wallet] ?? agent.wallet;
+  const walletId = agent.fullWallet ?? walletAlias[agent.wallet] ?? agent.wallet;
   const agentHref = `/agents/${walletId}`;
 
   const toggleRestraintRemote = async () => {
@@ -4163,8 +3686,7 @@ function AgentRegisterRow({
       danger={frozen}
       className={cn(
         "grid grid-cols-[100px_minmax(190px,1.3fr)_118px_minmax(150px,1.1fr)_92px_92px_minmax(130px,1fr)_104px_minmax(250px,0.95fr)] items-center border-b border-[var(--wl-line-soft)] px-4 py-3",
-        selected &&
-          "bg-[var(--wl-bg-soft)] shadow-[inset_3px_0_0_var(--wl-signal)]"
+        selected && "bg-[var(--wl-bg-soft)] shadow-[inset_3px_0_0_var(--wl-signal)]",
       )}
     >
       <StatusLabel status={status} />
@@ -4189,11 +3711,10 @@ function AgentRegisterRow({
         <div
           className={cn(
             "text-[12px]",
-            frozen ? "text-[var(--wl-secondary)]" : "text-[var(--wl-body)]"
+            frozen ? "text-[var(--wl-secondary)]" : "text-[var(--wl-body)]",
           )}
         >
-          {agent.spend}{" "}
-          <span className="text-[var(--wl-mute)]">/ {agent.limit}</span>
+          {agent.spend} <span className="text-[var(--wl-mute)]">/ {agent.limit}</span>
         </div>
         <ProgressLine width={agent.spendWidth} />
       </div>
@@ -4204,8 +3725,8 @@ function AgentRegisterRow({
           frozen
             ? "font-medium text-[var(--wl-signal)]"
             : agent.deviation === formatDeviation(0.8)
-            ? "text-[var(--wl-amber)]"
-            : "text-[var(--wl-secondary)]"
+              ? "text-[var(--wl-amber)]"
+              : "text-[var(--wl-secondary)]",
         )}
       >
         {agent.deviation}
@@ -4213,7 +3734,7 @@ function AgentRegisterRow({
       <span
         className={cn(
           "text-[12px]",
-          frozen ? "text-[var(--wl-red)]" : "text-[var(--wl-secondary)]"
+          frozen ? "text-[var(--wl-red)]" : "text-[var(--wl-secondary)]",
         )}
       >
         {agent.doctrine}
@@ -4222,7 +3743,7 @@ function AgentRegisterRow({
       <div
         className={cn(
           "min-w-0 justify-end gap-1.5",
-          frozen ? "grid grid-cols-3" : "flex items-center"
+          frozen ? "grid grid-cols-3" : "flex items-center",
         )}
       >
         {selected ? (
@@ -4290,10 +3811,8 @@ export function AgentDossierCanvasPage() {
   const liveVendors = useLiveVendors();
   const params = useParams();
   const governedWalletAddress = resolveGovernedWalletAddress(params.walletId);
-  const queryWallet =
-    governedWalletAddress ?? "0x0000000000000000000000000000000000000000";
-  const walletQueriesEnabled =
-    workspace.isAuthenticated && Boolean(governedWalletAddress);
+  const queryWallet = governedWalletAddress ?? "0x0000000000000000000000000000000000000000";
+  const walletQueriesEnabled = workspace.isAuthenticated && Boolean(governedWalletAddress);
   const agentQuery = trpc.agents.byWalletId.useQuery(
     { walletId: queryWallet },
     {
@@ -4301,7 +3820,7 @@ export function AgentDossierCanvasPage() {
       refetchOnWindowFocus: false,
       retry: false,
       staleTime: 30_000,
-    }
+    },
   );
   const transferQuery = trpc.ledger.byWallet.useQuery(
     { wallet: queryWallet, page: 0, pageSize: 100 },
@@ -4310,7 +3829,7 @@ export function AgentDossierCanvasPage() {
       refetchOnWindowFocus: false,
       retry: false,
       staleTime: 30_000,
-    }
+    },
   );
   const policyQuery = trpc.agents.policy.useQuery(
     { walletId: queryWallet },
@@ -4319,31 +3838,27 @@ export function AgentDossierCanvasPage() {
       refetchOnWindowFocus: false,
       retry: false,
       staleTime: 30_000,
-    }
+    },
   );
   const walletTransfers = (transferQuery.data ?? []) as WalletDetailTransfer[];
   const walletPolicy = (policyQuery.data ?? null) as WalletDetailPolicy | null;
   const vendorNames = useMemo(
     () =>
       new Map(
-        liveVendors.data.map(
-          (vendor) => [vendor.address.toLowerCase(), vendor.name] as const
-        )
+        liveVendors.data.map((vendor) => [vendor.address.toLowerCase(), vendor.name] as const),
       ),
-    [liveVendors.data]
+    [liveVendors.data],
   );
   const detailMetrics = useMemo(
     () => walletDetailMetrics(walletTransfers, walletPolicy, vendorNames),
-    [walletTransfers, walletPolicy, vendorNames]
+    [walletTransfers, walletPolicy, vendorNames],
   );
   const displayWalletLabel = governedWalletAddress
     ? shortAddress(governedWalletAddress, { head: 6, tail: 5 })
     : "Invalid wallet";
   const agentLabel =
     agentQuery.data?.label?.trim() ||
-    (governedWalletAddress
-      ? `Governed Wallet ${displayWalletLabel}`
-      : "Invalid governed wallet");
+    (governedWalletAddress ? `Governed Wallet ${displayWalletLabel}` : "Invalid governed wallet");
   const ownerAddress =
     agentQuery.data &&
     "ownerAddress" in agentQuery.data &&
@@ -4354,36 +3869,29 @@ export function AgentDossierCanvasPage() {
   const ownerLabel = ownerAddress
     ? shortAddress(ownerAddress)
     : governedWalletAddress
-    ? "Owner synced in Supabase"
-    : "No wallet selected";
+      ? "Owner synced in Supabase"
+      : "No wallet selected";
   const postureScore =
-    walletTransfers.length > 0
-      ? Math.max(0, Math.min(100, 72 + detailMetrics.eventsCount))
-      : 0;
+    walletTransfers.length > 0 ? Math.max(0, Math.min(100, 72 + detailMetrics.eventsCount)) : 0;
   const postureLabel =
     walletTransfers.length > 0
       ? postureScore >= 70
         ? "FORTIFIED"
         : "WATCHING"
       : governedWalletAddress
-      ? "NOT STARTED"
-      : "INVALID ROUTE";
+        ? "NOT STARTED"
+        : "INVALID ROUTE";
   const postureCopy =
     walletTransfers.length > 0
       ? "LIVE INDEXED"
       : governedWalletAddress
-      ? "NO INDEXED ACTIVITY"
-      : "INVALID WALLET";
+        ? "NO INDEXED ACTIVITY"
+        : "INVALID WALLET";
   const dailyCapLabel =
-    detailMetrics.dailyCap > 0
-      ? amountLabel(detailMetrics.dailyCap)
-      : "no cap configured";
+    detailMetrics.dailyCap > 0 ? amountLabel(detailMetrics.dailyCap) : "no cap configured";
   const dailySpendWidth =
     detailMetrics.dailyCap > 0
-      ? Math.min(
-          100,
-          Math.round((detailMetrics.dailySpend / detailMetrics.dailyCap) * 100)
-        )
+      ? Math.min(100, Math.round((detailMetrics.dailySpend / detailMetrics.dailyCap) * 100))
       : 0;
   const indexerEmptyCopy =
     governedWalletAddress && walletTransfers.length === 0
@@ -4393,9 +3901,7 @@ export function AgentDossierCanvasPage() {
   return (
     <GovernanceFrame
       active="agents"
-      file={`${workspaceFileRoot(
-        workspace
-      )} / GOVERNANCE / AGENTS / ${displayWalletLabel}`}
+      file={`${workspaceFileRoot(workspace)} / GOVERNANCE / AGENTS / ${displayWalletLabel}`}
     >
       <Main>
         <section className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,400px)_1fr]">
@@ -4413,11 +3919,7 @@ export function AgentDossierCanvasPage() {
                   {postureLabel}
                 </div>
                 <div className="mt-1 flex items-center gap-1 text-[11px] text-[var(--wl-secondary)]">
-                  <ArrowUpRight
-                    className="h-3.5 w-3.5"
-                    strokeWidth={iconStroke}
-                  />{" "}
-                  {postureCopy}
+                  <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={iconStroke} /> {postureCopy}
                 </div>
               </div>
             </div>
@@ -4451,27 +3953,19 @@ export function AgentDossierCanvasPage() {
                 className="flex w-full min-w-0 items-center gap-2 text-[11px] text-[var(--wl-secondary)] hover:text-[var(--wl-body)]"
                 disabled={!governedWalletAddress}
               >
-                <span
-                  className="min-w-0 flex-1 truncate"
-                  title={governedWalletAddress ?? ""}
-                >
+                <span className="min-w-0 flex-1 truncate" title={governedWalletAddress ?? ""}>
                   {governedWalletAddress ?? "Invalid governed wallet address"}
                 </span>
                 <Copy className="h-3 w-3 shrink-0" strokeWidth={iconStroke} />
               </button>
               <div className="flex items-center gap-4 text-[10px] tracking-[0.08em] text-[var(--wl-mute)]">
                 <span>
-                  OWNER{" "}
-                  <span className="text-[var(--wl-secondary)]">
-                    {ownerLabel}
-                  </span>
+                  OWNER <span className="text-[var(--wl-secondary)]">{ownerLabel}</span>
                 </span>
                 <span>
                   DOCTRINE{" "}
                   <span className="text-[var(--wl-secondary)]">
-                    {walletPolicy
-                      ? `v${walletPolicy.version}`
-                      : "not configured"}
+                    {walletPolicy ? `v${walletPolicy.version}` : "not configured"}
                   </span>
                 </span>
               </div>
@@ -4484,27 +3978,18 @@ export function AgentDossierCanvasPage() {
                 type="button"
                 onClick={() =>
                   toast.info(
-                    "RESTRAINT / use the Agents table action while backend addresses are local"
+                    "RESTRAINT / use the Agents table action while backend addresses are local",
                   )
                 }
                 className="flex h-8 items-center gap-1.5 border border-[var(--wl-line-active)] px-3 text-[11px] tracking-[0.12em] text-[var(--wl-body)] hover:border-[var(--wl-signal)] hover:text-[var(--wl-signal)]"
               >
-                <Snowflake className="h-3.5 w-3.5" strokeWidth={iconStroke} />{" "}
-                RESTRAIN
+                <Snowflake className="h-3.5 w-3.5" strokeWidth={iconStroke} /> RESTRAIN
               </button>
               <Link
-                href={
-                  governedWalletAddress
-                    ? `/agents/${governedWalletAddress}/policy`
-                    : "/agents"
-                }
+                href={governedWalletAddress ? `/agents/${governedWalletAddress}/policy` : "/agents"}
                 className="flex h-8 items-center gap-1.5 border border-[var(--wl-line-active)] px-3 text-[11px] tracking-[0.12em] text-[var(--wl-body)] hover:border-[var(--wl-text-body)]"
               >
-                <SlidersHorizontal
-                  className="h-3.5 w-3.5"
-                  strokeWidth={iconStroke}
-                />{" "}
-                EDIT DOCTRINE
+                <SlidersHorizontal className="h-3.5 w-3.5" strokeWidth={iconStroke} /> EDIT DOCTRINE
               </Link>
               {governedWalletAddress ? (
                 <>
@@ -4512,21 +3997,13 @@ export function AgentDossierCanvasPage() {
                     href={`/explorer/${governedWalletAddress}`}
                     className="flex h-8 items-center gap-1.5 border border-[var(--wl-line)] px-3 text-[11px] tracking-[0.12em] text-[var(--wl-secondary)] hover:border-[var(--wl-text-body)] hover:text-[var(--wl-body)]"
                   >
-                    <ExternalLink
-                      className="h-3.5 w-3.5"
-                      strokeWidth={iconStroke}
-                    />{" "}
-                    EXPLORER
+                    <ExternalLink className="h-3.5 w-3.5" strokeWidth={iconStroke} /> EXPLORER
                   </Link>
                   <Link
                     href={`/badge/${governedWalletAddress}`}
                     className="flex h-8 items-center gap-1.5 border border-[var(--wl-line)] px-3 text-[11px] tracking-[0.12em] text-[var(--wl-secondary)] hover:border-[var(--wl-text-body)] hover:text-[var(--wl-body)]"
                   >
-                    <ShieldCheck
-                      className="h-3.5 w-3.5"
-                      strokeWidth={iconStroke}
-                    />{" "}
-                    BADGE
+                    <ShieldCheck className="h-3.5 w-3.5" strokeWidth={iconStroke} /> BADGE
                   </Link>
                 </>
               ) : null}
@@ -4538,15 +4015,9 @@ export function AgentDossierCanvasPage() {
                 </div>
                 <div className="mt-2 font-cond text-[30px] font-semibold leading-none text-[var(--wl-ink)]">
                   {amountLabel(detailMetrics.dailySpend)}
-                  <span className="text-[var(--wl-secondary)]">
-                    {" "}
-                    / {dailyCapLabel}
-                  </span>
+                  <span className="text-[var(--wl-secondary)]"> / {dailyCapLabel}</span>
                 </div>
-                <ProgressLine
-                  width={dailySpendWidth}
-                  className="mt-3 h-1.5 w-full"
-                />
+                <ProgressLine width={dailySpendWidth} className="mt-3 h-1.5 w-full" />
                 <div className="mt-2 text-[10px] tracking-[0.08em] text-[var(--wl-mute)]">
                   {detailMetrics.dailyCap > 0
                     ? `${dailySpendWidth}% OF DAILY CAP`
@@ -4557,38 +4028,26 @@ export function AgentDossierCanvasPage() {
                 label="30D SPEND"
                 value={amountLabel(detailMetrics.monthlySpend)}
                 caption="ROLLING WINDOW"
-                trend={
-                  walletTransfers.length > 0 ? "LIVE INDEXED" : "NO ACTIVITY"
-                }
+                trend={walletTransfers.length > 0 ? "LIVE INDEXED" : "NO ACTIVITY"}
               />
               <SmallStat
                 label="EVENTS GOVERNED"
                 value={String(detailMetrics.eventsCount)}
                 caption="SELECTED WALLET"
-                trend={
-                  walletTransfers.length > 0
-                    ? "SCOPED LEDGER"
-                    : "NO INDEXED EVENTS"
-                }
+                trend={walletTransfers.length > 0 ? "SCOPED LEDGER" : "NO INDEXED EVENTS"}
                 green={walletTransfers.length > 0}
               />
               <SmallStat
                 label="DEVIATION"
                 value={
-                  walletTransfers.length > 0
-                    ? formatDeviation(detailMetrics.deviation)
-                    : "NONE"
+                  walletTransfers.length > 0 ? formatDeviation(detailMetrics.deviation) : "NONE"
                 }
                 caption={
                   walletPolicy
-                    ? `THRESHOLD ${amountLabel(
-                        detailMetrics.escalationThreshold
-                      )}`
+                    ? `THRESHOLD ${amountLabel(detailMetrics.escalationThreshold)}`
                     : "NO ACTIVITY BASELINE"
                 }
-                trend={
-                  walletTransfers.length > 0 ? "NOMINAL" : "NOT ENOUGH ACTIVITY"
-                }
+                trend={walletTransfers.length > 0 ? "NOMINAL" : "NOT ENOUGH ACTIVITY"}
                 green={walletTransfers.length > 0}
                 valueClassName={
                   walletTransfers.length > 0
@@ -4627,9 +4086,7 @@ export function AgentDossierCanvasPage() {
                     />
                   ))}
                   <div className="flex items-center justify-between border-t border-[var(--wl-line)] pt-3 text-[11px] tracking-[0.08em]">
-                    <span className="text-[var(--wl-mute)]">
-                      TOTAL / SELECTED WALLET
-                    </span>
+                    <span className="text-[var(--wl-mute)]">TOTAL / SELECTED WALLET</span>
                     <span className="text-[var(--wl-body)]">
                       {amountLabel(detailMetrics.totalSpend)}
                     </span>
@@ -4664,35 +4121,23 @@ export function AgentDossierCanvasPage() {
                   </div>
                   <div className="text-[12px]">
                     {detailMetrics.eventRows.map((event) => (
-                      <EventRow
-                        key={`${event[0]}-${event[3]}-${event[4]}`}
-                        row={event}
-                        compact
-                      />
+                      <EventRow key={`${event[0]}-${event[3]}-${event[4]}`} row={event} compact />
                     ))}
                   </div>
                   <div className="flex h-9 items-center justify-between border-t border-[var(--wl-line)] px-4 text-[10px] tracking-[0.14em] text-[var(--wl-mute)]">
                     <span>
-                      SHOWING {detailMetrics.eventRows.length} /{" "}
-                      {walletTransfers.length}
+                      SHOWING {detailMetrics.eventRows.length} / {walletTransfers.length}
                     </span>
                     <Link
                       href="/ledger"
                       className="flex items-center gap-1 text-[var(--wl-secondary)] hover:text-[var(--wl-body)]"
                     >
-                      OPEN FULL STREAM{" "}
-                      <ArrowUpRight
-                        className="h-3 w-3"
-                        strokeWidth={iconStroke}
-                      />
+                      OPEN FULL STREAM <ArrowUpRight className="h-3 w-3" strokeWidth={iconStroke} />
                     </Link>
                   </div>
                 </>
               ) : (
-                <EmptyState
-                  title="No activity yet"
-                  description={indexerEmptyCopy}
-                />
+                <EmptyState title="No activity yet" description={indexerEmptyCopy} />
               )}
             </div>
           </div>
@@ -4705,14 +4150,10 @@ export function AgentDossierCanvasPage() {
                   {detailMetrics.counterparties.map((counterparty) => (
                     <div key={counterparty.name} className="px-4 py-3">
                       <div className="flex items-center justify-between text-[12px]">
-                        <span className="text-[var(--wl-body)]">
-                          {counterparty.name}
-                        </span>
+                        <span className="text-[var(--wl-body)]">{counterparty.name}</span>
                         <span className="text-[var(--wl-secondary)]">
                           {amountLabel(counterparty.amount)}{" "}
-                          <span className="text-[var(--wl-mute)]">
-                            / {counterparty.count} tx
-                          </span>
+                          <span className="text-[var(--wl-mute)]">/ {counterparty.count} tx</span>
                         </span>
                       </div>
                       <div className="mt-2 h-1.5 bg-[var(--wl-panel-muted)]">
@@ -4744,16 +4185,11 @@ export function AgentDossierCanvasPage() {
                   ["MONTHLY CAP", detailMetrics.monthlyCapLabel],
                   [
                     "VENDOR ALLOWLIST",
-                    walletPolicy?.requireAllowlist
-                      ? "required"
-                      : "not required",
+                    walletPolicy?.requireAllowlist ? "required" : "not required",
                   ],
                   ["ESCALATE ABOVE", detailMetrics.escalationThresholdLabel],
                 ].map(([label, value]) => (
-                  <div
-                    key={label}
-                    className="flex items-center justify-between px-4 py-3"
-                  >
+                  <div key={label} className="flex items-center justify-between px-4 py-3">
                     <span className="text-[10px] tracking-[0.14em] text-[var(--wl-mute)]">
                       {label}
                     </span>
@@ -4765,9 +4201,7 @@ export function AgentDossierCanvasPage() {
 
             <AgentSignerPanel governedWalletAddress={governedWalletAddress} />
 
-            {governedWalletAddress ? (
-              <BadgeEmbedSnippet wallet={governedWalletAddress} />
-            ) : null}
+            {governedWalletAddress ? <BadgeEmbedSnippet wallet={governedWalletAddress} /> : null}
           </div>
         </section>
       </Main>
@@ -4799,7 +4233,7 @@ type WalletDetailPolicy = {
 function walletDetailMetrics(
   transfers: WalletDetailTransfer[],
   policy: WalletDetailPolicy | null,
-  vendorNames: Map<string, string>
+  vendorNames: Map<string, string>,
 ) {
   const now = Date.now();
   const dayAgo = now - 24 * 60 * 60 * 1000;
@@ -4807,30 +4241,18 @@ function walletDetailMetrics(
   const dailyCap = policy ? usdcNumber(policy.daily24hCap) : 0;
   const perTxCap = policy ? usdcNumber(policy.perTxCap) : 0;
   const monthlyCap = policy ? usdcNumber(policy.monthlyRollingCap) : 0;
-  const escalationThreshold = policy
-    ? usdcNumber(policy.escalationThreshold)
-    : 0;
-  const totalSpend = transfers.reduce(
-    (sum, transfer) => sum + usdcNumber(transfer.amount),
-    0
-  );
+  const escalationThreshold = policy ? usdcNumber(policy.escalationThreshold) : 0;
+  const totalSpend = transfers.reduce((sum, transfer) => sum + usdcNumber(transfer.amount), 0);
   const dailySpend = transfers.reduce((sum, transfer) => {
     const timestamp = transferTimestampMs(transfer);
-    return timestamp !== null && timestamp >= dayAgo
-      ? sum + usdcNumber(transfer.amount)
-      : sum;
+    return timestamp !== null && timestamp >= dayAgo ? sum + usdcNumber(transfer.amount) : sum;
   }, 0);
   const monthlySpend = transfers.reduce((sum, transfer) => {
     const timestamp = transferTimestampMs(transfer);
-    return timestamp !== null && timestamp >= monthAgo
-      ? sum + usdcNumber(transfer.amount)
-      : sum;
+    return timestamp !== null && timestamp >= monthAgo ? sum + usdcNumber(transfer.amount) : sum;
   }, 0);
   const categoryTotals = new Map<string, number>();
-  const counterpartyTotals = new Map<
-    string,
-    { amount: number; count: number; name: string }
-  >();
+  const counterpartyTotals = new Map<string, { amount: number; count: number; name: string }>();
 
   for (const transfer of transfers) {
     const amount = usdcNumber(transfer.amount);
@@ -4838,9 +4260,7 @@ function walletDetailMetrics(
     categoryTotals.set(category, (categoryTotals.get(category) ?? 0) + amount);
 
     const address = transfer.toAddress?.toLowerCase();
-    const name = address
-      ? vendorNames.get(address) ?? shortAddress(address)
-      : "Counterparty";
+    const name = address ? (vendorNames.get(address) ?? shortAddress(address)) : "Counterparty";
     const current = counterpartyTotals.get(name) ?? {
       amount: 0,
       count: 0,
@@ -4856,7 +4276,7 @@ function walletDetailMetrics(
   const maxCategory = Math.max(1, ...categoryTotals.values());
   const maxCounterparty = Math.max(
     1,
-    ...Array.from(counterpartyTotals.values()).map((row) => row.amount)
+    ...Array.from(counterpartyTotals.values()).map((row) => row.amount),
   );
 
   return {
@@ -4880,16 +4300,13 @@ function walletDetailMetrics(
     deviation: transfers.length > 0 ? 0 : 0,
     escalationThreshold,
     escalationThresholdLabel:
-      escalationThreshold > 0
-        ? amountLabel(escalationThreshold)
-        : "Not configured",
+      escalationThreshold > 0 ? amountLabel(escalationThreshold) : "Not configured",
     eventsCount: transfers.length,
     eventRows: transfers
       .slice(0, 7)
       .map((transfer) => walletTransferEventRow(transfer, vendorNames)),
     monthlyCap,
-    monthlyCapLabel:
-      monthlyCap > 0 ? amountLabel(monthlyCap) : "Not configured",
+    monthlyCapLabel: monthlyCap > 0 ? amountLabel(monthlyCap) : "Not configured",
     monthlySpend,
     perTxCap,
     perTxCapLabel: perTxCap > 0 ? amountLabel(perTxCap) : "Not configured",
@@ -4907,11 +4324,11 @@ function transferTimestampMs(transfer: WalletDetailTransfer) {
 
 function walletTransferEventRow(
   transfer: WalletDetailTransfer,
-  vendorNames: Map<string, string>
+  vendorNames: Map<string, string>,
 ): readonly string[] {
   const address = transfer.toAddress?.toLowerCase();
   const counterparty = address
-    ? vendorNames.get(address) ?? shortAddress(address)
+    ? (vendorNames.get(address) ?? shortAddress(address))
     : "Counterparty";
   return [
     transferTimeLabel(transfer),
@@ -4985,18 +4402,17 @@ function AgentSignerPanel({
       refetchOnWindowFocus: true,
       retry: false,
       staleTime: 30_000,
-    }
+    },
   );
   const syncSignerState = trpc.agents.syncSignerState.useMutation();
   const submittingRef = useRef(false);
   const [signerInput, setSignerInput] = useState("");
   const [signerInputTouched, setSignerInputTouched] = useState(false);
   const [walletOwner, setWalletOwner] = useState<Address | null>(null);
-  const [signerAuthorized, setSignerAuthorized] = useState<boolean | null>(
-    null
-  );
-  const [signerVerificationByAddress, setSignerVerificationByAddress] =
-    useState<Record<string, boolean | null>>({});
+  const [signerAuthorized, setSignerAuthorized] = useState<boolean | null>(null);
+  const [signerVerificationByAddress, setSignerVerificationByAddress] = useState<
+    Record<string, boolean | null>
+  >({});
   const [lastVerifiedAt, setLastVerifiedAt] = useState<string | null>(null);
   const [bytecodeStatus, setBytecodeStatus] = useState<BytecodeStatus>("idle");
   const [readStatus, setReadStatus] = useState<SignerReadbackStatus>("idle");
@@ -5004,28 +4420,24 @@ function AgentSignerPanel({
   const [txStatus, setTxStatus] = useState<SignerTxStatus>("idle");
   const [txHash, setTxHash] = useState<Hash | null>(null);
   const [txError, setTxError] = useState<string | null>(null);
-  const [lastSyncRequest, setLastSyncRequest] =
-    useState<SignerSyncRequest | null>(null);
+  const [lastSyncRequest, setLastSyncRequest] = useState<SignerSyncRequest | null>(null);
   const persistedSignerCandidates = useMemo(
     () => signerCandidatesFromPolicy(signerPolicyQuery.data),
-    [signerPolicyQuery.data]
+    [signerPolicyQuery.data],
   );
   const persistedSignerAddress = persistedSignerCandidates[0] ?? null;
 
   const trimmedSigner = signerInput.trim();
-  const signerAddress = isEvmAddress(trimmedSigner)
-    ? (trimmedSigner as Address)
-    : null;
-  const usableSignerAddress =
-    signerAddress && !isZeroAddress(signerAddress) ? signerAddress : null;
+  const signerAddress = isEvmAddress(trimmedSigner) ? (trimmedSigner as Address) : null;
+  const usableSignerAddress = signerAddress && !isZeroAddress(signerAddress) ? signerAddress : null;
   const signerValidation =
     trimmedSigner.length === 0
       ? "Enter an agent signer public address."
       : !signerAddress
-      ? "Enter a valid EVM address."
-      : isZeroAddress(signerAddress)
-      ? "Zero address cannot be an agent signer."
-      : null;
+        ? "Enter a valid EVM address."
+        : isZeroAddress(signerAddress)
+          ? "Zero address cannot be an agent signer."
+          : null;
   const isBusy =
     submittingRef.current ||
     switchPending ||
@@ -5035,18 +4447,14 @@ function AgentSignerPanel({
     txStatus === "confirming" ||
     txStatus === "syncing";
   const ownerMatchesConnectedWallet = Boolean(
-    walletOwner && address && isSameAddress(walletOwner, address)
+    walletOwner && address && isSameAddress(walletOwner, address),
   );
   const visibleSignerCandidates = useMemo(() => {
     const nextCandidates = [...persistedSignerCandidates];
     if (
       lastSyncRequest?.action === "authorize" &&
-      (txStatus === "syncing" ||
-        txStatus === "sync_failed" ||
-        txStatus === "synced") &&
-      !nextCandidates.some((candidate) =>
-        isSameAddress(candidate, lastSyncRequest.signerAddress)
-      )
+      (txStatus === "syncing" || txStatus === "sync_failed" || txStatus === "synced") &&
+      !nextCandidates.some((candidate) => isSameAddress(candidate, lastSyncRequest.signerAddress))
     ) {
       nextCandidates.push(lastSyncRequest.signerAddress);
     }
@@ -5056,48 +4464,37 @@ function AgentSignerPanel({
   const signerRows = useMemo(
     () =>
       visibleSignerCandidates.map((candidate) => {
-        const verified =
-          signerVerificationByAddress[candidate.toLowerCase()] ?? null;
+        const verified = signerVerificationByAddress[candidate.toLowerCase()] ?? null;
         const isSyncTarget = Boolean(
-          lastSyncRequest &&
-            isSameAddress(candidate, lastSyncRequest.signerAddress)
+          lastSyncRequest && isSameAddress(candidate, lastSyncRequest.signerAddress),
         );
         const isPendingSync =
-          isSyncTarget &&
-          (txStatus === "syncing" || txStatus === "sync_failed");
+          isSyncTarget && (txStatus === "syncing" || txStatus === "sync_failed");
         const status = isPendingSync
           ? txStatus === "sync_failed"
             ? "SYNC FAILED"
             : "SYNC PENDING"
           : readStatus === "loading" && verified === null
-          ? "VERIFYING"
-          : verified === true
-          ? "AUTHORIZED ON CONTRACT"
-          : verified === false
-          ? "NOT AUTHORIZED ON CONTRACT"
-          : readStatus === "error"
-          ? "READBACK FAILED"
-          : "SUPABASE CANDIDATE";
+            ? "VERIFYING"
+            : verified === true
+              ? "AUTHORIZED ON CONTRACT"
+              : verified === false
+                ? "NOT AUTHORIZED ON CONTRACT"
+                : readStatus === "error"
+                  ? "READBACK FAILED"
+                  : "SUPABASE CANDIDATE";
         const source = isPendingSync
           ? "recent tx"
           : verified === true
-          ? "contract verified"
-          : "Supabase candidate";
+            ? "contract verified"
+            : "Supabase candidate";
 
         return { address: candidate, source, status, verified };
       }),
-    [
-      readStatus,
-      lastSyncRequest,
-      signerVerificationByAddress,
-      txStatus,
-      visibleSignerCandidates,
-    ]
+    [readStatus, lastSyncRequest, signerVerificationByAddress, txStatus, visibleSignerCandidates],
   );
   const displaySignerRows = bytecodeStatus === "noCode" ? [] : signerRows;
-  const authorizedSignerCount = signerRows.filter(
-    (row) => row.verified === true
-  ).length;
+  const authorizedSignerCount = signerRows.filter((row) => row.verified === true).length;
   const lastVerifiedLabel = lastVerifiedAt
     ? new Date(lastVerifiedAt).toLocaleTimeString([], { hour12: false })
     : null;
@@ -5124,7 +4521,7 @@ function AgentSignerPanel({
           })) as boolean;
 
           return [signer.toLowerCase(), authorized] as const;
-        })
+        }),
       );
 
       return {
@@ -5132,7 +4529,7 @@ function AgentSignerPanel({
         owner,
       };
     },
-    [governedWalletAddress, publicClient]
+    [governedWalletAddress, publicClient],
   );
   const readLiveSignerState = useCallback(
     async (nextSigner: Address | null) => {
@@ -5143,12 +4540,12 @@ function AgentSignerPanel({
 
       return {
         authorized: nextSigner
-          ? result.authorizationByAddress[nextSigner.toLowerCase()] ?? null
+          ? (result.authorizationByAddress[nextSigner.toLowerCase()] ?? null)
           : null,
         owner: result.owner,
       };
     },
-    [readLiveSignerStates]
+    [readLiveSignerStates],
   );
 
   useEffect(() => {
@@ -5167,20 +4564,12 @@ function AgentSignerPanel({
   }, [governedWalletAddress]);
 
   useEffect(() => {
-    if (
-      !persistedSignerAddress ||
-      signerInputTouched ||
-      signerPolicyQuery.isFetching
-    ) {
+    if (!persistedSignerAddress || signerInputTouched || signerPolicyQuery.isFetching) {
       return;
     }
 
     setSignerInput(persistedSignerAddress);
-  }, [
-    persistedSignerAddress,
-    signerInputTouched,
-    signerPolicyQuery.isFetching,
-  ]);
+  }, [persistedSignerAddress, signerInputTouched, signerPolicyQuery.isFetching]);
   const verificationSignerCandidates = useMemo(() => {
     return Array.from(
       new Set(
@@ -5188,9 +4577,9 @@ function AgentSignerPanel({
           .map((candidate) => candidate.toLowerCase())
           .filter(
             (candidate): candidate is Address =>
-              isEvmAddress(candidate) && !isZeroAddress(candidate)
-          )
-      )
+              isEvmAddress(candidate) && !isZeroAddress(candidate),
+          ),
+      ),
     );
   }, [visibleSignerCandidates]);
 
@@ -5205,9 +4594,7 @@ function AgentSignerPanel({
       setLastVerifiedAt(null);
       setBytecodeStatus(governedWalletAddress ? "error" : "idle");
       setReadStatus(governedWalletAddress ? "error" : "idle");
-      setReadError(
-        governedWalletAddress ? "Arc Testnet RPC is unavailable." : null
-      );
+      setReadError(governedWalletAddress ? "Arc Testnet RPC is unavailable." : null);
       return () => {
         cancelled = true;
       };
@@ -5242,18 +4629,14 @@ function AgentSignerPanel({
             const inputCandidateKey = usableSignerAddress?.toLowerCase();
             const inputCandidateIsPersisted = Boolean(
               inputCandidateKey &&
-                verificationSignerCandidates.some(
-                  (candidate) => candidate === inputCandidateKey
-                )
+                verificationSignerCandidates.some((candidate) => candidate === inputCandidateKey),
             );
             setSignerAuthorized(
               usableSignerAddress && inputCandidateIsPersisted
-                ? result.authorizationByAddress[
-                    usableSignerAddress.toLowerCase()
-                  ] ?? null
+                ? (result.authorizationByAddress[usableSignerAddress.toLowerCase()] ?? null)
                 : usableSignerAddress
-                ? false
-                : null
+                  ? false
+                  : null,
             );
             setLastVerifiedAt(new Date().toISOString());
             setReadStatus("verified");
@@ -5289,69 +4672,56 @@ function AgentSignerPanel({
   const managementDisabledReason = !governedWalletAddress
     ? "Open a valid governed wallet route."
     : !isConnected
-    ? "Connect wallet first."
-    : !workspace.isAuthenticated
-    ? "Sign in to manage the agent signer."
-    : bytecodeStatus === "loading"
-    ? "Checking governed wallet contract."
-    : bytecodeStatus === "noCode"
-    ? liveSignerContractRequiredCopy
-    : readStatus === "loading"
-    ? "Checking governed wallet owner."
-    : readStatus !== "error" && !ownerMatchesConnectedWallet
-    ? "Only the governed wallet owner can manage the agent signer."
-    : chainId !== arcTestnet.id
-    ? "Switch to Arc Testnet."
-    : null;
-  const signerWriteDisabledReason =
-    managementDisabledReason ?? signerValidation;
+      ? "Connect wallet first."
+      : !workspace.isAuthenticated
+        ? "Sign in to manage the agent signer."
+        : bytecodeStatus === "loading"
+          ? "Checking governed wallet contract."
+          : bytecodeStatus === "noCode"
+            ? liveSignerContractRequiredCopy
+            : readStatus === "loading"
+              ? "Checking governed wallet owner."
+              : readStatus !== "error" && !ownerMatchesConnectedWallet
+                ? "Only the governed wallet owner can manage the agent signer."
+                : chainId !== arcTestnet.id
+                  ? "Switch to Arc Testnet."
+                  : null;
+  const signerWriteDisabledReason = managementDisabledReason ?? signerValidation;
   const signerCheckPending = Boolean(
-    usableSignerAddress && signerAuthorized === null && readStatus === "loading"
+    usableSignerAddress && signerAuthorized === null && readStatus === "loading",
   );
   const canAuthorize =
-    !signerWriteDisabledReason &&
-    !signerCheckPending &&
-    signerAuthorized === false &&
-    !isBusy;
+    !signerWriteDisabledReason && !signerCheckPending && signerAuthorized === false && !isBusy;
   const canRevoke =
-    !signerWriteDisabledReason &&
-    !signerCheckPending &&
-    signerAuthorized === true &&
-    !isBusy;
-  const hasCandidateSignerInput = Boolean(
-    usableSignerAddress && !signerValidation
-  );
+    !signerWriteDisabledReason && !signerCheckPending && signerAuthorized === true && !isBusy;
+  const hasCandidateSignerInput = Boolean(usableSignerAddress && !signerValidation);
   const statusCopy = signerPolicyQuery.isLoading
     ? "READING SIGNERS"
     : bytecodeStatus === "noCode"
-    ? "LIVE CONTRACT REQUIRED"
-    : readStatus === "loading" && visibleSignerCandidates.length > 0
-    ? "VERIFYING SIGNERS"
-    : authorizedSignerCount > 0
-    ? `${authorizedSignerCount} SIGNER${
-        authorizedSignerCount === 1 ? "" : "S"
-      } AUTHORIZED`
-    : visibleSignerCandidates.length > 0
-    ? "SAVED SIGNER STALE"
-    : hasCandidateSignerInput
-    ? "CANDIDATE SIGNER"
-    : readStatus === "loading" || bytecodeStatus === "loading"
-    ? "CHECKING CONTRACT"
-    : readStatus === "error"
-    ? "READBACK FAILED"
-    : "NO SIGNER AUTHORIZED";
+      ? "LIVE CONTRACT REQUIRED"
+      : readStatus === "loading" && visibleSignerCandidates.length > 0
+        ? "VERIFYING SIGNERS"
+        : authorizedSignerCount > 0
+          ? `${authorizedSignerCount} SIGNER${authorizedSignerCount === 1 ? "" : "S"} AUTHORIZED`
+          : visibleSignerCandidates.length > 0
+            ? "SAVED SIGNER STALE"
+            : hasCandidateSignerInput
+              ? "CANDIDATE SIGNER"
+              : readStatus === "loading" || bytecodeStatus === "loading"
+                ? "CHECKING CONTRACT"
+                : readStatus === "error"
+                  ? "READBACK FAILED"
+                  : "NO SIGNER AUTHORIZED";
   const statusClassName =
     authorizedSignerCount > 0 || (signerAuthorized && usableSignerAddress)
       ? "border-[var(--wl-green)]/40 text-[var(--wl-green)]"
-      : bytecodeStatus === "noCode" ||
-        txStatus === "sync_failed" ||
-        readStatus === "error"
-      ? workspace.isDemo || bytecodeStatus === "noCode"
-        ? "border-[var(--wl-amber)]/40 text-[var(--wl-amber)]"
-        : "border-[var(--wl-red)]/40 text-[var(--wl-red)]"
-      : hasCandidateSignerInput
-      ? "border-[var(--wl-amber)]/40 text-[var(--wl-amber)]"
-      : "border-[var(--wl-line-active)] text-[var(--wl-secondary)]";
+      : bytecodeStatus === "noCode" || txStatus === "sync_failed" || readStatus === "error"
+        ? workspace.isDemo || bytecodeStatus === "noCode"
+          ? "border-[var(--wl-amber)]/40 text-[var(--wl-amber)]"
+          : "border-[var(--wl-red)]/40 text-[var(--wl-red)]"
+        : hasCandidateSignerInput
+          ? "border-[var(--wl-amber)]/40 text-[var(--wl-amber)]"
+          : "border-[var(--wl-line-active)] text-[var(--wl-secondary)]";
   const txArcscanUrl = getArcscanTxUrl(txHash);
 
   const copyAddress = async (value: string, label: string) => {
@@ -5363,9 +4733,7 @@ function AgentSignerPanel({
     }
   };
 
-  const switchToArcTestnet = async (
-    event: ReactMouseEvent<HTMLButtonElement>
-  ) => {
+  const switchToArcTestnet = async (event: ReactMouseEvent<HTMLButtonElement>) => {
     if (!allowTrustedMutation("agentSigner.switchChain", event)) {
       return;
     }
@@ -5381,7 +4749,7 @@ function AgentSignerPanel({
   const submitSignerWrite = async (
     action: "authorize" | "revoke",
     event: ReactMouseEvent<HTMLButtonElement>,
-    signerOverride?: Address
+    signerOverride?: Address,
   ) => {
     if (!allowTrustedMutation(`agentSigner.${action}`, event)) {
       return;
@@ -5454,10 +4822,7 @@ function AgentSignerPanel({
         utils.agents.policy.invalidate({ walletId: governedWalletAddress }),
       ]);
       if (action === "revoke") {
-        if (
-          usableSignerAddress &&
-          isSameAddress(targetSigner, usableSignerAddress)
-        ) {
+        if (usableSignerAddress && isSameAddress(targetSigner, usableSignerAddress)) {
           setSignerInput("");
           setSignerInputTouched(false);
         }
@@ -5465,14 +4830,9 @@ function AgentSignerPanel({
 
       setTxStatus("synced");
       setLastSyncRequest(null);
-      toast.success(
-        action === "authorize"
-          ? "AGENT SIGNER AUTHORIZED"
-          : "AGENT SIGNER REVOKED",
-        {
-          description: "Contract confirmed and Supabase signer state synced.",
-        }
-      );
+      toast.success(action === "authorize" ? "AGENT SIGNER AUTHORIZED" : "AGENT SIGNER REVOKED", {
+        description: "Contract confirmed and Supabase signer state synced.",
+      });
     } catch (caught) {
       setTxStatus(contractConfirmed ? "sync_failed" : "error");
       setTxError(errorMessage(caught));
@@ -5509,8 +4869,7 @@ function AgentSignerPanel({
       setTxStatus("synced");
       setLastSyncRequest(null);
       toast.success("SIGNER STATE SYNCED", {
-        description:
-          "Supabase signer state now matches the confirmed contract transaction.",
+        description: "Supabase signer state now matches the confirmed contract transaction.",
       });
     } catch (caught) {
       setTxStatus("sync_failed");
@@ -5526,9 +4885,9 @@ function AgentSignerPanel({
       />
       <div className="space-y-4 p-4 text-[12px] leading-relaxed text-[var(--wl-secondary)]">
         <p>
-          Agent signer is the public wallet address controlled by your agent
-          backend. Never paste a private key here. The signer can request
-          payments, but policy rules still control what it can spend.
+          Agent signer is the public wallet address controlled by your agent backend. Never paste a
+          private key here. The signer can request payments, but policy rules still control what it
+          can spend.
         </p>
 
         <div className="grid gap-2 border border-[var(--wl-line)] bg-[var(--wl-bg-soft)] p-3 text-[11px]">
@@ -5540,13 +4899,9 @@ function AgentSignerPanel({
               <button
                 type="button"
                 className="flex min-w-0 items-center gap-1 text-[var(--wl-body)] hover:text-[var(--wl-signal)]"
-                onClick={() =>
-                  void copyAddress(governedWalletAddress, "GOVERNED WALLET")
-                }
+                onClick={() => void copyAddress(governedWalletAddress, "GOVERNED WALLET")}
               >
-                <span className="truncate">
-                  {shortAddress(governedWalletAddress)}
-                </span>
+                <span className="truncate">{shortAddress(governedWalletAddress)}</span>
                 <Copy className="h-3 w-3 shrink-0" strokeWidth={iconStroke} />
               </button>
             ) : (
@@ -5554,26 +4909,19 @@ function AgentSignerPanel({
             )}
           </div>
           <div className="flex min-w-0 items-center justify-between gap-3">
-            <span className="text-[10px] tracking-[0.16em] text-[var(--wl-mute)]">
-              OWNER
-            </span>
+            <span className="text-[10px] tracking-[0.16em] text-[var(--wl-mute)]">OWNER</span>
             <span className="min-w-0 truncate text-[var(--wl-body)]">
               {walletOwner
                 ? shortAddress(walletOwner)
                 : readStatus === "loading"
-                ? "Checking"
-                : "N/A"}
+                  ? "Checking"
+                  : "N/A"}
             </span>
           </div>
           <div className="flex min-w-0 items-center justify-between gap-3">
-            <span className="text-[10px] tracking-[0.16em] text-[var(--wl-mute)]">
-              STATUS
-            </span>
+            <span className="text-[10px] tracking-[0.16em] text-[var(--wl-mute)]">STATUS</span>
             <span
-              className={cn(
-                "border px-2 py-0.5 text-[10px] tracking-[0.12em]",
-                statusClassName
-              )}
+              className={cn("border px-2 py-0.5 text-[10px] tracking-[0.12em]", statusClassName)}
             >
               {statusCopy}
             </span>
@@ -5592,12 +4940,12 @@ function AgentSignerPanel({
                       authorizedSignerCount === 1 ? "" : "s"
                     } verified for this governed wallet`
                   : bytecodeStatus === "noCode"
-                  ? liveSignerContractRequiredCopy
-                  : readStatus === "error"
-                  ? "Unable to verify signer state right now. You can still submit an on-chain authorization."
-                  : hasCandidateSignerInput
-                  ? "Candidate signer ready for authorization. It is not authorized yet."
-                  : "No signer authorized for this governed wallet."}
+                    ? liveSignerContractRequiredCopy
+                    : readStatus === "error"
+                      ? "Unable to verify signer state right now. You can still submit an on-chain authorization."
+                      : hasCandidateSignerInput
+                        ? "Candidate signer ready for authorization. It is not authorized yet."
+                        : "No signer authorized for this governed wallet."}
               </div>
             </div>
             {lastVerifiedLabel ? (
@@ -5610,8 +4958,7 @@ function AgentSignerPanel({
             <div className="divide-y divide-[var(--wl-line-soft)]">
               {displaySignerRows.map((row) => {
                 const rowAuthorized = row.verified === true;
-                const rowStale =
-                  row.verified === false || row.status === "SYNC FAILED";
+                const rowStale = row.verified === false || row.status === "SYNC FAILED";
                 const revokeDisabled =
                   !rowAuthorized || Boolean(managementDisabledReason) || isBusy;
 
@@ -5622,10 +4969,7 @@ function AgentSignerPanel({
                   >
                     <div className="min-w-0">
                       <div className="flex min-w-0 flex-wrap items-center gap-2">
-                        <span
-                          className="font-mono text-[var(--wl-body)]"
-                          title={row.address}
-                        >
+                        <span className="font-mono text-[var(--wl-body)]" title={row.address}>
                           {shortAddress(row.address, { head: 8, tail: 6 })}
                         </span>
                         <span
@@ -5634,8 +4978,8 @@ function AgentSignerPanel({
                             rowAuthorized
                               ? "border-[var(--wl-green)]/35 text-[var(--wl-green)]"
                               : rowStale
-                              ? "border-[var(--wl-red)]/35 text-[var(--wl-red)]"
-                              : "border-[var(--wl-amber)]/35 text-[var(--wl-amber)]"
+                                ? "border-[var(--wl-red)]/35 text-[var(--wl-red)]"
+                                : "border-[var(--wl-amber)]/35 text-[var(--wl-amber)]",
                           )}
                         >
                           {row.status}
@@ -5645,42 +4989,30 @@ function AgentSignerPanel({
                         <span>SOURCE {row.source.toUpperCase()}</span>
                         <span>
                           WALLET{" "}
-                          {governedWalletAddress
-                            ? shortAddress(governedWalletAddress)
-                            : "N/A"}
+                          {governedWalletAddress ? shortAddress(governedWalletAddress) : "N/A"}
                         </span>
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                       <button
                         type="button"
-                        onClick={() =>
-                          void copyAddress(row.address, "AGENT SIGNER")
-                        }
+                        onClick={() => void copyAddress(row.address, "AGENT SIGNER")}
                         className="flex h-7 items-center gap-1.5 border border-[var(--wl-line)] px-2 text-[9px] tracking-[0.12em] text-[var(--wl-secondary)] hover:border-[var(--wl-text-body)] hover:text-[var(--wl-body)]"
                       >
-                        <Copy className="h-3 w-3" strokeWidth={iconStroke} />{" "}
-                        COPY
+                        <Copy className="h-3 w-3" strokeWidth={iconStroke} /> COPY
                       </button>
                       <button
                         type="button"
-                        onClick={(event) =>
-                          void submitSignerWrite("revoke", event, row.address)
-                        }
+                        onClick={(event) => void submitSignerWrite("revoke", event, row.address)}
                         disabled={revokeDisabled}
                         title={
                           revokeDisabled
-                            ? managementDisabledReason ??
-                              "Only verified signers can be revoked."
+                            ? (managementDisabledReason ?? "Only verified signers can be revoked.")
                             : "Revoke signer"
                         }
                         className="flex h-7 items-center gap-1.5 border border-[var(--wl-red)]/45 px-2 text-[9px] tracking-[0.12em] text-[var(--wl-red)] hover:bg-[var(--wl-red-tint)] disabled:cursor-not-allowed disabled:opacity-45"
                       >
-                        <UserMinus
-                          className="h-3 w-3"
-                          strokeWidth={iconStroke}
-                        />{" "}
-                        REVOKE
+                        <UserMinus className="h-3 w-3" strokeWidth={iconStroke} /> REVOKE
                       </button>
                     </div>
                   </div>
@@ -5720,18 +5052,14 @@ function AgentSignerPanel({
 
         {signerValidation && trimmedSigner.length > 0 ? (
           <div className="flex items-start gap-2 border border-[var(--wl-amber)]/30 bg-[var(--wl-amber-tint)] p-3 text-[11px] text-[var(--wl-amber)]">
-            <TriangleAlert
-              className="mt-0.5 h-3.5 w-3.5 shrink-0"
-              strokeWidth={iconStroke}
-            />
+            <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={iconStroke} />
             {signerValidation}
           </div>
         ) : null}
 
         {txStatus === "synced" && txHash ? (
           <div className="border border-[var(--wl-green)]/30 bg-[var(--wl-green-tint)] p-3 text-[11px] text-[var(--wl-green)]">
-            Contract confirmed. Supabase signer state is synced for this
-            governed wallet.
+            Contract confirmed. Supabase signer state is synced for this governed wallet.
           </div>
         ) : null}
 
@@ -5747,7 +5075,7 @@ function AgentSignerPanel({
               "border p-3 text-[11px]",
               workspace.isDemo
                 ? "border-[var(--wl-amber)]/30 bg-[var(--wl-amber-tint)] text-[var(--wl-amber)]"
-                : "border-[var(--wl-red)]/30 bg-[var(--wl-red-tint)] text-[var(--wl-red)]"
+                : "border-[var(--wl-red)]/30 bg-[var(--wl-red-tint)] text-[var(--wl-red)]",
             )}
           >
             {readError}
@@ -5780,8 +5108,7 @@ function AgentSignerPanel({
                 rel="noreferrer"
                 className="flex items-center gap-1 text-[var(--wl-secondary)] hover:text-[var(--wl-body)]"
               >
-                OPEN IN ARCSCAN{" "}
-                <ExternalLink className="h-3 w-3" strokeWidth={iconStroke} />
+                OPEN IN ARCSCAN <ExternalLink className="h-3 w-3" strokeWidth={iconStroke} />
               </a>
             ) : null}
           </div>
@@ -5819,13 +5146,10 @@ function AgentSignerPanel({
           {usableSignerAddress ? (
             <button
               type="button"
-              onClick={() =>
-                void copyAddress(usableSignerAddress, "AGENT SIGNER")
-              }
+              onClick={() => void copyAddress(usableSignerAddress, "AGENT SIGNER")}
               className="flex h-8 items-center gap-1.5 border border-[var(--wl-line)] px-3 text-[10px] tracking-[0.12em] text-[var(--wl-secondary)] hover:border-[var(--wl-text-body)] hover:text-[var(--wl-body)]"
             >
-              <Copy className="h-3.5 w-3.5" strokeWidth={iconStroke} /> COPY
-              SIGNER
+              <Copy className="h-3.5 w-3.5" strokeWidth={iconStroke} /> COPY SIGNER
             </button>
           ) : null}
         </div>
@@ -5858,13 +5182,11 @@ function SmallStat({
 }>) {
   return (
     <div className="p-5">
-      <div className="text-[10px] tracking-[0.2em] text-[var(--wl-mute)]">
-        {label}
-      </div>
+      <div className="text-[10px] tracking-[0.2em] text-[var(--wl-mute)]">{label}</div>
       <div
         className={cn(
           "mt-2 font-cond text-[30px] font-semibold leading-none text-[var(--wl-ink)]",
-          valueClassName
+          valueClassName,
         )}
       >
         {value}
@@ -5872,14 +5194,12 @@ function SmallStat({
       <div
         className={cn(
           "mt-2 text-[11px]",
-          green ? "text-[var(--wl-green)]" : "text-[var(--wl-secondary)]"
+          green ? "text-[var(--wl-green)]" : "text-[var(--wl-secondary)]",
         )}
       >
         {trend}
       </div>
-      <div className="mt-1 text-[10px] tracking-[0.08em] text-[var(--wl-mute)]">
-        {caption}
-      </div>
+      <div className="mt-1 text-[10px] tracking-[0.08em] text-[var(--wl-mute)]">{caption}</div>
     </div>
   );
 }
@@ -5927,31 +5247,23 @@ export function PolicyEditorCanvasPage() {
     typeof params.walletId === "string"
       ? params.walletId
       : Array.isArray(params.walletId)
-      ? params.walletId[0] ?? ""
-      : "";
+        ? (params.walletId[0] ?? "")
+        : "";
   const { address, chainId, isConnected } = useAccount();
   const publicClient = usePublicClient({ chainId: arcTestnet.id });
   const { switchChainAsync, isPending: switchPending } = useSwitchChain();
   const { writeContractAsync, isPending: writePending } = useWriteContract();
   const utils = trpc.useUtils();
-  const [policyDraft, setPolicyDraft] =
-    useState<PolicyDraftState>(initialPolicyDraft);
-  const [activePolicyDraft, setActivePolicyDraft] =
-    useState<PolicyDraftState>(initialPolicyDraft);
-  const [selectedPolicyWalletAddress, setSelectedPolicyWalletAddress] =
-    useState("");
-  const [policyWalletOwner, setPolicyWalletOwner] = useState<Address | null>(
-    null
-  );
-  const [policyReadStatus, setPolicyReadStatus] =
-    useState<SignerReadStatus>("idle");
+  const [policyDraft, setPolicyDraft] = useState<PolicyDraftState>(initialPolicyDraft);
+  const [activePolicyDraft, setActivePolicyDraft] = useState<PolicyDraftState>(initialPolicyDraft);
+  const [selectedPolicyWalletAddress, setSelectedPolicyWalletAddress] = useState("");
+  const [policyWalletOwner, setPolicyWalletOwner] = useState<Address | null>(null);
+  const [policyReadStatus, setPolicyReadStatus] = useState<SignerReadStatus>("idle");
   const [policyError, setPolicyError] = useState<string | null>(null);
   const [policySaving, setPolicySaving] = useState(false);
   const [policyTxHash, setPolicyTxHash] = useState<Hash | null>(null);
   const [policyPendingIndexer, setPolicyPendingIndexer] = useState(false);
-  const [anomalyFreezeThresholdBps, setAnomalyFreezeThresholdBps] = useState<
-    bigint | null
-  >(null);
+  const [anomalyFreezeThresholdBps, setAnomalyFreezeThresholdBps] = useState<bigint | null>(null);
   const policySubmittingRef = useRef(false);
   const walletsQuery = trpc.wallets.list.useQuery(undefined, {
     enabled: workspace.isAuthenticated,
@@ -5965,36 +5277,30 @@ export function PolicyEditorCanvasPage() {
         id: wallet.id,
         label: wallet.label,
       })),
-    [walletsQuery.data]
+    [walletsQuery.data],
   );
-  const selectedGovernedWalletAddress = isEvmAddress(
-    selectedPolicyWalletAddress
-  )
+  const selectedGovernedWalletAddress = isEvmAddress(selectedPolicyWalletAddress)
     ? (selectedPolicyWalletAddress as Address)
     : null;
   const ownerMatchesConnectedWallet = Boolean(
-    policyWalletOwner && address && isSameAddress(policyWalletOwner, address)
+    policyWalletOwner && address && isSameAddress(policyWalletOwner, address),
   );
   const policyDiffs = useMemo(
     () => policyDiffRows(activePolicyDraft, policyDraft),
-    [activePolicyDraft, policyDraft]
+    [activePolicyDraft, policyDraft],
   );
   const unsavedCount = policyDiffs.length;
   const policyWritesBusy =
-    policySaving ||
-    policySubmittingRef.current ||
-    switchPending ||
-    writePending;
+    policySaving || policySubmittingRef.current || switchPending || writePending;
   const selectedPolicyWalletLabel =
-    policyWalletOptions.find((wallet) =>
-      isSameAddress(wallet.address, selectedPolicyWalletAddress)
-    )?.label ?? "Governed wallet";
+    policyWalletOptions.find((wallet) => isSameAddress(wallet.address, selectedPolicyWalletAddress))
+      ?.label ?? "Governed wallet";
 
   useEffect(() => {
     if (
       selectedPolicyWalletAddress &&
       policyWalletOptions.some((wallet) =>
-        isSameAddress(wallet.address, selectedPolicyWalletAddress)
+        isSameAddress(wallet.address, selectedPolicyWalletAddress),
       )
     ) {
       return;
@@ -6005,11 +5311,9 @@ export function PolicyEditorCanvasPage() {
       (wallet) =>
         wallet.id.toLowerCase() === normalizedRouteWalletId ||
         isSameAddress(wallet.address, routeWalletId) ||
-        wallet.label.toLowerCase() === normalizedRouteWalletId
+        wallet.label.toLowerCase() === normalizedRouteWalletId,
     );
-    setSelectedPolicyWalletAddress(
-      routeMatch?.address ?? policyWalletOptions[0]?.address ?? ""
-    );
+    setSelectedPolicyWalletAddress(routeMatch?.address ?? policyWalletOptions[0]?.address ?? "");
   }, [policyWalletOptions, routeWalletId, selectedPolicyWalletAddress]);
 
   useEffect(() => {
@@ -6088,22 +5392,22 @@ export function PolicyEditorCanvasPage() {
   const policyWriteDisabledReason = workspace.isDemo
     ? "Demo doctrine is simulated and read-only."
     : !selectedGovernedWalletAddress
-    ? walletsQuery.isLoading
-      ? "Loading governed wallets."
-      : "Create or select a governed wallet first."
-    : !isConnected
-    ? "Connect wallet first."
-    : !workspace.isAuthenticated
-    ? "Sign in to manage policy."
-    : policyReadStatus === "checking"
-    ? "Reading active policy from Arc Testnet."
-    : policyReadStatus === "error"
-    ? "Unable to read governed wallet policy on Arc Testnet."
-    : !ownerMatchesConnectedWallet
-    ? "Only the governed wallet owner can update policy."
-    : unsavedCount === 0
-    ? "No policy changes to submit."
-    : null;
+      ? walletsQuery.isLoading
+        ? "Loading governed wallets."
+        : "Create or select a governed wallet first."
+      : !isConnected
+        ? "Connect wallet first."
+        : !workspace.isAuthenticated
+          ? "Sign in to manage policy."
+          : policyReadStatus === "checking"
+            ? "Reading active policy from Arc Testnet."
+            : policyReadStatus === "error"
+              ? "Unable to read governed wallet policy on Arc Testnet."
+              : !ownerMatchesConnectedWallet
+                ? "Only the governed wallet owner can update policy."
+                : unsavedCount === 0
+                  ? "No policy changes to submit."
+                  : null;
   const policyNetworkNotice =
     isConnected && chainId !== arcTestnet.id
       ? "Wallet will be asked to switch to Arc Testnet."
@@ -6145,9 +5449,7 @@ export function PolicyEditorCanvasPage() {
     return selectedGovernedWalletAddress;
   };
 
-  const savePolicyOnChain = async (
-    event: ReactMouseEvent<HTMLButtonElement>
-  ) => {
+  const savePolicyOnChain = async (event: ReactMouseEvent<HTMLButtonElement>) => {
     if (!allowTrustedMutation("policies.update", event)) {
       return;
     }
@@ -6202,19 +5504,14 @@ export function PolicyEditorCanvasPage() {
     <GovernanceFrame
       active="agents"
       file={`${workspaceFileRoot(workspace)} / GOVERNANCE / AGENTS / ${
-        selectedGovernedWalletAddress
-          ? shortAddress(selectedGovernedWalletAddress)
-          : "NO WALLET"
+        selectedGovernedWalletAddress ? shortAddress(selectedGovernedWalletAddress) : "NO WALLET"
       } / DOCTRINE`}
       showRange={false}
     >
       <main className="px-5 py-5">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex min-w-0 items-center gap-3">
-            <ScrollText
-              className="h-4 w-4 text-[var(--wl-secondary)]"
-              strokeWidth={iconStroke}
-            />
+            <ScrollText className="h-4 w-4 text-[var(--wl-secondary)]" strokeWidth={iconStroke} />
             <span className="min-w-0 truncate text-[13px] tracking-[0.06em] text-[var(--wl-ink)]">
               DOCTRINE /{" "}
               <span className="text-[var(--wl-secondary)]">
@@ -6226,8 +5523,7 @@ export function PolicyEditorCanvasPage() {
             </span>
             {unsavedCount > 0 ? (
               <span className="flex items-center gap-1.5 border border-[var(--wl-amber)]/45 bg-[var(--wl-amber-tint)] px-2 py-0.5 text-[10px] tracking-[0.12em] text-[var(--wl-amber)]">
-                <span className="h-1.5 w-1.5 bg-[var(--wl-amber)]" />{" "}
-                {unsavedCount} UNSAVED CHANGES
+                <span className="h-1.5 w-1.5 bg-[var(--wl-amber)]" /> {unsavedCount} UNSAVED CHANGES
               </span>
             ) : (
               <span className="flex items-center gap-1.5 border border-[var(--wl-green)]/35 bg-[var(--wl-green-tint)] px-2 py-0.5 text-[10px] tracking-[0.12em] text-[var(--wl-green)]">
@@ -6239,8 +5535,8 @@ export function PolicyEditorCanvasPage() {
             {policyReadStatus === "checking"
               ? "READING ON-CHAIN POLICY"
               : policyPendingIndexer
-              ? "PENDING INDEXER SYNC"
-              : "ARC TESTNET POLICY"}
+                ? "PENDING INDEXER SYNC"
+                : "ARC TESTNET POLICY"}
           </div>
         </div>
 
@@ -6306,9 +5602,7 @@ function DoctrineForm({
     <div className="border border-[var(--wl-line)] bg-[var(--wl-bg-raised)]">
       <PanelHeader
         title="DOCTRINE FORM"
-        meta={
-          readStatus === "ready" ? "ACTIVE / ON-CHAIN" : "READING / ARC TESTNET"
-        }
+        meta={readStatus === "ready" ? "ACTIVE / ON-CHAIN" : "READING / ARC TESTNET"}
       />
       <FormSection title="01 - IDENTITY">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -6333,10 +5627,7 @@ function DoctrineForm({
                   </option>
                 ))
               ) : (
-                <option
-                  value=""
-                  className="bg-[var(--wl-bg-tint)] text-[var(--wl-ink)]"
-                >
+                <option value="" className="bg-[var(--wl-bg-tint)] text-[var(--wl-ink)]">
                   No governed wallet indexed
                 </option>
               )}
@@ -6347,15 +5638,13 @@ function DoctrineForm({
             muted
             icon={<Lock className="h-3 w-3" strokeWidth={iconStroke} />}
           >
-            {readStatus === "ready"
-              ? "GuardedWallet.policy()"
-              : "Awaiting on-chain read"}
+            {readStatus === "ready" ? "GuardedWallet.policy()" : "Awaiting on-chain read"}
           </Field>
         </div>
         <p className="mt-3 text-[11px] leading-relaxed text-[var(--wl-secondary)]">
-          Policy rules control what an authorized agent signer can spend.
-          Updates should be treated like security changes because they affect
-          how autonomous payments are approved, denied, escalated, or frozen.
+          Policy rules control what an authorized agent signer can spend. Updates should be treated
+          like security changes because they affect how autonomous payments are approved, denied,
+          escalated, or frozen.
         </p>
       </FormSection>
       <FormSection title="02 - SPEND LIMITS">
@@ -6409,9 +5698,7 @@ function DoctrineForm({
                 <span
                   className={cn(
                     "flex items-center gap-2 text-[12px]",
-                    enabled
-                      ? "text-[var(--wl-body)]"
-                      : "text-[var(--wl-secondary)]"
+                    enabled ? "text-[var(--wl-body)]" : "text-[var(--wl-secondary)]",
                   )}
                 >
                   <span
@@ -6423,17 +5710,13 @@ function DoctrineForm({
                 <span
                   className={cn(
                     "flex h-5 w-9 items-center px-0.5",
-                    enabled
-                      ? "bg-[var(--wl-blue-line)]"
-                      : "bg-[var(--wl-bg-tint)]"
+                    enabled ? "bg-[var(--wl-blue-line)]" : "bg-[var(--wl-bg-tint)]",
                   )}
                 >
                   <span
                     className={cn(
                       "h-4 w-4",
-                      enabled
-                        ? "ml-auto bg-[var(--wl-green)]"
-                        : "bg-[var(--wl-line-active)]"
+                      enabled ? "ml-auto bg-[var(--wl-green)]" : "bg-[var(--wl-line-active)]",
                     )}
                   />
                 </span>
@@ -6446,11 +5729,7 @@ function DoctrineForm({
         title="04 - VENDOR ALLOWLIST"
         right={
           <span
-            className={
-              draft.requireAllowlist
-                ? "text-[var(--wl-green)]"
-                : "text-[var(--wl-amber)]"
-            }
+            className={draft.requireAllowlist ? "text-[var(--wl-green)]" : "text-[var(--wl-amber)]"}
           >
             {draft.requireAllowlist ? "REQUIRED" : "OPTIONAL"}
           </span>
@@ -6460,18 +5739,12 @@ function DoctrineForm({
           type="button"
           aria-pressed={draft.requireAllowlist}
           disabled={saving}
-          onClick={() =>
-            onDraftChange({ requireAllowlist: !draft.requireAllowlist })
-          }
+          onClick={() => onDraftChange({ requireAllowlist: !draft.requireAllowlist })}
           className="flex h-9 w-full cursor-pointer items-center justify-between border border-[var(--wl-line)] bg-[var(--wl-bg-tint)] px-3 text-left text-[12px] text-[var(--wl-body)] hover:border-[var(--wl-line-active)] disabled:cursor-not-allowed disabled:opacity-60"
         >
           <span>Require VendorRegistry allowlist before spend</span>
           <span
-            className={
-              draft.requireAllowlist
-                ? "text-[var(--wl-green)]"
-                : "text-[var(--wl-amber)]"
-            }
+            className={draft.requireAllowlist ? "text-[var(--wl-green)]" : "text-[var(--wl-amber)]"}
           >
             {draft.requireAllowlist ? "ON" : "OFF"}
           </span>
@@ -6480,8 +5753,8 @@ function DoctrineForm({
           href="/vendors"
           className="mt-3 flex h-9 w-full items-center gap-2 border border-[var(--wl-line)] bg-[var(--wl-bg-tint)] px-3 text-left text-[12px] text-[var(--wl-mute)] hover:text-[var(--wl-secondary)]"
         >
-          <Plus className="h-3.5 w-3.5" strokeWidth={iconStroke} /> manage
-          specific vendors in VendorRegistry
+          <Plus className="h-3.5 w-3.5" strokeWidth={iconStroke} /> manage specific vendors in
+          VendorRegistry
         </Link>
       </FormSection>
       <FormSection title="05 - QUORUM & APPROVALS">
@@ -6515,9 +5788,8 @@ function DoctrineForm({
               APPROVERS
             </div>
             <div className="border border-[var(--wl-line)] bg-[var(--wl-bg-tint)] px-3 py-2 text-[11px] leading-relaxed text-[var(--wl-secondary)]">
-              Escalation council updates are a separate `configureEscalation`
-              transaction. This editor does not fake quorum writes until the
-              indexed council read model is available.
+              Escalation council updates are a separate `configureEscalation` transaction. This
+              editor does not fake quorum writes until the indexed council read model is available.
             </div>
           </div>
         </div>
@@ -6527,9 +5799,7 @@ function DoctrineForm({
           <div className="text-[10px] tracking-[0.22em] text-[var(--wl-mute)]">
             06 - ANOMALY THRESHOLD
           </div>
-          <div className="text-[12px] text-[var(--wl-ink)]">
-            {freezeThresholdLabel}
-          </div>
+          <div className="text-[12px] text-[var(--wl-ink)]">{freezeThresholdLabel}</div>
         </div>
         <Gauge value={37.5} label="" min="" max="" />
         <div className="mt-2 flex items-center justify-between text-[9px] tracking-[0.16em] text-[var(--wl-mute)]">
@@ -6537,9 +5807,8 @@ function DoctrineForm({
           <span>8.0 deviation permissive</span>
         </div>
         <div className="mt-3 border border-[var(--wl-line)] bg-[var(--wl-bg-tint)] px-3 py-2 text-[11px] leading-relaxed text-[var(--wl-secondary)]">
-          Freeze threshold writes are not included in this policy transaction
-          because the deployed event does not expose a threshold update for
-          indexer sync.
+          Freeze threshold writes are not included in this policy transaction because the deployed
+          event does not expose a threshold update for indexer sync.
         </div>
         {networkNotice ? (
           <div className="mt-3 border border-[var(--wl-amber)]/30 bg-[var(--wl-amber-tint)] px-3 py-2 text-[11px] tracking-[0.08em] text-[var(--wl-amber)]">
@@ -6564,13 +5833,11 @@ function PolicyMoneyInput({
 }>) {
   return (
     <label>
-      <div className="mb-1.5 text-[10px] tracking-[0.1em] text-[var(--wl-mute)]">
-        {label}
-      </div>
+      <div className="mb-1.5 text-[10px] tracking-[0.1em] text-[var(--wl-mute)]">{label}</div>
       <div
         className={cn(
           "flex h-9 items-center border bg-[var(--wl-bg-tint)] px-3 text-[12px]",
-          warn ? "border-[var(--wl-amber)]/40" : "border-[var(--wl-line)]"
+          warn ? "border-[var(--wl-amber)]/40" : "border-[var(--wl-line)]",
         )}
       >
         <span className="text-[var(--wl-mute)]">$</span>
@@ -6580,9 +5847,7 @@ function PolicyMoneyInput({
           inputMode="decimal"
           className="ml-1 min-w-0 flex-1 bg-transparent text-[var(--wl-ink)] outline-none"
         />
-        <span className="ml-2 text-[10px] tracking-[0.08em] text-[var(--wl-mute)]">
-          USDC
-        </span>
+        <span className="ml-2 text-[10px] tracking-[0.08em] text-[var(--wl-mute)]">USDC</span>
       </div>
     </label>
   );
@@ -6596,13 +5861,9 @@ function FormSection({
   return (
     <div className="border-b border-[var(--wl-line)] p-5">
       <div className="flex items-center justify-between">
-        <div className="text-[10px] tracking-[0.22em] text-[var(--wl-mute)]">
-          {title}
-        </div>
+        <div className="text-[10px] tracking-[0.22em] text-[var(--wl-mute)]">{title}</div>
         {right ? (
-          <div className="text-[10px] tracking-[0.1em] text-[var(--wl-mute)]">
-            {right}
-          </div>
+          <div className="text-[10px] tracking-[0.1em] text-[var(--wl-mute)]">{right}</div>
         ) : null}
       </div>
       <div className="mt-3">{children}</div>
@@ -6631,28 +5892,22 @@ function Field({
 }>) {
   return (
     <div>
-      <div className="mb-1.5 text-[10px] tracking-[0.1em] text-[var(--wl-mute)]">
-        {label}
-      </div>
+      <div className="mb-1.5 text-[10px] tracking-[0.1em] text-[var(--wl-mute)]">{label}</div>
       <div
         className={cn(
           "flex h-9 items-center border bg-[var(--wl-bg-tint)] px-3 text-[12px]",
           warn
             ? "border-[var(--wl-amber)]/40"
             : active
-            ? "border-[var(--wl-line-active)]"
-            : "border-[var(--wl-line)]",
-          muted ? "text-[var(--wl-secondary)]" : "text-[var(--wl-ink)]"
+              ? "border-[var(--wl-line-active)]"
+              : "border-[var(--wl-line)]",
+          muted ? "text-[var(--wl-secondary)]" : "text-[var(--wl-ink)]",
         )}
       >
         {icon}
-        {prefix ? (
-          <span className="text-[var(--wl-mute)]">{prefix}</span>
-        ) : null}
+        {prefix ? <span className="text-[var(--wl-mute)]">{prefix}</span> : null}
         <span className={cn(prefix && "ml-1", icon && "ml-2")}>{children}</span>
-        {cursor ? (
-          <span className="ml-0.5 inline-block h-3.5 w-px bg-[var(--wl-signal)]" />
-        ) : null}
+        {cursor ? <span className="ml-0.5 inline-block h-3.5 w-px bg-[var(--wl-signal)]" /> : null}
       </div>
     </div>
   );
@@ -6685,9 +5940,7 @@ function DoctrineSimulation({
         <button
           type="button"
           onClick={() =>
-            toast.success(
-              `POLICY PREVIEW UPDATED / ${enabledCategories.size} categories enabled`
-            )
+            toast.success(`POLICY PREVIEW UPDATED / ${enabledCategories.size} categories enabled`)
           }
           className="flex items-center gap-1.5 border border-[var(--wl-line-active)] px-2 py-1 text-[10px] tracking-[0.14em] text-[var(--wl-body)] hover:border-[var(--wl-signal)] hover:text-[var(--wl-signal)]"
         >
@@ -6697,32 +5950,23 @@ function DoctrineSimulation({
       <div className="p-4">
         <div className="border border-[var(--wl-line)] bg-[var(--wl-bg-tint)] p-3">
           <div className="flex items-center justify-between text-[10px] tracking-[0.14em]">
-            <span className="text-[var(--wl-mute)]">
-              INDEXED ACTIVITY REPLAY
-            </span>
+            <span className="text-[var(--wl-mute)]">INDEXED ACTIVITY REPLAY</span>
             <span className="text-[var(--wl-secondary)]">NOT LOADED</span>
           </div>
           <div className="mt-2 text-[11px] leading-relaxed text-[var(--wl-secondary)]">
-            This panel shows the policy diff only. It does not invent historical
-            spend, vendors, or payment verdicts for a live wallet.
+            This panel shows the policy diff only. It does not invent historical spend, vendors, or
+            payment verdicts for a live wallet.
           </div>
         </div>
       </div>
       <div className="border-t border-[var(--wl-line)]">
         <div className="border-t border-[var(--wl-line)] p-4">
-          <div className="text-[10px] tracking-[0.16em] text-[var(--wl-mute)]">
-            DOCTRINE DIFF
-          </div>
+          <div className="text-[10px] tracking-[0.16em] text-[var(--wl-mute)]">DOCTRINE DIFF</div>
           <div className="mt-2 divide-y divide-[var(--wl-line-soft)] border border-[var(--wl-line)] text-[11px]">
             {diffRows.length > 0 ? (
               diffRows.map(([label, before, after]) => (
-                <div
-                  key={label}
-                  className="flex items-center justify-between gap-3 px-3 py-2"
-                >
-                  <span className="text-[var(--wl-amber)]">
-                    + {label.toLowerCase()}
-                  </span>
+                <div key={label} className="flex items-center justify-between gap-3 px-3 py-2">
+                  <span className="text-[var(--wl-amber)]">+ {label.toLowerCase()}</span>
                   <span className="min-w-0 text-right">
                     <span className="text-[var(--wl-mute)]">{before}</span> to{" "}
                     <span className="text-[var(--wl-body)]">{after}</span>
@@ -6730,9 +5974,7 @@ function DoctrineSimulation({
                 </div>
               ))
             ) : (
-              <div className="px-3 py-2 text-[var(--wl-green)]">
-                No policy changes pending.
-              </div>
+              <div className="px-3 py-2 text-[var(--wl-green)]">No policy changes pending.</div>
             )}
           </div>
           <PolicyWriteNotice
@@ -6773,8 +6015,8 @@ function PolicyWriteNotice({
     <div className="mt-3 space-y-2">
       {pendingIndexer ? (
         <div className="border border-[var(--wl-green)]/30 bg-[var(--wl-green-tint)] px-3 py-2 text-[11px] text-[var(--wl-green)]">
-          Contract confirmed. Policy is live on-chain; event indexer may lag
-          before read-model refresh.
+          Contract confirmed. Policy is live on-chain; event indexer may lag before read-model
+          refresh.
         </div>
       ) : null}
       {error ? (
@@ -6792,8 +6034,7 @@ function PolicyWriteNotice({
               rel="noreferrer"
               className="flex items-center gap-1 text-[var(--wl-secondary)] hover:text-[var(--wl-body)]"
             >
-              OPEN IN ARCSCAN{" "}
-              <ExternalLink className="h-3 w-3" strokeWidth={iconStroke} />
+              OPEN IN ARCSCAN <ExternalLink className="h-3 w-3" strokeWidth={iconStroke} />
             </a>
           ) : null}
         </div>
@@ -6811,14 +6052,14 @@ function PolicyWriteNotice({
           "text-left text-[10px] tracking-[0.14em]",
           disabledReason
             ? "cursor-not-allowed text-[var(--wl-mute)] opacity-70"
-            : "text-[var(--wl-amber)] hover:text-[var(--wl-body)]"
+            : "text-[var(--wl-amber)] hover:text-[var(--wl-body)]",
         )}
       >
         {saving
           ? "CONFIRMING POLICY..."
           : unsavedCount > 0
-          ? `${unsavedCount} CHANGES / SUBMIT ON-CHAIN`
-          : "NO POLICY CHANGES"}
+            ? `${unsavedCount} CHANGES / SUBMIT ON-CHAIN`
+            : "NO POLICY CHANGES"}
       </button>
     </div>
   );
@@ -6831,28 +6072,19 @@ export function VendorsCanvasPage() {
   const { switchChainAsync, isPending: switchPending } = useSwitchChain();
   const { writeContractAsync, isPending: writePending } = useWriteContract();
   const liveVendors = useLiveVendors();
-  const [localVendors, setLocalVendors] = useState<readonly VendorDisplay[]>(
-    []
-  );
+  const [localVendors, setLocalVendors] = useState<readonly VendorDisplay[]>([]);
   const [addVendorOpen, setAddVendorOpen] = useState(false);
-  const [vendorForm, setVendorForm] =
-    useState<AddVendorFormState>(initialVendorForm);
+  const [vendorForm, setVendorForm] = useState<AddVendorFormState>(initialVendorForm);
   const [vendorError, setVendorError] = useState<string | null>(null);
   const [vendorSaving, setVendorSaving] = useState(false);
   const [vendorTxHash, setVendorTxHash] = useState<Hash | null>(null);
   const [vendorQuery, setVendorQuery] = useState("");
   const [vendorCategory, setVendorCategory] = useState("ALL");
-  const [openVendorMenuKey, setOpenVendorMenuKey] = useState<string | null>(
-    null
-  );
+  const [openVendorMenuKey, setOpenVendorMenuKey] = useState<string | null>(null);
   const [detailVendor, setDetailVendor] = useState<VendorDisplay | null>(null);
-  const [selectedVendorWalletAddress, setSelectedVendorWalletAddress] =
-    useState("");
-  const [vendorWalletOwner, setVendorWalletOwner] = useState<Address | null>(
-    null
-  );
-  const [vendorOwnerReadStatus, setVendorOwnerReadStatus] =
-    useState<SignerReadStatus>("idle");
+  const [selectedVendorWalletAddress, setSelectedVendorWalletAddress] = useState("");
+  const [vendorWalletOwner, setVendorWalletOwner] = useState<Address | null>(null);
+  const [vendorOwnerReadStatus, setVendorOwnerReadStatus] = useState<SignerReadStatus>("idle");
   const vendorSubmittingRef = useRef(false);
   const utils = trpc.useUtils();
   const walletsQuery = trpc.wallets.list.useQuery(undefined, {
@@ -6867,29 +6099,24 @@ export function VendorsCanvasPage() {
         address: wallet.address,
         label: wallet.label,
       })),
-    [walletsQuery.data]
+    [walletsQuery.data],
   );
-  const selectedGovernedWalletAddress = isEvmAddress(
-    selectedVendorWalletAddress
-  )
+  const selectedGovernedWalletAddress = isEvmAddress(selectedVendorWalletAddress)
     ? (selectedVendorWalletAddress as Address)
     : null;
   const ownerMatchesConnectedWallet = Boolean(
-    vendorWalletOwner && address && isSameAddress(vendorWalletOwner, address)
+    vendorWalletOwner && address && isSameAddress(vendorWalletOwner, address),
   );
   const vendorWritesBusy =
-    vendorSaving ||
-    vendorSubmittingRef.current ||
-    switchPending ||
-    writePending;
+    vendorSaving || vendorSubmittingRef.current || switchPending || writePending;
   const baseRows: readonly VendorDisplay[] = useMemo(
     () =>
       canShowDemoWorkspace
         ? vendors
         : liveVendors.data.length > 0
-        ? liveVendors.data.map(vendorRowFromLive)
-        : [],
-    [liveVendors.data, canShowDemoWorkspace]
+          ? liveVendors.data.map(vendorRowFromLive)
+          : [],
+    [liveVendors.data, canShowDemoWorkspace],
   );
   const scopedLocalVendors: readonly VendorDisplay[] = useMemo(() => {
     if (!workspace.isAuthenticated || !selectedGovernedWalletAddress) {
@@ -6897,18 +6124,17 @@ export function VendorsCanvasPage() {
     }
 
     return localVendors.filter((vendor) =>
-      isSameAddress(vendor[7]?.walletAddress, selectedGovernedWalletAddress)
+      isSameAddress(vendor[7]?.walletAddress, selectedGovernedWalletAddress),
     );
   }, [localVendors, selectedGovernedWalletAddress, workspace.isAuthenticated]);
   const unfilteredRows: readonly VendorDisplay[] = useMemo(
     () => [...scopedLocalVendors, ...baseRows],
-    [baseRows, scopedLocalVendors]
+    [baseRows, scopedLocalVendors],
   );
   const rows = useMemo(() => {
     const query = normalizeSearch(vendorQuery);
     return unfilteredRows.filter((vendor) => {
-      const [, name, address, category, approvedBy, confidential, used, risk] =
-        vendor;
+      const [, name, address, category, approvedBy, confidential, used, risk] = vendor;
       const categoryMatches =
         vendorCategory === "ALL" ||
         String(category) === vendorCategory ||
@@ -6925,8 +6151,7 @@ export function VendorsCanvasPage() {
       return categoryMatches && queryMatches;
     });
   }, [unfilteredRows, vendorCategory, vendorQuery]);
-  const vendorFiltersActive =
-    vendorQuery.trim() !== "" || vendorCategory !== "ALL";
+  const vendorFiltersActive = vendorQuery.trim() !== "" || vendorCategory !== "ALL";
   const resetVendorFilters = () => {
     setVendorQuery("");
     setVendorCategory("ALL");
@@ -6936,11 +6161,10 @@ export function VendorsCanvasPage() {
       ALL: unfilteredRows.length,
       API: unfilteredRows.filter((vendor) => vendor[3] === "API").length,
       ARCANEVM: unfilteredRows.filter((vendor) => vendor[5]).length,
-      COMPUTE: unfilteredRows.filter((vendor) => vendor[3] === "COMPUTE")
-        .length,
+      COMPUTE: unfilteredRows.filter((vendor) => vendor[3] === "COMPUTE").length,
       DATA: unfilteredRows.filter((vendor) => vendor[3] === "DATA").length,
     }),
-    [unfilteredRows]
+    [unfilteredRows],
   );
   const emptyVendors = getWorkspaceEmptyCopy(workspace.dataMode, "vendors");
 
@@ -6948,7 +6172,7 @@ export function VendorsCanvasPage() {
     if (
       selectedVendorWalletAddress &&
       vendorWalletOptions.some((wallet) =>
-        isSameAddress(wallet.address, selectedVendorWalletAddress)
+        isSameAddress(wallet.address, selectedVendorWalletAddress),
       )
     ) {
       return;
@@ -6970,9 +6194,7 @@ export function VendorsCanvasPage() {
 
     if (!publicClient || !selectedGovernedWalletAddress) {
       setVendorWalletOwner(null);
-      setVendorOwnerReadStatus(
-        selectedGovernedWalletAddress ? "error" : "idle"
-      );
+      setVendorOwnerReadStatus(selectedGovernedWalletAddress ? "error" : "idle");
       return () => {
         cancelled = true;
       };
@@ -7022,11 +6244,7 @@ export function VendorsCanvasPage() {
       return;
     }
 
-    if (
-      !rows.some(
-        (vendor) => vendorRowKey(vendor) === vendorRowKey(detailVendor)
-      )
-    ) {
+    if (!rows.some((vendor) => vendorRowKey(vendor) === vendorRowKey(detailVendor))) {
       setDetailVendor(null);
     }
   }, [detailVendor, rows]);
@@ -7048,20 +6266,20 @@ export function VendorsCanvasPage() {
   const vendorWriteDisabledReason = workspace.isDemo
     ? "Demo vendor registry is simulated and read-only."
     : !selectedGovernedWalletAddress
-    ? walletsQuery.isLoading
-      ? "Loading governed wallets."
-      : "Create or select a governed wallet first."
-    : !isConnected
-    ? "Connect wallet first."
-    : !workspace.isAuthenticated
-    ? "Sign in to manage VendorRegistry."
-    : vendorOwnerReadStatus === "checking"
-    ? "Checking governed wallet owner."
-    : vendorOwnerReadStatus === "error"
-    ? "Unable to read governed wallet owner on Arc Testnet."
-    : !ownerMatchesConnectedWallet
-    ? "Only the governed wallet owner can manage vendors."
-    : null;
+      ? walletsQuery.isLoading
+        ? "Loading governed wallets."
+        : "Create or select a governed wallet first."
+      : !isConnected
+        ? "Connect wallet first."
+        : !workspace.isAuthenticated
+          ? "Sign in to manage VendorRegistry."
+          : vendorOwnerReadStatus === "checking"
+            ? "Checking governed wallet owner."
+            : vendorOwnerReadStatus === "error"
+              ? "Unable to read governed wallet owner on Arc Testnet."
+              : !ownerMatchesConnectedWallet
+                ? "Only the governed wallet owner can manage vendors."
+                : null;
   const vendorNetworkNotice =
     isConnected && chainId !== arcTestnet.id
       ? "Wallet will be asked to switch to Arc Testnet."
@@ -7089,7 +6307,7 @@ export function VendorsCanvasPage() {
     category: VendorCategoryValue,
     perVendorCap: bigint,
     note: string | undefined,
-    status: VendorDisplayMeta["status"]
+    status: VendorDisplayMeta["status"],
   ) => {
     const nextVendor: VendorDisplay = [
       vendorInitials(name),
@@ -7129,19 +6347,15 @@ export function VendorsCanvasPage() {
       return;
     }
 
-    if (
-      meta?.walletAddress &&
-      !isSameAddress(meta.walletAddress, selectedVendorWalletAddress)
-    ) {
+    if (meta?.walletAddress && !isSameAddress(meta.walletAddress, selectedVendorWalletAddress)) {
       setSelectedVendorWalletAddress(meta.walletAddress);
     }
 
     setVendorForm({
       address,
       category:
-        vendorCategoryOptions.find(
-          (option) => categoryLabel(option.value) === category
-        )?.value ?? "other",
+        vendorCategoryOptions.find((option) => categoryLabel(option.value) === category)?.value ??
+        "other",
       confidential,
       name,
       notes: meta?.note ?? "",
@@ -7183,15 +6397,10 @@ export function VendorsCanvasPage() {
         throw new Error("Select a valid vendor category.");
       }
 
-      const perVendorCap = parseUsdcCapInput(
-        vendorForm.perVendorCap,
-        "Per-vendor cap"
-      );
+      const perVendorCap = parseUsdcCapInput(vendorForm.perVendorCap, "Per-vendor cap");
       const governedWallet = await ensureVendorWriteReady();
       const vendorAddress = address as Address;
-      const metadataHash = keccak256(
-        toBytes(`arcanum-vendor:${name}:${vendorAddress}:${notes}`)
-      );
+      const metadataHash = keccak256(toBytes(`arcanum-vendor:${name}:${vendorAddress}:${notes}`));
 
       const hash = await writeContractAsync({
         address: governedWallet,
@@ -7216,7 +6425,7 @@ export function VendorsCanvasPage() {
         vendorForm.category,
         perVendorCap,
         notes || undefined,
-        perVendorCap > 0n ? "confidential" : "approved"
+        perVendorCap > 0n ? "confidential" : "approved",
       );
       await utils.vendors.list.invalidate();
       setVendorForm(initialVendorForm);
@@ -7238,7 +6447,7 @@ export function VendorsCanvasPage() {
   const setVendorStatusRemote = async (
     action: "block" | "remove",
     vendor: VendorDisplay,
-    event: ReactMouseEvent<HTMLButtonElement>
+    event: ReactMouseEvent<HTMLButtonElement>,
   ) => {
     if (!allowTrustedMutation(`vendors.${action}`, event)) {
       return;
@@ -7256,10 +6465,7 @@ export function VendorsCanvasPage() {
       return;
     }
 
-    if (
-      meta?.walletAddress &&
-      !isSameAddress(meta.walletAddress, selectedVendorWalletAddress)
-    ) {
+    if (meta?.walletAddress && !isSameAddress(meta.walletAddress, selectedVendorWalletAddress)) {
       toast.info("Vendor action unavailable", {
         description: "Select this vendor's governed wallet before writing.",
       });
@@ -7293,32 +6499,23 @@ export function VendorsCanvasPage() {
       updatePendingVendorRow(
         address as Address,
         name,
-        vendorCategoryOptions.find(
-          (option) => categoryLabel(option.value) === category
-        )?.value ?? "other",
+        vendorCategoryOptions.find((option) => categoryLabel(option.value) === category)?.value ??
+          "other",
         confidential ? parseUnits("100", 6) : 0n,
         meta?.note,
-        action === "block" ? "blocked" : undefined
+        action === "block" ? "blocked" : undefined,
       );
       await utils.vendors.list.invalidate();
-      toast.success(
-        action === "block"
-          ? "VENDOR BLOCK CONFIRMED"
-          : "VENDOR REMOVE CONFIRMED",
-        {
-          description:
-            "On-chain write confirmed. Event indexer may lag before the read model updates.",
-        }
-      );
+      toast.success(action === "block" ? "VENDOR BLOCK CONFIRMED" : "VENDOR REMOVE CONFIRMED", {
+        description:
+          "On-chain write confirmed. Event indexer may lag before the read model updates.",
+      });
     } catch (caught) {
       const message = errorMessage(caught);
       setVendorError(message);
-      toast.error(
-        action === "block" ? "VENDOR BLOCK FAILED" : "VENDOR REMOVE FAILED",
-        {
-          description: message,
-        }
-      );
+      toast.error(action === "block" ? "VENDOR BLOCK FAILED" : "VENDOR REMOVE FAILED", {
+        description: message,
+      });
     } finally {
       setVendorSaving(false);
       vendorSubmittingRef.current = false;
@@ -7345,9 +6542,10 @@ export function VendorsCanvasPage() {
           />
           <StatTile
             label="CATEGORIES"
-            value={String(
-              new Set(unfilteredRows.map((vendor) => String(vendor[3]))).size
-            ).padStart(2, "0")}
+            value={String(new Set(unfilteredRows.map((vendor) => String(vendor[3]))).size).padStart(
+              2,
+              "0",
+            )}
             caption="PENDING REVIEW 00"
           />
           <StatTile
@@ -7377,7 +6575,7 @@ export function VendorsCanvasPage() {
                     "flex items-center gap-1.5 border px-3 py-1.5",
                     selected
                       ? "border-[var(--wl-line-active)] bg-[var(--wl-bg-soft)] text-[var(--wl-ink)]"
-                      : "border-[var(--wl-line)] text-[var(--wl-secondary)] hover:text-[var(--wl-body)]"
+                      : "border-[var(--wl-line)] text-[var(--wl-secondary)] hover:text-[var(--wl-body)]",
                   )}
                 >
                   {category ? (
@@ -7404,9 +6602,7 @@ export function VendorsCanvasPage() {
             <span className="text-[10px] tracking-[0.12em]">WALLET</span>
             <select
               value={selectedVendorWalletAddress}
-              onChange={(event) =>
-                setSelectedVendorWalletAddress(event.target.value)
-              }
+              onChange={(event) => setSelectedVendorWalletAddress(event.target.value)}
               disabled={vendorWalletOptions.length === 0 || vendorWritesBusy}
               className="min-w-0 flex-1 appearance-none bg-transparent text-[12px] text-[var(--wl-ink)] outline-none disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -7421,10 +6617,7 @@ export function VendorsCanvasPage() {
                   </option>
                 ))
               ) : (
-                <option
-                  value=""
-                  className="bg-[var(--wl-bg-tint)] text-[var(--wl-ink)]"
-                >
+                <option value="" className="bg-[var(--wl-bg-tint)] text-[var(--wl-ink)]">
                   No governed wallet
                 </option>
               )}
@@ -7440,16 +6633,13 @@ export function VendorsCanvasPage() {
         </div>
 
         <div className="border border-[var(--wl-line)] bg-[var(--wl-bg-raised)]">
-          <PanelHeader
-            title="VENDOR REGISTRY"
-            meta={`${vendorCounts.ALL} COUNTERPARTIES`}
-          />
+          <PanelHeader title="VENDOR REGISTRY" meta={`${vendorCounts.ALL} COUNTERPARTIES`} />
           <div className="overflow-x-auto">
             <div className="min-w-[940px]">
               <div
                 className={cn(
                   vendorGridClass,
-                  "items-center border-b border-[var(--wl-line)] px-4 py-2 text-[10px] tracking-[0.13em] text-[var(--wl-mute)]"
+                  "items-center border-b border-[var(--wl-line)] px-4 py-2 text-[10px] tracking-[0.13em] text-[var(--wl-mute)]",
                 )}
               >
                 <span className="min-w-0 truncate">VENDOR</span>
@@ -7482,9 +6672,7 @@ export function VendorsCanvasPage() {
                           setOpenVendorMenuKey(null);
                         }}
                         vendor={vendor}
-                        onMenuOpenChange={(open) =>
-                          setOpenVendorMenuKey(open ? rowKey : null)
-                        }
+                        onMenuOpenChange={(open) => setOpenVendorMenuKey(open ? rowKey : null)}
                         onRemoveVendor={(event) =>
                           void setVendorStatusRemote("remove", vendor, event)
                         }
@@ -7493,9 +6681,7 @@ export function VendorsCanvasPage() {
                   })
                 ) : vendorFiltersActive && unfilteredRows.length > 0 ? (
                   <EmptyState
-                    actionLabel={
-                      vendorQuery.trim() ? "CLEAR SEARCH" : "RESET FILTERS"
-                    }
+                    actionLabel={vendorQuery.trim() ? "CLEAR SEARCH" : "RESET FILTERS"}
                     description={
                       vendorQuery.trim()
                         ? `No vendors match "${vendorQuery.trim()}". Clear search or try another term.`
@@ -7505,10 +6691,7 @@ export function VendorsCanvasPage() {
                     title="NO VENDORS MATCH THIS FILTER"
                   />
                 ) : (
-                  <EmptyState
-                    description={emptyVendors.description}
-                    title={emptyVendors.title}
-                  />
+                  <EmptyState description={emptyVendors.description} title={emptyVendors.title} />
                 )}
               </div>
               <div className="flex h-9 items-center justify-between border-t border-[var(--wl-line)] px-4 text-[10px] tracking-[0.14em] text-[var(--wl-mute)]">
@@ -7516,9 +6699,7 @@ export function VendorsCanvasPage() {
                   {vendorCounts.ALL} COUNTERPARTIES /{" "}
                   {String(vendorCounts.ARCANEVM).padStart(2, "0")} SHIELDED
                 </span>
-                <span>
-                  {canShowDemoWorkspace ? "DEMO DATA" : "LIVE WORKSPACE"}
-                </span>
+                <span>{canShowDemoWorkspace ? "DEMO DATA" : "LIVE WORKSPACE"}</span>
               </div>
             </div>
           </div>
@@ -7599,9 +6780,7 @@ function AddVendorModal({
       />
       <section className="fixed left-1/2 top-1/2 z-[60] flex max-h-[calc(100vh-32px)] w-[520px] max-w-[calc(100vw-32px)] -translate-x-1/2 -translate-y-1/2 flex-col border border-[var(--wl-line)] bg-[var(--wl-bg-raised)] shadow-[0_0_60px_rgba(0,0,0,0.65)]">
         <div className="flex h-[52px] items-center justify-between border-b border-[var(--wl-line)] bg-[var(--wl-bg-soft)] px-5">
-          <div className="text-[11px] tracking-[0.18em] text-[var(--wl-body)]">
-            ADD VENDOR
-          </div>
+          <div className="text-[11px] tracking-[0.18em] text-[var(--wl-body)]">ADD VENDOR</div>
           <button
             type="button"
             aria-label="Close add vendor dialog"
@@ -7614,8 +6793,8 @@ function AddVendorModal({
         </div>
         <div className="min-h-0 space-y-4 overflow-y-auto p-5 text-[12px] text-[var(--wl-secondary)]">
           <p className="leading-relaxed">
-            Vendors are approved payment destinations for your governed wallet.
-            Agent spend requests to vendors still pass through policy checks.
+            Vendors are approved payment destinations for your governed wallet. Agent spend requests
+            to vendors still pass through policy checks.
           </p>
           <label className="space-y-1.5">
             <span className="block text-[10px] tracking-[0.14em] text-[var(--wl-mute)]">
@@ -7638,10 +6817,7 @@ function AddVendorModal({
                   </option>
                 ))
               ) : (
-                <option
-                  value=""
-                  className="bg-[var(--wl-bg-tint)] text-[var(--wl-ink)]"
-                >
+                <option value="" className="bg-[var(--wl-bg-tint)] text-[var(--wl-ink)]">
                   No governed wallet indexed
                 </option>
               )}
@@ -7695,8 +6871,8 @@ function AddVendorModal({
               className="h-9 w-full border border-[var(--wl-line)] bg-[var(--wl-bg-tint)] px-3 font-mono text-[12px] text-[var(--wl-body)] outline-none placeholder:text-[var(--wl-text-faint)] focus:border-[var(--wl-line-active)]"
             />
             <span className="block text-[10px] tracking-[0.1em] text-[var(--wl-mute)]">
-              On-chain VendorRegistry writes require a 0x destination address.
-              Domains can be captured in notes.
+              On-chain VendorRegistry writes require a 0x destination address. Domains can be
+              captured in notes.
             </span>
           </label>
           <label className="space-y-1.5">
@@ -7705,9 +6881,7 @@ function AddVendorModal({
             </span>
             <input
               value={form.perVendorCap}
-              onChange={(event) =>
-                onChange({ perVendorCap: event.target.value })
-              }
+              onChange={(event) => onChange({ perVendorCap: event.target.value })}
               inputMode="decimal"
               placeholder="0"
               className="h-9 w-full border border-[var(--wl-line)] bg-[var(--wl-bg-tint)] px-3 text-[12px] text-[var(--wl-body)] outline-none placeholder:text-[var(--wl-text-faint)] focus:border-[var(--wl-line-active)]"
@@ -7717,9 +6891,7 @@ function AddVendorModal({
             </span>
           </label>
           <label className="space-y-1.5">
-            <span className="block text-[10px] tracking-[0.14em] text-[var(--wl-mute)]">
-              NOTES
-            </span>
+            <span className="block text-[10px] tracking-[0.14em] text-[var(--wl-mute)]">NOTES</span>
             <textarea
               value={form.notes}
               onChange={(event) => onChange({ notes: event.target.value })}
@@ -7799,8 +6971,7 @@ function VendorDetailsModal({
   selectedWalletAddress: string;
   vendor: VendorDisplay;
 }>) {
-  const [, name, address, category, approvedBy, confidential, used, meta] =
-    vendor;
+  const [, name, address, category, approvedBy, confidential, used, meta] = vendor;
   const arcscanAddressUrl = getArcscanAddressUrl(address);
   const status = meta?.status ?? (confidential ? "confidential" : "approved");
   const linkedWallet = meta?.walletAddress || selectedWalletAddress;
@@ -7878,7 +7049,7 @@ function VendorDetailsModal({
                   "shrink-0 border px-2 py-1 text-[10px] tracking-[0.12em]",
                   status === "blocked"
                     ? "border-[var(--wl-signal)]/40 text-[var(--wl-signal)]"
-                    : "border-[var(--wl-green)]/30 text-[var(--wl-green)]"
+                    : "border-[var(--wl-green)]/30 text-[var(--wl-green)]",
                 )}
               >
                 {status.toUpperCase()}
@@ -7895,18 +7066,14 @@ function VendorDetailsModal({
             <VendorDetailField
               label="LINKED WALLET"
               value={
-                linkedWallet && isEvmAddress(linkedWallet)
-                  ? shortAddress(linkedWallet)
-                  : "N/A"
+                linkedWallet && isEvmAddress(linkedWallet) ? shortAddress(linkedWallet) : "N/A"
               }
             />
             <VendorDetailField label="CREATED" value={createdAt} />
             <VendorDetailField label="LAST USED" value={lastUsed} />
             <VendorDetailField
               label="APPROVED BY"
-              value={
-                approvedBy.length > 0 ? approvedBy.join(", ") : "Owner-managed"
-              }
+              value={approvedBy.length > 0 ? approvedBy.join(", ") : "Owner-managed"}
             />
           </div>
 
@@ -7917,16 +7084,12 @@ function VendorDetailsModal({
             <div className="mt-3 grid gap-2 text-[11px] leading-relaxed">
               <div className="flex items-center justify-between gap-3">
                 <span>Vendor allowlist</span>
-                <span className="text-[var(--wl-body)]">
-                  Controlled by wallet doctrine
-                </span>
+                <span className="text-[var(--wl-body)]">Controlled by wallet doctrine</span>
               </div>
               <div className="flex items-center justify-between gap-3">
                 <span>Per-vendor cap</span>
                 <span className="text-[var(--wl-body)]">
-                  {confidential
-                    ? "Configured / shielded"
-                    : "Not set in read model"}
+                  {confidential ? "Configured / shielded" : "Not set in read model"}
                 </span>
               </div>
               <div className="flex items-center justify-between gap-3">
@@ -7944,8 +7107,7 @@ function VendorDetailsModal({
                 rel="noreferrer"
                 className="flex h-8 items-center gap-1.5 border border-[var(--wl-line)] px-3 text-[10px] tracking-[0.12em] text-[var(--wl-secondary)] hover:border-[var(--wl-text-body)] hover:text-[var(--wl-body)]"
               >
-                OPEN IN ARCSCAN{" "}
-                <ExternalLink className="h-3 w-3" strokeWidth={iconStroke} />
+                OPEN IN ARCSCAN <ExternalLink className="h-3 w-3" strokeWidth={iconStroke} />
               </a>
             ) : null}
             <button
@@ -7962,15 +7124,10 @@ function VendorDetailsModal({
   );
 }
 
-function VendorDetailField({
-  label,
-  value,
-}: Readonly<{ label: string; value: string }>) {
+function VendorDetailField({ label, value }: Readonly<{ label: string; value: string }>) {
   return (
     <div className="border border-[var(--wl-line)] bg-[var(--wl-bg-tint)] p-3">
-      <div className="text-[10px] tracking-[0.16em] text-[var(--wl-mute)]">
-        {label}
-      </div>
+      <div className="text-[10px] tracking-[0.16em] text-[var(--wl-mute)]">{label}</div>
       <div className="mt-1 min-h-5 break-words text-[12px] text-[var(--wl-body)]">
         {value || "N/A"}
       </div>
@@ -7995,16 +7152,7 @@ function VendorRow({
   onViewDetails: () => void;
   vendor: VendorDisplay;
 }>) {
-  const [
-    initials,
-    name,
-    address,
-    category,
-    approvedBy,
-    confidential,
-    used,
-    meta,
-  ] = vendor;
+  const [initials, name, address, category, approvedBy, confidential, used, meta] = vendor;
   const avatarColors: Record<string, string> = {
     AC: "var(--wl-line-muted)",
     RK: "var(--wl-amber-line)",
@@ -8040,11 +7188,11 @@ function VendorRow({
     setMenuPosition({
       left: Math.min(
         Math.max(viewportPadding, triggerRect.right - menuWidth),
-        window.innerWidth - menuWidth - viewportPadding
+        window.innerWidth - menuWidth - viewportPadding,
       ),
       top: Math.min(
         Math.max(viewportPadding, preferredTop),
-        window.innerHeight - menuHeight - viewportPadding
+        window.innerHeight - menuHeight - viewportPadding,
       ),
     });
   }, []);
@@ -8057,10 +7205,7 @@ function VendorRow({
 
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target as Node;
-      if (
-        !menuRef.current?.contains(target) &&
-        !menuTriggerRef.current?.contains(target)
-      ) {
+      if (!menuRef.current?.contains(target) && !menuTriggerRef.current?.contains(target)) {
         onMenuOpenChange(false);
       }
     };
@@ -8107,17 +7252,14 @@ function VendorRow({
     <RowShell
       className={cn(
         vendorGridClass,
-        "relative items-center border-b border-[var(--wl-line-soft)] px-4 py-3"
+        "relative items-center border-b border-[var(--wl-line-soft)] px-4 py-3",
       )}
     >
       <div className="flex min-w-0 items-center gap-3">
         <span className="flex h-7 w-7 shrink-0 items-center justify-center border border-[var(--wl-line)] bg-[var(--wl-bg-soft)] text-[10px] font-bold text-[var(--wl-body)]">
           {initials}
         </span>
-        <span
-          className="min-w-0 truncate text-[13px] text-[var(--wl-ink)]"
-          title={name}
-        >
+        <span className="min-w-0 truncate text-[13px] text-[var(--wl-ink)]" title={name}>
           {name}
         </span>
       </div>
@@ -8136,7 +7278,7 @@ function VendorRow({
             key={person}
             className={cn(
               "flex h-5 min-w-0 items-center justify-center truncate border border-[var(--wl-panel)] text-[9px] font-bold text-[var(--wl-body)]",
-              person.length <= 3 ? "w-5" : "max-w-[96px] px-1.5"
+              person.length <= 3 ? "w-5" : "max-w-[96px] px-1.5",
             )}
             style={{
               background: avatarColors[person] ?? "var(--wl-line-muted)",
@@ -8154,21 +7296,13 @@ function VendorRow({
             <Lock className="h-3 w-3" strokeWidth={iconStroke} /> ARCANEVM
           </span>
         ) : (
-          <span className="text-[10px] tracking-[0.08em] text-[var(--wl-mute)]">
-            PUBLIC
-          </span>
+          <span className="text-[10px] tracking-[0.08em] text-[var(--wl-mute)]">PUBLIC</span>
         )}
       </div>
-      <span
-        className="min-w-0 truncate pr-3 text-[11px] text-[var(--wl-mute)]"
-        title={used}
-      >
+      <span className="min-w-0 truncate pr-3 text-[11px] text-[var(--wl-mute)]" title={used}>
         {used}
       </span>
-      <div
-        className="relative flex justify-end"
-        onPointerDown={(event) => event.stopPropagation()}
-      >
+      <div className="relative flex justify-end" onPointerDown={(event) => event.stopPropagation()}>
         <button
           ref={menuTriggerRef}
           type="button"
@@ -8223,10 +7357,7 @@ function VendorRow({
                     onPointerDown={(event) => event.stopPropagation()}
                   >
                     VIEW ON ARCSCAN
-                    <ExternalLink
-                      className="h-3 w-3"
-                      strokeWidth={iconStroke}
-                    />
+                    <ExternalLink className="h-3 w-3" strokeWidth={iconStroke} />
                   </a>
                 ) : (
                   <VendorMenuButton muted onClick={showUnavailable}>
@@ -8243,18 +7374,10 @@ function VendorRow({
                 >
                   {blocked ? "ALLOW / UPDATE VENDOR" : "UPDATE CATEGORY / CAP"}
                 </VendorMenuButton>
-                <VendorMenuButton
-                  danger
-                  muted={!fullAddressAvailable}
-                  onClick={onBlockVendor}
-                >
+                <VendorMenuButton danger muted={!fullAddressAvailable} onClick={onBlockVendor}>
                   BLOCK VENDOR
                 </VendorMenuButton>
-                <VendorMenuButton
-                  danger
-                  muted={!fullAddressAvailable}
-                  onClick={onRemoveVendor}
-                >
+                <VendorMenuButton danger muted={!fullAddressAvailable} onClick={onRemoveVendor}>
                   REMOVE FROM REGISTRY
                 </VendorMenuButton>
                 <div className="mt-1 border border-[var(--wl-line)] bg-[var(--wl-bg-tint)] px-2 py-1.5 font-body text-[11px] leading-snug text-[var(--wl-secondary)]">
@@ -8263,7 +7386,7 @@ function VendorRow({
                     : "Write actions require the owner wallet on Arc Testnet."}
                 </div>
               </div>,
-              document.body
+              document.body,
             )
           : null}
       </div>
@@ -8296,8 +7419,8 @@ function VendorMenuButton({
         danger
           ? "text-[var(--wl-signal)] hover:text-[var(--wl-signal-soft)]"
           : muted
-          ? "text-[var(--wl-secondary)] hover:text-[var(--wl-body)]"
-          : "text-[var(--wl-secondary)] hover:text-[var(--wl-body)]"
+            ? "text-[var(--wl-secondary)] hover:text-[var(--wl-body)]"
+            : "text-[var(--wl-secondary)] hover:text-[var(--wl-body)]",
       )}
     >
       {children}
@@ -8311,18 +7434,16 @@ export function LedgerCanvasPage() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [ledgerQuery, setLedgerQuery] = useState("");
   const [selectedRow, setSelectedRow] = useState<LedgerDisplay | null>(null);
-  const [flaggedVendors, setFlaggedVendors] = useState<ReadonlySet<string>>(
-    () => new Set()
-  );
+  const [flaggedVendors, setFlaggedVendors] = useState<ReadonlySet<string>>(() => new Set());
   const canShowDemoWorkspace = workspace.isDemo;
   const baseRows: readonly LedgerDisplay[] = useMemo(
     () =>
       canShowDemoWorkspace
         ? (ledgerRows as readonly LedgerDisplay[])
         : liveLedger.data.length > 0
-        ? liveLedger.data.map(ledgerRowFromLive)
-        : [],
-    [liveLedger.data, canShowDemoWorkspace]
+          ? liveLedger.data.map(ledgerRowFromLive)
+          : [],
+    [liveLedger.data, canShowDemoWorkspace],
   );
   const rows = useMemo(() => {
     const query = normalizeSearch(ledgerQuery);
@@ -8332,15 +7453,14 @@ export function LedgerCanvasPage() {
       return statusMatches && queryMatches;
     });
   }, [baseRows, ledgerQuery, statusFilter]);
-  const ledgerFiltersActive =
-    ledgerQuery.trim() !== "" || statusFilter !== "ALL";
+  const ledgerFiltersActive = ledgerQuery.trim() !== "" || statusFilter !== "ALL";
   const resetLedgerFilters = () => {
     setLedgerQuery("");
     setStatusFilter("ALL");
   };
   const ledgerTotal = baseRows.reduce(
     (sum, row) => sum + Number(String(row[4]).replace(/[$,]/g, "")),
-    0
+    0,
   );
   const ledgerCounts = useMemo(
     () => ({
@@ -8349,7 +7469,7 @@ export function LedgerCanvasPage() {
       FROZEN: baseRows.filter((row) => row[5] === "FROZEN").length,
       REJECTED: baseRows.filter((row) => row[5] === "REJECTED").length,
     }),
-    [baseRows]
+    [baseRows],
   );
   const emptyLedger = getWorkspaceEmptyCopy(workspace.dataMode, "ledger");
 
@@ -8374,9 +7494,7 @@ export function LedgerCanvasPage() {
       next.add(counterparty);
       return next;
     });
-    toast.success(
-      `${counterparty} FLAGGED / review marker added for this session`
-    );
+    toast.success(`${counterparty} FLAGGED / review marker added for this session`);
   };
 
   return (
@@ -8415,9 +7533,7 @@ export function LedgerCanvasPage() {
           </div>
           <div className="flex flex-col justify-center border border-[var(--wl-line)] bg-[var(--wl-bg-raised)] px-5 py-4">
             <div className="flex flex-wrap items-center gap-2 text-[11px] tracking-[0.08em]">
-              <span className="text-[10px] tracking-[0.18em] text-[var(--wl-mute)]">
-                STATUS
-              </span>
+              <span className="text-[10px] tracking-[0.18em] text-[var(--wl-mute)]">STATUS</span>
               {(
                 [
                   ["ALL", Check],
@@ -8438,11 +7554,10 @@ export function LedgerCanvasPage() {
                       "flex items-center gap-1.5 border px-2.5 py-1",
                       selected
                         ? "border-[var(--wl-line-active)] bg-[var(--wl-bg-soft)] text-[var(--wl-green)]"
-                        : "border-[var(--wl-line)] text-[var(--wl-secondary)] hover:text-[var(--wl-body)]"
+                        : "border-[var(--wl-line)] text-[var(--wl-secondary)] hover:text-[var(--wl-body)]",
                     )}
                   >
-                    <TypedIcon className="h-3 w-3" strokeWidth={iconStroke} />{" "}
-                    {label}
+                    <TypedIcon className="h-3 w-3" strokeWidth={iconStroke} /> {label}
                   </button>
                 );
               })}
@@ -8462,13 +7577,12 @@ export function LedgerCanvasPage() {
                   toast.info(
                     canShowDemoWorkspace
                       ? "LEDGER WINDOW / Demo data is limited to the visible 24h set"
-                      : "LEDGER WINDOW / Live read model is limited to the visible 24h set"
+                      : "LEDGER WINDOW / Live read model is limited to the visible 24h set",
                   )
                 }
                 className="flex items-center gap-1.5 border border-[var(--wl-line)] px-2.5 py-1 text-[var(--wl-secondary)] hover:text-[var(--wl-body)]"
               >
-                <Calendar className="h-3 w-3" strokeWidth={iconStroke} /> LAST
-                24H
+                <Calendar className="h-3 w-3" strokeWidth={iconStroke} /> LAST 24H
               </button>
             </div>
           </div>
@@ -8497,26 +7611,17 @@ export function LedgerCanvasPage() {
                   />
                 ) : rows.length > 0 ? (
                   rows.map((row) => (
-                    <LedgerRow
-                      key={ledgerRowKey(row)}
-                      row={row}
-                      onOpen={setSelectedRow}
-                    />
+                    <LedgerRow key={ledgerRowKey(row)} row={row} onOpen={setSelectedRow} />
                   ))
                 ) : ledgerFiltersActive && baseRows.length > 0 ? (
                   <EmptyState
-                    actionLabel={
-                      ledgerQuery.trim() ? "CLEAR SEARCH" : "RESET FILTERS"
-                    }
+                    actionLabel={ledgerQuery.trim() ? "CLEAR SEARCH" : "RESET FILTERS"}
                     description="No events match the current search and status filters."
                     onAction={resetLedgerFilters}
                     title="NO LEDGER EVENTS MATCH THIS FILTER"
                   />
                 ) : (
-                  <EmptyState
-                    description={emptyLedger.description}
-                    title={emptyLedger.title}
-                  />
+                  <EmptyState description={emptyLedger.description} title={emptyLedger.title} />
                 )}
               </div>
               <div className="flex h-9 items-center justify-between border-t border-[var(--wl-line)] px-4 text-[10px] tracking-[0.14em] text-[var(--wl-mute)]">
@@ -8554,20 +7659,15 @@ function LedgerRow({
       onClick={() => onOpen(row)}
       className={cn(
         "grid w-full cursor-pointer grid-cols-[110px_minmax(150px,1fr)_minmax(150px,1fr)_120px_120px_120px] items-center border-b border-[var(--wl-line-soft)] px-4 py-2.5 text-left hover:bg-[var(--wl-bg-soft)]",
-        danger && "bg-[var(--wl-amber-tint)]"
+        danger && "bg-[var(--wl-amber-tint)]",
       )}
     >
       <span className="text-[var(--wl-mute)]">{time}</span>
       <span className="text-[var(--wl-ink)]">{agent}</span>
-      <span
-        className={danger ? "text-[var(--wl-signal)]" : "text-[var(--wl-body)]"}
-      >
+      <span className={danger ? "text-[var(--wl-signal)]" : "text-[var(--wl-body)]"}>
         {counterparty}
       </span>
-      <CategoryTick
-        category={category}
-        label={category === "SUB" ? "SUBCON" : category}
-      />
+      <CategoryTick category={category} label={category === "SUB" ? "SUBCON" : category} />
       <span className="text-right text-[var(--wl-body)]">{amount}</span>
       <StatusLabel status={status} align="right" />
     </button>
@@ -8647,23 +7747,14 @@ function DecisionDrawer({
                   background: categoryColors[category] ?? "var(--wl-cat-data)",
                 }}
               />
-              {category} -{" "}
-              <span className="underline decoration-dotted">
-                {counterparty}
-              </span>
+              {category} - <span className="underline decoration-dotted">{counterparty}</span>
             </div>
           </div>
           <div className="space-y-0 text-[12px]">
             <div className="grid grid-cols-2 gap-px bg-[var(--wl-hairline)]">
               <DrawerMetric label="AGENT" value={agent} />
-              <DrawerMetric
-                label="BLOCK HEIGHT"
-                value={txHash ? "LIVE INDEXED" : "NO TX HASH"}
-              />
-              <DrawerMetric
-                label="GAS USED"
-                value={txHash ? "INDEXED" : "N/A"}
-              />
+              <DrawerMetric label="BLOCK HEIGHT" value={txHash ? "LIVE INDEXED" : "NO TX HASH"} />
+              <DrawerMetric label="GAS USED" value={txHash ? "INDEXED" : "N/A"} />
               <DrawerMetric
                 label="STATUS"
                 value={status}
@@ -8671,9 +7762,7 @@ function DecisionDrawer({
               />
             </div>
             <div className="border-t border-[var(--wl-line)] p-5">
-              <div className="text-[10px] tracking-[0.16em] text-[var(--wl-mute)]">
-                TX HASH
-              </div>
+              <div className="text-[10px] tracking-[0.16em] text-[var(--wl-mute)]">TX HASH</div>
               <div className="mt-1.5 flex min-w-0 items-center justify-between gap-2 border border-[var(--wl-line)] bg-[var(--wl-bg-tint)] px-3 py-2 text-[11px] text-[var(--wl-secondary)]">
                 <span className="min-w-0 truncate">
                   {txHash ?? "No tx hash available for this row"}
@@ -8686,11 +7775,9 @@ function DecisionDrawer({
                 POLICY DECISION
               </div>
               <div className="mt-2 border-l-2 border-[var(--wl-signal)] bg-[var(--wl-amber-tint)] px-3 py-2.5 text-[12px] leading-relaxed text-[var(--wl-body)]">
-                Counterparty{" "}
-                <span className="text-[var(--wl-signal)]">{counterparty}</span>{" "}
-                produced a{" "}
-                <span className="text-[var(--wl-body)]">{status}</span> decision
-                for {agent}.{" "}
+                Counterparty <span className="text-[var(--wl-signal)]">{counterparty}</span>{" "}
+                produced a <span className="text-[var(--wl-body)]">{status}</span> decision for{" "}
+                {agent}.{" "}
                 {flagged
                   ? "Vendor is marked for local review."
                   : "Open Arcscan when a live transaction hash is available, or flag the vendor for review."}
@@ -8701,9 +7788,7 @@ function DecisionDrawer({
                 <div className="text-[10px] tracking-[0.16em] text-[var(--wl-mute)]">
                   RAW CALLDATA
                 </div>
-                <span className="text-[10px] text-[var(--wl-mute)]">
-                  312 BYTES
-                </span>
+                <span className="text-[10px] text-[var(--wl-mute)]">312 BYTES</span>
               </div>
               <pre className="mt-2 max-h-[88px] overflow-hidden border border-[var(--wl-line)] bg-[var(--wl-bg-tint)] p-3 text-[10px] leading-relaxed text-[var(--wl-green)]">{`0xa9059cbb000000000000000000000000
 ev1ldatabr0ker00000000000000000000
@@ -8721,7 +7806,7 @@ ev1ldatabr0ker00000000000000000000
                 "flex h-9 flex-1 items-center justify-center gap-2 border text-[11px] tracking-[0.1em]",
                 explorerUrl
                   ? "border-[var(--wl-line)] text-[var(--wl-secondary)] hover:text-[var(--wl-body)]"
-                  : "cursor-not-allowed border-[var(--wl-line)] text-[var(--wl-mute)]"
+                  : "cursor-not-allowed border-[var(--wl-line)] text-[var(--wl-mute)]",
               )}
             >
               <ExternalLink className="h-3.5 w-3.5" strokeWidth={iconStroke} />
@@ -8750,15 +7835,8 @@ function DrawerMetric({
 }: Readonly<{ label: string; value: string; hazard?: boolean }>) {
   return (
     <div className="bg-[var(--wl-bg-soft)] p-4">
-      <div className="text-[10px] tracking-[0.16em] text-[var(--wl-mute)]">
-        {label}
-      </div>
-      <div
-        className={cn(
-          "mt-1",
-          hazard ? "text-[var(--wl-signal)]" : "text-[var(--wl-body)]"
-        )}
-      >
+      <div className="text-[10px] tracking-[0.16em] text-[var(--wl-mute)]">{label}</div>
+      <div className={cn("mt-1", hazard ? "text-[var(--wl-signal)]" : "text-[var(--wl-body)]")}>
         {value}
       </div>
     </div>
@@ -8779,48 +7857,36 @@ export function EscalationsCanvasPage() {
       canShowDemoWorkspace
         ? escalations
         : liveEscalations.data.length > 0
-        ? liveEscalations.data.map(escalationRowFromLive)
-        : [],
-    [liveEscalations.data, canShowDemoWorkspace]
+          ? liveEscalations.data.map(escalationRowFromLive)
+          : [],
+    [liveEscalations.data, canShowDemoWorkspace],
   );
-  const emptyEscalations = getWorkspaceEmptyCopy(
-    workspace.dataMode,
-    "escalations"
-  );
+  const emptyEscalations = getWorkspaceEmptyCopy(workspace.dataMode, "escalations");
   const agentOptions = useMemo(
     () => Array.from(new Set(baseRows.map((row) => row[0]))),
-    [baseRows]
+    [baseRows],
   );
   const categoryOptions = useMemo(
     () => Array.from(new Set(baseRows.map((row) => row[4]))),
-    [baseRows]
+    [baseRows],
   );
   const rows = useMemo(() => {
     const query = normalizeSearch(escalationQuery);
     const filtered = baseRows.filter((row) => {
       const agentMatches = agentFilter === "ALL" || row[0] === agentFilter;
-      const categoryMatches =
-        categoryFilter === "ALL" || row[4] === categoryFilter;
+      const categoryMatches = categoryFilter === "ALL" || row[4] === categoryFilter;
       const rowStatus = row[7]
         ? "CRITICAL"
         : String(row[8]).startsWith("1")
-        ? "SIGNED"
-        : "UNSIGNED";
-      const statusMatches =
-        statusFilter === "ALL" || rowStatus === statusFilter;
+          ? "SIGNED"
+          : "UNSIGNED";
+      const statusMatches = statusFilter === "ALL" || rowStatus === statusFilter;
       const queryMatches = matchesSearch(query, row);
       return agentMatches && categoryMatches && statusMatches && queryMatches;
     });
 
     return sortNewest ? [...filtered].reverse() : filtered;
-  }, [
-    agentFilter,
-    baseRows,
-    categoryFilter,
-    escalationQuery,
-    sortNewest,
-    statusFilter,
-  ]);
+  }, [agentFilter, baseRows, categoryFilter, escalationQuery, sortNewest, statusFilter]);
   const filtersActive =
     escalationQuery.trim() !== "" ||
     agentFilter !== "ALL" ||
@@ -8854,8 +7920,7 @@ export function EscalationsCanvasPage() {
               </span>
             </div>
             <p className="mt-1 text-[12px] text-[var(--wl-secondary)]">
-              Transactions held for human approval. Quorum required before
-              release.
+              Transactions held for human approval. Quorum required before release.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-[11px] tracking-[0.1em]">
@@ -8888,10 +7953,7 @@ export function EscalationsCanvasPage() {
                   </option>
                 ))}
               </select>
-              <ChevronDown
-                className="ml-1 inline h-3 w-3"
-                strokeWidth={iconStroke}
-              />
+              <ChevronDown className="ml-1 inline h-3 w-3" strokeWidth={iconStroke} />
             </label>
             <label className="flex items-center border border-[var(--wl-line)] px-2 py-1.5 text-[var(--wl-secondary)]">
               <select
@@ -8906,10 +7968,7 @@ export function EscalationsCanvasPage() {
                   </option>
                 ))}
               </select>
-              <ChevronDown
-                className="ml-1 inline h-3 w-3"
-                strokeWidth={iconStroke}
-              />
+              <ChevronDown className="ml-1 inline h-3 w-3" strokeWidth={iconStroke} />
             </label>
             <label className="flex items-center border border-[var(--wl-line)] px-2 py-1.5 text-[var(--wl-secondary)]">
               <select
@@ -8922,10 +7981,7 @@ export function EscalationsCanvasPage() {
                 <option value="SIGNED">SIGNED</option>
                 <option value="UNSIGNED">UNSIGNED</option>
               </select>
-              <ChevronDown
-                className="ml-1 inline h-3 w-3"
-                strokeWidth={iconStroke}
-              />
+              <ChevronDown className="ml-1 inline h-3 w-3" strokeWidth={iconStroke} />
             </label>
           </div>
         </div>
@@ -8936,23 +7992,16 @@ export function EscalationsCanvasPage() {
               onRetry={() => void liveEscalations.refetch()}
             />
           ) : rows.length > 0 ? (
-            rows.map((item) => (
-              <EscalationCard key={escalationRowKey(item)} item={item} />
-            ))
+            rows.map((item) => <EscalationCard key={escalationRowKey(item)} item={item} />)
           ) : filtersActive && baseRows.length > 0 ? (
             <EmptyState
-              actionLabel={
-                escalationQuery.trim() ? "CLEAR SEARCH" : "RESET FILTERS"
-              }
+              actionLabel={escalationQuery.trim() ? "CLEAR SEARCH" : "RESET FILTERS"}
               description="No escalations match this filter. Try a different term or reset filters."
               onAction={resetEscalationFilters}
               title="NO ESCALATIONS MATCH THIS FILTER"
             />
           ) : (
-            <EmptyState
-              description={emptyEscalations.description}
-              title={emptyEscalations.title}
-            />
+            <EmptyState description={emptyEscalations.description} title={emptyEscalations.title} />
           )}
         </div>
       </Main>
@@ -9011,40 +8060,27 @@ function EscalationCard({ item }: Readonly<{ item: EscalationDisplay }>) {
           </div>
         </div>
         <div className="flex flex-col justify-center p-5">
-          <div className="text-[10px] tracking-[0.18em] text-[var(--wl-mute)]">
-            HELD BECAUSE
-          </div>
-          <p className="mt-2 text-[12.5px] leading-relaxed text-[var(--wl-body)]">
-            {reason}
-          </p>
+          <div className="text-[10px] tracking-[0.18em] text-[var(--wl-mute)]">HELD BECAUSE</div>
+          <p className="mt-2 text-[12.5px] leading-relaxed text-[var(--wl-body)]">{reason}</p>
           <div className="mt-4 grid grid-cols-2 gap-4 border-t border-[var(--wl-line)] pt-3 text-[10px] tracking-[0.1em] text-[var(--wl-mute)]">
             <div>
               DEVIATION
-              <div className="mt-0.5 text-[13px] text-[var(--wl-body)]">
-                {deviation}
-              </div>
+              <div className="mt-0.5 text-[13px] text-[var(--wl-body)]">{deviation}</div>
             </div>
             <div>
               QUORUM
               <div className="mt-1 flex items-center gap-2">
                 <div className="h-1.5 w-16 bg-[var(--wl-panel-muted)]">
-                  <div
-                    className="h-full bg-[var(--wl-green)]"
-                    style={{ width: `${qfill}%` }}
-                  />
+                  <div className="h-full bg-[var(--wl-green)]" style={{ width: `${qfill}%` }} />
                 </div>
-                <span className="text-[12px] text-[var(--wl-body)]">
-                  {quorum}
-                </span>
+                <span className="text-[12px] text-[var(--wl-body)]">{quorum}</span>
               </div>
             </div>
           </div>
         </div>
         <div className="flex flex-col justify-center gap-3 p-5">
           <div className="text-center">
-            <div className="text-[10px] tracking-[0.18em] text-[var(--wl-mute)]">
-              EXPIRES IN
-            </div>
+            <div className="text-[10px] tracking-[0.18em] text-[var(--wl-mute)]">EXPIRES IN</div>
             <div
               className="mt-1 font-cond text-[30px] font-semibold leading-none"
               style={{
@@ -9096,17 +8132,13 @@ export function AnomaliesCanvasPage() {
       canShowDemoWorkspace
         ? anomalyRows
         : liveAnomalies.data.length > 0
-        ? liveAnomalies.data.map(anomalyRowFromLive)
-        : [],
-    [liveAnomalies.data, canShowDemoWorkspace]
+          ? liveAnomalies.data.map(anomalyRowFromLive)
+          : [],
+    [liveAnomalies.data, canShowDemoWorkspace],
   );
   const emptyAnomalies = getWorkspaceEmptyCopy(workspace.dataMode, "anomalies");
-  const criticalAnomalies = rows.filter(
-    (row) => row.severity === "CRITICAL"
-  ).length;
-  const elevatedAnomalies = rows.filter(
-    (row) => row.severity !== "CRITICAL"
-  ).length;
+  const criticalAnomalies = rows.filter((row) => row.severity === "CRITICAL").length;
+  const elevatedAnomalies = rows.filter((row) => row.severity !== "CRITICAL").length;
   const peakScore = rows[0]?.score.replace("deviation", "").trim() ?? "0.0";
 
   return (
@@ -9132,22 +8164,12 @@ export function AnomaliesCanvasPage() {
                   {criticalAnomalies > 0 ? "CRITICAL" : "NOMINAL"}
                 </div>
                 <div className="mt-1 flex items-center gap-1 text-[11px] text-[var(--wl-secondary)]">
-                  <ArrowUpRight
-                    className="h-3.5 w-3.5"
-                    strokeWidth={iconStroke}
-                  />{" "}
-                  PEAK DEVIATION / 24H
+                  <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={iconStroke} /> PEAK DEVIATION /
+                  24H
                 </div>
               </div>
             </div>
-            <Gauge
-              value={93}
-              marker={38}
-              label="DEVIATION SCALE"
-              min="0"
-              max="8"
-              hazard
-            />
+            <Gauge value={93} marker={38} label="DEVIATION SCALE" min="0" max="8" hazard />
             <div className="mt-7 border-t border-[var(--wl-line)] pt-3 text-[11px] leading-relaxed text-[var(--wl-secondary)]">
               {rows.length} active deviations across fleet.{" "}
               <span className="text-[var(--wl-signal)]">
@@ -9162,9 +8184,7 @@ export function AnomaliesCanvasPage() {
               label="CRITICAL"
               value={String(criticalAnomalies).padStart(2, "0")}
               valueClassName="text-[var(--wl-signal)]"
-              caption={
-                <span className="text-[var(--wl-amber)]">5.0+ deviation</span>
-              }
+              caption={<span className="text-[var(--wl-amber)]">5.0+ deviation</span>}
               accent
             />
             <StatTile
@@ -9173,10 +8193,7 @@ export function AnomaliesCanvasPage() {
               valueClassName="text-[var(--wl-amber)]"
               caption="1.0-5.0 deviation"
             />
-            <StatTile
-              label="RESOLVED / 30D"
-              value={canShowDemoWorkspace ? "86" : "00"}
-            >
+            <StatTile label="RESOLVED / 30D" value={canShowDemoWorkspace ? "86" : "00"}>
               <div className="mt-2 flex items-center gap-1 text-[10px] tracking-[0.08em] text-[var(--wl-green)]">
                 <Check className="h-3 w-3" strokeWidth={iconStroke} />
                 NEUTRALIZED
@@ -9186,10 +8203,7 @@ export function AnomaliesCanvasPage() {
         </section>
 
         <div className="border border-[var(--wl-line)] bg-[var(--wl-bg-raised)]">
-          <PanelHeader
-            title="ANOMALY REGISTER"
-            meta={`${rows.length} ACTIVE DEVIATIONS`}
-          />
+          <PanelHeader title="ANOMALY REGISTER" meta={`${rows.length} ACTIVE DEVIATIONS`} />
           <div>
             {liveAnomalies.isError && rows.length === 0 ? (
               <ErrorState
@@ -9197,14 +8211,9 @@ export function AnomaliesCanvasPage() {
                 onRetry={() => void liveAnomalies.refetch()}
               />
             ) : rows.length > 0 ? (
-              rows.map((row) => (
-                <AnomalyRow key={anomalyRowKey(row)} row={row} />
-              ))
+              rows.map((row) => <AnomalyRow key={anomalyRowKey(row)} row={row} />)
             ) : (
-              <EmptyState
-                description={emptyAnomalies.description}
-                title={emptyAnomalies.title}
-              />
+              <EmptyState description={emptyAnomalies.description} title={emptyAnomalies.title} />
             )}
           </div>
         </div>
@@ -9214,19 +8223,16 @@ export function AnomaliesCanvasPage() {
 }
 
 function AnomalyRow({ row }: Readonly<{ row: AnomalyDisplay }>) {
-  const [state, setState] = useState<"idle" | "restrained" | "dismissed">(
-    "idle"
-  );
+  const [state, setState] = useState<"idle" | "restrained" | "dismissed">("idle");
   const utils = trpc.useUtils();
   const acknowledge = trpc.anomalies.acknowledge.useMutation();
   const dismiss = trpc.anomalies.dismiss.useMutation();
 
   const settleAnomalyRemote = async (
     next: "restrained" | "dismissed",
-    event: ReactMouseEvent<HTMLButtonElement>
+    event: ReactMouseEvent<HTMLButtonElement>,
   ) => {
-    const action =
-      next === "dismissed" ? "anomalies.dismiss" : "anomalies.acknowledge";
+    const action = next === "dismissed" ? "anomalies.dismiss" : "anomalies.acknowledge";
     if (!allowTrustedMutation(action, event)) {
       return;
     }
@@ -9244,7 +8250,7 @@ function AnomalyRow({ row }: Readonly<{ row: AnomalyDisplay }>) {
       toast.success(
         next === "dismissed"
           ? `${row.agent} DISMISSED / anomaly archived`
-          : `${row.agent} FROZEN / anomaly restraint active`
+          : `${row.agent} FROZEN / anomaly restraint active`,
       );
     } catch {
       setState("idle");
@@ -9257,7 +8263,7 @@ function AnomalyRow({ row }: Readonly<{ row: AnomalyDisplay }>) {
       className={cn(
         "flex border-b border-[var(--wl-line-soft)]",
         row.severity === "CRITICAL" && "bg-[var(--wl-amber-tint)]",
-        state !== "idle" && "opacity-60"
+        state !== "idle" && "opacity-60",
       )}
     >
       <div className="w-1" style={{ background: row.color }} />
@@ -9286,17 +8292,12 @@ function AnomalyRow({ row }: Readonly<{ row: AnomalyDisplay }>) {
           >
             {row.score}
           </div>
-          <div
-            className="mt-1 text-[9px] tracking-[0.14em]"
-            style={{ color: row.color }}
-          >
+          <div className="mt-1 text-[9px] tracking-[0.14em]" style={{ color: row.color }}>
             {row.severity}
           </div>
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[12.5px] leading-relaxed text-[var(--wl-body)]">
-            {row.narrative}
-          </p>
+          <p className="text-[12.5px] leading-relaxed text-[var(--wl-body)]">{row.narrative}</p>
           <div className="mt-3 flex items-center gap-3">
             <Sparkline points={row.points} flag={row.flag} color={row.color} />
             <span className="text-[10px] tracking-[0.1em] text-[var(--wl-mute)]">
@@ -9316,9 +8317,7 @@ function AnomalyRow({ row }: Readonly<{ row: AnomalyDisplay }>) {
           </button>
           <button
             type="button"
-            onClick={() =>
-              toast.info(`${row.agent} INVESTIGATION / local timeline focused`)
-            }
+            onClick={() => toast.info(`${row.agent} INVESTIGATION / local timeline focused`)}
             className="flex h-8 items-center justify-center gap-1.5 border border-[var(--wl-line)] text-[10px] tracking-[0.1em] text-[var(--wl-secondary)] hover:text-[var(--wl-body)]"
           >
             <Search className="h-3.5 w-3.5" strokeWidth={iconStroke} />
@@ -9349,30 +8348,16 @@ function Sparkline({
   const max = Math.max(...points);
   const min = Math.min(...points);
   const x = (index: number) => index * (width / Math.max(points.length - 1, 1));
-  const y = (value: number) =>
-    height - 2 - ((value - min) / (max - min || 1)) * (height - 6);
+  const y = (value: number) => height - 2 - ((value - min) / (max - min || 1)) * (height - 6);
   const d = points
-    .map(
-      (value, index) =>
-        `${index ? "L" : "M"}${x(index).toFixed(1)},${y(value).toFixed(1)}`
-    )
+    .map((value, index) => `${index ? "L" : "M"}${x(index).toFixed(1)},${y(value).toFixed(1)}`)
     .join(" ");
   const fx = x(flag);
   const fy = y(points[flag] ?? points[0] ?? 0);
 
   return (
-    <svg
-      width={width}
-      height={height}
-      viewBox={`0 0 ${width} ${height}`}
-      aria-hidden="true"
-    >
-      <path
-        d={d}
-        fill="none"
-        stroke="var(--wl-line-active)"
-        strokeWidth="1.5"
-      />
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} aria-hidden="true">
+      <path d={d} fill="none" stroke="var(--wl-line-active)" strokeWidth="1.5" />
       <circle cx={fx} cy={fy} r="3" fill={color} />
       <line
         x1={fx}
@@ -9399,11 +8384,10 @@ export function ApprovalCanvasPage() {
       retry: false,
       refetchOnWindowFocus: false,
       staleTime: 30_000,
-    }
+    },
   );
   const approvalExpiry =
-    approvalQuery.data?.expiresAt !== undefined &&
-    approvalQuery.data?.expiresAt !== null
+    approvalQuery.data?.expiresAt !== undefined && approvalQuery.data?.expiresAt !== null
       ? new Date(approvalQuery.data.expiresAt).toISOString()
       : null;
   const approvalAmount =
@@ -9415,16 +8399,15 @@ export function ApprovalCanvasPage() {
     : "NO INDEXED ESCALATION";
   const approvalWallet = approvalQuery.data?.walletId ?? "UNKNOWN";
   const approvalReason =
-    approvalQuery.data?.reason ??
-    "No indexed escalation was found for this id.";
+    approvalQuery.data?.reason ?? "No indexed escalation was found for this id.";
   const approvalQuorum = approvalQuery.data
     ? `${approvalQuery.data.signaturesCount} / ${approvalQuery.data.threshold}`
     : "N/A";
   const approvalState = approvalQuery.data
     ? `STATE / ${approvalQuery.data.status}`
     : approvalQuery.isLoading
-    ? "STATE / LOADING"
-    : "STATE / NOT INDEXED";
+      ? "STATE / LOADING"
+      : "STATE / NOT INDEXED";
 
   return (
     <MotionDiv
@@ -9443,9 +8426,7 @@ export function ApprovalCanvasPage() {
       <ApprovalCard
         amount={approvalAmount}
         counterparty={approvalCounterparty}
-        disabledReason={
-          approvalQuery.data ? null : "No indexed escalation found for this id."
-        }
+        disabledReason={approvalQuery.data ? null : "No indexed escalation found for this id."}
         expiresAt={approvalExpiry}
         quorum={approvalQuorum}
         reason={approvalReason}
@@ -9489,9 +8470,7 @@ function ApprovalCard({
       <div className="border border-[var(--wl-line)] bg-[var(--wl-bg-soft)] px-7 py-8">
         <PublicLogo />
         <div className="mt-7 text-center">
-          <div className="text-[10px] tracking-[0.24em] text-[var(--wl-mute)]">
-            RELEASE REQUEST
-          </div>
+          <div className="text-[10px] tracking-[0.24em] text-[var(--wl-mute)]">RELEASE REQUEST</div>
           <div className="mt-2 font-cond text-[72px] font-bold leading-[0.8] text-[var(--wl-ink)]">
             {amount}
           </div>
@@ -9509,15 +8488,13 @@ function ApprovalCard({
           {reason}
         </div>
         <div className="mt-4 flex items-center justify-between border border-[var(--wl-line)] bg-[var(--wl-bg-tint)] px-3 py-2">
-          <span className="text-[10px] tracking-[0.16em] text-[var(--wl-mute)]">
-            EXPIRES IN
-          </span>
+          <span className="text-[10px] tracking-[0.16em] text-[var(--wl-mute)]">EXPIRES IN</span>
           <span
             className={cn(
               "font-cond text-[24px] font-semibold leading-none text-[var(--wl-body)]",
               countdown.isSoon && "text-[var(--wl-red)]",
               countdown.isExpired && "text-[var(--wl-signal)]",
-              countdown.isMissing && "text-[var(--wl-secondary)]"
+              countdown.isMissing && "text-[var(--wl-secondary)]",
             )}
           >
             {countdown.label}
@@ -9557,9 +8534,7 @@ function SignedCard() {
           <div className="mt-2 text-center text-[12px] leading-relaxed text-[var(--wl-secondary)]">
             Your signature is recorded.
             <br />
-            Awaiting{" "}
-            <span className="text-[var(--wl-amber)]">1 more signature</span> to
-            execute.
+            Awaiting <span className="text-[var(--wl-amber)]">1 more signature</span> to execute.
           </div>
         </div>
         <div className="mt-8">
@@ -9579,11 +8554,7 @@ function SignedCard() {
         </div>
         <button
           type="button"
-          onClick={() =>
-            toast.info(
-              "ARCSCAN / public badge demo has no live transaction hash"
-            )
-          }
+          onClick={() => toast.info("ARCSCAN / public badge demo has no live transaction hash")}
           className="mt-7 flex h-11 w-full items-center justify-center gap-2 border border-[var(--wl-line)] text-[12px] tracking-[0.12em] text-[var(--wl-secondary)] hover:text-[var(--wl-body)]"
         >
           <ExternalLink className="h-4 w-4" strokeWidth={iconStroke} />
@@ -9597,11 +8568,7 @@ function SignedCard() {
 function PublicLogo() {
   return (
     <div className="flex items-center justify-center gap-2">
-      <img
-        src="/brand/arcanum-logo.png"
-        alt="Arcanum"
-        className="h-8 w-auto object-contain"
-      />
+      <img src="/brand/arcanum-logo.png" alt="Arcanum" className="h-8 w-auto object-contain" />
       <span className="font-cond text-[16px] font-bold tracking-[0.18em] text-[var(--wl-ink)]">
         ARCANUM
       </span>
@@ -9617,13 +8584,7 @@ function InfoLine({
   return (
     <div className="flex items-center justify-between py-3">
       <span className="text-[var(--wl-mute)]">{label}</span>
-      <span
-        className={
-          muted ? "text-[var(--wl-secondary)]" : "text-[var(--wl-ink)]"
-        }
-      >
-        {value}
-      </span>
+      <span className={muted ? "text-[var(--wl-secondary)]" : "text-[var(--wl-ink)]"}>{value}</span>
     </div>
   );
 }
@@ -9639,29 +8600,19 @@ export function PublicExplorerCanvasPage({
       retry: false,
       refetchOnWindowFocus: false,
       staleTime: 30_000,
-    }
+    },
   );
   const profile = profileQuery.data;
-  const walletLabel = wallet.startsWith("0x")
-    ? shortAddress(wallet, { tail: 6 })
-    : wallet;
+  const walletLabel = wallet.startsWith("0x") ? shortAddress(wallet, { tail: 6 }) : wallet;
   const badgeHref = `/badge/${encodeURIComponent(wallet)}`;
   const postureScore = profile?.postureScore ?? null;
   const hasPublicProfile = Boolean(profile);
-  const explorerTone =
-    postureScore !== null && postureScore < 50 ? "bad" : "good";
+  const explorerTone = postureScore !== null && postureScore < 50 ? "bad" : "good";
   const profileLabel = profile?.label?.toUpperCase() ?? "UNKNOWN WALLET";
   const profileStatus = profile?.state ?? "NO PUBLIC PROFILE";
   const profileGrade =
-    postureScore === null
-      ? "NA"
-      : postureScore < 50
-      ? "D"
-      : postureScore < 75
-      ? "B"
-      : "A";
-  const profileSpend =
-    profile?.spend ?? (hasPublicProfile ? "PENDING INDEXER" : "NO DATA");
+    postureScore === null ? "NA" : postureScore < 50 ? "D" : postureScore < 75 ? "B" : "A";
+  const profileSpend = profile?.spend ?? (hasPublicProfile ? "PENDING INDEXER" : "NO DATA");
   const profileBlocked =
     profile?.threatsBlocked === null || profile?.threatsBlocked === undefined
       ? hasPublicProfile
@@ -9735,22 +8686,18 @@ export function PublicExplorerCanvasPage({
                 Arcanum wallet explorer
               </h1>
               <p className="mt-2 max-w-[760px] font-body text-[13px] leading-relaxed text-[var(--wl-secondary)]">
-                Shareable wallet posture, restraints, and badge context for
-                governed agent wallets. Public explorer pages stay read-only and
-                use the current public/local read model when a live indexer row
-                is not available.
+                Shareable wallet posture, restraints, and badge context for governed agent wallets.
+                Public explorer pages stay read-only and use the current public/local read model
+                when a live indexer row is not available.
               </p>
             </div>
             <div className="border border-[var(--wl-line)] bg-[var(--wl-bg-tint)] px-4 py-3">
               <div className="text-[10px] tracking-[0.16em] text-[var(--wl-mute)]">
                 FOCUSED WALLET
               </div>
-              <div className="mt-1 font-mono text-[13px] text-[var(--wl-body)]">
-                {walletLabel}
-              </div>
+              <div className="mt-1 font-mono text-[13px] text-[var(--wl-body)]">{walletLabel}</div>
               <div className="mt-2 text-[11px] leading-relaxed text-[var(--wl-secondary)]">
-                Open in console for private doctrine editing and operational
-                controls.
+                Open in console for private doctrine editing and operational controls.
               </div>
             </div>
           </div>
@@ -9769,14 +8716,11 @@ export function PublicExplorerCanvasPage({
             wallet={walletLabel}
           />
           <div className="border border-[var(--wl-line)] bg-[var(--wl-bg-soft)] p-5">
-            <div className="text-[10px] tracking-[0.2em] text-[var(--wl-mute)]">
-              DATA SCOPE
-            </div>
+            <div className="text-[10px] tracking-[0.2em] text-[var(--wl-mute)]">DATA SCOPE</div>
             <div className="mt-3 text-[12px] leading-relaxed text-[var(--wl-secondary)]">
-              This public page is scoped only to the requested wallet. If
-              Supabase has no public profile for this address, Arcanum shows an
-              honest empty public state instead of borrowing demo metrics from
-              another governed wallet.
+              This public page is scoped only to the requested wallet. If Supabase has no public
+              profile for this address, Arcanum shows an honest empty public state instead of
+              borrowing demo metrics from another governed wallet.
             </div>
             <div className="mt-4 border border-[var(--wl-line)] bg-[var(--wl-bg-tint)] p-3 text-[10px] tracking-[0.12em] text-[var(--wl-mute)]">
               READ MODEL:{" "}
@@ -9823,7 +8767,7 @@ function ExplorerCard({
     <div
       className={cn(
         "border bg-[var(--wl-bg-soft)]",
-        good ? "border-[var(--wl-line)]" : "border-[var(--wl-signal)]/30"
+        good ? "border-[var(--wl-line)]" : "border-[var(--wl-signal)]/30",
       )}
     >
       <div
@@ -9849,34 +8793,23 @@ function ExplorerCard({
           )}
           GOVERNED BY ARCANUM
         </div>
-        <div className="mt-4 text-[12px] text-[var(--wl-secondary)]">
-          {agent}
-        </div>
+        <div className="mt-4 text-[12px] text-[var(--wl-secondary)]">{agent}</div>
         <div className="mt-1 flex items-center gap-1.5 text-[11px] text-[var(--wl-mute)]">
           {wallet} <Copy className="h-3 w-3" strokeWidth={iconStroke} />
         </div>
       </div>
       <div className="grid grid-cols-2 divide-x divide-y divide-[var(--wl-line)]">
         <ExplorerMetric label="TOTAL APPROVED SPEND" value={spend} />
-        <ExplorerMetric
-          label="THREATS BLOCKED"
-          value={blocked}
-          accent={!good}
-        />
+        <ExplorerMetric label="THREATS BLOCKED" value={blocked} accent={!good} />
         <ExplorerMetric label="DAYS UNDER GOVERNANCE" value={days} />
         <div className="flex items-center justify-between p-5">
           <div>
-            <div className="text-[10px] tracking-[0.18em] text-[var(--wl-mute)]">
-              HEALTH GRADE
-            </div>
+            <div className="text-[10px] tracking-[0.18em] text-[var(--wl-mute)]">HEALTH GRADE</div>
             <div className="mt-1 text-[10px]" style={{ color: accent }}>
               {status}
             </div>
           </div>
-          <div
-            className="font-cond text-[64px] font-bold leading-none"
-            style={{ color: accent }}
-          >
+          <div className="font-cond text-[64px] font-bold leading-none" style={{ color: accent }}>
             {grade}
           </div>
         </div>
@@ -9887,35 +8820,20 @@ function ExplorerCard({
         </div>
         {!hasProfile ? (
           <div className="mt-3 border-l-2 border-[var(--wl-line-active)] bg-[var(--wl-bg-tint)] px-3 py-2.5 text-[11px] leading-relaxed text-[var(--wl-body)]">
-            No public Arcanum profile exists for this wallet yet. Create or
-            index a governed wallet before sharing live posture metrics.
+            No public Arcanum profile exists for this wallet yet. Create or index a governed wallet
+            before sharing live posture metrics.
           </div>
         ) : good ? (
           <div className="mt-3 space-y-3">
-            <PublicBudget
-              label="API"
-              category="API"
-              amount="$612 / $1,500"
-              width={41}
-            />
-            <PublicBudget
-              label="COMPUTE"
-              category="COMPUTE"
-              amount="$338 / $900"
-              width={38}
-            />
-            <PublicBudget
-              label="DATA"
-              category="DATA"
-              amount="$220 / $700"
-              width={31}
-            />
+            <PublicBudget label="API" category="API" amount="$612 / $1,500" width={41} />
+            <PublicBudget label="COMPUTE" category="COMPUTE" amount="$338 / $900" width={38} />
+            <PublicBudget label="DATA" category="DATA" amount="$220 / $700" width={31} />
           </div>
         ) : (
           <>
             <div className="mt-3 border-l-2 border-[var(--wl-signal)] bg-[var(--wl-amber-tint)] px-3 py-2.5 text-[11px] leading-relaxed text-[var(--wl-body)]">
-              Wallet frozen 02:47Z after a 7.4 deviation event. 47 transactions
-              to an unrecognized counterparty were denied automatically.
+              Wallet frozen 02:47Z after a 7.4 deviation event. 47 transactions to an unrecognized
+              counterparty were denied automatically.
             </div>
             <div className="mt-3 space-y-3">
               <PublicBudget
@@ -9946,9 +8864,7 @@ function ExplorerCard({
           EMBED THIS BADGE{" "}
           <button
             type="button"
-            onClick={() =>
-              toast.success("BADGE EMBED COPIED / local snippet ready")
-            }
+            onClick={() => toast.success("BADGE EMBED COPIED / local snippet ready")}
             className="flex cursor-pointer items-center gap-1.5 border border-[var(--wl-line)] px-2 py-1 text-[var(--wl-secondary)] hover:text-[var(--wl-body)]"
           >
             <Copy className="h-3 w-3" strokeWidth={iconStroke} />
@@ -9970,16 +8886,12 @@ function ExplorerMetric({
 }: Readonly<{ label: string; value: string; accent?: boolean }>) {
   return (
     <div className="relative p-5">
-      {accent ? (
-        <div className="absolute inset-y-0 left-0 w-[3px] bg-[var(--wl-signal)]" />
-      ) : null}
-      <div className="text-[10px] tracking-[0.18em] text-[var(--wl-mute)]">
-        {label}
-      </div>
+      {accent ? <div className="absolute inset-y-0 left-0 w-[3px] bg-[var(--wl-signal)]" /> : null}
+      <div className="text-[10px] tracking-[0.18em] text-[var(--wl-mute)]">{label}</div>
       <div
         className={cn(
           "mt-2 font-cond text-[30px] font-semibold text-[var(--wl-ink)]",
-          accent && "text-[var(--wl-signal)]"
+          accent && "text-[var(--wl-signal)]",
         )}
       >
         {value}
@@ -10005,17 +8917,12 @@ function PublicBudget({
     <div>
       <div className="flex items-center justify-between text-[11px]">
         <span className="flex items-center gap-1.5 text-[var(--wl-secondary)]">
-          <span
-            className="h-3 w-1"
-            style={{ background: categoryColors[category] }}
-          />
+          <span className="h-3 w-1" style={{ background: categoryColors[category] }} />
           {label}
         </span>
         <span
           className={
-            color === "var(--wl-signal)"
-              ? "text-[var(--wl-signal)]"
-              : "text-[var(--wl-body)]"
+            color === "var(--wl-signal)" ? "text-[var(--wl-signal)]" : "text-[var(--wl-body)]"
           }
         >
           {amount}
@@ -10039,8 +8946,7 @@ const docsNavItems = [
     id: "deploy",
     label: "Deploy a GuardedWallet",
     group: "QUICKSTART",
-    keywords:
-      "wallet deploy create signer Arc Testnet event indexer empty state",
+    keywords: "wallet deploy create signer Arc Testnet event indexer empty state",
   },
   {
     id: "author-doctrine",
@@ -10071,15 +8977,13 @@ const docsNavItems = [
     id: "api-reference",
     label: "API Reference",
     group: "REFERENCE",
-    keywords:
-      "read models mutations trpc click only indexed pending request storm",
+    keywords: "read models mutations trpc click only indexed pending request storm",
   },
   {
     id: "examples",
     label: "Examples",
     group: "REFERENCE",
-    keywords:
-      "allowlist ledger badge explorer share normal escalated transaction",
+    keywords: "allowlist ledger badge explorer share normal escalated transaction",
   },
   {
     id: "glossary",
@@ -10105,23 +9009,20 @@ export function DocsCanvasPage() {
       (item) =>
         item.label.toLowerCase().includes(query) ||
         item.group.toLowerCase().includes(query) ||
-        item.keywords.toLowerCase().includes(query)
+        item.keywords.toLowerCase().includes(query),
     );
   }, [docsSearch]);
   const visibleDocsIds = useMemo(
     () => new Set<DocsSectionId>(visibleDocsItems.map((item) => item.id)),
-    [visibleDocsItems]
+    [visibleDocsItems],
   );
-  const activeItem =
-    docsNavItems.find((item) => item.id === activeSection) ?? docsNavItems[0];
+  const activeItem = docsNavItems.find((item) => item.id === activeSection) ?? docsNavItems[0];
 
   useEffect(() => {
     const hash = window.location.hash.replace("#", "");
     if (docsNavItems.some((item) => item.id === hash)) {
       setActiveSection(hash as DocsSectionId);
-      window.requestAnimationFrame(() =>
-        document.getElementById(hash)?.scrollIntoView()
-      );
+      window.requestAnimationFrame(() => document.getElementById(hash)?.scrollIntoView());
     }
   }, []);
 
@@ -10129,9 +9030,7 @@ export function DocsCanvasPage() {
     setActiveSection(sectionId);
     window.history.replaceState(null, "", `/docs#${sectionId}`);
     window.requestAnimationFrame(() =>
-      document
-        .getElementById(sectionId)
-        ?.scrollIntoView({ block: "start", behavior: "smooth" })
+      document.getElementById(sectionId)?.scrollIntoView({ block: "start", behavior: "smooth" }),
     );
   };
 
@@ -10151,10 +9050,7 @@ export function DocsCanvasPage() {
     >
       <aside className="flex max-h-[45vh] w-full shrink-0 flex-col overflow-hidden border-b border-[var(--wl-line)] bg-[var(--wl-bg-soft)] lg:sticky lg:top-0 lg:h-screen lg:max-h-none lg:w-[268px] lg:border-b-0 lg:border-r">
         <div className="flex h-[52px] items-center gap-2.5 border-b border-[var(--wl-line)] px-5">
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-2.5 hover:text-[var(--wl-ink)]"
-          >
+          <Link href="/dashboard" className="flex items-center gap-2.5 hover:text-[var(--wl-ink)]">
             <img
               src="/brand/arcanum-logo.png"
               alt="Arcanum"
@@ -10164,9 +9060,7 @@ export function DocsCanvasPage() {
               ARCANUM
             </span>
           </Link>
-          <span className="text-[10px] tracking-[0.16em] text-[var(--wl-mute)]">
-            / DOCS
-          </span>
+          <span className="text-[10px] tracking-[0.16em] text-[var(--wl-mute)]">/ DOCS</span>
         </div>
         <div className="flex h-9 items-center gap-2 border-b border-[var(--wl-line)] px-4 text-[var(--wl-mute)]">
           <Search className="h-3.5 w-3.5" strokeWidth={iconStroke} />
@@ -10182,9 +9076,7 @@ export function DocsCanvasPage() {
             placeholder="search docs..."
             type="search"
           />
-          <span className="ml-auto border border-[var(--wl-line)] px-1.5 text-[10px]">
-            ENTER
-          </span>
+          <span className="ml-auto border border-[var(--wl-line)] px-1.5 text-[10px]">ENTER</span>
         </div>
         <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-4 text-[12px]">
           <Link
@@ -10203,7 +9095,7 @@ export function DocsCanvasPage() {
               !visibleDocsIds.has("deploy") && "hidden",
               activeSection === "deploy"
                 ? "relative border-l-2 border-[var(--wl-signal)] bg-[var(--wl-bg-soft)] text-[var(--wl-ink)]"
-                : "text-[var(--wl-secondary)] hover:text-[var(--wl-body)]"
+                : "text-[var(--wl-secondary)] hover:text-[var(--wl-body)]",
             )}
           >
             Deploy a GuardedWallet
@@ -10216,7 +9108,7 @@ export function DocsCanvasPage() {
               !visibleDocsIds.has("author-doctrine") && "hidden",
               activeSection === "author-doctrine"
                 ? "relative border-l-2 border-[var(--wl-signal)] bg-[var(--wl-bg-soft)] text-[var(--wl-ink)]"
-                : "text-[var(--wl-secondary)] hover:text-[var(--wl-body)]"
+                : "text-[var(--wl-secondary)] hover:text-[var(--wl-body)]",
             )}
           >
             Author a Doctrine
@@ -10229,7 +9121,7 @@ export function DocsCanvasPage() {
               !visibleDocsIds.has("first-restraint") && "hidden",
               activeSection === "first-restraint"
                 ? "relative border-l-2 border-[var(--wl-signal)] bg-[var(--wl-bg-soft)] text-[var(--wl-ink)]"
-                : "text-[var(--wl-secondary)] hover:text-[var(--wl-body)]"
+                : "text-[var(--wl-secondary)] hover:text-[var(--wl-body)]",
             )}
           >
             First Restraint
@@ -10247,7 +9139,7 @@ export function DocsCanvasPage() {
                   "flex cursor-pointer items-center gap-2 px-3 py-1.5 text-left",
                   activeSection === item.id
                     ? "relative border-l-2 border-[var(--wl-signal)] bg-[var(--wl-bg-soft)] text-[var(--wl-ink)]"
-                    : "text-[var(--wl-secondary)] hover:text-[var(--wl-body)]"
+                    : "text-[var(--wl-secondary)] hover:text-[var(--wl-body)]",
                 )}
               >
                 {item.label}
@@ -10299,16 +9191,13 @@ function DocsArticle({
 }: Readonly<{ onOpenSection: (sectionId: DocsSectionId) => void }>) {
   return (
     <div id="deploy" className="mx-auto max-w-[760px] scroll-mt-6 px-8 py-9">
-      <div className="text-[10px] tracking-[0.24em] text-[var(--wl-signal)]">
-        QUICKSTART
-      </div>
+      <div className="text-[10px] tracking-[0.24em] text-[var(--wl-signal)]">QUICKSTART</div>
       <h1 className="mt-2 font-cond text-[36px] font-bold leading-tight text-[var(--wl-ink)]">
         Deploy your first GuardedWallet
       </h1>
       <p className="mt-3 font-body text-[14px] leading-relaxed text-[var(--wl-cat-other)]">
-        Stand up a governed agent wallet on Arc Testnet in five steps. Every
-        transaction it attempts will be evaluated against a Doctrine before it
-        can settle on-chain.
+        Stand up a governed agent wallet on Arc Testnet in five steps. Every transaction it attempts
+        will be evaluated against a Doctrine before it can settle on-chain.
       </p>
       <DocBulletList
         items={[
@@ -10324,24 +9213,17 @@ function DocsArticle({
           GuardedWallet
         </span>{" "}
         helpers and Arc Testnet chain config.
-        <CodeBlock
-          label="TERMINAL"
-          lang="bash"
-          code="npm install @arcanum/sdk"
-          green
-        />
+        <CodeBlock label="TERMINAL" lang="bash" code="npm install @arcanum/sdk" green />
       </DocStep>
       <DocStep n="02" title="Configure the signer">
-        Point the client at Arc Testnet and supply an admin signer that will own
-        the Doctrine. The signer is the account that pays gas and becomes the
-        first operator. Keep private keys outside the browser; the console uses
-        your connected wallet instead of asking for secrets.
+        Point the client at Arc Testnet and supply an admin signer that will own the Doctrine. The
+        signer is the account that pays gas and becomes the first operator. Keep private keys
+        outside the browser; the console uses your connected wallet instead of asking for secrets.
       </DocStep>
       <DocStep n="03" title="Deploy the wallet with a Doctrine">
-        Create a GuardedWallet through WalletFactory and attach spend limits,
-        category caps, and an escalation quorum. The Doctrine is the wallet
-        rulebook: it decides what can pass, what needs a reviewer, and what
-        should be denied before funds move.
+        Create a GuardedWallet through WalletFactory and attach spend limits, category caps, and an
+        escalation quorum. The Doctrine is the wallet rulebook: it decides what can pass, what needs
+        a reviewer, and what should be denied before funds move.
         <CodeBlock
           label="deploy.ts"
           lang="typescript"
@@ -10373,10 +9255,9 @@ const txHash = await walletClient.writeContract({
         immediately.
       </DocStep>
       <DocStep n="05" title="Watch the Event Stream">
-        Every attempted transaction now flows through the GOVERNED EVENT STREAM
-        with an APPROVE / ESCALATE / DENY verdict. A normal transaction appears
-        as approved. A risky transaction appears as a restraint and waits for
-        release from the escalation workflow.
+        Every attempted transaction now flows through the GOVERNED EVENT STREAM with an APPROVE /
+        ESCALATE / DENY verdict. A normal transaction appears as approved. A risky transaction
+        appears as a restraint and waits for release from the escalation workflow.
       </DocStep>
       <div className="mt-8 space-y-3">
         <DocNotice
@@ -10389,8 +9270,7 @@ const txHash = await walletClient.writeContract({
           tone="var(--wl-signal)"
           title="RESTRAINT"
         >
-          On-chain policy changes affect real testnet state. Test with small
-          limits first.
+          On-chain policy changes affect real testnet state. Test with small limits first.
         </DocNotice>
         <DocNotice
           icon={
@@ -10402,8 +9282,7 @@ const txHash = await walletClient.writeContract({
           tone="var(--wl-amber)"
           title="WARNING"
         >
-          A quorum of 1 disables multi-party approval. Use 2 or more for
-          treasury wallets.
+          A quorum of 1 disables multi-party approval. Use 2 or more for treasury wallets.
         </DocNotice>
         <DocNotice
           icon={
@@ -10415,29 +9294,19 @@ const txHash = await walletClient.writeContract({
           tone="var(--wl-cat-api)"
           title="INFO"
         >
-          USDC token amounts are expressed in 6-decimal base units. The SDK
-          exposes{" "}
-          <span className="font-mono text-[11px] text-[var(--wl-body)]">
-            usdcErc20()
-          </span>{" "}
-          helpers.
+          USDC token amounts are expressed in 6-decimal base units. The SDK exposes{" "}
+          <span className="font-mono text-[11px] text-[var(--wl-body)]">usdcErc20()</span> helpers.
         </DocNotice>
       </div>
-      <DocReferenceSection
-        id="author-doctrine"
-        eyebrow="DOCTRINE"
-        title="Author a Doctrine"
-      >
+      <DocReferenceSection id="author-doctrine" eyebrow="DOCTRINE" title="Author a Doctrine">
         <p>
-          A Doctrine defines the spend caps, approved vendor categories,
-          escalation quorum, and anomaly sensitivity that govern each wallet.
-          Start with conservative limits, then adjust after the first testnet
-          run.
+          A Doctrine defines the spend caps, approved vendor categories, escalation quorum, and
+          anomaly sensitivity that govern each wallet. Start with conservative limits, then adjust
+          after the first testnet run.
         </p>
         <p>
-          Think of a Doctrine like parental controls for an agent wallet. It
-          does not make the agent smarter; it makes the wallet safer by checking
-          each payment before it can leave.
+          Think of a Doctrine like parental controls for an agent wallet. It does not make the agent
+          smarter; it makes the wallet safer by checking each payment before it can leave.
         </p>
         <DocBulletList
           items={[
@@ -10451,10 +9320,9 @@ const txHash = await walletClient.writeContract({
           ]}
         />
         <p>
-          Safe starter settings are intentionally boring: small daily cap,
-          smaller per-transaction cap, allow only the categories you actually
-          use, and set quorum to 2 so one person cannot release a risky transfer
-          alone.
+          Safe starter settings are intentionally boring: small daily cap, smaller per-transaction
+          cap, allow only the categories you actually use, and set quorum to 2 so one person cannot
+          release a risky transfer alone.
         </p>
         <CodeBlock
           label="doctrine.ts"
@@ -10468,15 +9336,11 @@ const txHash = await walletClient.writeContract({
 };`}
         />
       </DocReferenceSection>
-      <DocReferenceSection
-        id="first-restraint"
-        eyebrow="WORKFLOW"
-        title="First Restraint"
-      >
+      <DocReferenceSection id="first-restraint" eyebrow="WORKFLOW" title="First Restraint">
         <p>
-          When a transaction exceeds policy, Arcanum records a restraint instead
-          of claiming a fake approval. Review the escalation, collect
-          signatures, then release or reject from the approver portal.
+          When a transaction exceeds policy, Arcanum records a restraint instead of claiming a fake
+          approval. Review the escalation, collect signatures, then release or reject from the
+          approver portal.
         </p>
         <DocBulletList
           items={[
@@ -10488,9 +9352,9 @@ const txHash = await walletClient.writeContract({
           ]}
         />
         <p>
-          In the console, restrained transactions appear in Escalations. Open
-          the row, inspect the vendor, amount, category, and reason, then use
-          RELEASE or REJECT only when you mean to take that action.
+          In the console, restrained transactions appear in Escalations. Open the row, inspect the
+          vendor, amount, category, and reason, then use RELEASE or REJECT only when you mean to
+          take that action.
         </p>
         <DocNotice
           icon={
@@ -10502,16 +9366,15 @@ const txHash = await walletClient.writeContract({
           tone="var(--wl-cat-api)"
           title="DEMO / INDEXER STATE"
         >
-          Demo rows are only available to the configured demo wallet. Live
-          workspaces must show indexed, pending, empty, or error states instead
-          of fake operational data.
+          Demo rows are only available to the configured demo wallet. Live workspaces must show
+          indexed, pending, empty, or error states instead of fake operational data.
         </DocNotice>
       </DocReferenceSection>
       <DocReferenceSection id="sdk" eyebrow="SDK" title="SDK">
         <p>
-          Install the SDK with npm and point it at Arc Testnet. The current
-          console does not require a GuardedWallet implementation address
-          because WalletFactory deploys full wallet instances directly.
+          Install the SDK with npm and point it at Arc Testnet. The current console does not require
+          a GuardedWallet implementation address because WalletFactory deploys full wallet instances
+          directly.
         </p>
         <DocBulletList
           items={[
@@ -10521,12 +9384,7 @@ const txHash = await walletClient.writeContract({
             "Keep private keys out of committed files, screenshots, browser logs, and support messages.",
           ]}
         />
-        <CodeBlock
-          label="TERMINAL"
-          lang="bash"
-          code="npm install @arcanum/sdk"
-          green
-        />
+        <CodeBlock label="TERMINAL" lang="bash" code="npm install @arcanum/sdk" green />
         <CodeBlock
           label="client.ts"
           lang="typescript"
@@ -10548,10 +9406,9 @@ const simulation = await arcanum.simulate({
       </DocReferenceSection>
       <DocReferenceSection id="contracts" eyebrow="CONTRACTS" title="Contracts">
         <p>
-          Deployed Arc Testnet contracts are read from the frontend environment
-          and the deployment artifact. Configure WalletFactory, PolicyEngine,
-          EscalationManager, AnomalyOracle, and VendorRegistry before enabling
-          on-chain wallet creation.
+          Deployed Arc Testnet contracts are read from the frontend environment and the deployment
+          artifact. Configure WalletFactory, PolicyEngine, EscalationManager, AnomalyOracle, and
+          VendorRegistry before enabling on-chain wallet creation.
         </p>
         <DocBulletList
           items={[
@@ -10574,16 +9431,11 @@ VendorRegistry     0x4A4d419292F2E374421B45907861BBB5adA6eF82
 USDC               0x3600000000000000000000000000000000000000`}
         />
       </DocReferenceSection>
-      <DocReferenceSection
-        id="api-reference"
-        eyebrow="API"
-        title="API Reference"
-      >
+      <DocReferenceSection id="api-reference" eyebrow="API" title="API Reference">
         <p>
-          Local development reads through stable tRPC adapters for agents,
-          vendors, ledger rows, escalations, anomalies, notifications, and
-          organization state. Mutations are user-click only and should never run
-          from render, hover, polling, or effects.
+          Local development reads through stable tRPC adapters for agents, vendors, ledger rows,
+          escalations, anomalies, notifications, and organization state. Mutations are user-click
+          only and should never run from render, hover, polling, or effects.
         </p>
         <DocBulletList
           items={[
@@ -10597,9 +9449,8 @@ USDC               0x3600000000000000000000000000000000000000`}
       </DocReferenceSection>
       <DocReferenceSection id="examples" eyebrow="EXAMPLES" title="Examples">
         <p>
-          Use the dashboard sample org to test the end-to-end loop: deploy
-          readiness, vendor allowlisting, governed ledger decisions, escalation
-          review, and public badge sharing.
+          Use the dashboard sample org to test the end-to-end loop: deploy readiness, vendor
+          allowlisting, governed ledger decisions, escalation review, and public badge sharing.
         </p>
         <DocBulletList
           items={[
@@ -10613,10 +9464,9 @@ USDC               0x3600000000000000000000000000000000000000`}
       </DocReferenceSection>
       <DocReferenceSection id="glossary" eyebrow="GLOSSARY" title="Glossary">
         <p>
-          GuardedWallet: an agent wallet governed by a Doctrine. Doctrine:
-          policy rules evaluated before settlement. Restraint: a held
-          transaction pending review. ArcaneVM: the confidential execution layer
-          label used in the console.
+          GuardedWallet: an agent wallet governed by a Doctrine. Doctrine: policy rules evaluated
+          before settlement. Restraint: a held transaction pending review. ArcaneVM: the
+          confidential execution layer label used in the console.
         </p>
         <DocBulletList
           items={[
@@ -10666,13 +9516,8 @@ function DocReferenceSection({
   children: ReactNode;
 }>) {
   return (
-    <section
-      id={id}
-      className="mt-10 scroll-mt-6 border-t border-[var(--wl-line)] pt-6"
-    >
-      <div className="text-[10px] tracking-[0.24em] text-[var(--wl-signal)]">
-        {eyebrow}
-      </div>
+    <section id={id} className="mt-10 scroll-mt-6 border-t border-[var(--wl-line)] pt-6">
+      <div className="text-[10px] tracking-[0.24em] text-[var(--wl-signal)]">{eyebrow}</div>
       <h2 className="mt-2 font-cond text-[24px] font-bold leading-tight text-[var(--wl-ink)]">
         {title}
       </h2>
@@ -10736,7 +9581,7 @@ function CodeBlock({
       <pre
         className={cn(
           "overflow-x-auto px-3 py-2.5 text-[12px] leading-relaxed",
-          green ? "text-[var(--wl-green)]" : "text-[var(--wl-body)]"
+          green ? "text-[var(--wl-green)]" : "text-[var(--wl-body)]",
         )}
       >
         {code}
@@ -10760,13 +9605,10 @@ function DocNotice({
     tone === "var(--wl-signal)"
       ? "var(--wl-amber-tint)"
       : tone === "var(--wl-amber)"
-      ? "var(--wl-amber-tint)"
-      : "var(--wl-blue-tint)";
+        ? "var(--wl-amber-tint)"
+        : "var(--wl-blue-tint)";
   return (
-    <div
-      className="flex gap-3 border-l-2 px-4 py-3"
-      style={{ borderColor: tone, background: bg }}
-    >
+    <div className="flex gap-3 border-l-2 px-4 py-3" style={{ borderColor: tone, background: bg }}>
       {icon}
       <div>
         <div className="text-[11px] tracking-[0.12em]" style={{ color: tone }}>
@@ -10789,18 +9631,13 @@ export function SettingsCanvasPage() {
     : liveMembers.map(teamRowFromLiveMember);
   const workspaceSummary = getSettingsWorkspaceSummary(
     workspace.dataMode,
-    workspace.isAuthenticated
+    workspace.isAuthenticated,
   );
   const memberCaption =
-    rows.length > 0
-      ? "LIVE MEMBERS INDEXED"
-      : "INVITE APPROVERS AFTER WALLET SETUP";
+    rows.length > 0 ? "LIVE MEMBERS INDEXED" : "INVITE APPROVERS AFTER WALLET SETUP";
 
   return (
-    <GovernanceFrame
-      file={`${workspaceFileRoot(workspace)} / SETTINGS / TEAM`}
-      showRange={false}
-    >
+    <GovernanceFrame file={`${workspaceFileRoot(workspace)} / SETTINGS / TEAM`} showRange={false}>
       <Main>
         <div className="grid grid-cols-1 divide-y divide-[var(--wl-line)] border border-[var(--wl-line)] bg-[var(--wl-bg-raised)] sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-4">
           <SettingsStat
@@ -10808,12 +9645,7 @@ export function SettingsCanvasPage() {
             value={workspaceSummary.label}
             caption={workspaceSummary.caption}
           />
-          <SettingsStat
-            label="DEPLOYMENT"
-            value="ARC TESTNET"
-            caption="INDEXED READ MODEL"
-            green
-          />
+          <SettingsStat label="DEPLOYMENT" value="ARC TESTNET" caption="INDEXED READ MODEL" green />
           <SettingsStat
             label="MEMBERS"
             value={String(rows.length).padStart(2, "0")}
@@ -10837,7 +9669,7 @@ export function SettingsCanvasPage() {
                   "relative shrink-0 px-4 py-2.5",
                   selected
                     ? "text-[var(--wl-ink)]"
-                    : "text-[var(--wl-mute)] hover:text-[var(--wl-secondary)]"
+                    : "text-[var(--wl-mute)] hover:text-[var(--wl-secondary)]",
                 )}
               >
                 {tab}
@@ -10850,18 +9682,9 @@ export function SettingsCanvasPage() {
         </div>
         <div className="grid grid-cols-1 gap-2 text-[10px] tracking-[0.1em] text-[var(--wl-mute)] sm:grid-cols-2 xl:grid-cols-4">
           <SettingsHint icon={<Building2 />} text="ORG / logo + name fields" />
-          <SettingsHint
-            icon={<Plug />}
-            text="INTEGRATIONS / Slack / Discord / Email"
-          />
-          <SettingsHint
-            icon={<ShieldCheck />}
-            text="SECURITY / roles + approvers"
-          />
-          <SettingsHint
-            icon={<Webhook />}
-            text="WEBHOOKS / endpoints + secret"
-          />
+          <SettingsHint icon={<Plug />} text="INTEGRATIONS / Slack / Discord / Email" />
+          <SettingsHint icon={<ShieldCheck />} text="SECURITY / roles + approvers" />
+          <SettingsHint icon={<Webhook />} text="WEBHOOKS / endpoints + secret" />
         </div>
         <div className="border border-[var(--wl-line)] bg-[var(--wl-bg-raised)]">
           <div className="flex h-10 items-center justify-between border-b border-[var(--wl-line)] px-4">
@@ -10872,7 +9695,7 @@ export function SettingsCanvasPage() {
               type="button"
               onClick={() =>
                 toast.info(
-                  "INVITE MEMBER / approver invitations are not enabled in this Arc Testnet deployment yet"
+                  "INVITE MEMBER / approver invitations are not enabled in this Arc Testnet deployment yet",
                 )
               }
               className="flex h-8 items-center gap-2 border border-[var(--wl-line-active)] px-3 text-[11px] tracking-[0.12em] text-[var(--wl-body)] hover:border-[var(--wl-signal)] hover:text-[var(--wl-signal)]"
@@ -10891,9 +9714,7 @@ export function SettingsCanvasPage() {
               </div>
               <div className="text-[12px]">
                 {rows.length > 0 ? (
-                  rows.map((member) => (
-                    <TeamRow key={member[1]} member={member} />
-                  ))
+                  rows.map((member) => <TeamRow key={member[1]} member={member} />)
                 ) : (
                   <EmptyState
                     description="Invite approvers after creating a governed wallet and defining the human review path."
@@ -10909,9 +9730,7 @@ export function SettingsCanvasPage() {
   );
 }
 
-function teamRowFromLiveMember(
-  member: ReturnType<typeof useLiveMembers>["data"][number]
-) {
+function teamRowFromLiveMember(member: ReturnType<typeof useLiveMembers>["data"][number]) {
   return [
     member.name,
     member.initials,
@@ -10936,13 +9755,11 @@ function SettingsStat({
 }>) {
   return (
     <div className="p-5">
-      <div className="text-[10px] tracking-[0.2em] text-[var(--wl-mute)]">
-        {label}
-      </div>
+      <div className="text-[10px] tracking-[0.2em] text-[var(--wl-mute)]">{label}</div>
       <div
         className={cn(
           "mt-2 font-cond text-[24px] font-semibold leading-none text-[var(--wl-ink)]",
-          hazard && "text-[var(--wl-signal)]"
+          hazard && "text-[var(--wl-signal)]",
         )}
       >
         {value}
@@ -10950,7 +9767,7 @@ function SettingsStat({
       <div
         className={cn(
           "mt-2 text-[10px] tracking-[0.08em]",
-          green ? "text-[var(--wl-green)]" : "text-[var(--wl-mute)]"
+          green ? "text-[var(--wl-green)]" : "text-[var(--wl-mute)]",
         )}
       >
         {caption}
@@ -10959,10 +9776,7 @@ function SettingsStat({
   );
 }
 
-function SettingsHint({
-  icon,
-  text,
-}: Readonly<{ icon: ReactNode; text: string }>) {
+function SettingsHint({ icon, text }: Readonly<{ icon: ReactNode; text: string }>) {
   return (
     <div className="flex items-center gap-2 border border-[var(--wl-line)] bg-[var(--wl-bg-soft)] px-3 py-2">
       {icon}
@@ -10988,9 +9802,7 @@ function TeamRow({ member }: Readonly<{ member: TeamDisplay }>) {
           {initials}
         </span>
         <div>
-          <div className="font-body text-[13px] text-[var(--wl-ink)]">
-            {name}
-          </div>
+          <div className="font-body text-[13px] text-[var(--wl-ink)]">{name}</div>
           <div className="text-[10px] text-[var(--wl-mute)]">{email}</div>
         </div>
       </div>
@@ -11006,7 +9818,7 @@ function TeamRow({ member }: Readonly<{ member: TeamDisplay }>) {
       <div
         className={cn(
           "flex items-center gap-1.5 text-[11px]",
-          live ? "text-[var(--wl-green)]" : "text-[var(--wl-mute)]"
+          live ? "text-[var(--wl-green)]" : "text-[var(--wl-mute)]",
         )}
       >
         {live ? <span className="h-1.5 w-1.5 bg-[var(--wl-green)]" /> : null}
@@ -11015,9 +9827,7 @@ function TeamRow({ member }: Readonly<{ member: TeamDisplay }>) {
       <div className="text-right">
         <button
           type="button"
-          onClick={() =>
-            toast.info(`${name} / member removal requires owner confirmation`)
-          }
+          onClick={() => toast.info(`${name} / member removal requires owner confirmation`)}
           className="flex h-6 w-6 items-center justify-center text-[var(--wl-mute)] opacity-0 transition group-hover:opacity-100 hover:text-[var(--wl-signal)]"
         >
           <UserMinus className="h-3.5 w-3.5" strokeWidth={iconStroke} />
@@ -11076,42 +9886,32 @@ export function StatusCanvasPage() {
   const indexer = health.data?.indexer;
   const rpc = health.data?.rpc;
   const supabase = health.data?.supabase;
-  const indexerStatus = health.isLoading
-    ? "CHECKING"
-    : healthStatusLabel(indexer?.status);
+  const indexerStatus = health.isLoading ? "CHECKING" : healthStatusLabel(indexer?.status);
   const indexerCaption =
     indexer?.status === "stale" && indexer.lastIndexedBlock !== null
       ? `STALE / LAST BLOCK ${indexer.lastIndexedBlock}`
-      : indexer?.lastIndexedBlock !== null &&
-        indexer?.lastIndexedBlock !== undefined
-      ? `LAST BLOCK ${indexer.lastIndexedBlock}`
-      : indexer?.error ?? "NO INDEXED EVENTS YET";
+      : indexer?.lastIndexedBlock !== null && indexer?.lastIndexedBlock !== undefined
+        ? `LAST BLOCK ${indexer.lastIndexedBlock}`
+        : (indexer?.error ?? "NO INDEXED EVENTS YET");
   const readModelStatus = health.isLoading
     ? "CHECKING"
     : healthStatusLabel(supabase?.readModel.status);
   const readModelCaption = supabaseCaption(supabase);
   const readModelAvailable = supabase?.readModel.status === "available";
-  const rpcStatus = health.isLoading
-    ? "CHECKING"
-    : healthStatusLabel(rpc?.status);
+  const rpcStatus = health.isLoading ? "CHECKING" : healthStatusLabel(rpc?.status);
   const rpcCaption = rpc?.latestBlock
     ? `LATEST BLOCK ${rpc.latestBlock}`
-    : rpc?.error ?? "RPC STATUS UNKNOWN";
+    : (rpc?.error ?? "RPC STATUS UNKNOWN");
 
   return (
-    <GovernanceFrame
-      file="FILE / ARCANUM / GOVERNANCE / STATUS"
-      showRange={false}
-    >
+    <GovernanceFrame file="FILE / ARCANUM / GOVERNANCE / STATUS" showRange={false}>
       <Main>
         <div className="grid grid-cols-3 divide-x divide-[var(--wl-line)] border border-[var(--wl-line)] bg-[var(--wl-bg-raised)]">
           <SettingsStat
             label="EVENT INDEXER"
             value={indexerStatus}
             caption={indexerCaption}
-            hazard={
-              indexer?.status === "stale" || indexer?.status === "unavailable"
-            }
+            hazard={indexer?.status === "stale" || indexer?.status === "unavailable"}
             green={indexer?.status === "available"}
           />
           <SettingsStat
@@ -11130,9 +9930,9 @@ export function StatusCanvasPage() {
           />
         </div>
         <div className="border border-[var(--wl-line)] bg-[var(--wl-bg-raised)] px-4 py-3 text-[11px] leading-relaxed text-[var(--wl-secondary)]">
-          Supabase read model stores wallet creation and setup writes. Event
-          indexer tracks on-chain history and may lag behind; fresh wallets can
-          be synced in Supabase while showing no indexed activity yet.
+          Supabase read model stores wallet creation and setup writes. Event indexer tracks on-chain
+          history and may lag behind; fresh wallets can be synced in Supabase while showing no
+          indexed activity yet.
         </div>
       </Main>
     </GovernanceFrame>

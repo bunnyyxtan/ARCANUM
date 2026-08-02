@@ -148,7 +148,9 @@ function ShortcutGroup({ title, children }: Readonly<{ title: string; children: 
       <div className="font-cond text-[13px] font-semibold tracking-[0.22em] text-[var(--wl-text-secondary)]">
         {title}
       </div>
-      <div className="mt-2 divide-y divide-[var(--wl-subrule)] border border-[var(--wl-hairline)]">{children}</div>
+      <div className="mt-2 divide-y divide-[var(--wl-subrule)] border border-[var(--wl-hairline)]">
+        {children}
+      </div>
     </section>
   );
 }

@@ -13,7 +13,9 @@ export default function GlossaryPage() {
           >
             ARCANUM
           </Link>
-          <span className="text-[10px] tracking-[0.18em] text-[var(--wl-text-muted)]">FOUNDRY VOCABULARY</span>
+          <span className="text-[10px] tracking-[0.18em] text-[var(--wl-text-muted)]">
+            FOUNDRY VOCABULARY
+          </span>
         </div>
         <h1 className="mt-8 font-cond text-[44px] font-bold leading-none tracking-[0.04em] text-[var(--wl-text-primary)]">
           GLOSSARY

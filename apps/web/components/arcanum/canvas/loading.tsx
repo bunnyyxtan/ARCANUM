@@ -48,7 +48,9 @@ export function CanvasLoading({ title = "LOADING FOUNDRY VIEW", rows = 8 }: Canv
         <div className="grid grid-cols-[1fr_360px] gap-4">
           <section className="border border-[var(--wl-hairline)] bg-[var(--wl-panel)]">
             <div className="flex h-9 items-center justify-between border-b border-[var(--wl-hairline)] px-4">
-              <span className="text-[11px] tracking-[0.22em] text-[var(--wl-text-secondary)]">{title}</span>
+              <span className="text-[11px] tracking-[0.22em] text-[var(--wl-text-secondary)]">
+                {title}
+              </span>
               <Skeleton className="h-3 w-24 bg-[var(--wl-hairline)]" />
             </div>
             <div className="divide-y divide-[var(--wl-subrule)]">

@@ -52,7 +52,11 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
         "hidden h-8 w-8 items-center justify-center border border-[var(--wl-hairline)] bg-[var(--wl-inset)] text-[var(--wl-text-secondary)] hover:text-[var(--wl-text-body)] sm:flex"
       }
     >
-      {dark ? <Sun className="h-4 w-4" strokeWidth={1.5} /> : <Moon className="h-4 w-4" strokeWidth={1.5} />}
+      {dark ? (
+        <Sun className="h-4 w-4" strokeWidth={1.5} />
+      ) : (
+        <Moon className="h-4 w-4" strokeWidth={1.5} />
+      )}
     </button>
   );
 }

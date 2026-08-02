@@ -38,7 +38,11 @@ export function BadgePublicPage({ wallet }: BadgePublicPageProps) {
   const profile = profileQuery.data;
   const hasProfile = Boolean(profile);
   const score = profile?.postureScore ?? 0;
-  const color = !hasProfile ? "var(--wl-text-secondary)" : score < 50 ? "var(--wl-signal)" : "var(--wl-green)";
+  const color = !hasProfile
+    ? "var(--wl-text-secondary)"
+    : score < 50
+      ? "var(--wl-signal)"
+      : "var(--wl-green)";
   const status = profile?.state ?? "NO PUBLIC PROFILE";
   const governedSince =
     profile?.governedDays === null || profile?.governedDays === undefined
@@ -84,7 +88,9 @@ export function BadgePublicPage({ wallet }: BadgePublicPageProps) {
               className="h-8 w-auto object-contain"
             />
             <span className="font-cond text-[16px] font-bold tracking-[0.18em]">ARCANUM</span>
-            <span className="text-[10px] tracking-[0.16em] text-[var(--wl-text-muted)]">/ PUBLIC BADGE</span>
+            <span className="text-[10px] tracking-[0.16em] text-[var(--wl-text-muted)]">
+              / PUBLIC BADGE
+            </span>
           </Link>
           <div className="flex flex-wrap items-center gap-2">
             <Link
@@ -121,7 +127,9 @@ export function BadgePublicPage({ wallet }: BadgePublicPageProps) {
                   </div>
                 </div>
                 <div className="shrink-0 text-right">
-                  <div className="text-[10px] tracking-[0.18em] text-[var(--wl-text-muted)]">POSTURE</div>
+                  <div className="text-[10px] tracking-[0.18em] text-[var(--wl-text-muted)]">
+                    POSTURE
+                  </div>
                   <div className="font-cond text-[72px] font-bold leading-none" style={{ color }}>
                     {score}
                   </div>
@@ -214,7 +222,9 @@ export function BadgePublicPage({ wallet }: BadgePublicPageProps) {
 
           <aside className="space-y-5">
             <div className="border border-[var(--wl-hairline)] bg-[var(--wl-panel-mid)] p-5">
-              <div className="text-[10px] tracking-[0.2em] text-[var(--wl-text-muted)]">EMBED SNIPPET</div>
+              <div className="text-[10px] tracking-[0.2em] text-[var(--wl-text-muted)]">
+                EMBED SNIPPET
+              </div>
               <p className="mt-2 text-[12px] leading-relaxed text-[var(--wl-text-secondary)]">
                 Paste this snippet into a README, portal, or partner page to show the public badge.
               </p>
@@ -235,7 +245,9 @@ export function BadgePublicPage({ wallet }: BadgePublicPageProps) {
               </button>
             </div>
             <div className="border border-[var(--wl-hairline)] bg-[var(--wl-panel-mid)] p-5">
-              <div className="text-[10px] tracking-[0.2em] text-[var(--wl-text-muted)]">HONEST DATA STATE</div>
+              <div className="text-[10px] tracking-[0.2em] text-[var(--wl-text-muted)]">
+                HONEST DATA STATE
+              </div>
               <div className="mt-3 text-[12px] leading-relaxed text-[var(--wl-text-secondary)]">
                 Badge posture is displayed only when public Supabase or known demo fallback data
                 exists for this wallet. Unknown wallets are not assigned demo metrics.
@@ -260,7 +272,11 @@ function BadgeMetric({
       <div
         className={[
           "mt-1 font-cond text-[24px] font-semibold",
-          accent ? "text-[var(--wl-signal)]" : muted ? "text-[var(--wl-text-secondary)]" : "text-[var(--wl-text-primary)]",
+          accent
+            ? "text-[var(--wl-signal)]"
+            : muted
+              ? "text-[var(--wl-text-secondary)]"
+              : "text-[var(--wl-text-primary)]",
         ].join(" ")}
       >
         {value}

@@ -157,7 +157,9 @@ export function CommandPalette() {
               >
                 <ShieldAlert className="h-3.5 w-3.5" strokeWidth={1.75} />
                 <span>{agent.name}</span>
-                <span className="ml-auto text-[10px] text-[var(--wl-text-muted)]">{agent.wallet}</span>
+                <span className="ml-auto text-[10px] text-[var(--wl-text-muted)]">
+                  {agent.wallet}
+                </span>
               </PaletteItem>
             ))}
           </PaletteGroup>
@@ -171,7 +173,9 @@ export function CommandPalette() {
               >
                 <ListChecks className="h-3.5 w-3.5" strokeWidth={1.75} />
                 <span>{vendor.name}</span>
-                <span className="ml-auto text-[10px] text-[var(--wl-text-muted)]">{vendor.address}</span>
+                <span className="ml-auto text-[10px] text-[var(--wl-text-muted)]">
+                  {vendor.address}
+                </span>
               </PaletteItem>
             ))}
           </PaletteGroup>

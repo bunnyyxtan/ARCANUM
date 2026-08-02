@@ -224,7 +224,9 @@ export function GovernanceFrame({
                 <div className="divide-y divide-[var(--wl-hairline)] text-[12px]">
                   {notificationItems.map(([label, body]) => (
                     <div key={label} className="px-4 py-3">
-                      <div className="text-[10px] tracking-[0.14em] text-[var(--wl-signal)]">{label}</div>
+                      <div className="text-[10px] tracking-[0.14em] text-[var(--wl-signal)]">
+                        {label}
+                      </div>
                       <div className="mt-1 text-[var(--wl-text-secondary)]">{body}</div>
                     </div>
                   ))}
@@ -470,20 +472,26 @@ function ConnectedWalletPill({ address, label }: Readonly<{ address: string; lab
           />
           <div className="absolute right-0 top-10 z-50 w-[min(21.25rem,calc(100vw-1.5rem))] border border-[var(--wl-hairline)] bg-[var(--wl-panel)] shadow-[0_18px_50px_rgba(0,0,0,0.55)]">
             <div className="border-b border-[var(--wl-hairline)] p-4">
-              <div className="text-[10px] tracking-[0.16em] text-[var(--wl-text-muted)]">CONNECTED WALLET</div>
+              <div className="text-[10px] tracking-[0.16em] text-[var(--wl-text-muted)]">
+                CONNECTED WALLET
+              </div>
               <div className="mt-1 min-w-0 truncate font-mono text-[12px] text-[var(--wl-text-body)]">
                 {address}
               </div>
               <div
                 className={cn(
                   "mt-2 flex items-center gap-2 text-[10px] tracking-[0.14em]",
-                  authStatus === "authenticated" ? "text-[var(--wl-green)]" : "text-[var(--wl-amber)]",
+                  authStatus === "authenticated"
+                    ? "text-[var(--wl-green)]"
+                    : "text-[var(--wl-amber)]",
                 )}
               >
                 <span
                   className={cn(
                     "h-1.5 w-1.5",
-                    authStatus === "authenticated" ? "bg-[var(--wl-green)]" : "bg-[var(--wl-amber)]",
+                    authStatus === "authenticated"
+                      ? "bg-[var(--wl-green)]"
+                      : "bg-[var(--wl-amber)]",
                   )}
                 />
                 {authStatus === "checking"
@@ -581,7 +589,9 @@ export function GovernanceFooter() {
         <span className="text-[var(--wl-line-strong)]">|</span>
         <span>
           DOCTRINE ENGINE:{" "}
-          <span style={{ color: workspace.isAuthenticated ? "var(--wl-green)" : "var(--wl-amber)" }}>
+          <span
+            style={{ color: workspace.isAuthenticated ? "var(--wl-green)" : "var(--wl-amber)" }}
+          >
             {workspace.isAuthenticated ? "ACTIVE" : "WAITING"}
           </span>
         </span>
@@ -603,7 +613,9 @@ export function PanelHeader({
   return (
     <div className="flex h-9 items-center justify-between border-b border-[var(--wl-hairline)] px-4">
       <span className="text-[11px] tracking-[0.22em] text-[var(--wl-text-secondary)]">{title}</span>
-      {children ?? <span className="text-[10px] tracking-[0.14em] text-[var(--wl-text-muted)]">{meta}</span>}
+      {children ?? (
+        <span className="text-[10px] tracking-[0.14em] text-[var(--wl-text-muted)]">{meta}</span>
+      )}
     </div>
   );
 }
@@ -613,7 +625,8 @@ export function HazardStripe({ className }: Readonly<{ className?: string }>) {
     <div
       className={cn("w-2", className)}
       style={{
-        background: "repeating-linear-gradient(45deg,var(--wl-signal) 0 8px,var(--wl-hazard-tint) 8px 16px)",
+        background:
+          "repeating-linear-gradient(45deg,var(--wl-signal) 0 8px,var(--wl-hazard-tint) 8px 16px)",
       }}
     />
   );
@@ -661,7 +674,8 @@ export function Gauge({
         <div
           className="absolute inset-x-0 top-1/2 h-6 -translate-y-1/2"
           style={{
-            background: "repeating-linear-gradient(90deg,var(--wl-line-muted) 0 1px,transparent 1px 13px)",
+            background:
+              "repeating-linear-gradient(90deg,var(--wl-line-muted) 0 1px,transparent 1px 13px)",
           }}
         />
         <div
@@ -699,7 +713,10 @@ export function Gauge({
 export function CategoryTick({ category, label }: Readonly<{ category: string; label?: string }>) {
   return (
     <span className="flex items-center gap-1.5 text-[10px] text-[var(--wl-text-secondary)]">
-      <span className="h-3 w-1" style={{ background: categoryColors[category] ?? "var(--wl-cat-other)" }} />
+      <span
+        className="h-3 w-1"
+        style={{ background: categoryColors[category] ?? "var(--wl-cat-other)" }}
+      />
       {label ?? category}
     </span>
   );
@@ -757,7 +774,12 @@ export function StatusLabel({
 }
 
 export function CopyIcon() {
-  return <Copy className="h-3 w-3 cursor-pointer hover:text-[var(--wl-text-secondary)]" strokeWidth={iconStroke} />;
+  return (
+    <Copy
+      className="h-3 w-3 cursor-pointer hover:text-[var(--wl-text-secondary)]"
+      strokeWidth={iconStroke}
+    />
+  );
 }
 
 export function ProgressLine({
@@ -770,7 +792,10 @@ export function ProgressLine({
     <div className={cn("relative mt-1 h-1 w-24 bg-[var(--wl-panel-muted)]", className)}>
       <div className="h-full" style={{ width: `${width}%`, background: color }} />
       {threshold ? (
-        <div className="absolute bottom-0 top-0 w-px bg-[var(--wl-text-muted)]" style={{ left: "75%" }} />
+        <div
+          className="absolute bottom-0 top-0 w-px bg-[var(--wl-text-muted)]"
+          style={{ left: "75%" }}
+        />
       ) : null}
     </div>
   );
@@ -815,7 +840,9 @@ export function StatTile({
       </div>
       {children}
       {caption ? (
-        <div className="mt-1 text-[10px] tracking-[0.08em] text-[var(--wl-text-muted)]">{caption}</div>
+        <div className="mt-1 text-[10px] tracking-[0.08em] text-[var(--wl-text-muted)]">
+          {caption}
+        </div>
       ) : null}
     </MotionDiv>
   );
@@ -830,7 +857,11 @@ export function RowShell({
 
   return (
     <MotionDiv
-      className={cn("arcanum-row hover:bg-[var(--wl-panel-hover)]", danger && "bg-[var(--wl-amber-tint)]", className)}
+      className={cn(
+        "arcanum-row hover:bg-[var(--wl-panel-hover)]",
+        danger && "bg-[var(--wl-amber-tint)]",
+        className,
+      )}
       variants={reduced ? undefined : hoverLift}
       initial={reduced ? false : "rest"}
       whileHover={reduced ? undefined : "hover"}
