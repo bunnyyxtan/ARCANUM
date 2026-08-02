@@ -12,7 +12,6 @@ import {
   Copy,
   ExternalLink,
   LogOut,
-  RefreshCw,
   Rows2,
   Rows3,
   Search,
@@ -80,20 +79,20 @@ export const categoryColors: Record<string, string> = {
 
 export function GovernanceFrame({
   active,
-  file,
   children,
   bellCount = 0,
   escalationCount = 0,
   anomalyCount = 0,
-  showRange = true,
   relative = false,
 }: Readonly<{
   active?: NavKey;
-  file: string;
+  /** @deprecated Decorative console strip removed; kept for caller compatibility. */
+  file?: string;
   children: ReactNode;
   bellCount?: number;
   escalationCount?: number;
   anomalyCount?: number;
+  /** @deprecated Decorative console strip removed; kept for caller compatibility. */
   showRange?: boolean;
   relative?: boolean;
 }>) {
@@ -106,7 +105,6 @@ export function GovernanceFrame({
   const showSeededBadges = false;
   const visibleBellCount = showSeededBadges ? bellCount : 0;
   const orgLabel = getWorkspaceHeaderLabel(workspace.dataMode);
-  const displayFile = file.replace("DEMO-WORKSPACE", orgLabel);
   const notificationItems = getWorkspaceNotificationItems(workspace.dataMode);
 
   return (
@@ -274,32 +272,9 @@ export function GovernanceFrame({
             );
           })}
         </nav>
-        <div className="hidden min-w-0 items-center gap-3 text-[11px] tracking-[0.1em] text-[var(--wl-text-muted)] lg:flex">
-          <span className="truncate">{displayFile}</span>
-          <span className="text-[var(--wl-line-strong)]">|</span>
-          <span className="text-[var(--wl-text-secondary)]">REV 02:51:04Z</span>
-          {showRange ? (
-            <MotionButton
-              type="button"
-              onClick={() => toast.info("TIME RANGE / Live read model window")}
-              {...hoverProps}
-              className="flex items-center gap-1.5 border border-[var(--wl-hairline)] px-2 py-1 text-[var(--wl-text-secondary)] hover:text-[var(--wl-text-body)]"
-            >
-              24H <ChevronDown className="h-3 w-3" strokeWidth={iconStroke} />
-            </MotionButton>
-          ) : null}
-          <MotionButton
-            type="button"
-            aria-label="Refresh local data"
-            onClick={() =>
-              toast.info("REFRESH / no polling started; use page retry controls for failed queries")
-            }
-            {...hoverProps}
-            className="flex h-[26px] w-[26px] items-center justify-center border border-[var(--wl-hairline)] text-[var(--wl-text-secondary)] hover:text-[var(--wl-text-body)]"
-          >
-            <RefreshCw className="h-3.5 w-3.5" strokeWidth={iconStroke} />
-          </MotionButton>
-        </div>
+        <span className="hidden font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)] lg:inline">
+          ARC TESTNET
+        </span>
       </div>
 
       <div className="min-h-0 min-w-0 max-w-[100vw] flex-1 overflow-x-clip">{children}</div>
