@@ -1,4 +1,5 @@
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { Header } from "./_shared/Header";
 
 type QueueStatus = "PENDING" | "APPROVED" | "REJECTED";
 
@@ -47,7 +48,7 @@ function Shell({ children, onAction }: { children: ReactNode; onAction: () => vo
         .arc-card-near{border-left:2px solid #ff3c00}.arc-card-resolved{opacity:.76}.arc-stamp{transform:rotate(-7deg);border:1px solid #3f653e;color:#3f653e}
         @keyframes cardIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}@media (prefers-reduced-motion:reduce){.arc-pill,.arc-card{animation:none!important;transition:none!important}.arc-card:hover,.arc-pill:hover{transform:none}}
       `}</style>
-      <header className="flex min-h-[68px] items-center justify-between border-b border-[#ded7d0] px-5 md:px-8">
+      <Header active="ESCALATIONS" /><header className="hidden flex min-h-[68px] items-center justify-between border-b border-[#ded7d0] px-5 md:px-8">
         <div className="flex min-w-0 items-center gap-7">
           <button onClick={onAction} className="shrink-0 text-[18px] font-bold tracking-[-.06em]">ARCANUM<span className="text-[#ff3c00]">.</span></button>
           <nav className="hidden items-center gap-5 lg:flex">

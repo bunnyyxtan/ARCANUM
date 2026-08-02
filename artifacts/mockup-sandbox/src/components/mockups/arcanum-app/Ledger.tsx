@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { Header } from "./_shared/Header";
 
 type LedgerStatus = "APPROVED" | "REJECTED" | "ESCALATED" | "FROZEN";
 
@@ -60,7 +61,7 @@ function Shell({ children, onAction }: { children: ReactNode; onAction: () => vo
         .arc-drawer{animation:drawerIn 420ms cubic-bezier(.16,1,.3,1) both}@keyframes drawerIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
         @media (prefers-reduced-motion:reduce){.arc-pill,.arc-row,.arc-drawer{animation:none!important;transition:none!important}.arc-row:hover,.arc-pill:hover{transform:none}}
       `}</style>
-      <header className="flex min-h-[68px] items-center justify-between border-b border-[#ded7d0] px-5 md:px-8">
+      <Header active="LEDGER" /><header className="hidden flex min-h-[68px] items-center justify-between border-b border-[#ded7d0] px-5 md:px-8">
         <div className="flex min-w-0 items-center gap-7">
           <button onClick={onAction} className="shrink-0 text-[18px] font-bold tracking-[-.06em]">ARCANUM<span className="text-[#ff3c00]">.</span></button>
           <nav className="hidden items-center gap-5 lg:flex">

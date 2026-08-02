@@ -1,4 +1,5 @@
 import { useState, type CSSProperties, type ReactNode } from "react";
+import { Header } from "./_shared/Header";
 
 function AppShell({ children }: { children: ReactNode }) {
   const links = ["DASHBOARD", "AGENTS", "VENDORS", "LEDGER", "ESCALATIONS", "ANOMALIES"];
@@ -18,7 +19,7 @@ function AppShell({ children }: { children: ReactNode }) {
         @media (prefers-reduced-motion:reduce){.warm-pill,.warm-pill::before,.warm-reveal,.member-row,.remove-action{transition:none!important;animation:none!important;transform:none!important}}
         @media (max-width:900px){.app-nav{overflow-x:auto}.app-nav button{padding-left:9px;padding-right:9px}.app-nav button:first-child{padding-left:0}.app-content{padding-left:20px;padding-right:20px}.settings-grid{grid-template-columns:1fr}}
       `}</style>
-      <header className="flex h-[68px] items-center justify-between border-b border-[#ded7d0] px-8">
+      <Header /><header className="hidden flex h-[68px] items-center justify-between border-b border-[#ded7d0] px-8">
         <div className="flex h-full min-w-0 items-center gap-8">
           <button type="button" onClick={() => undefined} className="shrink-0 text-[18px] font-bold tracking-[-.06em]">ARCANUM<span className="text-[#ff3c00]">.</span></button>
           <nav className="app-nav flex h-full items-center">

@@ -1,4 +1,5 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { Header } from "./_shared/Header";
 
 const orange = "#ff3c00";
 const navItems = ["DASHBOARD", "AGENTS", "VENDORS", "LEDGER", "ESCALATIONS", "ANOMALIES"];
@@ -57,20 +58,7 @@ function Shell({ children }: { children: ReactNode }) {
         .stream-row{transition:transform 220ms cubic-bezier(.16,1,.3,1),background-color 220ms ease}.stream-row:hover{transform:translateX(3px);background:#f5f0ea}
         @media (prefers-reduced-motion:reduce){.warm-reveal{animation:none}.warm-pill,.warm-pill::before,.stream-row{transition:none}}
       `}</style>
-      <header className="flex h-[68px] items-center justify-between border-b border-[#ded7d0] px-5 md:px-8">
-        <div className="flex min-w-0 items-center gap-7">
-          <a href="/__mockup/preview/arcanum-app/Dashboard" className="shrink-0 text-[18px] font-bold tracking-[-.06em]">ARCANUM<span className="text-[#ff3c00]">.</span></a>
-          <nav className="hidden items-center gap-5 lg:flex">
-            {navItems.map((item) => <a key={item} href={item === "DASHBOARD" ? "#top" : `#${item.toLowerCase()}`} className={`relative text-[12px] font-medium tracking-[-.01em] ${item === "DASHBOARD" ? "text-[#292522] after:absolute after:-bottom-[27px] after:left-0 after:h-[2px] after:w-full after:bg-[#ff3c00]" : "text-[#655d56] hover:text-[#292522]"}`}>{item}</a>)}
-          </nav>
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="hidden font-mono text-[9px] uppercase tracking-[.16em] text-[#9b9289] sm:inline">ARC TESTNET</span>
-          <button type="button" className="flex items-center gap-2 rounded-full border border-[#ded7d0] px-2.5 py-1.5 text-left transition-colors hover:border-[#292522]">
-            <span className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-[#292522] font-mono text-[9px] text-[#faf6f1]">HD</span><span className="text-[12px] font-medium">HELIX-DAO</span>
-          </button>
-        </div>
-      </header>
+      <Header active="DASHBOARD" />
       {children}
     </main>
   );

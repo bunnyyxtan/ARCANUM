@@ -1,4 +1,5 @@
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { Header } from "./_shared/Header";
 
 type AnomalyStatus = "FROZEN" | "WATCH";
 
@@ -58,7 +59,7 @@ function AppShell({ children }: { children: ReactNode }) {
         @keyframes rowIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
         @media (prefers-reduced-motion:reduce){.warm-pill,.warm-pill::before,.anomaly-row{animation:none;transition:none}.warm-pill:hover,.anomaly-row:hover{transform:none}}
       `}</style>
-      <header className="flex min-h-[68px] flex-wrap items-center justify-between gap-4 border-b border-[#ded7d0] px-5 py-4 sm:h-[68px] sm:flex-nowrap sm:px-8 sm:py-0">
+      <Header active="ANOMALIES" /><header className="hidden flex min-h-[68px] flex-wrap items-center justify-between gap-4 border-b border-[#ded7d0] px-5 py-4 sm:h-[68px] sm:flex-nowrap sm:px-8 sm:py-0">
         <div className="flex min-w-0 items-center gap-7">
           <a href="/__mockup/preview/arcanum-app/Anomalies" className="shrink-0 text-[18px] font-bold tracking-[-.06em]">ARCANUM<span className="text-[#ff3c00]">.</span></a>
           <nav className="flex min-w-0 gap-4 overflow-x-auto pb-0.5 sm:gap-5">

@@ -141,6 +141,8 @@ function SectionNumber({ value, className = "" }: { value: string; className?: s
 }
 
 export function WarmLedger() {
+  const [connectOpen, setConnectOpen] = useState(false);
+  const [connecting, setConnecting] = useState(false);
   const [activeSection, setActiveSection] = useState("");
   const [capitalGoverned, setCapitalGoverned] = useState(82.4);
   const gridRef = useRef<HTMLDivElement>(null);
@@ -154,6 +156,28 @@ export function WarmLedger() {
     sections.forEach((section) => observer.observe(section));
     return () => observer.disconnect();
   }, []);
+  useEffect(() => {
+    const open = () => setConnectOpen(true);
+    window.addEventListener("arcanum-connect", open);
+    return () => window.removeEventListener("arcanum-connect", open);
+  }, []);
+  useEffect(() => {
+    if (!connecting) return;
+    const timer = window.setTimeout(() => {
+      setConnecting(false);
+      setConnectOpen(false);
+      window.dispatchEvent(new CustomEvent("arcanum-connected"));
+    }, 1500);
+    return () => window.clearTimeout(timer);
+  }, [connecting]);
+  useEffect(() => {
+    if (!connectOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { setConnectOpen(false); setConnecting(false); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [connectOpen]);
   useEffect(() => {
     const capitalTimer = window.setInterval(() => setCapitalGoverned((value) => value >= 87.8 ? 82.4 : Number((value + 0.1).toFixed(1))), 1800);
     return () => {
@@ -233,7 +257,8 @@ export function WarmLedger() {
 
         <section id="contact" className="px-6 py-32 lg:px-10 lg:py-44"><Reveal><div className="mx-auto max-w-[1400px] border-b border-[#ded7d0] pb-24"><div className="flex items-start justify-between"><p className="font-mono text-[10px] uppercase tracking-[.18em] text-[#ff3c00]">04 / Trust is the product</p><SectionNumber value="4" className="hidden font-mono text-[80px] leading-none tracking-[-.1em] text-[#e3dcd5] lg:block" /></div><h2 className="mt-8 max-w-[950px] text-[clamp(4rem,9vw,9rem)] font-semibold leading-[.78] tracking-[-.1em]">Let agents move.<br /><span className="text-[#8d837b]">Keep the final word.</span></h2><div className="mt-14 flex flex-col gap-8 lg:ml-[42%] lg:flex-row lg:items-center"><p className="max-w-[290px] text-[15px] leading-[1.5] text-[#655d56]">Built for finance and engineering teams who need autonomy without giving up the ledger.</p><div className="flex flex-wrap items-center gap-4"><MagneticAnchor href="/dashboard" className="warm-pill group w-fit rounded-full bg-[#ff3c00] px-6 py-3.5 text-[12px] font-semibold text-white">Launch Dashboard<Arrow /></MagneticAnchor><MagneticAnchor href="/docs" className="warm-pill warm-pill-ghost inline-flex w-fit items-center gap-2 rounded-full border border-[#ded7d0] px-6 py-3.5 text-[12px] font-semibold text-[#292522]"><BookIcon />Read Docs</MagneticAnchor></div></div></div></Reveal></section>
         <footer className="flex flex-col justify-between gap-6 px-6 pb-10 text-[11px] text-[#837a72] lg:flex-row lg:px-10"><span className="font-semibold tracking-[-.04em] text-[#292522]">ARCANUM<span className="warm-period text-[#ff3c00]">.</span></span><div className="flex gap-7"><MagneticAnchor href="/docs" className="warm-link inline-flex items-center gap-1.5 hover:text-[#ff3c00]"><BookIcon className="h-3 w-3" />Documentation</MagneticAnchor><MagneticAnchor href="https://github.com/bunnyyxtan/ARCANUM" target="_blank" rel="noreferrer" className="warm-link inline-flex items-center gap-1.5 hover:text-[#ff3c00]"><GitHubMark className="h-3 w-3" />GitHub</MagneticAnchor><MagneticAnchor href="/dashboard" className="warm-link hover:text-[#ff3c00]">Dashboard</MagneticAnchor><span className="font-mono">© 2025 ARCANUM</span></div></footer>
-      </div>
+       </div>
+       {connectOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(41,37,34,.18)] p-5" role="dialog" aria-modal="true" onClick={() => { setConnectOpen(false); setConnecting(false); }}><div className="w-full max-w-[460px] border border-[#cfc5bc] bg-[#faf6f1] p-8 shadow-[14px_18px_0_#e7e0d9]" onClick={(event) => event.stopPropagation()}><div className="flex items-start justify-between"><div><p className="font-mono text-[10px] uppercase tracking-[.2em] text-[#ff3c00]">ARCANUM / ACCESS</p><h2 className="mt-4 text-[32px] font-semibold leading-[.9] tracking-[-.07em]">Connect your<br />governed wallet.</h2></div><button type="button" onClick={() => setConnectOpen(false)} className="font-mono text-[10px] text-[#837a72] hover:text-[#292522]">CLOSE</button></div>{connecting ? <div className="py-12"><p className="font-mono text-[10px] uppercase tracking-[.14em] text-[#ff3c00]">CONNECTING / ARC TESTNET</p><p className="mt-4 text-[15px] text-[#655d56]">Waiting for an operator signature…</p><div className="mt-6 h-1 bg-[#e3dcd5]"><span className="block h-full w-2/3 bg-[#ff3c00]" /></div></div> : <><p className="mt-6 max-w-[360px] text-[14px] leading-[1.5] text-[#655d56]">ARCANUM never takes custody. Connect an operator wallet to inspect the governed ledger and continue.</p><div className="mt-8 border-t border-[#ded7d0] pt-4"><button type="button" onClick={() => setConnecting(true)} className="warm-pill w-full rounded-full bg-[#ff3c00] px-5 py-3 text-[12px] font-semibold text-white">Connect operator wallet</button><button type="button" onClick={() => { setConnectOpen(false); window.dispatchEvent(new CustomEvent("arcanum-connected")); }} className="mt-3 w-full py-2 font-mono text-[10px] tracking-[.12em] text-[#837a72] hover:text-[#292522]">CONTINUE IN READ-ONLY MODE</button></div></>}</div></div>}
     </main>
   );
 }

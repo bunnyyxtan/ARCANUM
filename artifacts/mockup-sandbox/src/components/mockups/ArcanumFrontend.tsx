@@ -1,4 +1,4 @@
-import { useCallback, useState, type MouseEvent } from 'react';
+import { useCallback, useEffect, useState, type MouseEvent, type ReactElement } from 'react';
 
 import { WarmLedger } from './arcanum-landing/WarmLedger';
 import Dashboard from './arcanum-app/Dashboard';
@@ -21,7 +21,7 @@ type PageKey =
   | 'SETTINGS'
   | 'STATUS';
 
-const PAGES: Record<PageKey, () => JSX.Element> = {
+const PAGES: Record<PageKey, () => ReactElement> = {
   LANDING: WarmLedger,
   DASHBOARD: Dashboard,
   AGENTS: Agents,
@@ -54,12 +54,20 @@ const LABEL_TO_PAGE: Record<string, PageKey> = {
 /**
  * Single-frame preview of the entire Warm Ledger frontend.
  * Renders each page mockup full-bleed and makes their built-in nav links
- * actually switch pages, plus a small fixed switcher rail for pages that
- * are not in the in-app nav (Settings, Status, Landing).
+ * actually switch pages through the product's own navigation.
  */
 export function ArcanumFrontend() {
   const [page, setPage] = useState<PageKey>('LANDING');
   const Active = PAGES[page];
+
+  useEffect(() => {
+    const onConnected = () => {
+      setPage('DASHBOARD');
+      window.scrollTo({ top: 0 });
+    };
+    window.addEventListener('arcanum-connected', onConnected);
+    return () => window.removeEventListener('arcanum-connected', onConnected);
+  }, []);
 
   const onClickCapture = useCallback((e: MouseEvent<HTMLDivElement>) => {
     const el = (e.target as HTMLElement).closest('a, button');
@@ -71,62 +79,18 @@ export function ArcanumFrontend() {
     if (target) {
       e.preventDefault();
       e.stopPropagation();
+      if (page === 'LANDING' && target === 'DASHBOARD') {
+        window.dispatchEvent(new CustomEvent('arcanum-connect'));
+        return;
+      }
       setPage(target);
       window.scrollTo({ top: 0 });
     }
-  }, []);
+  }, [page]);
 
   return (
     <div onClickCapture={onClickCapture}>
       <Active key={page} />
-
-      {/* Fixed page switcher — preview chrome, not part of the design */}
-      <div
-        style={{
-          position: 'fixed',
-          bottom: 14,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          zIndex: 9999,
-          display: 'flex',
-          gap: 2,
-          padding: '5px 8px',
-          background: '#292522',
-          borderRadius: 999,
-          boxShadow: '0 10px 30px rgba(41,37,34,.35)',
-          fontFamily: "'DM Mono', monospace",
-          fontSize: 9,
-          letterSpacing: '.12em',
-          maxWidth: 'calc(100vw - 24px)',
-          overflowX: 'auto',
-        }}
-      >
-        {PAGE_KEYS.map((key) => (
-          <button
-            key={key}
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setPage(key);
-              window.scrollTo({ top: 0 });
-            }}
-            style={{
-              padding: '5px 10px',
-              borderRadius: 999,
-              border: 'none',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              background: page === key ? '#ff3c00' : 'transparent',
-              color: page === key ? '#faf6f1' : '#a69d94',
-              fontFamily: 'inherit',
-              fontSize: 'inherit',
-              letterSpacing: 'inherit',
-            }}
-          >
-            {key}
-          </button>
-        ))}
-      </div>
     </div>
   );
 }
