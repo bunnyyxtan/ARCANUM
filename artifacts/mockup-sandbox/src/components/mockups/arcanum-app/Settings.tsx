@@ -21,7 +21,7 @@ function AppShell({ children }: { children: ReactNode }) {
       `}</style>
       <Header /><header className="hidden flex h-[68px] items-center justify-between border-b border-[#ded7d0] px-8">
         <div className="flex h-full min-w-0 items-center gap-8">
-          <button type="button" onClick={() => undefined} className="shrink-0 text-[18px] font-bold tracking-[-.06em]">ARCANUM<span className="text-[#ff3c00]">.</span></button>
+          <button type="button" onClick={() => undefined} className="shrink-0 text-[18px] font-bold tracking-[-.05em]">ARCANUM<span className="text-[#ff3c00]">.</span></button>
           <nav className="app-nav flex h-full items-center">
             {links.map((link) => <button type="button" key={link} onClick={() => undefined} className="relative h-full whitespace-nowrap px-3 text-[12px] font-medium text-[#655d56] transition-colors duration-[220ms] hover:text-[#292522]">{link}</button>)}
           </nav>
@@ -69,7 +69,7 @@ export function Settings() {
         <div className="flex items-end justify-between gap-8 max-md:flex-col max-md:items-start">
           <div className="warm-reveal">
             <p className="font-mono text-[10px] uppercase tracking-[.2em] text-[#ff3c00]">WORKSPACE / GOVERNANCE</p>
-            <h1 className="mt-5 text-[clamp(3rem,6vw,5.8rem)] font-semibold leading-[.85] tracking-[-.085em]">Settings</h1>
+            <h1 className="mt-5 text-[clamp(3rem,6vw,5.8rem)] font-semibold leading-[.85] tracking-[-.045em]">Settings</h1>
             <p className="mt-6 max-w-[500px] text-[14px] leading-[1.5] text-[#776f68]">Keep the people, permissions, and integrations around governed spend legible.</p>
           </div>
           <button type="button" onClick={() => setInviteOpen(true)} className="warm-pill group rounded-full bg-[#ff3c00] px-5 py-3 text-[12px] font-semibold text-[#fff]">Invite member <span className="ml-1.5 inline-block transition-transform duration-[220ms] group-hover:translate-x-1">↗</span></button>
@@ -102,7 +102,7 @@ export function Settings() {
             ) : (
               <section className="warm-reveal border border-[#ded7d0] bg-[#f5f0ea] p-8 md:p-10">
                 <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[#ff3c00]">WORKSPACE / {activeTab}</p>
-                <h2 className="mt-7 text-[34px] font-semibold tracking-[-.06em]">{activeTab[0] + activeTab.slice(1).toLowerCase()}</h2>
+                <h2 className="mt-7 text-[34px] font-semibold tracking-[-.05em]">{activeTab[0] + activeTab.slice(1).toLowerCase()}</h2>
                 <p className="mt-5 max-w-[560px] text-[15px] leading-[1.5] text-[#776f68]">This workspace surface is owner-managed. Review and approval controls for {activeTab.toLowerCase()} will appear here when configured for Helix DAO.</p>
                 <button type="button" onClick={() => setActiveTab("TEAM")} className="warm-pill warm-pill-ghost mt-8 rounded-full border border-[#ded7d0] px-5 py-3 text-[12px] font-semibold">Back to team</button>
               </section>
@@ -111,7 +111,7 @@ export function Settings() {
         </div>
       </div>
       {notice && <div className="fixed bottom-6 right-6 border border-[#ded7d0] bg-[#f5f0ea] px-5 py-4 text-[12px] text-[#292522] shadow-[0_10px_30px_-20px_rgba(41,37,34,.7)]">{notice}</div>}
-      {inviteOpen && <div className="fixed inset-0 z-30 flex items-center justify-center bg-[rgba(41,37,34,.18)] p-5" role="dialog" aria-modal="true" aria-label="Invite team member"><div className="w-full max-w-[450px] border border-[#ded7d0] bg-[#faf6f1] p-7 shadow-[0_24px_50px_-28px_rgba(41,37,34,.6)]"><div className="flex items-start justify-between"><div><p className="font-mono text-[10px] uppercase tracking-[.18em] text-[#ff3c00]">TEAM / INVITATION</p><h2 className="mt-4 text-[28px] font-semibold tracking-[-.06em]">Invite a member.</h2></div><button type="button" onClick={() => setInviteOpen(false)} className="font-mono text-[11px] text-[#837a72] transition-colors hover:text-[#292522]">CLOSE</button></div><label className="mt-8 block"><span className="font-mono text-[9px] uppercase tracking-[.14em] text-[#837a72]">NAME</span><input value={inviteName} onChange={(event) => setInviteName(event.target.value)} className="mt-2 w-full border-b border-[#ded7d0] bg-transparent py-3 text-[14px] outline-none transition-colors focus:border-[#ff3c00]" placeholder="New approver" /></label><label className="mt-5 block"><span className="font-mono text-[9px] uppercase tracking-[.14em] text-[#837a72]">EMAIL</span><input value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} type="email" className="mt-2 w-full border-b border-[#ded7d0] bg-transparent py-3 text-[14px] outline-none transition-colors focus:border-[#ff3c00]" placeholder="name@helix.dao" /></label><div className="mt-8 flex justify-end gap-3"><button type="button" onClick={() => setInviteOpen(false)} className="warm-pill warm-pill-ghost rounded-full border border-[#ded7d0] px-5 py-3 text-[12px] font-semibold">Cancel</button><button type="button" onClick={invite} className="warm-pill rounded-full bg-[#ff3c00] px-5 py-3 text-[12px] font-semibold text-[#fff]">Stage invite ↗</button></div></div></div>}
+      {inviteOpen && <div className="fixed inset-0 z-30 flex items-center justify-center bg-[rgba(41,37,34,.18)] p-5" role="dialog" aria-modal="true" aria-label="Invite team member"><div className="w-full max-w-[450px] border border-[#ded7d0] bg-[#faf6f1] p-7 shadow-[0_24px_50px_-28px_rgba(41,37,34,.6)]"><div className="flex items-start justify-between"><div><p className="font-mono text-[10px] uppercase tracking-[.18em] text-[#ff3c00]">TEAM / INVITATION</p><h2 className="mt-4 text-[28px] font-semibold tracking-[-.05em]">Invite a member.</h2></div><button type="button" onClick={() => setInviteOpen(false)} className="font-mono text-[11px] text-[#837a72] transition-colors hover:text-[#292522]">CLOSE</button></div><label className="mt-8 block"><span className="font-mono text-[9px] uppercase tracking-[.14em] text-[#837a72]">NAME</span><input value={inviteName} onChange={(event) => setInviteName(event.target.value)} className="mt-2 w-full border-b border-[#ded7d0] bg-transparent py-3 text-[14px] outline-none transition-colors focus:border-[#ff3c00]" placeholder="New approver" /></label><label className="mt-5 block"><span className="font-mono text-[9px] uppercase tracking-[.14em] text-[#837a72]">EMAIL</span><input value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} type="email" className="mt-2 w-full border-b border-[#ded7d0] bg-transparent py-3 text-[14px] outline-none transition-colors focus:border-[#ff3c00]" placeholder="name@helix.dao" /></label><div className="mt-8 flex justify-end gap-3"><button type="button" onClick={() => setInviteOpen(false)} className="warm-pill warm-pill-ghost rounded-full border border-[#ded7d0] px-5 py-3 text-[12px] font-semibold">Cancel</button><button type="button" onClick={invite} className="warm-pill rounded-full bg-[#ff3c00] px-5 py-3 text-[12px] font-semibold text-[#fff]">Stage invite ↗</button></div></div></div>}
     </AppShell>
   );
 }

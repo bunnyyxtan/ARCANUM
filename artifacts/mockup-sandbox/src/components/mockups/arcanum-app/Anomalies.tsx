@@ -61,7 +61,7 @@ function AppShell({ children }: { children: ReactNode }) {
       `}</style>
       <Header active="ANOMALIES" /><header className="hidden flex min-h-[68px] flex-wrap items-center justify-between gap-4 border-b border-[#ded7d0] px-5 py-4 sm:h-[68px] sm:flex-nowrap sm:px-8 sm:py-0">
         <div className="flex min-w-0 items-center gap-7">
-          <a href="/__mockup/preview/arcanum-app/Anomalies" className="shrink-0 text-[18px] font-bold tracking-[-.06em]">ARCANUM<span className="text-[#ff3c00]">.</span></a>
+          <a href="/__mockup/preview/arcanum-app/Anomalies" className="shrink-0 text-[18px] font-bold tracking-[-.05em]">ARCANUM<span className="text-[#ff3c00]">.</span></a>
           <nav className="flex min-w-0 gap-4 overflow-x-auto pb-0.5 sm:gap-5">
             {navItems.map((item) => {
               const active = item === "ANOMALIES";
@@ -103,7 +103,7 @@ export function Anomalies() {
       <section className="flex flex-col justify-between gap-6 border-b border-[#ded7d0] pb-8 sm:flex-row sm:items-end">
         <div>
           <p className="font-mono text-[10px] uppercase tracking-[.19em] text-[#ff3c00]">WATCH / DEVIATION</p>
-          <h1 className="mt-4 text-[clamp(3.2rem,6vw,5.8rem)] font-semibold leading-[.88] tracking-[-.09em]">Anomalies</h1>
+          <h1 className="mt-4 text-[clamp(3.2rem,6vw,5.8rem)] font-semibold leading-[.88] tracking-[-.045em]">Anomalies</h1>
           <p className="mt-5 max-w-[460px] text-[14px] leading-[1.45] text-[#776f68]">Where agent behavior departs from its approved operating shape.</p>
         </div>
         <button type="button" onClick={() => document.getElementById("register")?.scrollIntoView({ behavior: "smooth" })} className="warm-pill w-fit rounded-full bg-[#ff3c00] px-5 py-3 text-[11px] font-semibold text-[#faf6f1]">Review register <span className="ml-2">↘</span></button>
@@ -112,7 +112,7 @@ export function Anomalies() {
       <section className="mt-8 grid gap-5 lg:grid-cols-[1.35fr_.9fr]">
         <div className="border border-[#ded7d0] bg-[#f5f0ea] p-6 sm:p-8">
           <div className="flex items-start justify-between gap-4">
-            <div><p className="font-mono text-[10px] uppercase tracking-[.17em] text-[#837a72]">DEVIATION INDEX</p><div className="mt-8 flex items-end gap-3"><span className="text-[clamp(4.5rem,9vw,7.8rem)] font-semibold leading-[.72] tracking-[-.11em] text-[#ff3c00]">6.2</span><span className="mb-1 font-mono text-[10px] tracking-[.14em] text-[#ff3c00]">CRITICAL</span></div></div>
+            <div><p className="font-mono text-[10px] uppercase tracking-[.17em] text-[#837a72]">DEVIATION INDEX</p><div className="mt-8 flex items-end gap-3"><span className="text-[clamp(4.5rem,9vw,7.8rem)] font-semibold leading-[.72] tracking-[-.045em] text-[#ff3c00]">6.2</span><span className="mb-1 font-mono text-[10px] tracking-[.14em] text-[#ff3c00]">CRITICAL</span></div></div>
             <span className="font-mono text-[9px] tracking-[.15em] text-[#9b9289]">LIVE / 24H</span>
           </div>
           <p className="mt-5 font-mono text-[9px] uppercase tracking-[.15em] text-[#837a72]">peak deviation / 24h</p>
@@ -127,14 +127,14 @@ export function Anomalies() {
           </div>
         </div>
         <div className="grid grid-cols-3 divide-x divide-[#ded7d0] border border-[#ded7d0] bg-[#fbf8f4]">
-          <div className="p-4 sm:p-6"><span className="font-mono text-[9px] tracking-[.14em] text-[#837a72]">CRITICAL</span><strong className="mt-9 block text-4xl font-semibold tracking-[-.08em] text-[#ff3c00]">{critical}</strong><span className="mt-2 block font-mono text-[9px] text-[#9b9289]">NOW</span></div>
-          <div className="p-4 sm:p-6"><span className="font-mono text-[9px] tracking-[.14em] text-[#837a72]">ELEVATED</span><strong className="mt-9 block text-4xl font-semibold tracking-[-.08em]">3</strong><span className="mt-2 block font-mono text-[9px] text-[#9b9289]">OPEN</span></div>
-          <div className="p-4 sm:p-6"><span className="font-mono text-[9px] leading-[1.3] tracking-[.14em] text-[#837a72]">RESOLVED / 30D</span><strong className="mt-9 block text-4xl font-semibold tracking-[-.08em]">14</strong><span className="mt-2 block font-mono text-[9px] text-[#9b9289]">CLOSED</span></div>
+          <div className="p-4 sm:p-6"><span className="font-mono text-[9px] tracking-[.14em] text-[#837a72]">CRITICAL</span><strong className="mt-9 block text-4xl font-semibold tracking-[-.045em] text-[#ff3c00]">{critical}</strong><span className="mt-2 block font-mono text-[9px] text-[#9b9289]">NOW</span></div>
+          <div className="p-4 sm:p-6"><span className="font-mono text-[9px] tracking-[.14em] text-[#837a72]">ELEVATED</span><strong className="mt-9 block text-4xl font-semibold tracking-[-.045em]">3</strong><span className="mt-2 block font-mono text-[9px] text-[#9b9289]">OPEN</span></div>
+          <div className="p-4 sm:p-6"><span className="font-mono text-[9px] leading-[1.3] tracking-[.14em] text-[#837a72]">RESOLVED / 30D</span><strong className="mt-9 block text-4xl font-semibold tracking-[-.045em]">14</strong><span className="mt-2 block font-mono text-[9px] text-[#9b9289]">CLOSED</span></div>
         </div>
       </section>
 
       <section id="register" className="mt-14">
-        <div className="flex flex-col justify-between gap-4 border-b border-[#292522] pb-4 sm:flex-row sm:items-end"><div><p className="font-mono text-[10px] uppercase tracking-[.18em] text-[#ff3c00]">REGISTER / ACTIVE</p><h2 className="mt-3 text-2xl font-semibold tracking-[-.06em]">Anomaly register</h2></div><span className="font-mono text-[9px] tracking-[.12em] text-[#9b9289]">{notice}</span></div>
+        <div className="flex flex-col justify-between gap-4 border-b border-[#292522] pb-4 sm:flex-row sm:items-end"><div><p className="font-mono text-[10px] uppercase tracking-[.18em] text-[#ff3c00]">REGISTER / ACTIVE</p><h2 className="mt-3 text-2xl font-semibold tracking-[-.05em]">Anomaly register</h2></div><span className="font-mono text-[9px] tracking-[.12em] text-[#9b9289]">{notice}</span></div>
         <div className="hidden grid-cols-[1.08fr_1fr_.72fr_.55fr_1.4fr_.75fr_1.55fr] gap-4 border-b border-[#ded7d0] px-4 py-3 font-mono text-[9px] uppercase tracking-[.14em] text-[#9b9289] md:grid"><span>Agent</span><span>Observed</span><span>Status</span><span>Score</span><span>Deviation</span><span>Trend</span><span className="text-right">Action</span></div>
         <div className="divide-y divide-[#e3dcd5] border-b border-[#ded7d0]">
           {anomalies.length === 0 && <div className="border border-dashed border-[#ded7d0] p-10 text-center font-mono text-[10px] tracking-[.14em] text-[#837a72]">REGISTER CLEAR · NO ACTIVE DEVIATIONS</div>}

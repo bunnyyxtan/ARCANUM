@@ -40,7 +40,7 @@ function AppShell({ children }: { children: ReactNode }) {
       `}</style>
       <Header active="STATUS" /><header className="hidden flex h-[68px] items-center justify-between border-b border-[#ded7d0] px-8">
         <div className="flex h-full min-w-0 items-center gap-8">
-          <button type="button" onClick={() => undefined} className="shrink-0 text-[18px] font-bold tracking-[-.06em]">ARCANUM<span className="text-[#ff3c00]">.</span></button>
+          <button type="button" onClick={() => undefined} className="shrink-0 text-[18px] font-bold tracking-[-.05em]">ARCANUM<span className="text-[#ff3c00]">.</span></button>
           <nav className="app-nav flex h-full items-center gap-0">
             <ShellLink> DASHBOARD </ShellLink><ShellLink> AGENTS </ShellLink><ShellLink> VENDORS </ShellLink><ShellLink> LEDGER </ShellLink><ShellLink> ESCALATIONS </ShellLink><ShellLink active> ANOMALIES </ShellLink>
           </nav>
@@ -90,7 +90,7 @@ export function Status() {
         <div className="flex items-end justify-between gap-8 max-md:flex-col max-md:items-start">
           <div className="warm-reveal">
             <p className="font-mono text-[10px] uppercase tracking-[.2em] text-[#ff3c00]">SYSTEMS / READ MODEL</p>
-            <h1 className="mt-5 text-[clamp(3rem,6vw,5.8rem)] font-semibold leading-[.85] tracking-[-.085em]">Status</h1>
+            <h1 className="mt-5 text-[clamp(3rem,6vw,5.8rem)] font-semibold leading-[.85] tracking-[-.045em]">Status</h1>
             <p className="mt-6 max-w-[500px] text-[14px] leading-[1.5] text-[#776f68]">A direct read on the services that keep governed wallets accountable.</p>
           </div>
           <button type="button" onClick={runCheck} className="warm-pill group rounded-full bg-[#ff3c00] px-5 py-3 text-[12px] font-semibold text-[#fff]">

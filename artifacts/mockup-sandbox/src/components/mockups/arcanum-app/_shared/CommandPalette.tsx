@@ -16,6 +16,8 @@ const entries: Entry[] = [
   { label: "Check network status", meta: "NAVIGATE", nav: "STATUS" },
   { label: "Read the guide", meta: "NAVIGATE", nav: "DOCS" },
   { label: "Browse glossary", meta: "NAVIGATE", nav: "GLOSSARY" },
+  { label: "Open public explorer", meta: "NAVIGATE", nav: "EXPLORER" },
+  { label: "View trust badge", meta: "NAVIGATE", nav: "BADGE" },
 ];
 
 export function CommandPalette() {

@@ -95,13 +95,13 @@ function Dashboard() {
       <div id="top" className="mx-auto max-w-[1400px] px-5 py-9 md:px-8 md:py-10">
         <Reveal>
           <div className="flex flex-col justify-between gap-7 border-b border-[#ded7d0] pb-9 md:flex-row md:items-end">
-            <div><p className="font-mono text-[10px] uppercase tracking-[.18em] text-[#ff3c00]">OVERVIEW / FLEET POSTURE</p><h1 className="mt-4 text-[clamp(3rem,6vw,5.5rem)] font-semibold leading-[.86] tracking-[-.085em]">Dashboard</h1><p className="mt-5 max-w-[430px] text-[14px] leading-[1.45] text-[#776f68]">A quiet view of autonomous spend, restraint decisions, and the agents moving capital on Arc.</p></div>
+            <div><p className="font-mono text-[10px] uppercase tracking-[.18em] text-[#ff3c00]">OVERVIEW / FLEET POSTURE</p><h1 className="mt-4 text-[clamp(3rem,6vw,5.5rem)] font-semibold leading-[.86] tracking-[-.045em]">Dashboard</h1><p className="mt-5 max-w-[430px] text-[14px] leading-[1.45] text-[#776f68]">A quiet view of autonomous spend, restraint decisions, and the agents moving capital on Arc.</p></div>
             <button type="button" onClick={() => document.getElementById("stream")?.scrollIntoView({ behavior: "smooth" })} className="warm-pill group w-fit rounded-full bg-[#ff3c00] px-5 py-3 text-[11px] font-semibold text-white">Review governed events<Arrow /></button>
           </div>
         </Reveal>
 
         <section aria-label="Governance metrics" className="grid border-b border-[#ded7d0] md:grid-cols-4">
-          {kpis.map((kpi, i) => <Reveal key={kpi.label} index={i + 1}><div className={`min-h-[142px] border-b border-[#ded7d0] py-6 md:border-b-0 ${i > 0 ? "md:border-l md:pl-6" : "md:pr-6"} ${i < 3 ? "md:pr-6" : ""}`}><p className="font-mono text-[9px] uppercase tracking-[.15em] text-[#837a72]">{kpi.label}</p><p className={`mt-5 text-[32px] font-semibold tracking-[-.07em] tabular-nums ${kpi.accent ? "text-[#ff3c00]" : "text-[#292522]"}`}>{kpi.value}</p><p className="mt-2 font-mono text-[9px] uppercase tracking-[.12em] text-[#9b9289]">{kpi.note}</p></div></Reveal>)}
+          {kpis.map((kpi, i) => <Reveal key={kpi.label} index={i + 1}><div className={`min-h-[142px] border-b border-[#ded7d0] py-6 md:border-b-0 ${i > 0 ? "md:border-l md:pl-6" : "md:pr-6"} ${i < 3 ? "md:pr-6" : ""}`}><p className="font-mono text-[9px] uppercase tracking-[.15em] text-[#837a72]">{kpi.label}</p><p className={`mt-5 text-[32px] font-semibold tracking-[-.05em] tabular-nums ${kpi.accent ? "text-[#ff3c00]" : "text-[#292522]"}`}>{kpi.value}</p><p className="mt-2 font-mono text-[9px] uppercase tracking-[.12em] text-[#9b9289]">{kpi.note}</p></div></Reveal>)}
         </section>
 
         <section id="stream" className="grid gap-10 pt-10 xl:grid-cols-[minmax(0,1.65fr)_minmax(350px,.75fr)]">

@@ -63,7 +63,7 @@ function Shell({ children, onAction }: { children: ReactNode; onAction: () => vo
       `}</style>
       <Header active="LEDGER" /><header className="hidden flex min-h-[68px] items-center justify-between border-b border-[#ded7d0] px-5 md:px-8">
         <div className="flex min-w-0 items-center gap-7">
-          <button onClick={onAction} className="shrink-0 text-[18px] font-bold tracking-[-.06em]">ARCANUM<span className="text-[#ff3c00]">.</span></button>
+          <button onClick={onAction} className="shrink-0 text-[18px] font-bold tracking-[-.05em]">ARCANUM<span className="text-[#ff3c00]">.</span></button>
           <nav className="hidden items-center gap-5 lg:flex">
             {links.map((link) => <a key={link} href={`#${link.toLowerCase()}`} className={`relative py-6 text-[12px] font-medium text-[#655d56] transition-colors hover:text-[#292522] ${link === "LEDGER" ? "text-[#292522] after:absolute after:bottom-[-1px] after:left-0 after:h-[2px] after:w-full after:bg-[#ff3c00]" : ""}`}>{link}</a>)}
           </nav>
@@ -120,7 +120,7 @@ export function Ledger() {
         <div className="flex flex-col justify-between gap-7 border-b border-[#ded7d0] pb-9 md:flex-row md:items-end">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[#ff3c00]">RECORD / LAST 24H</p>
-            <h1 className="mt-4 text-[clamp(2.7rem,5vw,4.8rem)] font-semibold leading-[.9] tracking-[-.075em]">Governed ledger</h1>
+            <h1 className="mt-4 text-[clamp(2.7rem,5vw,4.8rem)] font-semibold leading-[.9] tracking-[-.05em]">Governed ledger</h1>
             <p className="mt-4 max-w-[550px] text-[14px] leading-[1.45] text-[#776f68]">A complete decision record for every governed movement across the Helix-DAO fleet.</p>
           </div>
           <button onClick={() => action("Ledger export queued: 24 hours of governed activity.")} className="arc-pill group w-fit rounded-full bg-[#ff3c00] px-5 py-3 text-[11px] font-semibold text-[#faf6f1]">Export report <span className="ml-2 transition-transform duration-[220ms] group-hover:translate-x-1">↗</span></button>
@@ -130,7 +130,7 @@ export function Ledger() {
           {[["TOTAL VALUE", "$18,442.60", "money"], ["APPROVED", "126", "count"], ["REJECTED", "9", "count"], ["ESCALATED", "4", "count"]].map(([label, value, kind], index) => (
             <div key={label} className={`py-6 ${index > 0 ? "border-l border-[#ded7d0] pl-5 md:pl-7" : ""} ${index > 1 ? "border-t md:border-t-0" : ""}`}>
               <p className="font-mono text-[9px] tracking-[.15em] text-[#9b9289]">{label}</p>
-              <p className={`mt-3 text-[clamp(1.5rem,3vw,2.15rem)] font-medium tracking-[-.06em] ${label === "ESCALATED" ? "text-[#ff3c00]" : ""}`}>{kind === "money" ? <CountUp value={18442.6} prefix="$" decimals={2} /> : <CountUp value={Number(value)} />}</p>
+              <p className={`mt-3 text-[clamp(1.5rem,3vw,2.15rem)] font-medium tracking-[-.05em] ${label === "ESCALATED" ? "text-[#ff3c00]" : ""}`}>{kind === "money" ? <CountUp value={18442.6} prefix="$" decimals={2} /> : <CountUp value={Number(value)} />}</p>
             </div>
           ))}
         </section>

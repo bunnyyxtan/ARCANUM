@@ -47,7 +47,7 @@ export function Glossary() {
         <div className="flex flex-col justify-between gap-8 border-b border-[#ded7d0] pb-10 lg:flex-row lg:items-end">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[.2em] text-[#ff3c00]">ARCANUM / REFERENCE INDEX</p>
-            <h1 className="mt-5 text-[clamp(3.2rem,7vw,6.6rem)] font-semibold leading-[.84] tracking-[-.09em]">The vocabulary<br /><span className="text-[#8d837b]">of accountable spend.</span></h1>
+            <h1 className="mt-5 text-[clamp(3.2rem,7vw,6.6rem)] font-semibold leading-[.84] tracking-[-.045em]">The vocabulary<br /><span className="text-[#8d837b]">of accountable spend.</span></h1>
             <p className="mt-7 max-w-[540px] text-[15px] leading-[1.5] text-[#655d56]">Terms for operators who need the same word to mean the same control. Browse the language behind HELIX-DAO's governed wallets.</p>
           </div>
           <div className="max-w-[250px] border-l border-[#ff3c00] pl-4">
@@ -83,7 +83,7 @@ export function Glossary() {
             </div>
             <div key={active.term} className="glossary-detail px-6 py-7">
               <p className="font-mono text-[11px] text-[#ff3c00]">{active.letter} / 0{terms.indexOf(active) + 1}</p>
-              <h2 className="mt-3 text-[34px] font-medium tracking-[-.06em]">{active.term}</h2>
+              <h2 className="mt-3 text-[34px] font-medium tracking-[-.05em]">{active.term}</h2>
               <p className="mt-5 text-[16px] leading-[1.5] text-[#4f4842]">{active.definition}</p>
               <div className="mt-7 border-t border-[#ded7d0] pt-5">
                 <p className="font-mono text-[9px] uppercase tracking-[.16em] text-[#9b9289]">IN PRACTICE</p>

@@ -86,6 +86,12 @@ export function ArcanumFrontend() {
   const [page, setPage] = useState<PageKey>('LANDING');
   const Active = PAGES[page];
 
+  // Keep the URL hash in sync with the rendered page so the address bar
+  // never shows a stale route (e.g. "#vendors" while Dashboard is visible).
+  useEffect(() => {
+    history.replaceState(null, '', page === 'LANDING' ? window.location.pathname : `#${page.toLowerCase()}`);
+  }, [page]);
+
   useEffect(() => {
     const onConnected = () => {
       setPage('DASHBOARD');

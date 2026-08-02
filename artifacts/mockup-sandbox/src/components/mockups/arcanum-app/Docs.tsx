@@ -56,7 +56,7 @@ export function Docs() {
           <div className="flex flex-col justify-between gap-8 border-b border-[#ded7d0] pb-10 lg:flex-row lg:items-end">
             <div>
               <p className="font-mono text-[10px] uppercase tracking-[.2em] text-[#ff3c00]">ARCANUM / FIELD MANUAL 01</p>
-              <h1 className="mt-5 max-w-[850px] text-[clamp(3.2rem,7vw,6.6rem)] font-semibold leading-[.84] tracking-[-.09em]">Govern the wallet.<br /><span className="text-[#8d837b]">Then let it move.</span></h1>
+              <h1 className="mt-5 max-w-[850px] text-[clamp(3.2rem,7vw,6.6rem)] font-semibold leading-[.84] tracking-[-.045em]">Govern the wallet.<br /><span className="text-[#8d837b]">Then let it move.</span></h1>
               <p className="mt-7 max-w-[540px] text-[15px] leading-[1.5] text-[#655d56]">A practical guide to deploying an agent wallet on Arc, writing the doctrine that constrains it, and taking the first restraint without guesswork.</p>
             </div>
             <div className="max-w-[230px] border-l border-[#ff3c00] pl-4">

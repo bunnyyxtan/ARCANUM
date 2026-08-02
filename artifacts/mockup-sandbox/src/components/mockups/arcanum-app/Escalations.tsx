@@ -50,7 +50,7 @@ function Shell({ children, onAction }: { children: ReactNode; onAction: () => vo
       `}</style>
       <Header active="ESCALATIONS" /><header className="hidden flex min-h-[68px] items-center justify-between border-b border-[#ded7d0] px-5 md:px-8">
         <div className="flex min-w-0 items-center gap-7">
-          <button onClick={onAction} className="shrink-0 text-[18px] font-bold tracking-[-.06em]">ARCANUM<span className="text-[#ff3c00]">.</span></button>
+          <button onClick={onAction} className="shrink-0 text-[18px] font-bold tracking-[-.05em]">ARCANUM<span className="text-[#ff3c00]">.</span></button>
           <nav className="hidden items-center gap-5 lg:flex">
             {links.map((link) => <a key={link} href={`#${link.toLowerCase()}`} className={`relative py-6 text-[12px] font-medium text-[#655d56] transition-colors hover:text-[#292522] ${link === "ESCALATIONS" ? "text-[#292522] after:absolute after:bottom-[-1px] after:left-0 after:h-[2px] after:w-full after:bg-[#ff3c00]" : ""}`}>{link}</a>)}
           </nav>
@@ -94,16 +94,16 @@ export function Escalations() {
         <div className="flex flex-col justify-between gap-7 border-b border-[#ded7d0] pb-9 md:flex-row md:items-end">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[#ff3c00]">QUORUM / HUMAN CONTROL</p>
-            <h1 className="mt-4 text-[clamp(2.7rem,5vw,4.8rem)] font-semibold leading-[.9] tracking-[-.075em]">Escalations</h1>
+            <h1 className="mt-4 text-[clamp(2.7rem,5vw,4.8rem)] font-semibold leading-[.9] tracking-[-.05em]">Escalations</h1>
             <p className="mt-4 max-w-[560px] text-[14px] leading-[1.45] text-[#776f68]">When an agent reaches the edge of its doctrine, a human gets the final word.</p>
           </div>
           <button onClick={() => act(pending.length ? `Reviewing ${pending[0].id}, the oldest open request.` : "The queue is clear.")} className="arc-pill group w-fit rounded-full bg-[#ff3c00] px-5 py-3 text-[11px] font-semibold text-[#faf6f1]">Review next <span className="ml-2 transition-transform duration-[220ms] group-hover:translate-x-1">↗</span></button>
         </div>
 
         <section className="grid grid-cols-3 border-b border-[#ded7d0]">
-          <div className="py-6"><p className="font-mono text-[9px] tracking-[.15em] text-[#9b9289]">PENDING</p><p className="mt-3 text-[34px] font-medium tracking-[-.07em] text-[#ff3c00]">{pending.length}</p></div>
-          <div className="border-l border-[#ded7d0] py-6 pl-5 md:pl-7"><p className="font-mono text-[9px] tracking-[.15em] text-[#9b9289]">APPROVED / 7D</p><p className="mt-3 text-[34px] font-medium tracking-[-.07em]">11</p></div>
-          <div className="border-l border-[#ded7d0] py-6 pl-5 md:pl-7"><p className="font-mono text-[9px] tracking-[.15em] text-[#9b9289]">EXPIRED</p><p className="mt-3 text-[34px] font-medium tracking-[-.07em]">1</p></div>
+          <div className="py-6"><p className="font-mono text-[9px] tracking-[.15em] text-[#9b9289]">PENDING</p><p className="mt-3 text-[34px] font-medium tracking-[-.05em] text-[#ff3c00]">{pending.length}</p></div>
+          <div className="border-l border-[#ded7d0] py-6 pl-5 md:pl-7"><p className="font-mono text-[9px] tracking-[.15em] text-[#9b9289]">APPROVED / 7D</p><p className="mt-3 text-[34px] font-medium tracking-[-.05em]">11</p></div>
+          <div className="border-l border-[#ded7d0] py-6 pl-5 md:pl-7"><p className="font-mono text-[9px] tracking-[.15em] text-[#9b9289]">EXPIRED</p><p className="mt-3 text-[34px] font-medium tracking-[-.05em]">1</p></div>
         </section>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-2">
@@ -118,7 +118,7 @@ export function Escalations() {
               <div className="grid gap-7 py-6 md:grid-cols-[1fr_1.1fr]">
                 <div>
                   <p className="font-mono text-[9px] uppercase tracking-[.13em] text-[#9b9289]">REQUEST</p>
-                  <p className="mt-3 text-[27px] font-medium tracking-[-.065em]">{item.amount} <span className="text-[#9b9289]">→</span> {item.vendor}</p>
+                  <p className="mt-3 text-[27px] font-medium tracking-[-.05em]">{item.amount} <span className="text-[#9b9289]">→</span> {item.vendor}</p>
                   <p className="mt-4 text-[13px] text-[#655d56]">Reason: <span className="font-medium text-[#292522]">{item.reason}</span></p>
                 </div>
                 <div className="border-l border-[#ded7d0] pl-5 md:pl-7">
