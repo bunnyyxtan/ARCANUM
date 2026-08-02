@@ -1,0 +1,23 @@
+@import url('https://api.fontshare.com/v2/css?f[]=erode@500,700&f[]=supreme@400,500,600,700&f[]=fragment-mono@400,500&display=swap');
+
+:root{--cc-paper:#f3f0e8;--cc-ink:#172c35;--cc-muted:#60747b;--cc-line:rgba(44,76,83,.18);--cc-silver:#7b9fab;--cc-blue:#7099a8}
+.cc-root{background:var(--cc-paper);color:var(--cc-ink);font-family:Supreme,system-ui,sans-serif}
+.cc-display{font-family:Erode,Georgia,serif}.cc-mono{font-family:"Fragment Mono",monospace;font-variant-numeric:tabular-nums}
+.cc-world{position:relative;isolation:isolate;background:radial-gradient(circle at 15% 12%,rgba(208,224,222,.72),transparent 27%),radial-gradient(circle at 86% 28%,rgba(230,215,190,.62),transparent 22%),radial-gradient(circle at 54% 78%,rgba(183,211,218,.35),transparent 24%),var(--cc-paper)}
+.cc-world:before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;opacity:.3;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.18'/%3E%3C/svg%3E");mix-blend-mode:multiply}
+.cc-orb{position:absolute;border-radius:999px;filter:blur(2px);pointer-events:none;opacity:.62;animation:cc-drift 12s ease-in-out infinite alternate}
+.cc-orb-a{width:260px;height:170px;right:2%;top:100px;background:radial-gradient(ellipse,rgba(143,180,191,.24),transparent 70%)}
+.cc-orb-b{width:300px;height:160px;left:-5%;top:480px;background:radial-gradient(ellipse,rgba(222,181,132,.23),transparent 70%);animation-delay:-4s}
+.cc-glass{background:linear-gradient(120deg,rgba(255,255,255,.64),rgba(255,255,255,.38));backdrop-filter:blur(25px) saturate(165%);-webkit-backdrop-filter:blur(25px) saturate(165%);border:1px solid rgba(255,255,255,.75);box-shadow:0 24px 70px rgba(46,76,82,.11),inset 0 1px 0 rgba(255,255,255,.96);position:relative}
+.cc-glass:after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(115deg,rgba(255,255,255,.42),transparent 28%,transparent 74%,rgba(255,255,255,.2));opacity:.7}
+.cc-glass>*{position:relative;z-index:1}
+.cc-button{transition:transform .22s cubic-bezier(.16,1,.3,1),background-color .22s cubic-bezier(.16,1,.3,1),color .22s cubic-bezier(.16,1,.3,1)}
+.cc-button:active{transform:translateY(2px)}.cc-button:hover{transform:translateY(-2px)}
+.cc-reveal{animation:cc-rise .72s both cubic-bezier(.16,1,.3,1);animation-delay:calc(var(--i,0)*90ms)}
+.cc-row{animation:cc-slide .55s both cubic-bezier(.16,1,.3,1)}
+.cc-verdict{animation:cc-verdict .42s both cubic-bezier(.16,1,.3,1)}
+@keyframes cc-rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes cc-slide{from{opacity:0;transform:translateY(-18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes cc-verdict{from{opacity:.4;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
+@keyframes cc-drift{to{transform:translate3d(28px,14px,0) scale(1.08)}}
+@media(prefers-reduced-motion:reduce){.cc-reveal,.cc-row,.cc-verdict,.cc-orb{animation:none}.cc-button{transition:none}}
