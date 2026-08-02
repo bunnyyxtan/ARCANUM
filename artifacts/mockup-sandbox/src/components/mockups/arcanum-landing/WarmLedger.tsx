@@ -218,6 +218,9 @@ export function WarmLedger() {
         .warm-reveal{will-change:transform,opacity;}.warm-reveal.warm-armed:not(.is-visible){opacity:0;transform:translateY(16px);clip-path:inset(0 0 12% 0)}.warm-reveal.is-visible{animation:warmIn 420ms cubic-bezier(.16,1,.3,1) calc(var(--i,0) * 120ms) both}.warm-reveal[data-reveal-kind="headline"].warm-armed:not(.is-visible){clip-path:inset(0 0 100% 0);transform:translateY(11px)}.warm-reveal[data-reveal-kind="headline"].is-visible{animation:warmHeadline 560ms cubic-bezier(.16,1,.3,1) calc(var(--i,0) * 120ms) both}
         .delay-1{--i:1}.delay-2{--i:2}.delay-3{--i:3}
         @keyframes warmIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}@keyframes warmHeadline{from{opacity:0;transform:translateY(11px);clip-path:inset(0 0 100% 0)}to{opacity:1;transform:translateY(0);clip-path:inset(0 0 0 0)}}
+        @keyframes warmModalBackdrop{from{opacity:0}to{opacity:1}}@keyframes warmModalPanel{from{opacity:0;transform:translateY(18px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}@keyframes warmScan{0%{transform:translateX(-100%)}100%{transform:translateX(340%)}}
+        .warm-modal-backdrop{animation:warmModalBackdrop 260ms ease both;backdrop-filter:blur(3px)}.warm-modal-panel{animation:warmModalPanel 380ms cubic-bezier(.16,1,.3,1) 60ms both}.warm-wallet-option{transition:border-color 200ms ease,background 200ms ease,transform 220ms cubic-bezier(.16,1,.3,1)}.warm-wallet-option:hover{border-color:#292522;background:#f3ede6;transform:translateX(3px)}.warm-wallet-option:hover .warm-wallet-arrow{opacity:1;transform:translateX(0)}.warm-wallet-arrow{opacity:0;transform:translateX(-6px);transition:opacity 200ms ease,transform 220ms cubic-bezier(.16,1,.3,1)}
+        @media (prefers-reduced-motion:reduce){.warm-modal-backdrop,.warm-modal-panel{animation:none}}
         html{scroll-behavior:smooth;scroll-snap-type:y proximity}.font-mono{font-family:'DM Mono',monospace}section{scroll-margin-top:20px}
         .warm-interaction{--mag-x:0px;--mag-y:0px;transform:translate3d(var(--mag-x),var(--mag-y),0);transition:transform 220ms cubic-bezier(.16,1,.3,1),color 220ms ease,border-color 220ms ease}.warm-interaction:active{transform:translate3d(var(--mag-x),calc(var(--mag-y) + 2px),0)}.warm-pill{position:relative;isolation:isolate;overflow:hidden;box-shadow:0 1px 2px rgba(41,37,34,.06);transition:transform 220ms cubic-bezier(.16,1,.3,1),box-shadow 320ms cubic-bezier(.16,1,.3,1),color 220ms ease,border-color 220ms ease}.warm-pill::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;background:#d63200;transform:translateY(102%);transition:transform 320ms cubic-bezier(.16,1,.3,1)}.warm-pill:hover{box-shadow:0 10px 28px -8px rgba(255,60,0,.45),0 2px 6px rgba(41,37,34,.08)}.warm-pill:hover::before{transform:translateY(0)}.warm-pill-ghost::before{background:#292522}.warm-pill-ghost:hover{color:#faf6f1;border-color:#292522;box-shadow:0 10px 28px -10px rgba(41,37,34,.4)}@media (prefers-reduced-motion:reduce){.warm-pill,.warm-pill::before{transition:none}}.warm-link{position:relative}.warm-link::after{position:absolute;bottom:-4px;left:0;width:100%;height:1px;background:${orange};content:"";transform:scaleX(0);transform-origin:right;transition:transform 220ms cubic-bezier(.16,1,.3,1)}.warm-link:hover::after{transform:scaleX(1);transform-origin:left}
         .warm-ledger-row{opacity:.3;transform:translateY(8px);transition:transform 220ms cubic-bezier(.16,1,.3,1),opacity 220ms ease}.warm-ledger-row.is-live{opacity:1;transform:translateY(0);animation:ledgerIn 420ms cubic-bezier(.16,1,.3,1) calc(var(--row-i) * 120ms) both}.warm-ledger-row:hover{transform:translate3d(2px,-2px,0);box-shadow:inset 1px 0 0 ${orange}}.warm-ledger-row.is-quiet{opacity:.26}
@@ -258,7 +261,50 @@ export function WarmLedger() {
         <section id="contact" className="px-6 py-32 lg:px-10 lg:py-44"><Reveal><div className="mx-auto max-w-[1400px] border-b border-[#ded7d0] pb-24"><div className="flex items-start justify-between"><p className="font-mono text-[10px] uppercase tracking-[.18em] text-[#ff3c00]">04 / Trust is the product</p><SectionNumber value="4" className="hidden font-mono text-[80px] leading-none tracking-[-.1em] text-[#e3dcd5] lg:block" /></div><h2 className="mt-8 max-w-[950px] text-[clamp(4rem,9vw,9rem)] font-semibold leading-[.78] tracking-[-.1em]">Let agents move.<br /><span className="text-[#8d837b]">Keep the final word.</span></h2><div className="mt-14 flex flex-col gap-8 lg:ml-[42%] lg:flex-row lg:items-center"><p className="max-w-[290px] text-[15px] leading-[1.5] text-[#655d56]">Built for finance and engineering teams who need autonomy without giving up the ledger.</p><div className="flex flex-wrap items-center gap-4"><MagneticAnchor href="/dashboard" className="warm-pill group w-fit rounded-full bg-[#ff3c00] px-6 py-3.5 text-[12px] font-semibold text-white">Launch Dashboard<Arrow /></MagneticAnchor><MagneticAnchor href="/docs" className="warm-pill warm-pill-ghost inline-flex w-fit items-center gap-2 rounded-full border border-[#ded7d0] px-6 py-3.5 text-[12px] font-semibold text-[#292522]"><BookIcon />Read Docs</MagneticAnchor></div></div></div></Reveal></section>
         <footer className="flex flex-col justify-between gap-6 px-6 pb-10 text-[11px] text-[#837a72] lg:flex-row lg:px-10"><span className="font-semibold tracking-[-.04em] text-[#292522]">ARCANUM<span className="warm-period text-[#ff3c00]">.</span></span><div className="flex gap-7"><MagneticAnchor href="/docs" className="warm-link inline-flex items-center gap-1.5 hover:text-[#ff3c00]"><BookIcon className="h-3 w-3" />Documentation</MagneticAnchor><MagneticAnchor href="https://github.com/bunnyyxtan/ARCANUM" target="_blank" rel="noreferrer" className="warm-link inline-flex items-center gap-1.5 hover:text-[#ff3c00]"><GitHubMark className="h-3 w-3" />GitHub</MagneticAnchor><MagneticAnchor href="/dashboard" className="warm-link hover:text-[#ff3c00]">Dashboard</MagneticAnchor><span className="font-mono">© 2025 ARCANUM</span></div></footer>
        </div>
-       {connectOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(41,37,34,.18)] p-5" role="dialog" aria-modal="true" onClick={() => { setConnectOpen(false); setConnecting(false); }}><div className="w-full max-w-[460px] border border-[#cfc5bc] bg-[#faf6f1] p-8 shadow-[14px_18px_0_#e7e0d9]" onClick={(event) => event.stopPropagation()}><div className="flex items-start justify-between"><div><p className="font-mono text-[10px] uppercase tracking-[.2em] text-[#ff3c00]">ARCANUM / ACCESS</p><h2 className="mt-4 text-[32px] font-semibold leading-[.9] tracking-[-.07em]">Connect your<br />governed wallet.</h2></div><button type="button" onClick={() => setConnectOpen(false)} className="font-mono text-[10px] text-[#837a72] hover:text-[#292522]">CLOSE</button></div>{connecting ? <div className="py-12"><p className="font-mono text-[10px] uppercase tracking-[.14em] text-[#ff3c00]">CONNECTING / ARC TESTNET</p><p className="mt-4 text-[15px] text-[#655d56]">Waiting for an operator signature…</p><div className="mt-6 h-1 bg-[#e3dcd5]"><span className="block h-full w-2/3 bg-[#ff3c00]" /></div></div> : <><p className="mt-6 max-w-[360px] text-[14px] leading-[1.5] text-[#655d56]">ARCANUM never takes custody. Connect an operator wallet to inspect the governed ledger and continue.</p><div className="mt-8 border-t border-[#ded7d0] pt-4"><button type="button" onClick={() => setConnecting(true)} className="warm-pill w-full rounded-full bg-[#ff3c00] px-5 py-3 text-[12px] font-semibold text-white">Connect operator wallet</button><button type="button" onClick={() => { setConnectOpen(false); window.dispatchEvent(new CustomEvent("arcanum-connected")); }} className="mt-3 w-full py-2 font-mono text-[10px] tracking-[.12em] text-[#837a72] hover:text-[#292522]">CONTINUE IN READ-ONLY MODE</button></div></>}</div></div>}
+       {connectOpen && <div className="warm-modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-[rgba(41,37,34,.32)] p-5" role="dialog" aria-modal="true" aria-label="Connect wallet" onClick={() => { setConnectOpen(false); setConnecting(false); }}>
+        <div className="warm-modal-panel w-full max-w-[440px] border border-[#d8cfc6] bg-[#faf6f1] shadow-[0_24px_60px_-16px_rgba(41,37,34,.35)]" onClick={(event) => event.stopPropagation()}>
+          <div className="flex items-center justify-between border-b border-[#e3dcd5] px-7 py-4">
+            <p className="font-mono text-[10px] uppercase tracking-[.2em] text-[#ff3c00]">ARCANUM / ACCESS</p>
+            <button type="button" aria-label="Close" onClick={() => { setConnectOpen(false); setConnecting(false); }} className="flex h-7 w-7 items-center justify-center rounded-full font-mono text-[13px] leading-none text-[#837a72] transition-colors hover:bg-[#efe8e0] hover:text-[#292522]">✕</button>
+          </div>
+          {connecting ? (
+            <div className="px-7 py-12">
+              <div className="flex items-center gap-3">
+                <span className="relative flex h-2.5 w-2.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#ff3c00] opacity-60" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#ff3c00]" /></span>
+                <p className="font-mono text-[10px] uppercase tracking-[.14em] text-[#ff3c00]">CONNECTING / ARC TESTNET</p>
+              </div>
+              <p className="mt-4 text-[15px] leading-[1.5] text-[#655d56]">Waiting for an operator signature in your wallet…</p>
+              <div className="mt-7 h-[3px] overflow-hidden rounded-full bg-[#e3dcd5]"><span className="block h-full w-1/3 rounded-full bg-[#ff3c00]" style={{ animation: "warmScan 1.1s cubic-bezier(.45,.05,.55,.95) infinite" }} /></div>
+              <p className="mt-3 font-mono text-[9px] tracking-[.12em] text-[#a39a91]">SIWE · NO CUSTODY · POLICY-SCOPED SESSION</p>
+            </div>
+          ) : (
+            <div className="px-7 pb-7 pt-6">
+              <h2 className="text-[26px] font-semibold leading-[1.02] tracking-[-.05em]">Connect your governed wallet.</h2>
+              <p className="mt-3 text-[13.5px] leading-[1.55] text-[#655d56]">ARCANUM never takes custody. Sign in to inspect the governed ledger and manage policies.</p>
+              <div className="mt-6 space-y-2.5">
+                {[
+                  { name: "Operator wallet", hint: "Browser extension · MetaMask, Rabby", mark: "◆" },
+                  { name: "WalletConnect", hint: "Scan from any mobile wallet", mark: "◇" },
+                  { name: "Hardware signer", hint: "Ledger · policy-gated sessions", mark: "▣" },
+                ].map((option) => (
+                  <button key={option.name} type="button" onClick={() => setConnecting(true)} className="warm-wallet-option flex w-full items-center gap-4 border border-[#ded7d0] bg-white/50 px-4 py-3.5 text-left">
+                    <span className="flex h-9 w-9 items-center justify-center border border-[#e3dcd5] bg-[#faf6f1] text-[14px] text-[#ff3c00]">{option.mark}</span>
+                    <span className="flex-1">
+                      <span className="block text-[13.5px] font-semibold tracking-[-.01em]">{option.name}</span>
+                      <span className="mt-0.5 block font-mono text-[9.5px] tracking-[.06em] text-[#a39a91]">{option.hint.toUpperCase()}</span>
+                    </span>
+                    <span className="warm-wallet-arrow font-mono text-[12px] text-[#ff3c00]">→</span>
+                  </button>
+                ))}
+              </div>
+              <div className="mt-5 flex items-center justify-between border-t border-[#e3dcd5] pt-4">
+                <p className="font-mono text-[9px] tracking-[.12em] text-[#a39a91]">SIWE · ARC TESTNET</p>
+                <button type="button" onClick={() => { setConnectOpen(false); window.dispatchEvent(new CustomEvent("arcanum-connected")); }} className="warm-link font-mono text-[10px] tracking-[.12em] text-[#837a72] hover:text-[#292522]">CONTINUE READ-ONLY</button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>}
     </main>
   );
 }
