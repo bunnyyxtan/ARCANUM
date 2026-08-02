@@ -310,14 +310,184 @@ html.wl-dark .wl-icon-moon { display: none; }
     transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* Live ledger rows */
+.warm-ledger-row {
+  opacity: 0.3;
+  transform: translateY(8px);
+  transition:
+    transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 220ms ease;
+}
+.warm-ledger-row.is-live {
+  opacity: 1;
+  transform: translateY(0);
+  animation: ledgerIn 420ms cubic-bezier(0.16, 1, 0.3, 1) calc(var(--row-i) * 120ms) both;
+}
+.warm-ledger-row:hover {
+  transform: translate3d(2px, -2px, 0);
+  box-shadow: inset 1px 0 0 var(--wl-signal);
+}
+.warm-ledger-row.is-quiet {
+  opacity: 0.26;
+}
+@keyframes ledgerIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Verdict pills */
+.warm-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.warm-status-blocked {
+  animation: blockedSlam 420ms cubic-bezier(0.16, 1, 0.3, 1) 240ms both;
+}
+.warm-status-escalated {
+  overflow: hidden;
+}
+.approval-chip {
+  display: inline-block;
+  max-width: 0;
+  opacity: 0;
+  transform: translateX(-8px);
+  transition:
+    max-width 420ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 420ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 220ms ease;
+}
+.warm-ledger-row.is-live .approval-chip {
+  max-width: 45px;
+  opacity: 1;
+  transform: translateX(0);
+}
+@keyframes blockedSlam {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-1px); }
+  40% { transform: translateX(1px); }
+  60% { transform: translateX(-1px); }
+}
+
+/* Section numbers count in */
+.warm-section-number {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(12px);
+}
+.warm-reveal.is-visible .warm-section-number {
+  animation: numberIn 420ms cubic-bezier(0.16, 1, 0.3, 1) 180ms both;
+}
+@keyframes numberIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Policy document */
+.warm-policy-doc {
+  position: relative;
+  transform: scale(0.96);
+}
+.warm-reveal.is-visible .warm-policy-doc {
+  animation: policyIn 560ms cubic-bezier(0.16, 1, 0.3, 1) 120ms both;
+}
+.warm-policy-doc::before {
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  width: 100%;
+  height: 2px;
+  background: var(--wl-signal);
+  content: "";
+  transform: scaleX(0);
+  transform-origin: left;
+}
+.warm-reveal.is-visible .warm-policy-doc::before {
+  animation: lineDraw 420ms cubic-bezier(0.16, 1, 0.3, 1) 220ms both;
+}
+@keyframes policyIn {
+  from { opacity: 0.8; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes lineDraw {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+/* Brand period pulse */
+.warm-period {
+  display: inline-block;
+  animation: periodPulse 420ms cubic-bezier(0.16, 1, 0.3, 1) 420ms both;
+}
+@keyframes periodPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.18); }
+}
+
+/* Section rail scroll tracker */
+.warm-active-dot {
+  position: absolute;
+  top: 0;
+  left: -5px;
+  width: 3px;
+  height: 9px;
+  background: var(--wl-signal);
+  opacity: var(--dot-o, 0);
+  transform: translateY(var(--dot-y, 0px));
+  transition:
+    transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 220ms ease;
+}
+.warm-nav-dot {
+  position: relative;
+  z-index: 1;
+  transition: color 220ms ease;
+}
+.warm-nav-dot:hover,
+.warm-nav-dot[data-active="true"] {
+  color: var(--wl-signal);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .warm-modal-backdrop,
   .warm-modal-panel,
-  .warm-reveal.is-visible {
+  .warm-reveal.is-visible,
+  .warm-ledger-row,
+  .warm-section-number,
+  .warm-reveal.is-visible .warm-section-number,
+  .warm-policy-doc,
+  .warm-reveal.is-visible .warm-policy-doc,
+  .warm-reveal.is-visible .warm-policy-doc::before,
+  .warm-status-blocked,
+  .warm-period {
     animation: none;
   }
+  .warm-ledger-row,
+  .warm-section-number,
+  .warm-policy-doc {
+    opacity: 1;
+    transform: none;
+  }
+  .warm-ledger-row:hover {
+    transform: none;
+  }
+  .warm-policy-doc::before {
+    transform: scaleX(1);
+  }
+  .warm-period,
+  .warm-status-blocked {
+    transform: none;
+  }
+  .approval-chip {
+    max-width: 45px;
+    opacity: 1;
+    transform: none;
+  }
   .warm-pill,
-  .warm-pill::before {
+  .warm-pill::before,
+  .warm-active-dot,
+  .warm-interaction,
+  .approval-chip {
     transition: none;
   }
 }

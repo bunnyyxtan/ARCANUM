@@ -146,28 +146,30 @@ export function LedgerRows({ dark = false }: { dark?: boolean }) {
         <span className={`font-mono text-[10px] uppercase tracking-[.18em] ${quiet}`}>Live governed ledger</span>
         <span className={`font-mono text-[10px] ${quiet}`}>ARC / USDC</span>
       </div>
-      <div className={`grid grid-cols-[1.3fr_1fr_.9fr_1fr_auto] gap-3 border-b px-5 py-3 font-mono text-[9px] uppercase tracking-[.13em] ${line} ${quiet}`}>
+      <div className={`grid grid-cols-[1.3fr_1fr_.9fr_1fr_140px] gap-3 border-b px-5 py-3 font-mono text-[9px] uppercase tracking-[.13em] ${line} ${quiet}`}>
         <span>Agent</span>
         <span>Vendor</span>
-        <span>Amount</span>
+        <span className="text-right">Amount</span>
         <span>Wallet</span>
-        <span>Verdict</span>
+        <span className="text-right">Verdict</span>
       </div>
       <div className={`divide-y ${dark ? "divide-[var(--wl-strong4)]" : "divide-[var(--wl-line-faint)]"}`}>
         {rows.map((r, i) => (
           <div
             key={r.time}
             style={{ "--row-i": i } as CSSProperties}
-            className={`warm-ledger-row grid grid-cols-[1.3fr_1fr_.9fr_1fr_auto] items-center gap-3 px-5 py-4 ${i < visible ? "is-live" : "is-quiet"}`}
+            className={`warm-ledger-row grid grid-cols-[1.3fr_1fr_.9fr_1fr_140px] items-center gap-3 px-5 py-4 ${i < visible ? "is-live" : "is-quiet"}`}
           >
             <div>
               <div className={`text-[12px] font-medium ${dark ? "text-[var(--wl-bg-tint)]" : "text-[var(--wl-ink)]"}`}>{r.agent}</div>
               <div className={`mt-1 font-mono text-[9px] ${quiet}`}>{r.time} UTC</div>
             </div>
             <span className={`text-[12px] ${dark ? "text-[var(--wl-line-bolder)]" : "text-[var(--wl-strong)]"}`}>{r.vendor}</span>
-            <span className={`font-mono text-[12px] tabular-nums ${dark ? "text-[var(--wl-bg-tint)]" : "text-[var(--wl-ink)]"}`}>{r.amount}</span>
+            <span className={`text-right font-mono text-[12px] tabular-nums ${dark ? "text-[var(--wl-bg-tint)]" : "text-[var(--wl-ink)]"}`}>{r.amount}</span>
             <span className={`font-mono text-[10px] ${quiet}`}>{r.detail}</span>
-            <StatusPill status={r.status} />
+            <span className="flex justify-end">
+              <StatusPill status={r.status} />
+            </span>
           </div>
         ))}
       </div>

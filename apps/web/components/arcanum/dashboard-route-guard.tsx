@@ -13,16 +13,13 @@ export function DashboardRouteGuard({ children }: DashboardRouteGuardProps) {
   const router = useRouter();
   const { isConnected, status } = useAccount();
   const [allowLocalPreview, setAllowLocalPreview] = useState(false);
-  const [hasResolvedPreview, setHasResolvedPreview] = useState(
-    process.env.NODE_ENV !== "development",
-  );
+  const [hasResolvedPreview, setHasResolvedPreview] = useState(false);
   const isResolvingConnection = status === "connecting" || status === "reconnecting";
 
   useEffect(() => {
-    if (process.env.NODE_ENV !== "development") {
-      return;
-    }
-
+    // Read-only preview (?preview=1) is allowed in every environment: it renders
+    // the dashboard without a connected wallet, and every write path is already
+    // gated on an actual wallet connection + signature.
     setAllowLocalPreview(new URLSearchParams(window.location.search).get("preview") === "1");
     setHasResolvedPreview(true);
   }, []);
