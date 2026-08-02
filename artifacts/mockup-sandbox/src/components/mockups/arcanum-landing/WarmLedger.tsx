@@ -2,6 +2,36 @@ import { useEffect, useRef, useState, type CSSProperties, type PointerEvent, typ
 
 const orange = "#ff3c00";
 
+import metamaskLogo from "./assets/metamask.png";
+import rabbyLogo from "./assets/rabby.png";
+import rainbowLogo from "./assets/rainbow.png";
+import coinbaseLogo from "./assets/coinbase.png";
+import walletConnectLogo from "./assets/walletconnect.png";
+import ledgerLogo from "./assets/ledger.png";
+
+type WalletOption = { name: string; hint: string; logo: string; tag?: string };
+const WALLET_GROUPS: { group: string; wallets: WalletOption[] }[] = [
+  {
+    group: "OPERATOR / BROWSER",
+    wallets: [
+      { name: "MetaMask", hint: "Browser extension", logo: metamaskLogo, tag: "INSTALLED" },
+      { name: "Rabby", hint: "Browser extension", logo: rabbyLogo },
+      { name: "Coinbase Wallet", hint: "Extension · mobile", logo: coinbaseLogo },
+    ],
+  },
+  {
+    group: "MOBILE / QR",
+    wallets: [
+      { name: "Rainbow", hint: "Scan with Rainbow", logo: rainbowLogo },
+      { name: "WalletConnect", hint: "Any mobile wallet", logo: walletConnectLogo },
+    ],
+  },
+  {
+    group: "HARDWARE",
+    wallets: [{ name: "Ledger", hint: "Policy-gated sessions", logo: ledgerLogo }],
+  },
+];
+
 function Arrow() {
   return <span aria-hidden="true" className="ml-2 inline-block transition-transform duration-[220ms] group-hover:translate-x-1">↗</span>;
 }
@@ -143,6 +173,7 @@ function SectionNumber({ value, className = "" }: { value: string; className?: s
 export function WarmLedger() {
   const [connectOpen, setConnectOpen] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  const [chosenWallet, setChosenWallet] = useState<WalletOption | null>(null);
   const [activeSection, setActiveSection] = useState("");
   const [capitalGoverned, setCapitalGoverned] = useState(82.4);
   const gridRef = useRef<HTMLDivElement>(null);
@@ -268,33 +299,47 @@ export function WarmLedger() {
             <button type="button" aria-label="Close" onClick={() => { setConnectOpen(false); setConnecting(false); }} className="flex h-7 w-7 items-center justify-center rounded-full font-mono text-[13px] leading-none text-[#837a72] transition-colors hover:bg-[#efe8e0] hover:text-[#292522]">✕</button>
           </div>
           {connecting ? (
-            <div className="px-7 py-12">
-              <div className="flex items-center gap-3">
-                <span className="relative flex h-2.5 w-2.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#ff3c00] opacity-60" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#ff3c00]" /></span>
-                <p className="font-mono text-[10px] uppercase tracking-[.14em] text-[#ff3c00]">CONNECTING / ARC TESTNET</p>
+            <div className="px-7 py-10">
+              <div className="flex items-center gap-4">
+                <span className="relative flex h-12 w-12 items-center justify-center border border-[#e3dcd5] bg-white/60">
+                  {chosenWallet && <img src={chosenWallet.logo} alt="" className="h-7 w-7 object-contain" />}
+                  <span className="absolute -right-1 -top-1 flex h-2.5 w-2.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#ff3c00] opacity-60" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#ff3c00]" /></span>
+                </span>
+                <div>
+                  <p className="font-mono text-[10px] uppercase tracking-[.14em] text-[#ff3c00]">CONNECTING / ARC TESTNET</p>
+                  <p className="mt-1 text-[15px] font-semibold tracking-[-.02em]">{chosenWallet?.name ?? "Wallet"}</p>
+                </div>
               </div>
-              <p className="mt-4 text-[15px] leading-[1.5] text-[#655d56]">Waiting for an operator signature in your wallet…</p>
-              <div className="mt-7 h-[3px] overflow-hidden rounded-full bg-[#e3dcd5]"><span className="block h-full w-1/3 rounded-full bg-[#ff3c00]" style={{ animation: "warmScan 1.1s cubic-bezier(.45,.05,.55,.95) infinite" }} /></div>
+              <p className="mt-5 text-[14px] leading-[1.5] text-[#655d56]">Waiting for an operator signature in {chosenWallet?.name ?? "your wallet"}…</p>
+              <div className="mt-6 h-[3px] overflow-hidden rounded-full bg-[#e3dcd5]"><span className="block h-full w-1/3 rounded-full bg-[#ff3c00]" style={{ animation: "warmScan 1.1s cubic-bezier(.45,.05,.55,.95) infinite" }} /></div>
               <p className="mt-3 font-mono text-[9px] tracking-[.12em] text-[#a39a91]">SIWE · NO CUSTODY · POLICY-SCOPED SESSION</p>
             </div>
           ) : (
             <div className="px-7 pb-7 pt-6">
               <h2 className="text-[26px] font-semibold leading-[1.02] tracking-[-.05em]">Connect your governed wallet.</h2>
               <p className="mt-3 text-[13.5px] leading-[1.55] text-[#655d56]">ARCANUM never takes custody. Sign in to inspect the governed ledger and manage policies.</p>
-              <div className="mt-6 space-y-2.5">
-                {[
-                  { name: "Operator wallet", hint: "Browser extension · MetaMask, Rabby", mark: "◆" },
-                  { name: "WalletConnect", hint: "Scan from any mobile wallet", mark: "◇" },
-                  { name: "Hardware signer", hint: "Ledger · policy-gated sessions", mark: "▣" },
-                ].map((option) => (
-                  <button key={option.name} type="button" onClick={() => setConnecting(true)} className="warm-wallet-option flex w-full items-center gap-4 border border-[#ded7d0] bg-white/50 px-4 py-3.5 text-left">
-                    <span className="flex h-9 w-9 items-center justify-center border border-[#e3dcd5] bg-[#faf6f1] text-[14px] text-[#ff3c00]">{option.mark}</span>
-                    <span className="flex-1">
-                      <span className="block text-[13.5px] font-semibold tracking-[-.01em]">{option.name}</span>
-                      <span className="mt-0.5 block font-mono text-[9.5px] tracking-[.06em] text-[#a39a91]">{option.hint.toUpperCase()}</span>
-                    </span>
-                    <span className="warm-wallet-arrow font-mono text-[12px] text-[#ff3c00]">→</span>
-                  </button>
+              <div className="mt-5 space-y-4">
+                {WALLET_GROUPS.map(({ group, wallets }) => (
+                  <div key={group}>
+                    <p className="mb-2 font-mono text-[8.5px] tracking-[.18em] text-[#a39a91]">{group}</p>
+                    <div className="space-y-2">
+                      {wallets.map((option) => (
+                        <button key={option.name} type="button" onClick={() => { setChosenWallet(option); setConnecting(true); }} className="warm-wallet-option flex w-full items-center gap-3.5 border border-[#ded7d0] bg-white/50 px-3.5 py-2.5 text-left">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center border border-[#e3dcd5] bg-white">
+                            <img src={option.logo} alt="" className="h-6 w-6 object-contain" />
+                          </span>
+                          <span className="flex-1">
+                            <span className="flex items-center gap-2">
+                              <span className="block text-[13.5px] font-semibold tracking-[-.01em]">{option.name}</span>
+                              {option.tag && <span className="rounded-full bg-[#e7f0e5] px-2 py-0.5 font-mono text-[8px] tracking-[.1em] text-[#3f653e]">{option.tag}</span>}
+                            </span>
+                            <span className="mt-0.5 block font-mono text-[9px] tracking-[.06em] text-[#a39a91]">{option.hint.toUpperCase()}</span>
+                          </span>
+                          <span className="warm-wallet-arrow font-mono text-[12px] text-[#ff3c00]">→</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
               <div className="mt-5 flex items-center justify-between border-t border-[#e3dcd5] pt-4">

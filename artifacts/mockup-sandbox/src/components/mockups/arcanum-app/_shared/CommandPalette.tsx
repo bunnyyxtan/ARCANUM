@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-const entries = [
-  { label: "Approve next escalation", meta: "ACTION", nav: "APPROVE" },
-  { label: "Freeze an agent", meta: "ACTION", nav: "AGENTS" },
-  { label: "Add vendor", meta: "ACTION", nav: "VENDORS" },
+type Entry = { label: string; meta: "ACTION" | "NAVIGATE"; nav: string; hint?: string };
+
+const entries: Entry[] = [
+  { label: "Approve next escalation", meta: "ACTION", nav: "APPROVE", hint: "growth-bot · $2,100.00" },
+  { label: "Freeze an agent", meta: "ACTION", nav: "AGENTS", hint: "policy hold" },
+  { label: "Add vendor", meta: "ACTION", nav: "VENDORS", hint: "allowlist" },
   { label: "Open dashboard", meta: "NAVIGATE", nav: "DASHBOARD" },
   { label: "Inspect agents", meta: "NAVIGATE", nav: "AGENTS" },
   { label: "Browse vendors", meta: "NAVIGATE", nav: "VENDORS" },
@@ -21,19 +23,143 @@ export function CommandPalette() {
   const [query, setQuery] = useState("");
   const [cursor, setCursor] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
-  const filtered = entries.filter((entry) => entry.label.toLowerCase().includes(query.toLowerCase()));
+  const listRef = useRef<HTMLDivElement>(null);
+
+  const filtered = useMemo(
+    () => entries.filter((entry) => entry.label.toLowerCase().includes(query.toLowerCase())),
+    [query],
+  );
+  const groups = useMemo(() => {
+    const actions = filtered.filter((entry) => entry.meta === "ACTION");
+    const navigate = filtered.filter((entry) => entry.meta === "NAVIGATE");
+    return [
+      { title: "QUICK ACTIONS", items: actions },
+      { title: "GO TO", items: navigate },
+    ].filter((group) => group.items.length > 0);
+  }, [filtered]);
+
+  const stateRef = useRef({ open, filtered, cursor });
+  stateRef.current = { open, filtered, cursor };
+
+  const close = () => { setOpen(false); setQuery(""); };
+
+  const run = (entry: Entry) => {
+    document.querySelector(`[data-nav="${entry.nav}"]`)?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    close();
+  };
+
+  const onNavKey = (event: { key: string; preventDefault: () => void; stopPropagation: () => void }) => {
+    const { filtered: items, cursor: index } = stateRef.current;
+    if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); close(); }
+    if (event.key === "ArrowDown") { event.preventDefault(); event.stopPropagation(); setCursor((value) => Math.min(value + 1, items.length - 1)); }
+    if (event.key === "ArrowUp") { event.preventDefault(); event.stopPropagation(); setCursor((value) => Math.max(value - 1, 0)); }
+    if (event.key === "Enter") { event.preventDefault(); event.stopPropagation(); if (items[index]) run(items[index]); }
+  };
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") { event.preventDefault(); setOpen(true); }
-      if (!open) return;
-      if (event.key === "Escape") setOpen(false);
-      if (event.key === "ArrowDown") { event.preventDefault(); setCursor((value) => Math.min(value + 1, filtered.length - 1)); }
-      if (event.key === "ArrowUp") { event.preventDefault(); setCursor((value) => Math.max(value - 1, 0)); }
-      if (event.key === "Enter" && filtered[cursor]) { document.querySelector(`[data-nav="${filtered[cursor].nav}"]`)?.dispatchEvent(new MouseEvent("click", { bubbles: true })); setOpen(false); }
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") { event.preventDefault(); setOpen((value) => !value); return; }
+      if (!stateRef.current.open) return;
+      // If the palette is open but the input lost focus, reclaim it so typed
+      // characters always land in the search box (Enter would otherwise act
+      // on the unfiltered list). Keys typed into the input are handled by the
+      // input's own onKeyDown, which stops propagation before reaching here.
+      if (document.activeElement !== inputRef.current) {
+        inputRef.current?.focus();
+        if (event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey) {
+          event.preventDefault();
+          setQuery((value) => value + event.key);
+          return;
+        }
+        onNavKey(event);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, filtered, cursor]);
+  }, []);
+
   useEffect(() => { if (open) { setCursor(0); window.setTimeout(() => inputRef.current?.focus(), 0); } }, [open]);
-  return <>{<button type="button" aria-label="Open command palette" onClick={() => setOpen(true)} className="hidden rounded-full border border-[#ded7d0] px-2.5 py-1 font-mono text-[9px] tracking-[.1em] text-[#837a72] transition-colors hover:border-[#292522] hover:text-[#292522] md:block">⌘K</button>}{open && <div className="fixed inset-0 z-[70] flex items-start justify-center bg-[rgba(41,37,34,.14)] px-5 pt-[14vh]" role="dialog" aria-modal="true" aria-label="Command palette" onClick={() => setOpen(false)}><div className="w-full max-w-[560px] border border-[#bdb4aa] bg-[#faf6f1] shadow-[14px_18px_0_#e7e0d9]" onClick={(event) => event.stopPropagation()}><div className="flex items-center gap-3 border-b border-[#ded7d0] px-5 py-4"><span className="font-mono text-[12px] text-[#ff3c00]">⌕</span><input ref={inputRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search actions and pages" className="w-full bg-transparent text-[15px] outline-none placeholder:text-[#9b9289]" /><kbd className="font-mono text-[9px] text-[#9b9289]">ESC</kbd></div><div className="p-2">{filtered.map((entry, index) => <button type="button" key={entry.label} data-nav={entry.nav} onClick={() => setOpen(false)} className={`flex w-full items-center justify-between px-3 py-3 text-left transition-colors ${index === cursor ? "bg-[#f5f0ea]" : ""}`}><span className="text-[13px]">{entry.label}</span><span className={`font-mono text-[9px] tracking-[.13em] ${entry.meta === "ACTION" ? "text-[#ff3c00]" : "text-[#9b9289]"}`}>{entry.meta}</span></button>)}</div><div className="border-t border-[#ded7d0] px-5 py-3 font-mono text-[9px] text-[#9b9289]">↑↓ MOVE <span className="mx-2">·</span> ENTER SELECT <span className="mx-2">·</span> ESC CLOSE</div></div></div>}</>;
+  useEffect(() => { setCursor(0); }, [query]);
+  useEffect(() => {
+    listRef.current?.querySelector('[data-active="true"]')?.scrollIntoView({ block: "nearest" });
+  }, [cursor]);
+
+  let flatIndex = -1;
+
+  return (
+    <>
+      <style>{`
+        @keyframes cmdBackdrop{from{opacity:0}to{opacity:1}}
+        @keyframes cmdPanel{from{opacity:0;transform:translateY(-14px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+        .cmd-backdrop{animation:cmdBackdrop 200ms ease both;backdrop-filter:blur(4px)}
+        .cmd-panel{animation:cmdPanel 300ms cubic-bezier(.16,1,.3,1) 40ms both}
+        .cmd-row{transition:background 140ms ease,box-shadow 140ms ease}
+        .cmd-row[data-active="true"]{background:#f3ede6;box-shadow:inset 2px 0 0 #ff3c00}
+        .cmd-row[data-active="true"] .cmd-go{opacity:1;transform:translateX(0)}
+        .cmd-go{opacity:0;transform:translateX(-5px);transition:opacity 140ms ease,transform 180ms cubic-bezier(.16,1,.3,1)}
+        @media (prefers-reduced-motion:reduce){.cmd-backdrop,.cmd-panel{animation:none}}
+      `}</style>
+      <button type="button" aria-label="Open command palette" onClick={() => setOpen(true)} className="hidden items-center gap-1.5 rounded-full border border-[#ded7d0] px-2.5 py-1 font-mono text-[9px] tracking-[.1em] text-[#837a72] transition-colors hover:border-[#292522] hover:text-[#292522] md:flex">
+        <span className="text-[10px]">⌘</span>K
+      </button>
+      {open && (
+        <div className="cmd-backdrop fixed inset-0 z-[70] flex items-start justify-center bg-[rgba(41,37,34,.28)] px-5 pt-[12vh]" role="dialog" aria-modal="true" aria-label="Command palette" onClick={close}>
+          <div className="cmd-panel w-full max-w-[580px] overflow-hidden border border-[#cfc5bc] bg-[#faf6f1] shadow-[0_28px_70px_-18px_rgba(41,37,34,.45)]" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-center gap-3 border-b border-[#e3dcd5] px-5 py-4">
+              <span className="font-mono text-[13px] text-[#ff3c00]">⌕</span>
+              <input
+                autoFocus
+                ref={inputRef}
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={onNavKey}
+                placeholder="Search actions and pages…"
+                className="w-full bg-transparent text-[15px] tracking-[-.01em] outline-none placeholder:text-[#9b9289]"
+              />
+              <button type="button" onClick={close} className="rounded border border-[#ded7d0] px-1.5 py-0.5 font-mono text-[8.5px] tracking-[.08em] text-[#9b9289] transition-colors hover:border-[#292522] hover:text-[#292522]">ESC</button>
+            </div>
+            <div ref={listRef} className="max-h-[46vh] overflow-y-auto p-2">
+              {groups.length === 0 && <p className="px-4 py-8 text-center font-mono text-[10px] tracking-[.14em] text-[#9b9289]">NO MATCHES · TRY “LEDGER” OR “VENDOR”</p>}
+              {groups.map((group) => (
+                <div key={group.title} className="mb-1">
+                  <p className="px-3 pb-1.5 pt-2.5 font-mono text-[8.5px] tracking-[.2em] text-[#a39a91]">{group.title}</p>
+                  {group.items.map((entry) => {
+                    flatIndex += 1;
+                    const index = flatIndex;
+                    return (
+                      <button
+                        key={entry.label}
+                        type="button"
+                        data-nav={entry.nav}
+                        data-active={index === cursor}
+                        onMouseEnter={() => setCursor(index)}
+                        onClick={close}
+                        className="cmd-row flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left"
+                      >
+                        <span className="flex items-center gap-3">
+                          <span className={`flex h-6 w-6 items-center justify-center border font-mono text-[10px] ${entry.meta === "ACTION" ? "border-[#ff3c00] text-[#ff3c00]" : "border-[#e3dcd5] text-[#9b9289]"}`}>{entry.meta === "ACTION" ? "!" : "→"}</span>
+                          <span>
+                            <span className="block text-[13.5px] tracking-[-.01em]">{entry.label}</span>
+                            {entry.hint && <span className="mt-0.5 block font-mono text-[8.5px] tracking-[.08em] text-[#a39a91]">{entry.hint.toUpperCase()}</span>}
+                          </span>
+                        </span>
+                        <span className="flex items-center gap-2">
+                          <span className={`font-mono text-[8.5px] tracking-[.13em] ${entry.meta === "ACTION" ? "text-[#ff3c00]" : "text-[#9b9289]"}`}>{entry.meta}</span>
+                          <span className="cmd-go font-mono text-[11px] text-[#ff3c00]">↵</span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center justify-between border-t border-[#e3dcd5] px-5 py-2.5 font-mono text-[8.5px] tracking-[.1em] text-[#9b9289]">
+              <span className="flex items-center gap-3"><span><kbd className="mr-1 rounded border border-[#ded7d0] px-1 py-px">↑↓</kbd>MOVE</span><span><kbd className="mr-1 rounded border border-[#ded7d0] px-1 py-px">↵</kbd>SELECT</span><span><kbd className="mr-1 rounded border border-[#ded7d0] px-1 py-px">ESC</kbd>CLOSE</span></span>
+              <span className="text-[#ff3c00]">ARCANUM / COMMAND</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }

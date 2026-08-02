@@ -54,13 +54,16 @@ function AppShell({ children }: { children: ReactNode }) {
 
 export function Vendors() {
   const [vendors, setVendors] = useState(initialVendors);
-  const [selectedName, setSelectedName] = useState("AWS");
+  const [selectedName, setSelectedNameRaw] = useState("AWS");
+  const setSelectedName = (name: string) => { setSelectedNameRaw(name); setCapEditing(false); };
   const [category, setCategory] = useState("ALL");
   const [query, setQuery] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [notice, setNotice] = useState("ALLOWLIST / 30 DAY WINDOW");
   const [newName, setNewName] = useState("");
   const [menu, setMenu] = useState<string | null>(null);
+  const [capEditing, setCapEditing] = useState(false);
+  const [capValue, setCapValue] = useState("");
   useEffect(() => {
     const close = (event: KeyboardEvent) => event.key === "Escape" && setMenu(null);
     const closeOutside = (event: PointerEvent) => {
@@ -131,7 +134,26 @@ export function Vendors() {
       {selected && <aside className="mt-8 grid gap-7 border-t-2 border-[#292522] bg-[#f5f0ea] p-6 sm:p-8 lg:grid-cols-[.7fr_1.3fr]">
         <div><div className="flex items-start justify-between"><div><p className="font-mono text-[10px] uppercase tracking-[.17em] text-[#ff3c00]">SELECTED / COUNTERPARTY</p><h3 className="mt-4 text-3xl font-semibold tracking-[-.07em]">{selected.name}</h3><p className="mt-2 font-mono text-[10px] text-[#837a72]">{selected.address} · {selected.category}</p></div><StatePill state={selected.state} /></div>
           <div className="mt-10"><div className="flex justify-between font-mono text-[9px] uppercase tracking-[.13em] text-[#837a72]"><span>CAP USAGE / MONTH</span><span>{selected.used}%</span></div><div className="mt-3 h-1.5 bg-[#ded7d0]"><span className="block h-full bg-[#292522]" style={{ width: `${selected.used}%` }} /></div><div className="mt-3 flex justify-between font-mono text-[9px] text-[#9b9289]"><span>{selected.volume} used</span><span>{selected.cap} limit</span></div></div>
-          <div className="mt-8 flex flex-wrap gap-3"><button type="button" onClick={() => setNotice(`${selected.name.toUpperCase()} CAP REVIEW QUEUED · OPERATOR SIGNATURE NEEDED`)} className="warm-pill warm-pill-ghost rounded-full border border-[#ded7d0] px-4 py-2.5 font-mono text-[9px] tracking-[.1em]">Update cap</button><button type="button" onClick={blockSelected} className="rounded-full border border-[#ff3c00] px-4 py-2.5 font-mono text-[9px] tracking-[.1em] text-[#ff3c00] transition-transform duration-[220ms] hover:-translate-y-0.5">Block vendor</button></div>
+          <div className="mt-8 flex flex-wrap gap-3"><button type="button" onClick={() => { setCapValue(selected.cap.replace(/[^0-9]/g, "")); setCapEditing((value) => !value); }} className="warm-pill warm-pill-ghost rounded-full border border-[#ded7d0] px-4 py-2.5 font-mono text-[9px] tracking-[.1em]">Update cap</button><button type="button" onClick={blockSelected} className="rounded-full border border-[#ff3c00] px-4 py-2.5 font-mono text-[9px] tracking-[.1em] text-[#ff3c00] transition-transform duration-[220ms] hover:-translate-y-0.5">Block vendor</button></div>
+          {capEditing && <form className="mt-4 border-l-2 border-[#ff3c00] bg-[#f5f0ea] p-4" onSubmit={(event) => {
+            event.preventDefault();
+            const amount = Number(capValue);
+            if (!amount || amount <= 0) { setNotice("ENTER A VALID MONTHLY CAP"); return; }
+            const formatted = `$${amount.toLocaleString("en-US")} / mo`;
+            setVendors((items) => items.map((item) => item.name === selected.name ? { ...item, cap: formatted } : item));
+            setNotice(`${selected.name.toUpperCase()} CAP REVISED TO ${formatted.toUpperCase()} · SIGNED BY OPERATOR`);
+            setCapEditing(false);
+          }}>
+            <p className="font-mono text-[9px] uppercase tracking-[.14em] text-[#ff3c00]">REVISE MONTHLY CAP / {selected.name.toUpperCase()}</p>
+            <div className="mt-3 flex items-center gap-2">
+              <span className="font-mono text-[13px] text-[#837a72]">$</span>
+              <input autoFocus inputMode="numeric" value={capValue} onChange={(event) => setCapValue(event.target.value.replace(/[^0-9]/g, ""))} placeholder="2500" className="w-[110px] border-b border-[#bdb4aa] bg-transparent py-1 font-mono text-[13px] outline-none focus:border-[#ff3c00]" />
+              <span className="font-mono text-[10px] text-[#9b9289]">/ MO · USDC</span>
+              <button type="submit" className="warm-pill ml-2 rounded-full bg-[#ff3c00] px-4 py-2 font-mono text-[9px] tracking-[.1em] text-white">SIGN &amp; APPLY</button>
+              <button type="button" onClick={() => setCapEditing(false)} className="font-mono text-[9px] tracking-[.1em] text-[#837a72] hover:text-[#292522]">CANCEL</button>
+            </div>
+            <p className="mt-2 font-mono text-[8.5px] tracking-[.08em] text-[#9b9289]">CURRENT {selected.cap.toUpperCase()} · TAKES EFFECT NEXT SETTLEMENT WINDOW</p>
+          </form>}
         </div>
         <div><div className="flex items-center justify-between border-b border-[#ded7d0] pb-4"><span className="font-mono text-[10px] uppercase tracking-[.16em] text-[#837a72]">Recent transactions</span><span className="font-mono text-[9px] text-[#9b9289]">30D / {selected.volume}</span></div><div className="divide-y divide-[#ded7d0]">{selected.txs.map((tx, index) => <div key={`${tx}-${index}`} className="flex items-center justify-between gap-4 py-4"><span className="text-[12px] text-[#655d56]">{tx.split(" · ").slice(1).join(" · ")}</span><span className="font-mono text-[11px] tabular-nums">{tx.split(" · ")[0]}</span></div>)}</div><p className="mt-8 max-w-[390px] font-mono text-[9px] leading-[1.6] tracking-[.08em] text-[#9b9289]">Every payment is evaluated against this cap before it reaches the governed wallet.</p></div>
       </aside>}
