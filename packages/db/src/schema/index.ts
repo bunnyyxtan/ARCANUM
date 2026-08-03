@@ -36,6 +36,11 @@ export const escalationStatusEnum = pgEnum("escalation_status", [
 export const vendorStatusEnum = pgEnum("vendor_status", ["allowed", "blocked", "removed"]);
 export const anomalySeverityEnum = pgEnum("anomaly_severity", ["info", "warning", "danger"]);
 export const userRoleEnum = pgEnum("user_role", ["owner", "council", "signer", "viewer"]);
+export const vendorFlagEventTypeEnum = pgEnum("vendor_flag_event_type", [
+  "flagged",
+  "note_updated",
+  "unflagged",
+]);
 
 const tenantIdColumn = () =>
   uuid("tenant_id")
@@ -208,6 +213,29 @@ export const vendorFlags = pgTable(
   }),
 );
 
+// Append-only audit trail of vendor review activity. vendor_flags keeps only
+// the latest flag state per vendor (unique on tenant + vendor_address), so
+// every flag / note edit / unflag is also recorded here and never mutated.
+export const vendorFlagEvents = pgTable(
+  "vendor_flag_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: tenantIdColumn(),
+    vendorAddress: varchar("vendor_address", { length: 42 }).notNull(),
+    eventType: vendorFlagEventTypeEnum("event_type").notNull(),
+    actor: varchar("actor", { length: 42 }).notNull(),
+    note: text("note"),
+    createdAt: createdAtColumn(),
+  },
+  (table) => ({
+    tenantVendorTime: index("vendor_flag_events_tenant_vendor_created_idx").on(
+      table.tenantId,
+      table.vendorAddress,
+      sql`${table.createdAt} desc`,
+    ),
+  }),
+);
+
 export const anomalies = pgTable(
   "anomalies",
   {
@@ -298,6 +326,7 @@ export type Transfer = typeof transfers.$inferSelect;
 export type Escalation = typeof escalations.$inferSelect;
 export type Vendor = typeof vendors.$inferSelect;
 export type Anomaly = typeof anomalies.$inferSelect;
+export type VendorFlagEvent = typeof vendorFlagEvents.$inferSelect;
 export type Policy = typeof policies.$inferSelect;
 export type Event = typeof events.$inferSelect;
 export type User = typeof users.$inferSelect;

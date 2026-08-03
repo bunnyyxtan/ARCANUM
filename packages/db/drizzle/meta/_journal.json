@@ -36,6 +36,20 @@
       "when": 1785782877438,
       "tag": "0004_funny_turbo",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1785783101226,
+      "tag": "0005_new_morlun",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1785783280430,
+      "tag": "0006_backfill_vendor_flag_events",
+      "breakpoints": true
     }
   ]
 }

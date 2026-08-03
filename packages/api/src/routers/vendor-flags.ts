@@ -1,4 +1,4 @@
-import { vendorFlags } from "@arcanum/db/schema";
+import { vendorFlagEvents, vendorFlags } from "@arcanum/db/schema";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
@@ -45,31 +45,62 @@ export const vendorFlagsRouter = router({
     }
   }),
 
+  // Full append-only review trail for one vendor: every flag, note edit, and
+  // unflag ever recorded, newest first — survives re-flagging cycles.
+  history: protectedProcedure.input(vendorFlagInputSchema).query(async ({ ctx, input }) => {
+    const tenantId = tenantIdFor(ctx);
+    const vendorAddress = input.vendorAddress.toLowerCase();
+    try {
+      return await ctx.db.query.vendorFlagEvents.findMany({
+        where: and(
+          eq(vendorFlagEvents.tenantId, tenantId),
+          eq(vendorFlagEvents.vendorAddress, vendorAddress),
+        ),
+        orderBy: desc(vendorFlagEvents.createdAt),
+        limit: 50,
+      });
+    } catch (error) {
+      throw reviewRegisterUnavailable("vendorFlags.history", error);
+    }
+  }),
+
   flag: protectedProcedure.input(vendorFlagCreateSchema).mutation(async ({ ctx, input }) => {
     const tenantId = tenantIdFor(ctx);
     const vendorAddress = input.vendorAddress.toLowerCase();
     const note = input.note ? input.note : null;
+    const actor = actorFor(ctx);
 
     try {
-      const [row] = await ctx.db
-        .insert(vendorFlags)
-        .values({ tenantId, vendorAddress, flaggedBy: actorFor(ctx), note })
-        .onConflictDoUpdate({
-          target: [vendorFlags.tenantId, vendorFlags.vendorAddress],
-          // Re-flagging is a fresh flag: the flagger owns the note again, so
-          // any previous "last edited by" trail is cleared, and any prior
-          // unflag record is superseded (the row becomes active again).
-          set: {
-            flaggedBy: actorFor(ctx),
-            note,
-            noteUpdatedBy: null,
-            noteUpdatedAt: null,
-            createdAt: new Date(),
-            removedBy: null,
-            removedAt: null,
-          },
-        })
-        .returning();
+      // The flag row and its audit event commit together: a history entry
+      // without a flag (or vice versa) would corrupt the review trail.
+      const row = await ctx.db.transaction(async (tx) => {
+        const [flagRow] = await tx
+          .insert(vendorFlags)
+          .values({ tenantId, vendorAddress, flaggedBy: actor, note })
+          .onConflictDoUpdate({
+            target: [vendorFlags.tenantId, vendorFlags.vendorAddress],
+            // Re-flagging is a fresh flag: the flagger owns the note again, so
+            // any previous "last edited by" trail is cleared, and any prior
+            // unflag record is superseded (the row becomes active again).
+            // The prior cycle stays preserved in vendor_flag_events.
+            set: {
+              flaggedBy: actor,
+              note,
+              noteUpdatedBy: null,
+              noteUpdatedAt: null,
+              createdAt: new Date(),
+              removedBy: null,
+              removedAt: null,
+            },
+          })
+          .returning();
+        if (flagRow) {
+          await tx
+            .insert(vendorFlagEvents)
+            .values({ tenantId, vendorAddress, eventType: "flagged", actor, note });
+        }
+        return flagRow;
+      });
 
       if (!row) {
         throw reviewRegisterUnavailable(
@@ -101,22 +132,31 @@ export const vendorFlagsRouter = router({
       const tenantId = tenantIdFor(ctx);
       const vendorAddress = input.vendorAddress.toLowerCase();
       const note = input.note ? input.note : null;
+      const actor = actorFor(ctx);
 
       try {
         // Only the note changes — flaggedBy and createdAt are preserved so the
         // audit trail of who flagged the vendor (and when) stays intact. The
         // editor is stamped so approvers can see who last touched the note.
-        const [row] = await ctx.db
-          .update(vendorFlags)
-          .set({ note, noteUpdatedBy: actorFor(ctx), noteUpdatedAt: new Date() })
-          .where(
-            and(
-              eq(vendorFlags.tenantId, tenantId),
-              eq(vendorFlags.vendorAddress, vendorAddress),
-              isNull(vendorFlags.removedAt),
-            ),
-          )
-          .returning();
+        const row = await ctx.db.transaction(async (tx) => {
+          const [updated] = await tx
+            .update(vendorFlags)
+            .set({ note, noteUpdatedBy: actor, noteUpdatedAt: new Date() })
+            .where(
+              and(
+                eq(vendorFlags.tenantId, tenantId),
+                eq(vendorFlags.vendorAddress, vendorAddress),
+                isNull(vendorFlags.removedAt),
+              ),
+            )
+            .returning();
+          if (updated) {
+            await tx
+              .insert(vendorFlagEvents)
+              .values({ tenantId, vendorAddress, eventType: "note_updated", actor, note });
+          }
+          return updated;
+        });
 
         if (!row) {
           throw new TRPCError({
@@ -137,22 +177,31 @@ export const vendorFlagsRouter = router({
   unflag: protectedProcedure.input(vendorFlagInputSchema).mutation(async ({ ctx, input }) => {
     const tenantId = tenantIdFor(ctx);
     const vendorAddress = input.vendorAddress.toLowerCase();
+    const actor = actorFor(ctx);
 
     try {
       // Soft delete: the row is kept and stamped with who cleared the flag,
       // so the review trail records the unflag instead of erasing it.
       // Zero updated rows means the vendor was already unflagged — that is a
-      // legitimate idempotent success, not a failure.
-      await ctx.db
-        .update(vendorFlags)
-        .set({ removedBy: actorFor(ctx), removedAt: new Date() })
-        .where(
-          and(
-            eq(vendorFlags.tenantId, tenantId),
-            eq(vendorFlags.vendorAddress, vendorAddress),
-            isNull(vendorFlags.removedAt),
-          ),
-        );
+      // legitimate idempotent success, not a failure (and no event is logged).
+      await ctx.db.transaction(async (tx) => {
+        const [cleared] = await tx
+          .update(vendorFlags)
+          .set({ removedBy: actor, removedAt: new Date() })
+          .where(
+            and(
+              eq(vendorFlags.tenantId, tenantId),
+              eq(vendorFlags.vendorAddress, vendorAddress),
+              isNull(vendorFlags.removedAt),
+            ),
+          )
+          .returning();
+        if (cleared) {
+          await tx
+            .insert(vendorFlagEvents)
+            .values({ tenantId, vendorAddress, eventType: "unflagged", actor });
+        }
+      });
 
       return { flagged: false as const };
     } catch (error) {

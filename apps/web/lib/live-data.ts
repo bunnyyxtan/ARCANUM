@@ -326,6 +326,53 @@ export function useVendorFlags() {
   return { ...query, flaggedAddresses, flagDetails, unflagDetails };
 }
 
+export type VendorFlagHistoryEntry = {
+  id: string;
+  eventType: "flagged" | "note_updated" | "unflagged";
+  actor: string;
+  actorShort: string;
+  note: string | null;
+  at: string;
+};
+
+const flagEventLabels: Record<VendorFlagHistoryEntry["eventType"], string> = {
+  flagged: "Flagged for review",
+  note_updated: "Note updated",
+  unflagged: "Flag cleared",
+};
+
+export function vendorFlagEventLabel(eventType: VendorFlagHistoryEntry["eventType"]) {
+  return flagEventLabels[eventType];
+}
+
+// Append-only review trail for one vendor — every flag / note edit / unflag,
+// newest first, preserved across re-flag cycles.
+export function useVendorFlagHistory(vendorAddress: string | null) {
+  const enabled = useLiveQueriesEnabled();
+  const normalized = vendorAddress ? vendorAddress.toLowerCase() : null;
+  const query = trpc.vendorFlags.history.useQuery(
+    { vendorAddress: normalized ?? "" },
+    {
+      enabled: enabled && Boolean(normalized && /^0x[a-fA-F0-9]{40}$/.test(normalized)),
+      retry: false,
+      staleTime: 30_000,
+    },
+  );
+  const entries = useMemo<VendorFlagHistoryEntry[]>(
+    () =>
+      (query.data ?? []).map((event) => ({
+        id: event.id,
+        eventType: event.eventType,
+        actor: event.actor,
+        actorShort: shortAddress(event.actor),
+        note: typeof event.note === "string" && event.note.trim() !== "" ? event.note : null,
+        at: flagDateLabel(event.createdAt),
+      })),
+    [query.data],
+  );
+  return { ...query, entries };
+}
+
 export function useLiveEvents() {
   const enabled = useLiveQueriesEnabled();
   const query = trpc.events.list.useQuery(
