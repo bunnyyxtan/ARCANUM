@@ -1,6 +1,7 @@
 import type { Escalation } from "@/lib/types";
 
 const relativeExpiry = (minutes: number) => new Date(Date.now() + minutes * 60_000).toISOString();
+const relativeCreated = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
 
 export const escalations: Escalation[] = [
   {
@@ -15,6 +16,7 @@ export const escalations: Escalation[] = [
     quorumCurrent: 1,
     quorumRequired: 2,
     deviation: 2.8,
+    createdAt: relativeCreated(21),
     expiresAt: relativeExpiry(42),
     expiresIn: relativeExpiry(42),
     expiryPercent: 8,
@@ -31,6 +33,7 @@ export const escalations: Escalation[] = [
     quorumCurrent: 1,
     quorumRequired: 3,
     deviation: 4.2,
+    createdAt: relativeCreated(65),
     expiresAt: relativeExpiry(130),
     expiresIn: relativeExpiry(130),
     expiryPercent: 22,
@@ -47,6 +50,7 @@ export const escalations: Escalation[] = [
     quorumCurrent: 0,
     quorumRequired: 2,
     deviation: 3.1,
+    createdAt: relativeCreated(159),
     expiresAt: relativeExpiry(319),
     expiresIn: relativeExpiry(319),
     expiryPercent: 48,
@@ -63,6 +67,7 @@ export const escalations: Escalation[] = [
     quorumCurrent: 1,
     quorumRequired: 2,
     deviation: 2.4,
+    createdAt: relativeCreated(211),
     expiresAt: relativeExpiry(423),
     expiresIn: relativeExpiry(423),
     expiryPercent: 66,
@@ -79,6 +84,7 @@ export const escalations: Escalation[] = [
     quorumCurrent: 1,
     quorumRequired: 2,
     deviation: 1.7,
+    createdAt: relativeCreated(322),
     expiresAt: relativeExpiry(644),
     expiresIn: relativeExpiry(644),
     expiryPercent: 84,

@@ -191,6 +191,7 @@ export function useLiveEscalations(status?: "PENDING" | "EXECUTED" | "REJECTED" 
     quorumCurrent: item.signaturesCount,
     quorumRequired: item.threshold,
     deviation: 0,
+    createdAt: toIsoTimestamp(item.createdAt),
     expiresAt: toIsoTimestamp(item.expiresAt),
     expiresIn: formatTimestampOrNA(item.expiresAt),
     expiryPercent: item.status === "PENDING" ? 50 : 100,

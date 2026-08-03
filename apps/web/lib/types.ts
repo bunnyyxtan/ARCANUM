@@ -60,6 +60,7 @@ export type Escalation = {
   quorumCurrent: number;
   quorumRequired: number;
   deviation: number;
+  createdAt: string | null;
   expiresAt: string | null;
   expiresIn: string;
   expiryPercent: number;

@@ -43,6 +43,29 @@ function allowTrustedMutation(action: string, event: ReactMouseEvent<HTMLElement
   return false;
 }
 
+function formatFooterTimestamp(value: string | null) {
+  if (!value) {
+    return "N/A";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "N/A";
+  }
+  const day = new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+  const time = new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "UTC",
+  }).format(date);
+  return `${day} · ${time} UTC`;
+}
+
 type TxStage =
   | "idle"
   | "checking"
@@ -366,6 +389,11 @@ function EscalationCard({
           OPEN VOTE TX ↗
         </a>
       ) : null}
+      <div className="mt-5 font-mono text-[9px] text-[var(--wl-mute)]">
+        CREATED {formatFooterTimestamp(item.createdAt)}{" "}
+        <span className="mx-2 text-[var(--wl-line)]">·</span> EXPIRES{" "}
+        {formatFooterTimestamp(item.expiresAt)}
+      </div>
     </article>
   );
 }
