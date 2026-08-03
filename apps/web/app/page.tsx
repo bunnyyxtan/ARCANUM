@@ -85,7 +85,7 @@ export default function LandingPage() {
 
     >
       <aside className="fixed bottom-0 left-0 top-0 z-20 hidden w-[86px] flex-col items-center justify-between border-r border-[var(--wl-line)] bg-[var(--wl-bg)] py-7 lg:flex">
-        <MagneticAnchor href="#" className="font-display text-[17px] font-bold tracking-[-.015em]">
+        <MagneticAnchor href="#" className="font-display whitespace-nowrap text-[14px] font-bold tracking-[-.015em]">
           ARCANUM<span className="text-[var(--wl-signal)]">.</span>
         </MagneticAnchor>
         <div
