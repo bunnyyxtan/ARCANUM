@@ -126,13 +126,29 @@ function buildPolicyEnvelope(draft: PolicyDraftState): PolicyEnvelopeValue {
   };
 }
 
-function policyDraftFromEnvelope(policy: readonly unknown[]): PolicyDraftState {
-  const perTxCap = typeof policy[0] === "bigint" ? policy[0] : 0n;
-  const daily24hCap = typeof policy[1] === "bigint" ? policy[1] : 0n;
-  const monthlyRollingCap = typeof policy[2] === "bigint" ? policy[2] : 0n;
-  const allowedCategories = typeof policy[3] === "bigint" ? policy[3] : allPolicyCategoriesMask;
-  const escalationThreshold = typeof policy[4] === "bigint" ? policy[4] : 0n;
-  const requireAllowlist = typeof policy[5] === "boolean" ? policy[5] : true;
+function safeBigInt(value: string | undefined, fallback: bigint) {
+  if (value === undefined) return fallback;
+  try {
+    return BigInt(value);
+  } catch {
+    return fallback;
+  }
+}
+
+function policyDraftFromServerRead(policy: {
+  perTxCap: string;
+  daily24hCap: string;
+  monthlyRollingCap: string;
+  allowedCategories: string;
+  escalationThreshold: string;
+  requireAllowlist: boolean;
+}): PolicyDraftState {
+  const perTxCap = safeBigInt(policy.perTxCap, 0n);
+  const daily24hCap = safeBigInt(policy.daily24hCap, 0n);
+  const monthlyRollingCap = safeBigInt(policy.monthlyRollingCap, 0n);
+  const allowedCategories = safeBigInt(policy.allowedCategories, allPolicyCategoriesMask);
+  const escalationThreshold = safeBigInt(policy.escalationThreshold, 0n);
+  const requireAllowlist = policy.requireAllowlist;
 
   return {
     dailyCap: usdcInputValue(daily24hCap),
@@ -273,55 +289,50 @@ export default function PolicyEditorPage() {
     );
   }, [policyWalletOptions, routeWalletId, selectedPolicyWalletAddress]);
 
+  // Policy state is read server-side (Next.js backend calls the Arc Testnet RPC)
+  // to avoid browser CORS failures against the public RPC endpoint.
+  const onChainPolicyQuery = trpc.policies.readOnChain.useQuery(
+    { walletAddress: selectedGovernedWalletAddress ?? "" },
+    {
+      enabled: Boolean(selectedGovernedWalletAddress),
+      retry: 1,
+      staleTime: 15_000,
+    },
+  );
+
   useEffect(() => {
-    let cancelled = false;
-
-    if (!publicClient || !selectedGovernedWalletAddress) {
+    if (!selectedGovernedWalletAddress) {
       setPolicyWalletOwner(null);
-      setPolicyReadStatus(selectedGovernedWalletAddress ? "error" : "idle");
-      return () => {
-        cancelled = true;
-      };
+      setPolicyReadStatus("idle");
+      return;
     }
-
-    setPolicyReadStatus("checking");
-    setPolicyError(null);
-    Promise.all([
-      publicClient.readContract({
-        address: selectedGovernedWalletAddress,
-        abi: guardedWalletControlAbi,
-        functionName: "owner",
-      }),
-      publicClient.readContract({
-        address: selectedGovernedWalletAddress,
-        abi: guardedWalletControlAbi,
-        functionName: "policy",
-      }),
-    ])
-      .then(([owner, policy]) => {
-        if (cancelled) {
-          return;
-        }
-        const nextDraft = policyDraftFromEnvelope(policy as readonly unknown[]);
-        setPolicyWalletOwner(owner as Address);
-        setActivePolicyDraft(nextDraft);
-        setPolicyDraft(nextDraft);
-        setPolicyPendingIndexer(false);
-        setPolicyReadStatus("ready");
-      })
-      .catch((caught) => {
-        if (cancelled) {
-          return;
-        }
-        setPolicyWalletOwner(null);
-        setPolicyReadStatus("error");
-        setPolicyError(errorMessage(caught));
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [publicClient, selectedGovernedWalletAddress]);
+    if (onChainPolicyQuery.isLoading || onChainPolicyQuery.isFetching) {
+      setPolicyReadStatus("checking");
+      setPolicyError(null);
+      return;
+    }
+    if (onChainPolicyQuery.isError) {
+      setPolicyWalletOwner(null);
+      setPolicyReadStatus("error");
+      setPolicyError(onChainPolicyQuery.error.message);
+      return;
+    }
+    if (onChainPolicyQuery.data) {
+      const nextDraft = policyDraftFromServerRead(onChainPolicyQuery.data.policy);
+      setPolicyWalletOwner(onChainPolicyQuery.data.owner as Address);
+      setActivePolicyDraft(nextDraft);
+      setPolicyDraft(nextDraft);
+      setPolicyPendingIndexer(false);
+      setPolicyReadStatus("ready");
+    }
+  }, [
+    selectedGovernedWalletAddress,
+    onChainPolicyQuery.data,
+    onChainPolicyQuery.isLoading,
+    onChainPolicyQuery.isFetching,
+    onChainPolicyQuery.isError,
+    onChainPolicyQuery.error,
+  ]);
 
   const policyWriteDisabledReason = !selectedGovernedWalletAddress
     ? walletsQuery.isLoading
@@ -407,6 +418,7 @@ export default function PolicyEditorPage() {
       setActivePolicyDraft(policyDraft);
       setPolicyPendingIndexer(true);
       await utils.policies.get.invalidate();
+      await utils.policies.readOnChain.invalidate();
       await utils.wallets.listPolicies.invalidate();
       toast.success("POLICY TX CONFIRMED", {
         description:

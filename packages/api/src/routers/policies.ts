@@ -1,7 +1,9 @@
 import { policies } from "@arcanum/db/schema";
-import { agentByWalletInputSchema, policyUpdateInputSchema } from "@arcanum/shared";
+import { agentByWalletInputSchema, arcTestnet, policyUpdateInputSchema } from "@arcanum/shared";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, sql } from "drizzle-orm";
+import { createPublicClient, http, isAddress } from "viem";
+import { z } from "zod";
 
 import { fallbackPolicies } from "../mock-fallback";
 import { readSupabasePolicy } from "../supabase";
@@ -15,7 +17,85 @@ function onChainPolicyWriteOnly(): never {
   });
 }
 
+const guardedWalletReadAbi = [
+  {
+    type: "function",
+    name: "owner",
+    inputs: [],
+    outputs: [{ name: "owner", type: "address" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "policy",
+    inputs: [],
+    outputs: [
+      { name: "perTxCap", type: "uint256" },
+      { name: "daily24hCap", type: "uint256" },
+      { name: "monthlyRollingCap", type: "uint256" },
+      { name: "allowedCategories", type: "uint256" },
+      { name: "escalationThreshold", type: "uint256" },
+      { name: "requireAllowlist", type: "bool" },
+    ],
+    stateMutability: "view",
+  },
+] as const;
+
+const arcReadClient = createPublicClient({
+  chain: arcTestnet,
+  transport: http(undefined, { retryCount: 2, timeout: 15_000 }),
+});
+
+const onChainPolicyInputSchema = z.object({
+  walletAddress: z
+    .string()
+    .refine((value) => isAddress(value), { message: "Invalid wallet address" }),
+});
+
 export const policiesRouter = router({
+  readOnChain: publicProcedure.input(onChainPolicyInputSchema).query(async ({ input }) => {
+    const address = input.walletAddress as `0x${string}`;
+
+    const bytecode = await arcReadClient.getCode({ address }).catch((error: unknown) => {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Arc Testnet RPC is unavailable. Please retry.",
+        cause: error,
+      });
+    });
+
+    if (!bytecode || bytecode === "0x") {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "No governed wallet contract found at this address on Arc Testnet.",
+      });
+    }
+
+    try {
+      const [owner, policy] = await Promise.all([
+        arcReadClient.readContract({ address, abi: guardedWalletReadAbi, functionName: "owner" }),
+        arcReadClient.readContract({ address, abi: guardedWalletReadAbi, functionName: "policy" }),
+      ]);
+      return {
+        owner,
+        policy: {
+          perTxCap: policy[0].toString(),
+          daily24hCap: policy[1].toString(),
+          monthlyRollingCap: policy[2].toString(),
+          allowedCategories: policy[3].toString(),
+          escalationThreshold: policy[4].toString(),
+          requireAllowlist: policy[5],
+        },
+      };
+    } catch (error) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Failed to read policy from Arc Testnet. Please retry.",
+        cause: error,
+      });
+    }
+  }),
+
   get: publicProcedure.input(agentByWalletInputSchema).query(async ({ ctx, input }) => {
     if (canUseDemoFallback(ctx)) {
       const wallet = await findWalletByLooseId(ctx, input.walletId);
