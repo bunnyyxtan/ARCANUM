@@ -190,8 +190,8 @@ export default function StatusPage() {
             />
             <HealthCard
               index={2}
-              label="SUPABASE READ MODEL"
-              detail="Supabase stores wallet-creation writes so the dashboard can answer quickly."
+              label="READ MODEL"
+              detail="The read model stores wallet-creation writes so the dashboard can answer quickly."
               metric={readModelMetric}
               metricLabel={readModelMetricLabel}
               state={readModelState}
@@ -261,7 +261,7 @@ export default function StatusPage() {
               READ MODEL / HOW TO READ THIS
             </p>
             <p className="mt-8 text-[16px] leading-[1.5] text-[var(--wl-body)]">
-              Supabase stores wallet-creation writes so the dashboard can answer quickly. The indexer
+              The read model stores wallet-creation writes so the dashboard can answer quickly. The indexer
               tracks on-chain history and may lag behind the latest Arc block.
             </p>
             <p className="mt-5 text-[16px] leading-[1.5] text-[var(--wl-body)]">

@@ -126,7 +126,7 @@ export function CommandPalette() {
       <style>{`
         @keyframes cmdBackdrop{from{opacity:0}to{opacity:1}}
         @keyframes cmdPanel{from{opacity:0;transform:translateY(-14px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
-        .cmd-backdrop{animation:cmdBackdrop 200ms ease both;backdrop-filter:blur(4px)}
+        .cmd-backdrop{animation:cmdBackdrop 200ms ease both}
         .cmd-panel{animation:cmdPanel 300ms cubic-bezier(.16,1,.3,1) 40ms both}
         .cmd-row{transition:background 140ms ease,box-shadow 140ms ease}
         .cmd-row[data-active="true"]{background:var(--wl-bg-tint2);box-shadow:inset 2px 0 0 var(--wl-signal)}
@@ -153,7 +153,7 @@ export function CommandPalette() {
               />
               <button type="button" onClick={close} className="rounded border border-[var(--wl-line)] px-1.5 py-0.5 font-mono text-[8.5px] tracking-[.08em] text-[var(--wl-mute)] transition-colors hover:border-[var(--wl-ink)] hover:text-[var(--wl-ink)]">ESC</button>
             </div>
-            <div ref={listRef} className="max-h-[46vh] overflow-y-auto p-2">
+            <div ref={listRef} className="max-h-[46vh] overflow-y-auto overscroll-contain p-2">
               {groups.length === 0 && <p className="px-4 py-8 text-center font-mono text-[10px] tracking-[.14em] text-[var(--wl-mute)]">NO MATCHES · TRY “LEDGER” OR “VENDOR”</p>}
               {groups.map((group) => (
                 <div key={group.title} className="mb-1">

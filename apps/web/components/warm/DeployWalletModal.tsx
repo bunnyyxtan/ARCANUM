@@ -270,7 +270,7 @@ export function DeployWalletModal({
         persisted.dataSource === "supabase"
           ? null
           : (persisted.message ??
-              "Wallet deployed on-chain, but Supabase sync failed. Save this wallet address and retry sync."),
+              "Wallet deployed on-chain, but the record sync failed. Save this wallet address and retry sync."),
       );
       return persisted.dataSource;
     } catch (persistError) {
@@ -278,7 +278,7 @@ export function DeployWalletModal({
       setPersistenceState("supabase_failed");
       setPersistenceMessage(
         message ||
-          "Wallet deployed on-chain, but Supabase sync failed. Save this wallet address and retry sync.",
+          "Wallet deployed on-chain, but the record sync failed. Save this wallet address and retry sync.",
       );
       return "supabase_failed" as const;
     }
@@ -403,10 +403,10 @@ export function DeployWalletModal({
 
       if (persistence === "supabase") {
         toast.success("GOVERNED WALLET CREATED", {
-          description: `${shortAddress(wallet)} saved to Supabase`,
+          description: `${shortAddress(wallet)} record saved`,
         });
       } else {
-        toast.warning("WALLET DEPLOYED - SUPABASE SYNC FAILED", {
+        toast.warning("WALLET DEPLOYED - RECORD SYNC FAILED", {
           description: "Save the wallet address and retry sync.",
         });
       }
@@ -477,7 +477,7 @@ export function DeployWalletModal({
             CLOSE
           </button>
         </div>
-        <div className="min-h-0 space-y-4 overflow-y-auto p-5 text-[12px] leading-relaxed text-[var(--wl-secondary)]">
+        <div className="min-h-0 space-y-4 overflow-y-auto overscroll-contain p-5 text-[12px] leading-relaxed text-[var(--wl-secondary)]">
           {hasSuccess ? (
             <div
               className={`space-y-4 border bg-[var(--wl-green-tint)] p-4 ${persistenceFailed ? "border-[var(--wl-amber)]" : "border-[var(--wl-green)]"}`}
@@ -491,18 +491,18 @@ export function DeployWalletModal({
                 </div>
                 <div className="mt-1 font-mono text-[11px] uppercase tracking-[.08em] text-[var(--wl-secondary)]">
                   {persistenceState === "supabase"
-                    ? "PENDING INDEXER SYNC - SAVED TO SUPABASE"
+                    ? "PENDING INDEXER SYNC - RECORD SAVED"
                     : persistenceState === "saving"
                       ? "PENDING INDEXER SYNC - SAVING READ MODEL"
                       : persistenceFailed
-                        ? "ON-CHAIN DEPLOYED - SUPABASE SYNC FAILED"
+                        ? "ON-CHAIN DEPLOYED - RECORD SYNC FAILED"
                         : "PENDING INDEXER SYNC"}
                 </div>
               </div>
               {persistenceFailed ? (
                 <div className="border border-[var(--wl-amber)] bg-[var(--wl-bg-soft)] p-3 text-[11px] leading-relaxed text-[var(--wl-amber)]">
                   {persistenceMessage ??
-                    "Wallet deployed on-chain, but Supabase sync failed. Save this wallet address and retry sync."}
+                    "Wallet deployed on-chain, but the record sync failed. Save this wallet address and retry sync."}
                 </div>
               ) : null}
               <div className="space-y-2 border border-[var(--wl-line)] bg-[var(--wl-bg-soft)] p-3 font-mono text-[10px] uppercase tracking-[.12em]">
@@ -543,7 +543,7 @@ export function DeployWalletModal({
                     disabled={recordCreatedWallet.isPending}
                     className="flex h-9 items-center justify-center border border-[var(--wl-amber)] font-mono text-[11px] uppercase tracking-[.12em] text-[var(--wl-amber)] hover:bg-[var(--wl-amber)] hover:text-[var(--wl-bg)] disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {recordCreatedWallet.isPending ? "SYNCING SUPABASE" : "RETRY SUPABASE SYNC"}
+                    {recordCreatedWallet.isPending ? "SYNCING RECORD" : "RETRY SYNC"}
                   </button>
                 ) : null}
                 <button

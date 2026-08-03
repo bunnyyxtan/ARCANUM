@@ -79,7 +79,7 @@ export function AddVendorModal({
             ✕
           </button>
         </div>
-        <div className="min-h-0 space-y-4 overflow-y-auto p-5 text-[12px] text-[var(--wl-secondary)]">
+        <div className="min-h-0 space-y-4 overflow-y-auto overscroll-contain p-5 text-[12px] text-[var(--wl-secondary)]">
           <label className="block">
             <span className="block font-mono text-[10px] uppercase tracking-[.14em] text-[var(--wl-secondary)]">
               GOVERNED WALLET

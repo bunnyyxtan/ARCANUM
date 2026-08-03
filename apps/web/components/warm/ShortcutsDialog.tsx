@@ -28,7 +28,7 @@ export function ShortcutsDialog({ open, onClose }: { open: boolean; onClose: () 
       onClick={onClose}
     >
       <div
-        className="w-full max-w-[420px] border border-[var(--wl-faint)] bg-[var(--wl-bg)] p-6 shadow-[12px_14px_0_var(--wl-line-faint)]"
+        className="warm-modal-panel w-full max-w-[420px] border border-[var(--wl-faint)] bg-[var(--wl-bg)] p-6 shadow-[12px_14px_0_var(--wl-line-faint)]"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between border-b border-[var(--wl-line)] pb-4">

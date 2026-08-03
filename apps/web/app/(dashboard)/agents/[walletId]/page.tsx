@@ -278,7 +278,7 @@ function AgentSignerPanel({ governedWalletAddress }: { governedWalletAddress: Ad
       }
       setTxStatus("synced");
       toast.success(action === "authorize" ? "AGENT SIGNER AUTHORIZED" : "AGENT SIGNER REVOKED", {
-        description: "Contract confirmed and Supabase signer state synced.",
+        description: "Contract confirmed and signer record synced.",
       });
     } catch (caught) {
       setTxStatus(contractConfirmed ? "sync_failed" : "error");
@@ -306,11 +306,11 @@ function AgentSignerPanel({ governedWalletAddress }: { governedWalletAddress: Ad
       : txStatus === "confirming"
         ? "WAITING FOR RECEIPT"
         : txStatus === "syncing"
-          ? "SYNCING SUPABASE"
+          ? "SYNCING RECORD"
           : txStatus === "synced"
             ? "SIGNER STATE SYNCED"
             : txStatus === "sync_failed"
-              ? "CONTRACT CONFIRMED — SUPABASE SYNC FAILED"
+              ? "CONTRACT CONFIRMED — RECORD SYNC FAILED"
               : null;
 
   return (

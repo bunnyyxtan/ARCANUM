@@ -154,6 +154,19 @@ html.wl-dark [class*="bg-[var(--wl-surface)]"] {
   background-image: none;
 }
 
+/* Overlay panels (modals, command palette) sit flat too — repainting the
+   grid gradient while their content scrolls causes jank. */
+html.wl-dark .warm-modal-panel,
+html.wl-dark .cmd-panel {
+  background-image: none;
+}
+
+/* Native select popups stay readable in both themes. */
+select option {
+  background-color: var(--wl-bg-raised);
+  color: var(--wl-ink);
+}
+
 /* Theme toggle icon swap */
 .wl-icon-sun { display: none; }
 .wl-icon-moon { display: inline-flex; }
