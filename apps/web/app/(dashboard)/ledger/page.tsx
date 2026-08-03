@@ -52,10 +52,14 @@ export default function LedgerPage() {
   const utils = trpc.useUtils();
   const flagMutation = trpc.vendorFlags.flag.useMutation();
   const unflagMutation = trpc.vendorFlags.unflag.useMutation();
-  const flagPending = flagMutation.isPending || unflagMutation.isPending;
+  const updateNoteMutation = trpc.vendorFlags.updateNote.useMutation();
+  const flagPending =
+    flagMutation.isPending || unflagMutation.isPending || updateNoteMutation.isPending;
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [flagNoteOpen, setFlagNoteOpen] = useState(false);
   const [flagNote, setFlagNote] = useState("");
+  const [noteEditOpen, setNoteEditOpen] = useState(false);
+  const [noteEditValue, setNoteEditValue] = useState("");
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -139,9 +143,30 @@ export default function LedgerPage() {
     }
   };
 
+  const saveNoteEdit = async (entry: LedgerEntry) => {
+    if (!isConnected || flagPending) return;
+    const vendorAddress = entry.counterpartyAddress.toLowerCase();
+    const note = noteEditValue.trim();
+    try {
+      await updateNoteMutation.mutateAsync({ vendorAddress, note: note ? note : null });
+      setNoteEditOpen(false);
+      setNoteEditValue("");
+      showNotice(
+        note
+          ? `${entry.counterparty} review note updated / flag preserved`
+          : `${entry.counterparty} review note cleared / flag preserved`,
+      );
+      await utils.vendorFlags.list.invalidate();
+    } catch (caught) {
+      showNotice(caught instanceof Error ? caught.message : "Review note update failed.");
+    }
+  };
+
   useEffect(() => {
     setFlagNoteOpen(false);
     setFlagNote("");
+    setNoteEditOpen(false);
+    setNoteEditValue("");
   }, [selectedId]);
 
   const selectedFlagged = selected
@@ -423,6 +448,49 @@ export default function LedgerPage() {
                   >
                     {selectedFlagged ? "Unflag vendor" : flagNoteOpen ? "Save flag" : "Flag vendor"}
                   </button>
+                  {selectedFlagged && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (noteEditOpen) {
+                          void saveNoteEdit(selected);
+                        } else {
+                          setNoteEditValue(selectedFlagDetail?.note ?? "");
+                          setNoteEditOpen(true);
+                        }
+                      }}
+                      disabled={flagPending || !isConnected}
+                      title={!isConnected ? "Connect wallet first." : undefined}
+                      className="arc-pill arc-ghost rounded-full border border-[var(--wl-line)] px-3.5 py-2.5 text-[10px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {noteEditOpen ? "Save note" : selectedFlagDetail?.note ? "Edit note" : "Add note"}
+                    </button>
+                  )}
+                  {selectedFlagged && noteEditOpen && (
+                    <div className="w-full">
+                      <input
+                        autoFocus
+                        value={noteEditValue}
+                        maxLength={200}
+                        onChange={(event) => setNoteEditValue(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") void saveNoteEdit(selected);
+                        }}
+                        placeholder="Review note — leave empty to clear it"
+                        className="w-full border-b border-[var(--wl-faint)] bg-transparent py-1.5 text-[11px] text-[var(--wl-ink)] outline-none placeholder:text-[var(--wl-mute)] focus:border-[var(--wl-signal)]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNoteEditOpen(false);
+                          setNoteEditValue("");
+                        }}
+                        className="mt-1.5 font-mono text-[9px] uppercase tracking-[.1em] text-[var(--wl-secondary)] hover:text-[var(--wl-ink)]"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
                   {!selectedFlagged && flagNoteOpen && (
                     <div className="w-full">
                       <input

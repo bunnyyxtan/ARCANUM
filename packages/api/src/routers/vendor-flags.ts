@@ -76,6 +76,48 @@ export const vendorFlagsRouter = router({
     }
   }),
 
+  updateNote: protectedProcedure
+    .input(
+      vendorFlagInputSchema.extend({
+        note: z
+          .string()
+          .trim()
+          .max(200, "Keep the review note under 200 characters.")
+          .nullable(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = tenantIdFor(ctx);
+      const vendorAddress = input.vendorAddress.toLowerCase();
+      const note = input.note ? input.note : null;
+
+      try {
+        // Only the note changes — flaggedBy and createdAt are preserved so the
+        // audit trail of who flagged the vendor (and when) stays intact.
+        const [row] = await ctx.db
+          .update(vendorFlags)
+          .set({ note })
+          .where(
+            and(eq(vendorFlags.tenantId, tenantId), eq(vendorFlags.vendorAddress, vendorAddress)),
+          )
+          .returning();
+
+        if (!row) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "This vendor is no longer flagged, so there is no note to update.",
+          });
+        }
+
+        return { flagged: true as const, flag: row };
+      } catch (error) {
+        if (error instanceof TRPCError) {
+          throw error;
+        }
+        throw reviewRegisterUnavailable("vendorFlags.updateNote", error);
+      }
+    }),
+
   unflag: protectedProcedure.input(vendorFlagInputSchema).mutation(async ({ ctx, input }) => {
     const tenantId = tenantIdFor(ctx);
     const vendorAddress = input.vendorAddress.toLowerCase();

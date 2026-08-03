@@ -89,7 +89,9 @@ export default function VendorsPage() {
   const vendorFlagsState = useVendorFlags();
   const flagMutation = trpc.vendorFlags.flag.useMutation();
   const unflagMutation = trpc.vendorFlags.unflag.useMutation();
-  const flagToggling = flagMutation.isPending || unflagMutation.isPending;
+  const updateNoteMutation = trpc.vendorFlags.updateNote.useMutation();
+  const flagToggling =
+    flagMutation.isPending || unflagMutation.isPending || updateNoteMutation.isPending;
 
   const [category, setCategory] = useState<string>("ALL");
   const [query, setQuery] = useState("");
@@ -101,6 +103,8 @@ export default function VendorsPage() {
   const [capValue, setCapValue] = useState("");
   const [flagNoteOpen, setFlagNoteOpen] = useState(false);
   const [flagNote, setFlagNote] = useState("");
+  const [noteEditOpen, setNoteEditOpen] = useState(false);
+  const [noteEditValue, setNoteEditValue] = useState("");
 
   const [addVendorOpen, setAddVendorOpen] = useState(false);
   const [vendorForm, setVendorForm] = useState<AddVendorFormState>(initialVendorForm);
@@ -206,6 +210,8 @@ export default function VendorsPage() {
     setCapEditing(false);
     setFlagNoteOpen(false);
     setFlagNote("");
+    setNoteEditOpen(false);
+    setNoteEditValue("");
   }, []);
 
   const isVendorFlagged = (vendorAddress: string) =>
@@ -233,6 +239,23 @@ export default function VendorsPage() {
         setFlagNote("");
         setNotice(`${vendor.name.toUpperCase()} FLAGGED FOR REVIEW`);
       }
+      await utils.vendorFlags.list.invalidate();
+    } catch (caught) {
+      setNotice(errorMessage(caught).toUpperCase());
+    }
+  };
+
+  const saveNoteEdit = async (vendor: Vendor) => {
+    if (!isConnected || flagToggling) return;
+    const vendorAddress = vendor.address.toLowerCase();
+    const note = noteEditValue.trim();
+    try {
+      await updateNoteMutation.mutateAsync({ vendorAddress, note: note ? note : null });
+      setNoteEditOpen(false);
+      setNoteEditValue("");
+      setNotice(
+        `${vendor.name.toUpperCase()} REVIEW NOTE ${note ? "UPDATED" : "CLEARED"} · FLAG PRESERVED`,
+      );
       await utils.vendorFlags.list.invalidate();
     } catch (caught) {
       setNotice(errorMessage(caught).toUpperCase());
@@ -827,6 +850,53 @@ export default function VendorsPage() {
                     ? "Save flag"
                     : "Flag for review"}
               </button>
+              {isVendorFlagged(selected.address) && (
+                <button
+                  type="button"
+                  disabled={flagToggling || !isConnected}
+                  title={!isConnected ? "Connect wallet first." : undefined}
+                  onClick={() => {
+                    if (noteEditOpen) {
+                      void saveNoteEdit(selected);
+                    } else {
+                      setNoteEditValue(vendorFlagDetail(selected.address)?.note ?? "");
+                      setNoteEditOpen(true);
+                    }
+                  }}
+                  className="rounded-full border border-[var(--wl-line)] px-4 py-2.5 font-mono text-[9px] tracking-[.1em] text-[var(--wl-body)] transition-all duration-[220ms] hover:-translate-y-0.5 hover:border-[var(--wl-signal)] hover:text-[var(--wl-signal)] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {noteEditOpen
+                    ? "Save note"
+                    : vendorFlagDetail(selected.address)?.note
+                      ? "Edit note"
+                      : "Add note"}
+                </button>
+              )}
+              {isVendorFlagged(selected.address) && noteEditOpen && (
+                <div className="w-full">
+                  <input
+                    autoFocus
+                    value={noteEditValue}
+                    maxLength={200}
+                    onChange={(event) => setNoteEditValue(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") void saveNoteEdit(selected);
+                    }}
+                    placeholder="Review note — leave empty to clear it"
+                    className="w-full max-w-[360px] border-b border-[var(--wl-faint)] bg-transparent py-1.5 text-[11px] text-[var(--wl-ink)] outline-none placeholder:text-[var(--wl-mute)] focus:border-[var(--wl-signal)]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNoteEditOpen(false);
+                      setNoteEditValue("");
+                    }}
+                    className="mt-1.5 block font-mono text-[9px] uppercase tracking-[.1em] text-[var(--wl-secondary)] hover:text-[var(--wl-ink)]"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
               {!isVendorFlagged(selected.address) && flagNoteOpen && (
                 <div className="w-full">
                   <input
