@@ -266,7 +266,7 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
     <main className="min-h-[100dvh] bg-[var(--wl-bg)] text-[var(--wl-ink)]">
       <style>{`@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}.rise{animation:rise 500ms cubic-bezier(.16,1,.3,1) both}@media(prefers-reduced-motion:reduce){.rise{animation:none}.pa-action,.pa-action *{transition:none!important;transform:none!important;box-shadow:none!important}}`}</style>
       <nav className="flex items-center justify-between border-b border-[var(--wl-line)] px-5 py-5 md:px-9">
-        <Link href="/" className="text-[18px] font-bold tracking-[-.05em]">
+        <Link href="/" className="font-display text-[18px] font-bold tracking-[-.015em]">
           ARCANUM<span className="text-[var(--wl-signal)]">.</span>
         </Link>
         <div className="flex items-center gap-5">
@@ -286,7 +286,7 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
         </p>
         <div className="mt-5 flex flex-col justify-between gap-8 md:flex-row md:items-end">
           <div>
-            <h1 className="text-[clamp(3rem,7vw,6rem)] font-semibold leading-[.84] tracking-[-.045em]">
+            <h1 className="font-display text-[clamp(3rem,7vw,6rem)] font-semibold leading-[.84] tracking-[-.015em]">
               A decision
               <br />
               <span className="text-[var(--wl-dim)]">awaits you.</span>
@@ -312,7 +312,7 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
               <p className="font-mono text-[9px] tracking-[.16em] text-[var(--wl-mute)]">
                 TRANSACTION REQUEST
               </p>
-              <h2 className="mt-3 text-[25px] font-medium tracking-[-.05em]">
+              <h2 className="font-display mt-3 text-[25px] font-medium tracking-[-.015em]">
                 Governed wallet <span className="text-[var(--wl-mute)]">→</span> {counterparty}
               </h2>
             </div>
@@ -369,7 +369,7 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
 
           {!decided && stage !== "checking" && stage !== "wallet" && stage !== "confirming" && (
             <>
-              <h3 className="mt-5 text-[22px] font-medium tracking-[-.045em]">
+              <h3 className="font-display mt-5 text-[22px] font-medium tracking-[-.015em]">
                 Bless or restrain
                 <br />
                 the request.
@@ -435,7 +435,7 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
                 DECISION RECORDED
               </p>
               <h3
-                className={`mt-5 text-[25px] font-medium ${
+                className={`font-display mt-5 text-[25px] font-medium ${
                   lastAction === "approve" ? "text-[var(--wl-green)]" : "text-[var(--wl-signal)]"
                 }`}
               >

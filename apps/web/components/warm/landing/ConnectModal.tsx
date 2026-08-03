@@ -154,7 +154,7 @@ export function ConnectModal({ open, onClose }: { open: boolean; onClose: () => 
           </div>
         ) : (
           <div className="px-7 pb-7 pt-6">
-            <h2 className="text-[26px] font-semibold leading-[1.02] tracking-[-.05em]">Connect your governed wallet.</h2>
+            <h2 className="font-display text-[26px] font-semibold leading-[1.02] tracking-[-.015em]">Connect your governed wallet.</h2>
             <p className="mt-3 text-[13.5px] leading-[1.55] text-[var(--wl-body)]">
               ARCANUM never takes custody. Sign in to inspect the governed ledger and manage policies.
             </p>

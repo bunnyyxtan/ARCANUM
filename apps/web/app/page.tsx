@@ -85,7 +85,7 @@ export default function LandingPage() {
 
     >
       <aside className="fixed bottom-0 left-0 top-0 z-20 hidden w-[86px] flex-col items-center justify-between border-r border-[var(--wl-line)] bg-[var(--wl-bg)] py-7 lg:flex">
-        <MagneticAnchor href="#" className="text-[17px] font-bold tracking-[-.045em]">
+        <MagneticAnchor href="#" className="font-display text-[17px] font-bold tracking-[-.015em]">
           ARCANUM<span className="text-[var(--wl-signal)]">.</span>
         </MagneticAnchor>
         <div
@@ -108,7 +108,7 @@ export default function LandingPage() {
 
       <div className="lg:pl-[86px]">
         <nav className="flex items-center justify-between border-b border-[var(--wl-line)] px-6 py-5 lg:hidden">
-          <MagneticAnchor href="#" className="text-[18px] font-bold tracking-[-.05em]">
+          <MagneticAnchor href="#" className="font-display text-[18px] font-bold tracking-[-.015em]">
             ARCANUM<span className="text-[var(--wl-signal)]">.</span>
           </MagneticAnchor>
           <button
@@ -171,7 +171,7 @@ export default function LandingPage() {
               </p>
             </Reveal>
             <Reveal kind="headline" className="delay-1">
-              <h1 className="mt-8 max-w-[880px] text-[clamp(3.4rem,10.5vw,10.5rem)] font-semibold leading-[.8] tracking-[-.045em]">
+              <h1 className="font-display mt-8 max-w-[880px] text-[clamp(3.4rem,10.5vw,10.5rem)] font-semibold leading-[.8] tracking-[-.015em]">
                 Autonomous<br />
                 <span className="text-[var(--wl-dim)]">spend,</span>{" "}
                 <em className="not-italic text-[var(--wl-ink)]">accounted.</em>
@@ -242,7 +242,7 @@ export default function LandingPage() {
               />
             </Reveal>
             <Reveal className="delay-1">
-              <h2 className="max-w-[700px] text-[clamp(3rem,6vw,6.2rem)] font-semibold leading-[.84] tracking-[-.045em]">
+              <h2 className="font-display max-w-[700px] text-[clamp(3rem,6vw,6.2rem)] font-semibold leading-[.84] tracking-[-.015em]">
                 A dollar earns<br />its way through.
               </h2>
               <div className="mt-20 grid border-t border-[var(--wl-faint)] md:grid-cols-3">
@@ -273,7 +273,7 @@ export default function LandingPage() {
                   <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
                     02 / Policy surface
                   </p>
-                  <h2 className="mt-7 text-[clamp(3rem,6vw,6rem)] font-semibold leading-[.84] tracking-[-.045em]">
+                  <h2 className="font-display mt-7 text-[clamp(3rem,6vw,6rem)] font-semibold leading-[.84] tracking-[-.015em]">
                     The rulebook,<br />
                     <span className="text-[var(--wl-dim)]">made executable.</span>
                   </h2>
@@ -336,7 +336,7 @@ export default function LandingPage() {
             </Reveal>
             <Reveal className="delay-1">
               <div className="flex flex-col justify-between gap-10 md:flex-row md:items-end">
-                <h2 className="max-w-[680px] text-[clamp(3rem,6vw,6rem)] font-semibold leading-[.84] tracking-[-.045em]">
+                <h2 className="font-display max-w-[680px] text-[clamp(3rem,6vw,6rem)] font-semibold leading-[.84] tracking-[-.015em]">
                   Nothing moves<br />
                   <span className="text-[var(--wl-dim2)]">in the dark.</span>
                 </h2>
@@ -364,7 +364,7 @@ export default function LandingPage() {
                   className="hidden font-mono text-[80px] leading-none tracking-[-.045em] text-[var(--wl-line-soft)] lg:block"
                 />
               </div>
-              <h2 className="mt-8 max-w-[950px] text-[clamp(3rem,9vw,9rem)] font-semibold leading-[.78] tracking-[-.045em]">
+              <h2 className="font-display mt-8 max-w-[950px] text-[clamp(3rem,9vw,9rem)] font-semibold leading-[.78] tracking-[-.015em]">
                 Let agents move.<br />
                 <span className="text-[var(--wl-dim)]">Keep the final word.</span>
               </h2>
@@ -394,7 +394,7 @@ export default function LandingPage() {
         </section>
 
         <footer className="flex flex-col justify-between gap-6 px-6 pb-10 text-[11px] text-[var(--wl-secondary)] lg:flex-row lg:px-10">
-          <span className="font-semibold tracking-[-.04em] text-[var(--wl-ink)]">
+          <span className="font-display font-semibold tracking-[-.015em] text-[var(--wl-ink)]">
             ARCANUM<span className="warm-period text-[var(--wl-signal)]">.</span>
           </span>
           <div className="flex gap-7">

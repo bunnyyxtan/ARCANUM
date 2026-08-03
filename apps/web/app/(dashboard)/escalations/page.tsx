@@ -431,7 +431,7 @@ export default function EscalationsPage() {
           <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
             QUORUM / HUMAN CONTROL
           </p>
-          <h1 className="mt-4 text-[clamp(2.7rem,5vw,4.8rem)] font-semibold leading-[.9] tracking-[-.05em]">
+          <h1 className="font-display mt-4 text-[clamp(2.7rem,5vw,4.8rem)] font-semibold leading-[.9] tracking-[-.015em]">
             Escalations
           </h1>
           <p className="mt-4 max-w-[560px] text-[14px] leading-[1.45] text-[var(--wl-secondary2)]">
@@ -461,17 +461,17 @@ export default function EscalationsPage() {
       <section className="grid grid-cols-3 border-b border-[var(--wl-line)]">
         <div className="py-6">
           <p className="font-mono text-[9px] tracking-[.15em] text-[var(--wl-mute)]">PENDING</p>
-          <p className="mt-3 text-[34px] font-medium tracking-[-.05em] text-[var(--wl-signal)]">
+          <p className="font-display mt-3 text-[34px] font-medium tracking-[-.015em] text-[var(--wl-signal)]">
             {pendingCount}
           </p>
         </div>
         <div className="border-l border-[var(--wl-line)] py-6 pl-5 md:pl-7">
           <p className="font-mono text-[9px] tracking-[.15em] text-[var(--wl-mute)]">IN QUEUE</p>
-          <p className="mt-3 text-[34px] font-medium tracking-[-.05em]">{queue.length}</p>
+          <p className="font-display mt-3 text-[34px] font-medium tracking-[-.015em]">{queue.length}</p>
         </div>
         <div className="border-l border-[var(--wl-line)] py-6 pl-5 md:pl-7">
           <p className="font-mono text-[9px] tracking-[.15em] text-[var(--wl-mute)]">RESOLVED</p>
-          <p className="mt-3 text-[34px] font-medium tracking-[-.05em]">{resolvedIds.size}</p>
+          <p className="font-display mt-3 text-[34px] font-medium tracking-[-.015em]">{resolvedIds.size}</p>
         </div>
       </section>
 

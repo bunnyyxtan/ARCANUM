@@ -157,7 +157,7 @@ export default function StatusPage() {
             <p className="font-mono text-[10px] uppercase tracking-[.2em] text-[var(--wl-signal)]">
               SYSTEMS / READ MODEL
             </p>
-            <h1 className="mt-5 text-[clamp(3rem,6vw,5.8rem)] font-semibold leading-[.85] tracking-[-.045em]">
+            <h1 className="font-display mt-5 text-[clamp(3rem,6vw,5.8rem)] font-semibold leading-[.85] tracking-[-.015em]">
               Status
             </h1>
             <p className="mt-6 max-w-[500px] text-[14px] leading-[1.5] text-[var(--wl-secondary2)]">
@@ -214,7 +214,7 @@ export default function StatusPage() {
           <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
             DEPLOYMENT / CONTRACT ADDRESSES
           </p>
-          <h2 className="mt-6 text-[26px] font-semibold tracking-[-.05em]">Deployed contracts.</h2>
+          <h2 className="font-display mt-6 text-[26px] font-semibold tracking-[-.015em]">Deployed contracts.</h2>
           <div className="mt-8 divide-y divide-[var(--wl-line)] border-t border-[var(--wl-line)]">
             {deployedContracts.map((contract) => {
               const url = getArcscanAddressUrl(contract.value);

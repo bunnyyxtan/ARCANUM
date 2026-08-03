@@ -471,7 +471,7 @@ export default function AgentDetailPage() {
             <p className="mt-6 font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
               DOSSIER / GOVERNED WALLET
             </p>
-            <h1 className="mt-4 text-[clamp(2.8rem,6vw,5.3rem)] font-semibold leading-[.86] tracking-[-.045em]">
+            <h1 className="font-display mt-4 text-[clamp(2.8rem,6vw,5.3rem)] font-semibold leading-[.86] tracking-[-.015em]">
               {agentName}
             </h1>
             <p className="mt-5 max-w-[510px] text-[14px] leading-[1.45] text-[var(--wl-secondary2)]">
@@ -519,7 +519,7 @@ export default function AgentDetailPage() {
                 {label}
               </p>
               <p
-                className={`mt-5 text-[27px] font-semibold tracking-[-.05em] tabular-nums ${label === "GOVERNANCE" && frozen ? "text-[var(--wl-signal)]" : ""}`}
+                className={`font-display mt-5 text-[27px] font-semibold tracking-[-.015em] tabular-nums ${label === "GOVERNANCE" && frozen ? "text-[var(--wl-signal)]" : ""}`}
               >
                 {value}
               </p>
@@ -537,7 +537,7 @@ export default function AgentDetailPage() {
                 <p className="font-mono text-[10px] uppercase tracking-[.17em] text-[var(--wl-signal)]">
                   BEHAVIOR / INDEXED
                 </p>
-                <h2 className="mt-2 text-[22px] font-medium tracking-[-.045em]">Spending behavior</h2>
+                <h2 className="font-display mt-2 text-[22px] font-medium tracking-[-.015em]">Spending behavior</h2>
               </div>
               <span className="font-mono text-[9px] uppercase tracking-[.13em] text-[var(--wl-mute)]">
                 USD · UTC
@@ -600,7 +600,7 @@ export default function AgentDetailPage() {
                 <p className="font-mono text-[10px] uppercase tracking-[.17em] text-[var(--wl-signal)]">
                   DECISIONS / RECENT
                 </p>
-                <h2 className="mt-2 text-[22px] font-medium tracking-[-.045em]">Decision record</h2>
+                <h2 className="font-display mt-2 text-[22px] font-medium tracking-[-.015em]">Decision record</h2>
               </div>
               <Link
                 href="/ledger"
@@ -672,7 +672,7 @@ export default function AgentDetailPage() {
                 <p className="font-mono text-[10px] uppercase tracking-[.17em] text-[var(--wl-signal)]">
                   IDENTITY / CONTROL
                 </p>
-                <h2 className="mt-2 text-[22px] font-medium tracking-[-.045em]">Wallet file</h2>
+                <h2 className="font-display mt-2 text-[22px] font-medium tracking-[-.015em]">Wallet file</h2>
               </div>
               <StatusPill status={frozen ? "FROZEN" : "ACTIVE"} />
             </div>

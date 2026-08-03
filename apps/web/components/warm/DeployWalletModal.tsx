@@ -468,7 +468,7 @@ export function DeployWalletModal({
             <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
               FLEET / NEW WALLET
             </p>
-            <h2 className="mt-4 text-[28px] font-semibold tracking-[-.05em] text-[var(--wl-ink)]">
+            <h2 className="font-display mt-4 text-[28px] font-semibold tracking-[-.015em] text-[var(--wl-ink)]">
               Deploy governed wallet
             </h2>
           </div>

@@ -442,7 +442,7 @@ export default function VendorsPage() {
           <p className="font-mono text-[10px] uppercase tracking-[.19em] text-[var(--wl-signal)]">
             COUNTERPARTIES / ALLOWLIST
           </p>
-          <h1 className="mt-4 text-[clamp(3.2rem,6vw,5.8rem)] font-semibold leading-[.88] tracking-[-.045em]">
+          <h1 className="font-display mt-4 text-[clamp(3.2rem,6vw,5.8rem)] font-semibold leading-[.88] tracking-[-.015em]">
             Vendors
           </h1>
           <p className="mt-5 max-w-[480px] text-[14px] leading-[1.45] text-[var(--wl-secondary2)]">
@@ -461,17 +461,17 @@ export default function VendorsPage() {
       <section className="mt-8 grid grid-cols-3 divide-x divide-[var(--wl-line)] border border-[var(--wl-line)] bg-[var(--wl-bg-soft)]">
         <div className="p-5 sm:p-7">
           <span className="font-mono text-[9px] tracking-[.15em] text-[var(--wl-secondary)]">APPROVED</span>
-          <strong className="mt-6 block text-4xl font-semibold tracking-[-.045em]">{approvedCount}</strong>
+          <strong className="font-display mt-6 block text-4xl font-semibold tracking-[-.015em]">{approvedCount}</strong>
           <span className="mt-2 block font-mono text-[9px] text-[var(--wl-mute)]">COUNTERPARTIES</span>
         </div>
         <div className="p-5 sm:p-7">
           <span className="font-mono text-[9px] tracking-[.15em] text-[var(--wl-secondary)]">CATEGORIES</span>
-          <strong className="mt-6 block text-4xl font-semibold tracking-[-.045em]">{categoryCount}</strong>
+          <strong className="font-display mt-6 block text-4xl font-semibold tracking-[-.015em]">{categoryCount}</strong>
           <span className="mt-2 block font-mono text-[9px] text-[var(--wl-mute)]">ACTIVE GROUPS</span>
         </div>
         <div className="p-5 sm:p-7">
           <span className="font-mono text-[9px] tracking-[.15em] text-[var(--wl-secondary)]">BLOCKED</span>
-          <strong className="mt-6 block text-4xl font-semibold tracking-[-.045em] text-[var(--wl-signal)]">
+          <strong className="font-display mt-6 block text-4xl font-semibold tracking-[-.015em] text-[var(--wl-signal)]">
             {blockedCount}
           </strong>
           <span className="mt-2 block font-mono text-[9px] text-[var(--wl-mute)]">COUNTERPARTIES</span>
@@ -484,7 +484,7 @@ export default function VendorsPage() {
             <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
               REGISTRY / GOVERNED
             </p>
-            <h2 className="mt-3 text-2xl font-semibold tracking-[-.05em]">Vendor registry</h2>
+            <h2 className="font-display mt-3 text-2xl font-semibold tracking-[-.015em]">Vendor registry</h2>
           </div>
           <span className="font-mono text-[9px] tracking-[.12em] text-[var(--wl-mute)]">{notice}</span>
         </div>
@@ -681,7 +681,7 @@ export default function VendorsPage() {
                 <p className="font-mono text-[10px] uppercase tracking-[.17em] text-[var(--wl-signal)]">
                   SELECTED / COUNTERPARTY
                 </p>
-                <h3 className="mt-4 text-3xl font-semibold tracking-[-.05em]">{selected.name}</h3>
+                <h3 className="font-display mt-4 text-3xl font-semibold tracking-[-.015em]">{selected.name}</h3>
                 <p className="mt-2 font-mono text-[10px] text-[var(--wl-secondary)]">
                   {shortAddress(selected.address)} · {categoryLabel(selected.category)}
                 </p>

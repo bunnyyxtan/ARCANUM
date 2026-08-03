@@ -459,7 +459,7 @@ export default function PolicyEditorPage() {
             <p className="mt-6 font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
               GOVERNANCE / POLICY INSTRUMENT
             </p>
-            <h1 className="mt-4 text-[clamp(2.8rem,6vw,5.3rem)] font-semibold leading-[.86] tracking-[-.045em]">
+            <h1 className="font-display mt-4 text-[clamp(2.8rem,6vw,5.3rem)] font-semibold leading-[.86] tracking-[-.015em]">
               Policy editor
             </h1>
             <p className="mt-5 max-w-[520px] text-[14px] leading-[1.45] text-[var(--wl-secondary2)]">
@@ -529,7 +529,7 @@ export default function PolicyEditorPage() {
                   <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
                     ARCANUM / GOVERNING DOCUMENT
                   </p>
-                  <h2 className="mt-3 text-[28px] font-semibold tracking-[-.05em]">
+                  <h2 className="font-display mt-3 text-[28px] font-semibold tracking-[-.015em]">
                     {selectedPolicyWalletLabel} doctrine
                   </h2>
                 </div>
@@ -726,7 +726,7 @@ export default function PolicyEditorPage() {
                 <p className="font-mono text-[10px] uppercase tracking-[.17em] text-[var(--wl-signal)]">
                   SIGNING / CONTROL
                 </p>
-                <h2 className="mt-2 text-[22px] font-medium tracking-[-.045em]">Deployment record</h2>
+                <h2 className="font-display mt-2 text-[22px] font-medium tracking-[-.015em]">Deployment record</h2>
               </div>
               <span
                 className={`rounded-full px-2.5 py-1 font-mono text-[9px] tracking-[.12em] ${

@@ -2,7 +2,7 @@ import "@rainbow-me/rainbowkit/styles.css";
 import "./globals.css";
 
 import type { Metadata } from "next";
-import { DM_Mono, Inter_Tight } from "next/font/google";
+import { Fraunces, IBM_Plex_Mono, Schibsted_Grotesk } from "next/font/google";
 import Script from "next/script";
 import type { ReactNode } from "react";
 
@@ -10,17 +10,24 @@ import { configuredPublicOrigin } from "@/lib/public-url";
 
 import { Providers } from "./providers";
 
-const interTight = Inter_Tight({
+const fraunces = Fraunces({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-inter-tight",
+  axes: ["opsz"],
+  variable: "--font-fraunces",
 });
 
-const dmMono = DM_Mono({
+const schibsted = Schibsted_Grotesk({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-schibsted",
+});
+
+const plexMono = IBM_Plex_Mono({
   subsets: ["latin"],
   display: "swap",
   weight: ["400", "500"],
-  variable: "--font-dm-mono",
+  variable: "--font-plex-mono",
 });
 
 const publicOrigin = configuredPublicOrigin();
@@ -74,7 +81,7 @@ type RootLayoutProps = Readonly<{
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
-      <body className={`${interTight.variable} ${dmMono.variable} antialiased`}>
+      <body className={`${fraunces.variable} ${schibsted.variable} ${plexMono.variable} antialiased`}>
         <Script src="/theme-init.js" strategy="beforeInteractive" />
         <Providers>{children}</Providers>
       </body>

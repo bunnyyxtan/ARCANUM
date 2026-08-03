@@ -7,10 +7,11 @@
  * hazard orange accents. All UI must use --wl-* tokens; never raw hexes.
  */
 
-@theme {
-  --font-body: var(--font-inter-tight), "Inter Tight", system-ui, sans-serif;
-  --font-mono: var(--font-dm-mono), "DM Mono", ui-monospace, monospace;
-  --font-sans: var(--font-inter-tight), "Inter Tight", system-ui, sans-serif;
+@theme inline {
+  --font-body: var(--font-schibsted), "Schibsted Grotesk", system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, monospace;
+  --font-sans: var(--font-schibsted), "Schibsted Grotesk", system-ui, sans-serif;
+  --font-display: var(--font-fraunces), "Fraunces", Georgia, serif;
 }
 
 :root {
@@ -132,7 +133,7 @@ body {
   min-height: 100vh;
   background-color: var(--wl-bg);
   color: var(--wl-ink);
-  font-family: var(--font-body);
+  font-family: var(--font-schibsted), "Schibsted Grotesk", system-ui, sans-serif;
 }
 
 /* The old ARCANUM black grid, applied to the page shell and any full-page

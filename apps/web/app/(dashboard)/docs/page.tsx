@@ -66,7 +66,7 @@ export default function DocsPage() {
           <div className="flex flex-col justify-between gap-8 border-b border-[var(--wl-line)] pb-10 lg:flex-row lg:items-end">
             <div>
               <p className="font-mono text-[10px] uppercase tracking-[.2em] text-[var(--wl-signal)]">ARCANUM / FIELD MANUAL 01</p>
-              <h1 className="mt-5 max-w-[850px] text-[clamp(3.2rem,7vw,6.6rem)] font-semibold leading-[.84] tracking-[-.045em]">
+              <h1 className="font-display mt-5 max-w-[850px] text-[clamp(3.2rem,7vw,6.6rem)] font-semibold leading-[.84] tracking-[-.015em]">
                 Govern the wallet.<br />
                 <span className="text-[var(--wl-dim)]">Then let it move.</span>
               </h1>
@@ -111,7 +111,7 @@ export default function DocsPage() {
             <Reveal>
               <section id="orientation" className="docs-anchor border-b border-[var(--wl-line)] pb-12">
                 <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">00 / READ THIS FIRST</p>
-                <h2 className="mt-4 text-[28px] font-medium tracking-[-.05em]">A governed wallet is a boundary, not a bank account.</h2>
+                <h2 className="font-display mt-4 text-[28px] font-medium tracking-[-.015em]">A governed wallet is a boundary, not a bank account.</h2>
                 <p className="mt-5 text-[15px] leading-[1.55] text-[var(--wl-body)]">
                   The agent proposes a transaction. ARCANUM evaluates the proposal against a signed policy doctrine. Only the governed
                   wallet can settle it, and every verdict becomes a ledger record. The model never receives the operator key.
@@ -138,7 +138,7 @@ export default function DocsPage() {
             <Reveal index={1}>
               <section id="wallet" className="docs-anchor border-b border-[var(--wl-line)] py-14">
                 <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">01 / DEPLOY A GOVERNED WALLET</p>
-                <h2 className="mt-4 text-[28px] font-medium tracking-[-.05em]">Start with a wallet that cannot improvise.</h2>
+                <h2 className="font-display mt-4 text-[28px] font-medium tracking-[-.015em]">Start with a wallet that cannot improvise.</h2>
                 <p className="mt-5 text-[15px] leading-[1.55] text-[var(--wl-body)]">
                   Create the wallet from the HELIX-DAO operator console, then bind the first doctrine before funding it. Use Arc testnet
                   for the complete rehearsal: the same signing ceremony, a safe balance.
@@ -178,7 +178,7 @@ export default function DocsPage() {
             <Reveal index={2}>
               <section id="doctrine" className="docs-anchor border-b border-[var(--wl-line)] py-14">
                 <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">02 / AUTHOR A POLICY DOCTRINE</p>
-                <h2 className="mt-4 text-[28px] font-medium tracking-[-.05em]">Write the exception before the request.</h2>
+                <h2 className="font-display mt-4 text-[28px] font-medium tracking-[-.015em]">Write the exception before the request.</h2>
                 <p className="mt-5 text-[15px] leading-[1.55] text-[var(--wl-body)]">
                   A doctrine is executable policy with an accountable author. Keep it narrow: name approved vendors, set a transaction
                   cap, and describe what happens when the facts fall outside the line.
@@ -218,7 +218,7 @@ export default function DocsPage() {
             <Reveal index={3}>
               <section id="restraint" className="docs-anchor border-b border-[var(--wl-line)] py-14">
                 <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">03 / HANDLE YOUR FIRST RESTRAINT</p>
-                <h2 className="mt-4 text-[28px] font-medium tracking-[-.05em]">A pause is a successful control.</h2>
+                <h2 className="font-display mt-4 text-[28px] font-medium tracking-[-.015em]">A pause is a successful control.</h2>
                 <p className="mt-5 text-[15px] leading-[1.55] text-[var(--wl-body)]">
                   When growth-bot asks Anthropic for $2,100.00, the request should stop. Review the reason, compare it to the doctrine,
                   then make a recorded decision. Speed is not the objective; legibility is.
@@ -241,7 +241,7 @@ export default function DocsPage() {
             <Reveal index={1}>
               <section id="runbook" className="docs-anchor border-b border-[var(--wl-line)] py-14">
                 <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">04 / OPERATOR RUNBOOK</p>
-                <h2 className="mt-4 text-[28px] font-medium tracking-[-.05em]">Keep the record useful.</h2>
+                <h2 className="font-display mt-4 text-[28px] font-medium tracking-[-.015em]">Keep the record useful.</h2>
                 <div className="mt-6 divide-y divide-[var(--wl-line)] border-y border-[var(--wl-line)]">
                   {[
                     "Review pending restraints at the start of every shift.",
@@ -275,7 +275,7 @@ export default function DocsPage() {
             <Reveal index={2}>
               <section id="sdk" className="docs-anchor py-14">
                 <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">05 / SDK QUICKSTART</p>
-                <h2 className="mt-4 text-[28px] font-medium tracking-[-.05em]">Deploy your first GuardedWallet.</h2>
+                <h2 className="font-display mt-4 text-[28px] font-medium tracking-[-.015em]">Deploy your first GuardedWallet.</h2>
                 <p className="mt-5 text-[15px] leading-[1.55] text-[var(--wl-body)]">
                   Stand up a governed agent wallet on Arc Testnet in five steps. Every transaction it attempts will be evaluated
                   against a Doctrine before it can settle on-chain.

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useAccount } from "wagmi";
 
 import { useLiveMembers, useLiveOrg } from "@/lib/live-data";
 import type { TeamMember } from "@/lib/types";
@@ -14,6 +15,7 @@ function roleClass(role: TeamMember["role"]) {
 }
 
 export default function SettingsPage() {
+  const { isConnected } = useAccount();
   const liveMembers = useLiveMembers();
   const org = useLiveOrg();
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>("TEAM");
@@ -40,6 +42,7 @@ export default function SettingsPage() {
   }, []);
 
   const invite = () => {
+    if (!isConnected) return;
     if (!inviteName.trim() || !inviteEmail.trim()) return;
     setInviteName("");
     setInviteEmail("");
@@ -69,23 +72,35 @@ export default function SettingsPage() {
             <p className="font-mono text-[10px] uppercase tracking-[.2em] text-[var(--wl-signal)]">
               WORKSPACE / GOVERNANCE
             </p>
-            <h1 className="mt-5 text-[clamp(3rem,6vw,5.8rem)] font-semibold leading-[.85] tracking-[-.045em]">
+            <h1 className="font-display mt-5 text-[clamp(3rem,6vw,5.8rem)] font-semibold leading-[.85] tracking-[-.015em]">
               Settings
             </h1>
             <p className="mt-6 max-w-[500px] text-[14px] leading-[1.5] text-[var(--wl-secondary2)]">
               Keep the people, permissions, and integrations around governed spend legible.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setInviteOpen(true)}
-            className="warm-pill group rounded-full bg-[var(--wl-signal)] px-5 py-3 text-[12px] font-semibold text-white"
-          >
-            Invite member{" "}
-            <span className="ml-1.5 inline-block transition-transform duration-[220ms] group-hover:translate-x-1">
-              ↗
-            </span>
-          </button>
+          <div className="flex flex-col items-start gap-1.5 max-md:w-full md:items-end">
+            <button
+              type="button"
+              disabled={!isConnected}
+              title={!isConnected ? "Connect wallet first." : undefined}
+              onClick={() => {
+                if (!isConnected) return;
+                setInviteOpen(true);
+              }}
+              className="warm-pill group rounded-full bg-[var(--wl-signal)] px-5 py-3 text-[12px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Invite member{" "}
+              <span className="ml-1.5 inline-block transition-transform duration-[220ms] group-hover:translate-x-1">
+                ↗
+              </span>
+            </button>
+            {!isConnected && (
+              <span className="font-mono text-[9px] tracking-[.12em] text-[var(--wl-mute)]">
+                CONNECT WALLET FIRST
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="settings-grid mt-16 grid grid-cols-[210px_1fr] gap-12">
@@ -140,7 +155,7 @@ export default function SettingsPage() {
                       <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
                         ACCESS / TEAM MEMBERS
                       </p>
-                      <h2 className="mt-4 text-[26px] font-semibold tracking-[-.05em]">
+                      <h2 className="font-display mt-4 text-[26px] font-semibold tracking-[-.015em]">
                         The people with a say.
                       </h2>
                     </div>
@@ -229,7 +244,7 @@ export default function SettingsPage() {
                 <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
                   WORKSPACE / {activeTab}
                 </p>
-                <h2 className="mt-7 text-[34px] font-semibold tracking-[-.05em]">
+                <h2 className="font-display mt-7 text-[34px] font-semibold tracking-[-.015em]">
                   {activeTab[0] + activeTab.slice(1).toLowerCase()}
                 </h2>
                 <p className="mt-5 max-w-[560px] text-[15px] leading-[1.5] text-[var(--wl-secondary2)]">
@@ -262,7 +277,7 @@ export default function SettingsPage() {
                 <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
                   TEAM / INVITATION
                 </p>
-                <h2 className="mt-4 text-[28px] font-semibold tracking-[-.05em]">
+                <h2 className="font-display mt-4 text-[28px] font-semibold tracking-[-.015em]">
                   Invite a member.
                 </h2>
               </div>

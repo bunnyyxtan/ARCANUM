@@ -136,7 +136,7 @@ export default function LedgerPage() {
             <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
               RECORD / LAST 24H
             </p>
-            <h1 className="mt-4 text-[clamp(2.7rem,5vw,4.8rem)] font-semibold leading-[.9] tracking-[-.05em]">
+            <h1 className="font-display mt-4 text-[clamp(2.7rem,5vw,4.8rem)] font-semibold leading-[.9] tracking-[-.015em]">
               Governed ledger
             </h1>
             <p className="mt-4 max-w-[550px] text-[14px] leading-[1.45] text-[var(--wl-secondary2)]">
@@ -174,7 +174,7 @@ export default function LedgerPage() {
                 {label}
               </p>
               <p
-                className={`mt-3 text-[clamp(1.5rem,3vw,2.15rem)] font-medium tabular-nums tracking-[-.05em] ${
+                className={`font-display mt-3 text-[clamp(1.5rem,3vw,2.15rem)] font-medium tabular-nums tracking-[-.015em] ${
                   accent ? "text-[var(--wl-signal)]" : ""
                 }`}
               >

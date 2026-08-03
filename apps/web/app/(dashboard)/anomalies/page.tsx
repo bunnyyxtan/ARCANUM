@@ -7,6 +7,7 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from "react";
 import { toast } from "sonner";
+import { useAccount } from "wagmi";
 
 import { useWorkspaceMode } from "@/lib/auth-session";
 import { shortAddress } from "@/lib/format/address";
@@ -89,6 +90,7 @@ function AnomalyRow({
   onInvestigate: () => void;
   onNotice: (message: string) => void;
 }>) {
+  const { isConnected } = useAccount();
   const utils = trpc.useUtils();
   const acknowledge = trpc.anomalies.acknowledge.useMutation();
   const dismiss = trpc.anomalies.dismiss.useMutation();
@@ -102,6 +104,9 @@ function AnomalyRow({
   const settle = async (next: "restrained" | "dismissed", event: ReactMouseEvent<HTMLButtonElement>) => {
     const action = next === "dismissed" ? "anomalies.dismiss" : "anomalies.acknowledge";
     if (!allowTrustedMutation(action, event)) {
+      return;
+    }
+    if (!isConnected) {
       return;
     }
 
@@ -164,37 +169,46 @@ function AnomalyRow({
           {severity}
         </span>
       </div>
-      <div className="flex items-center justify-start gap-3 md:justify-end">
-        {frozen ? (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--wl-ink)] px-3 py-1.5 font-mono text-[9px] tracking-[.1em] text-[var(--wl-bg)]">
-            <span className="h-1.5 w-1.5 rounded-full bg-[var(--wl-signal)]" />
-            RESTRAINED
-          </span>
-        ) : (
+      <div className="flex flex-col items-start gap-1.5 md:items-end">
+        <div className="flex items-center justify-start gap-3 md:justify-end">
+          {frozen ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--wl-ink)] px-3 py-1.5 font-mono text-[9px] tracking-[.1em] text-[var(--wl-bg)]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--wl-signal)]" />
+              RESTRAINED
+            </span>
+          ) : (
+            <button
+              type="button"
+              disabled={acknowledge.isPending || !isConnected}
+              title={!isConnected ? "Connect wallet first." : undefined}
+              onClick={(event) => void settle("restrained", event)}
+              className="rounded-full border border-[var(--wl-signal)] px-3 py-1.5 font-mono text-[9px] tracking-[.1em] text-[var(--wl-signal)] transition-all duration-[220ms] hover:-translate-y-0.5 hover:bg-[var(--wl-signal)] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Restrain
+            </button>
+          )}
           <button
             type="button"
-            disabled={acknowledge.isPending}
-            onClick={(event) => void settle("restrained", event)}
-            className="rounded-full border border-[var(--wl-signal)] px-3 py-1.5 font-mono text-[9px] tracking-[.1em] text-[var(--wl-signal)] transition-all duration-[220ms] hover:-translate-y-0.5 hover:bg-[var(--wl-signal)] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={onInvestigate}
+            className="warm-pill warm-pill-ghost rounded-full border border-[var(--wl-line)] px-3 py-1.5 font-mono text-[9px] tracking-[.1em]"
           >
-            Restrain
+            {investigated ? "Close trace" : "Investigate"}
           </button>
+          <button
+            type="button"
+            disabled={dismiss.isPending || !isConnected}
+            title={!isConnected ? "Connect wallet first." : undefined}
+            onClick={(event) => void settle("dismissed", event)}
+            className="font-mono text-[9px] tracking-[.1em] text-[var(--wl-secondary)] transition-colors hover:text-[var(--wl-ink)] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Dismiss
+          </button>
+        </div>
+        {!isConnected && !frozen && (
+          <span className="font-mono text-[9px] tracking-[.12em] text-[var(--wl-mute)]">
+            CONNECT WALLET FIRST
+          </span>
         )}
-        <button
-          type="button"
-          onClick={onInvestigate}
-          className="warm-pill warm-pill-ghost rounded-full border border-[var(--wl-line)] px-3 py-1.5 font-mono text-[9px] tracking-[.1em]"
-        >
-          {investigated ? "Close trace" : "Investigate"}
-        </button>
-        <button
-          type="button"
-          disabled={dismiss.isPending}
-          onClick={(event) => void settle("dismissed", event)}
-          className="font-mono text-[9px] tracking-[.1em] text-[var(--wl-secondary)] transition-colors hover:text-[var(--wl-ink)] disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          Dismiss
-        </button>
       </div>
       {investigated && (
         <div className="border-l-2 border-[var(--wl-signal)] bg-[var(--wl-bg-soft)] px-5 py-4 md:col-span-7">
@@ -277,7 +291,7 @@ export default function AnomaliesPage() {
           <p className="font-mono text-[10px] uppercase tracking-[.19em] text-[var(--wl-signal)]">
             WATCH / DEVIATION
           </p>
-          <h1 className="mt-4 text-[clamp(3.2rem,6vw,5.8rem)] font-semibold leading-[.88] tracking-[-.045em]">
+          <h1 className="font-display mt-4 text-[clamp(3.2rem,6vw,5.8rem)] font-semibold leading-[.88] tracking-[-.015em]">
             Anomalies
           </h1>
           <p className="mt-5 max-w-[460px] text-[14px] leading-[1.45] text-[var(--wl-secondary2)]">
@@ -301,7 +315,7 @@ export default function AnomaliesPage() {
                 DEVIATION INDEX
               </p>
               <div className="mt-8 flex items-end gap-3">
-                <span className="text-[clamp(4.5rem,9vw,7.8rem)] font-semibold leading-[.72] tracking-[-.045em] text-[var(--wl-signal)]">
+                <span className="font-display text-[clamp(4.5rem,9vw,7.8rem)] font-semibold leading-[.72] tracking-[-.015em] text-[var(--wl-signal)]">
                   {peakScore}
                 </span>
                 <span className="mb-1 font-mono text-[10px] tracking-[.14em] text-[var(--wl-signal)]">
@@ -340,21 +354,21 @@ export default function AnomaliesPage() {
         <div className="grid grid-cols-3 divide-x divide-[var(--wl-line)] border border-[var(--wl-line)] bg-[var(--wl-bg-raised)]">
           <div className="p-4 sm:p-6">
             <span className="font-mono text-[9px] tracking-[.14em] text-[var(--wl-secondary)]">CRITICAL</span>
-            <strong className="mt-9 block text-4xl font-semibold tracking-[-.045em] text-[var(--wl-signal)]">
+            <strong className="font-display mt-9 block text-4xl font-semibold tracking-[-.015em] text-[var(--wl-signal)]">
               {critical}
             </strong>
             <span className="mt-2 block font-mono text-[9px] text-[var(--wl-mute)]">NOW</span>
           </div>
           <div className="p-4 sm:p-6">
             <span className="font-mono text-[9px] tracking-[.14em] text-[var(--wl-secondary)]">ELEVATED</span>
-            <strong className="mt-9 block text-4xl font-semibold tracking-[-.045em]">{elevated}</strong>
+            <strong className="font-display mt-9 block text-4xl font-semibold tracking-[-.015em]">{elevated}</strong>
             <span className="mt-2 block font-mono text-[9px] text-[var(--wl-mute)]">OPEN</span>
           </div>
           <div className="p-4 sm:p-6">
             <span className="font-mono text-[9px] leading-[1.3] tracking-[.14em] text-[var(--wl-secondary)]">
               RESOLVED / 30D
             </span>
-            <strong className="mt-9 block text-4xl font-semibold tracking-[-.045em]">—</strong>
+            <strong className="font-display mt-9 block text-4xl font-semibold tracking-[-.015em]">—</strong>
             <span className="mt-2 block font-mono text-[9px] text-[var(--wl-mute)]">CLOSED</span>
           </div>
         </div>
@@ -366,7 +380,7 @@ export default function AnomaliesPage() {
             <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
               REGISTER / ACTIVE
             </p>
-            <h2 className="mt-3 text-2xl font-semibold tracking-[-.05em]">Anomaly register</h2>
+            <h2 className="font-display mt-3 text-2xl font-semibold tracking-[-.015em]">Anomaly register</h2>
           </div>
           <span className="font-mono text-[9px] tracking-[.12em] text-[var(--wl-mute)]">{notice}</span>
         </div>

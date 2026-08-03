@@ -84,7 +84,7 @@ export default function AgentsPage() {
             <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
               FLEET / REGISTRY
             </p>
-            <h1 className="mt-4 text-[clamp(3rem,6vw,5.5rem)] font-semibold leading-[.86] tracking-[-.045em]">
+            <h1 className="font-display mt-4 text-[clamp(3rem,6vw,5.5rem)] font-semibold leading-[.86] tracking-[-.015em]">
               Agents
             </h1>
             <p className="mt-5 max-w-[440px] text-[14px] leading-[1.45] text-[var(--wl-secondary2)]">
@@ -156,7 +156,7 @@ export default function AgentsPage() {
                 <p className="font-mono text-[10px] uppercase tracking-[.17em] text-[var(--wl-signal)]">
                   REGISTRY / {visibleAgents.length.toString().padStart(2, "0")}
                 </p>
-                <h2 className="mt-2 text-[22px] font-medium tracking-[-.045em]">Agent register</h2>
+                <h2 className="font-display mt-2 text-[22px] font-medium tracking-[-.015em]">Agent register</h2>
               </div>
               <span className="hidden font-mono text-[9px] uppercase tracking-[.13em] text-[var(--wl-mute)] md:inline">
                 arc testnet
@@ -323,7 +323,7 @@ export default function AgentsPage() {
                     <p className="font-mono text-[10px] uppercase tracking-[.17em] text-[var(--wl-signal)]">
                       SELECTED WALLET
                     </p>
-                    <h2 className="mt-2 text-[22px] font-medium tracking-[-.045em]">
+                    <h2 className="font-display mt-2 text-[22px] font-medium tracking-[-.015em]">
                       {selectedAgent.name}
                     </h2>
                   </div>

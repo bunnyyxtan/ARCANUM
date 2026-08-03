@@ -169,7 +169,7 @@ export default function DashboardPage() {
             <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
               OVERVIEW / FLEET POSTURE
             </p>
-            <h1 className="mt-4 text-[clamp(3rem,6vw,5.5rem)] font-semibold leading-[.86] tracking-[-.045em]">
+            <h1 className="font-display mt-4 text-[clamp(3rem,6vw,5.5rem)] font-semibold leading-[.86] tracking-[-.015em]">
               Dashboard
             </h1>
             <p className="mt-5 max-w-[430px] text-[14px] leading-[1.45] text-[var(--wl-secondary2)]">
@@ -203,7 +203,7 @@ export default function DashboardPage() {
                 {kpi.label}
               </p>
               <p
-                className={`mt-5 text-[32px] font-semibold tracking-[-.05em] tabular-nums ${
+                className={`font-display mt-5 text-[32px] font-semibold tracking-[-.015em] tabular-nums ${
                   kpi.accent ? "text-[var(--wl-signal)]" : "text-[var(--wl-ink)]"
                 }`}
               >
@@ -231,7 +231,7 @@ export default function DashboardPage() {
               <p className="font-mono text-[10px] uppercase tracking-[.17em] text-[var(--wl-signal)]">
                 LIVE / {String(streamEvents.length).padStart(2, "0")} EVENTS
               </p>
-              <h2 className="mt-2 text-[22px] font-medium tracking-[-.045em]">
+              <h2 className="font-display mt-2 text-[22px] font-medium tracking-[-.015em]">
                 Governed event stream
               </h2>
             </div>
@@ -294,7 +294,7 @@ export default function DashboardPage() {
                 <p className="font-mono text-[10px] uppercase tracking-[.17em] text-[var(--wl-signal)]">
                   ACTION REQUIRED
                 </p>
-                <h2 className="mt-2 text-[22px] font-medium tracking-[-.045em]">Restraint queue</h2>
+                <h2 className="font-display mt-2 text-[22px] font-medium tracking-[-.015em]">Restraint queue</h2>
               </div>
               <span className="rounded-full bg-[var(--wl-signal)] px-2 py-1 font-mono text-[9px] text-white">
                 {String(escalations.data.length).padStart(2, "0")}

@@ -55,7 +55,7 @@ export function Providers({ children }: ProvidersProps) {
                       background: "#15171B",
                       border: "1px solid #282C34",
                       color: "#D7DBE0",
-                      fontFamily: "var(--font-mono)",
+                      fontFamily: 'var(--font-plex-mono), "IBM Plex Mono", ui-monospace, monospace',
                     },
                     classNames: {
                       error: "text-[#FF5A1F]",

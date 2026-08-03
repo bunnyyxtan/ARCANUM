@@ -55,7 +55,7 @@ export function BadgePublicPage({ wallet }: Readonly<{ wallet: string }>) {
     <main className="min-h-[100dvh] bg-[var(--wl-bg)] text-[var(--wl-ink)]">
       <style>{`@keyframes jewel{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}.jewel{animation:jewel 560ms cubic-bezier(.16,1,.3,1) both}@media(prefers-reduced-motion:reduce){.jewel{animation:none}}`}</style>
       <nav className="flex items-center justify-between border-b border-[var(--wl-line)] px-5 py-5 md:px-9">
-        <Link href="/" className="text-[18px] font-bold tracking-[-.05em]">
+        <Link href="/" className="font-display text-[18px] font-bold tracking-[-.015em]">
           ARCANUM<span className="text-[var(--wl-signal)]">.</span>
         </Link>
         <div className="flex items-center gap-4">
@@ -72,7 +72,7 @@ export function BadgePublicPage({ wallet }: Readonly<{ wallet: string }>) {
       <p className="font-mono text-[10px] uppercase tracking-[.2em] text-[var(--wl-signal)]">
         PUBLIC TRUST MARK / EMBEDDABLE
       </p>
-      <h1 className="mt-5 text-[clamp(2.8rem,6vw,5rem)] font-semibold leading-[.86] tracking-[-.045em]">
+      <h1 className="font-display mt-5 text-[clamp(2.8rem,6vw,5rem)] font-semibold leading-[.86] tracking-[-.015em]">
         A small mark
         <br />
         <span className="text-[var(--wl-dim)]">with a public record.</span>
@@ -135,7 +135,7 @@ export function BadgePublicPage({ wallet }: Readonly<{ wallet: string }>) {
             <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
               INSTALL / ONE LINE
             </p>
-            <h2 className="mt-2 text-[22px] font-medium tracking-[-.045em]">Embed the badge</h2>
+            <h2 className="font-display mt-2 text-[22px] font-medium tracking-[-.015em]">Embed the badge</h2>
           </div>
           <button
             type="button"

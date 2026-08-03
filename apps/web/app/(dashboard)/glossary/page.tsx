@@ -59,7 +59,7 @@ export default function GlossaryPage() {
         <div className="flex flex-col justify-between gap-8 border-b border-[var(--wl-line)] pb-10 lg:flex-row lg:items-end">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[.2em] text-[var(--wl-signal)]">ARCANUM / REFERENCE INDEX</p>
-            <h1 className="mt-5 text-[clamp(3.2rem,7vw,6.6rem)] font-semibold leading-[.84] tracking-[-.045em]">
+            <h1 className="font-display mt-5 text-[clamp(3.2rem,7vw,6.6rem)] font-semibold leading-[.84] tracking-[-.015em]">
               The vocabulary<br />
               <span className="text-[var(--wl-dim)]">of accountable spend.</span>
             </h1>
@@ -152,7 +152,7 @@ export default function GlossaryPage() {
               <p className="font-mono text-[11px] text-[var(--wl-signal)]">
                 {active.letter} / 0{terms.indexOf(active) + 1}
               </p>
-              <h2 className="mt-3 text-[34px] font-medium tracking-[-.05em]">{active.term}</h2>
+              <h2 className="font-display mt-3 text-[34px] font-medium tracking-[-.015em]">{active.term}</h2>
               <p className="mt-5 text-[16px] leading-[1.5] text-[var(--wl-strong3)]">{active.definition}</p>
               <div className="mt-7 border-t border-[var(--wl-line)] pt-5">
                 <p className="font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)]">IN PRACTICE</p>

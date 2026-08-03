@@ -8,6 +8,7 @@ import { useAccount, useDisconnect } from "wagmi";
 import { useLiveAnomalies, useLiveEscalations } from "@/lib/live-data";
 
 import { CommandPalette } from "./CommandPalette";
+import { ConnectModal } from "./landing/ConnectModal";
 import { ShortcutsDialog } from "./ShortcutsDialog";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -37,6 +38,7 @@ export function Header({ children }: HeaderProps) {
   const [notifications, setNotifications] = useState(false);
   const [shortcuts, setShortcuts] = useState(false);
   const [copiedAddress, setCopiedAddress] = useState(false);
+  const [connectOpen, setConnectOpen] = useState(false);
 
   const inboxItems = [
     ...pendingEscalations.slice(0, 3).map((item) => ({
@@ -89,7 +91,7 @@ export function Header({ children }: HeaderProps) {
   return (
     <header className="relative z-20 flex h-[68px] items-center justify-between border-b border-[var(--wl-line)] bg-[var(--wl-bg)] px-5 md:px-8">
       <div className="flex min-w-0 items-center gap-7">
-        <Link href="/" className="shrink-0 text-[18px] font-bold tracking-[-.05em] transition-transform duration-[220ms] hover:-translate-y-0.5">
+        <Link href="/" className="font-display shrink-0 text-[18px] font-bold tracking-[-.015em] transition-transform duration-[220ms] hover:-translate-y-0.5">
           ARCANUM<span className="text-[var(--wl-signal)]">.</span>
         </Link>
         <nav className="flex min-w-0 gap-5 overflow-x-auto pb-0.5">
@@ -240,23 +242,37 @@ export function Header({ children }: HeaderProps) {
                 >
                   STATUS
                 </Link>
-                <button
-                  type="button"
-                  onClick={() => {
-                    disconnect();
-                    setOpen(false);
-                    router.push("/");
-                  }}
-                  className="w-full py-3 text-left font-mono text-[10px] tracking-[.12em] text-[var(--wl-secondary)] transition-colors hover:text-[var(--wl-signal)]"
-                >
-                  DISCONNECT
-                </button>
+                {isConnected ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      disconnect();
+                      setOpen(false);
+                      router.push("/");
+                    }}
+                    className="w-full py-3 text-left font-mono text-[10px] tracking-[.12em] text-[var(--wl-secondary)] transition-colors hover:text-[var(--wl-signal)]"
+                  >
+                    DISCONNECT
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpen(false);
+                      setConnectOpen(true);
+                    }}
+                    className="w-full py-3 text-left font-mono text-[10px] tracking-[.12em] text-[var(--wl-secondary)] transition-colors hover:text-[var(--wl-signal)]"
+                  >
+                    CONNECT WALLET
+                  </button>
+                )}
               </div>
             </div>
           )}
         </div>
       </div>
       <ShortcutsDialog open={shortcuts} onClose={() => setShortcuts(false)} />
+      <ConnectModal open={connectOpen} onClose={() => setConnectOpen(false)} />
       {children}
     </header>
   );

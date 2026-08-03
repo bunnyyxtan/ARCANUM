@@ -38,7 +38,7 @@ export const modules: ModuleMap = {
   "./components/mockups/arcanum-landing/VitrineNoir.tsx": () => import("../components/mockups/arcanum-landing/VitrineNoir.tsx"),
   "./components/mockups/arcanum-landing/WarmLedger.tsx": () => import("../components/mockups/arcanum-landing/WarmLedger.tsx"),
   "./components/mockups/arcanum-landing/WarmLedgerClassic.tsx": () => import("../components/mockups/arcanum-landing/WarmLedgerClassic.tsx"),
-  "./components/mockups/templates/MissionControlBentoDashboard-up-c3r/Dashboard.tsx": () => import("../components/mockups/templates/MissionControlBentoDashboard-up-c3r/Dashboard.tsx"),
   "./components/mockups/templates/MissionControlBentoDashboard-szXZGE/Dashboard.tsx": () => import("../components/mockups/templates/MissionControlBentoDashboard-szXZGE/Dashboard.tsx"),
+  "./components/mockups/templates/MissionControlBentoDashboard-up-c3r/Dashboard.tsx": () => import("../components/mockups/templates/MissionControlBentoDashboard-up-c3r/Dashboard.tsx"),
   "./components/mockups/templates/SwissWineryAdminDashboard-DqoIVY/App.tsx": () => import("../components/mockups/templates/SwissWineryAdminDashboard-DqoIVY/App.tsx")
 };
