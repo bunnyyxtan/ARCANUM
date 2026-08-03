@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useWorkspaceMode } from "@/lib/auth-session";
 import { shortAddress } from "@/lib/format/address";
@@ -90,6 +90,7 @@ function ledgerEntryFromTransfer(entry: LiveTransferRow): LedgerEntry {
     agentId: entry.agentId ?? entry.walletId,
     agentName: agentName(entry.agentId, "Wallet"),
     counterparty: vendorName(entry.toAddress),
+    counterpartyAddress: entry.toAddress,
     category: normalizeCategory(entry.vendorCategory),
     action: entry.verdict,
     amount: usdcNumber(entry.amount),
@@ -245,6 +246,23 @@ export function useLiveVendors() {
         : undefined,
   }));
   return { ...query, data: vendors };
+}
+
+export function useVendorFlags() {
+  const enabled = useLiveQueriesEnabled();
+  const query = trpc.vendorFlags.list.useQuery(undefined, {
+    enabled,
+    retry: false,
+    staleTime: 30_000,
+  });
+  const flaggedAddresses = useMemo(
+    () =>
+      new Set(
+        (enabled ? (query.data ?? []) : []).map((flag) => flag.vendorAddress.toLowerCase()),
+      ),
+    [enabled, query.data],
+  );
+  return { ...query, flaggedAddresses };
 }
 
 export function useLiveEvents() {

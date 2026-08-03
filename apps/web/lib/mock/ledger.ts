@@ -3,12 +3,21 @@ import type { Category, LedgerEntry, LedgerStatus } from "@/lib/types";
 const hashFor = (index: number) =>
   `0x${(BigInt("0x5042002000000000000000000000000000000000000000000000000000000000") + BigInt(index)).toString(16)}`;
 
+const mockAddressFor = (name: string) => {
+  let seed = 7;
+  for (const char of name) {
+    seed = (seed * 31 + char.charCodeAt(0)) % 0xffffffff;
+  }
+  return `0x${seed.toString(16).padStart(8, "0").repeat(5).slice(0, 40)}`;
+};
+
 const baseLedger: LedgerEntry[] = [
   {
     id: "tx-001",
     agentId: "research-agent",
     agentName: "Research Agent",
     counterparty: "OpenAI",
+    counterpartyAddress: mockAddressFor("OpenAI"),
     category: "api",
     action: "inference call",
     amount: 4.2,
@@ -25,6 +34,7 @@ const baseLedger: LedgerEntry[] = [
     agentId: "treasury-rebalancer",
     agentName: "TreasuryRebalancer",
     counterparty: "Internal Vault",
+    counterpartyAddress: mockAddressFor("Internal Vault"),
     category: "other",
     action: "rebalance xfer",
     amount: 1247,
@@ -41,6 +51,7 @@ const baseLedger: LedgerEntry[] = [
     agentId: "treasury-guard-agent",
     agentName: "Treasury Guard Agent",
     counterparty: "Unapproved treasury endpoint",
+    counterpartyAddress: mockAddressFor("Unapproved treasury endpoint"),
     category: "other",
     action: "treasury request",
     amount: 500,
@@ -57,6 +68,7 @@ const baseLedger: LedgerEntry[] = [
     agentId: "cloud-ops-agent",
     agentName: "Cloud Ops Agent",
     counterparty: "AWS Bedrock",
+    counterpartyAddress: mockAddressFor("AWS Bedrock"),
     category: "compute",
     action: "gpu lease",
     amount: 96.2,
@@ -73,6 +85,7 @@ const baseLedger: LedgerEntry[] = [
     agentId: "treasury-guard-agent",
     agentName: "Treasury Guard Agent",
     counterparty: "Anthropic",
+    counterpartyAddress: mockAddressFor("Anthropic"),
     category: "api",
     action: "model call",
     amount: 312,
@@ -89,6 +102,7 @@ const baseLedger: LedgerEntry[] = [
     agentId: "marketing-agent",
     agentName: "MarketingAgent",
     counterparty: "Tavily",
+    counterpartyAddress: mockAddressFor("Tavily"),
     category: "data",
     action: "search api",
     amount: 2.1,
@@ -105,6 +119,7 @@ const baseLedger: LedgerEntry[] = [
     agentId: "support-agent",
     agentName: "SupportAgent",
     counterparty: "Anthropic",
+    counterpartyAddress: mockAddressFor("Anthropic"),
     category: "api",
     action: "inference call",
     amount: 0.8,
@@ -121,6 +136,7 @@ const baseLedger: LedgerEntry[] = [
     agentId: "research-agent",
     agentName: "Research Agent",
     counterparty: "Pinecone",
+    counterpartyAddress: mockAddressFor("Pinecone"),
     category: "compute",
     action: "embeddings",
     amount: 1.9,
@@ -185,6 +201,7 @@ const generatedLedger: LedgerEntry[] = Array.from({ length: 41 }, (_, index) => 
     agentId: agent[0],
     agentName: agent[1],
     counterparty,
+    counterpartyAddress: mockAddressFor(counterparty),
     category,
     action,
     amount: Number((3.75 + ((index * 17) % 340) + (index % 4) * 0.42).toFixed(2)),

@@ -9,6 +9,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
@@ -179,6 +180,23 @@ export const vendors = pgTable(
       table.tenantId,
       table.walletId,
       sql`${table.addedAt} desc`,
+    ),
+  }),
+);
+
+export const vendorFlags = pgTable(
+  "vendor_flags",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: tenantIdColumn(),
+    vendorAddress: varchar("vendor_address", { length: 42 }).notNull(),
+    flaggedBy: varchar("flagged_by", { length: 42 }).notNull(),
+    createdAt: createdAtColumn(),
+  },
+  (table) => ({
+    tenantVendor: uniqueIndex("vendor_flags_tenant_vendor_idx").on(
+      table.tenantId,
+      table.vendorAddress,
     ),
   }),
 );

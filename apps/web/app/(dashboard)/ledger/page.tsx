@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useAccount } from "wagmi";
 
 import { getArcscanTxUrl } from "@/lib/arcscan";
 import { categoryLabel, formatUsd, formatUsdCompact } from "@/lib/format";
-import { useLiveLedger } from "@/lib/live-data";
+import { useLiveLedger, useVendorFlags } from "@/lib/live-data";
 import { matchesSearch, normalizeSearch } from "@/lib/table-state";
+import { trpc } from "@/lib/trpc";
 import type { LedgerEntry, LedgerStatus } from "@/lib/types";
 
 type StatusFilter = "ALL" | LedgerStatus;
@@ -45,6 +47,12 @@ function datePart(timestamp: string) {
 
 export default function LedgerPage() {
   const liveLedger = useLiveLedger();
+  const { isConnected } = useAccount();
+  const vendorFlags = useVendorFlags();
+  const utils = trpc.useUtils();
+  const flagMutation = trpc.vendorFlags.flag.useMutation();
+  const unflagMutation = trpc.vendorFlags.unflag.useMutation();
+  const flagPending = flagMutation.isPending || unflagMutation.isPending;
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -103,9 +111,27 @@ export default function LedgerPage() {
     };
   }, []);
 
-  const flagVendor = (counterparty: string) => {
-    showNotice(`${counterparty} flagged / review marker added for this session`);
+  const toggleVendorFlag = async (entry: LedgerEntry) => {
+    if (!isConnected || flagPending) return;
+    const vendorAddress = entry.counterpartyAddress.toLowerCase();
+    const flagged = vendorFlags.flaggedAddresses.has(vendorAddress);
+    try {
+      if (flagged) {
+        await unflagMutation.mutateAsync({ vendorAddress });
+        showNotice(`${entry.counterparty} unflagged / review marker cleared`);
+      } else {
+        await flagMutation.mutateAsync({ vendorAddress });
+        showNotice(`${entry.counterparty} flagged / review marker saved for all approvers`);
+      }
+      await utils.vendorFlags.list.invalidate();
+    } catch (caught) {
+      showNotice(caught instanceof Error ? caught.message : "Vendor flag update failed.");
+    }
   };
+
+  const selectedFlagged = selected
+    ? vendorFlags.flaggedAddresses.has(selected.counterpartyAddress.toLowerCase())
+    : false;
 
   const openArcscan = (hash: string) => {
     const url = getArcscanTxUrl(hash);
@@ -304,6 +330,11 @@ export default function LedgerPage() {
                   </h2>
                 </div>
                 <div className="flex items-center gap-3">
+                  {selectedFlagged && (
+                    <span className="rounded-full border border-[var(--wl-signal)] px-2.5 py-1 font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-signal)]">
+                      ⚑ Flagged
+                    </span>
+                  )}
                   <StatusPill status={selected.status} />
                   <button
                     type="button"
@@ -348,11 +379,18 @@ export default function LedgerPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => flagVendor(selected.counterparty)}
-                    className="rounded-full border border-[var(--wl-signal)] px-3.5 py-2.5 text-[10px] font-semibold text-[var(--wl-signal)] transition-colors duration-[220ms] hover:bg-[var(--wl-signal)] hover:text-[var(--wl-bg)]"
+                    onClick={() => void toggleVendorFlag(selected)}
+                    disabled={flagPending || !isConnected}
+                    title={!isConnected ? "Connect wallet first." : undefined}
+                    className="rounded-full border border-[var(--wl-signal)] px-3.5 py-2.5 text-[10px] font-semibold text-[var(--wl-signal)] transition-colors duration-[220ms] hover:bg-[var(--wl-signal)] hover:text-[var(--wl-bg)] disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    Flag vendor
+                    {selectedFlagged ? "Unflag vendor" : "Flag vendor"}
                   </button>
+                  {!isConnected && (
+                    <p className="w-full font-mono text-[9px] tracking-[.1em] text-[var(--wl-mute)]">
+                      CONNECT WALLET FIRST
+                    </p>
+                  )}
                 </div>
               </div>
             </aside>

@@ -25,7 +25,7 @@ import {
   type VendorCategoryValue,
 } from "@/lib/contracts";
 import { isEvmAddress, isSameAddress, isZeroAddress, shortAddress } from "@/lib/format/address";
-import { useLiveVendors } from "@/lib/live-data";
+import { useLiveVendors, useVendorFlags } from "@/lib/live-data";
 import { trpc } from "@/lib/trpc";
 import type { Vendor } from "@/lib/types";
 
@@ -86,6 +86,10 @@ export default function VendorsPage() {
   const { writeContractAsync, isPending: writePending } = useWriteContract();
   const utils = trpc.useUtils();
   const liveVendors = useLiveVendors();
+  const vendorFlagsState = useVendorFlags();
+  const flagMutation = trpc.vendorFlags.flag.useMutation();
+  const unflagMutation = trpc.vendorFlags.unflag.useMutation();
+  const flagToggling = flagMutation.isPending || unflagMutation.isPending;
 
   const [category, setCategory] = useState<string>("ALL");
   const [query, setQuery] = useState("");
@@ -199,6 +203,26 @@ export default function VendorsPage() {
     setSelectedId(id);
     setCapEditing(false);
   }, []);
+
+  const isVendorFlagged = (vendorAddress: string) =>
+    vendorFlagsState.flaggedAddresses.has(vendorAddress.toLowerCase());
+
+  const toggleVendorFlag = async (vendor: Vendor) => {
+    if (!isConnected || flagToggling) return;
+    const vendorAddress = vendor.address.toLowerCase();
+    try {
+      if (isVendorFlagged(vendorAddress)) {
+        await unflagMutation.mutateAsync({ vendorAddress });
+        setNotice(`${vendor.name.toUpperCase()} REVIEW FLAG CLEARED`);
+      } else {
+        await flagMutation.mutateAsync({ vendorAddress });
+        setNotice(`${vendor.name.toUpperCase()} FLAGGED FOR REVIEW`);
+      }
+      await utils.vendorFlags.list.invalidate();
+    } catch (caught) {
+      setNotice(errorMessage(caught).toUpperCase());
+    }
+  };
 
   const ensureVendorWriteReady = async () => {
     if (vendorWriteDisabledReason) {
@@ -578,6 +602,11 @@ export default function VendorsPage() {
                     <small className="mt-1 block font-mono text-[9px] text-[var(--wl-mute)]">
                       {shortAddress(vendor.address)}
                     </small>
+                    {isVendorFlagged(vendor.address) && (
+                      <span className="mt-1.5 inline-flex rounded-full border border-[var(--wl-signal)] px-2 py-0.5 font-mono text-[8px] uppercase tracking-[.12em] text-[var(--wl-signal)]">
+                        ⚑ Review
+                      </span>
+                    )}
                   </span>
                   <span className="w-fit rounded-full border border-[var(--wl-line)] px-2.5 py-1 font-mono text-[9px] tracking-[.1em] text-[var(--wl-body)]">
                     {categoryLabel(vendor.category)}
@@ -686,7 +715,14 @@ export default function VendorsPage() {
                   {shortAddress(selected.address)} · {categoryLabel(selected.category)}
                 </p>
               </div>
-              <StatePill blocked={selected.trust === "blocked"} />
+              <span className="flex flex-col items-end gap-2">
+                <StatePill blocked={selected.trust === "blocked"} />
+                {isVendorFlagged(selected.address) && (
+                  <span className="rounded-full border border-[var(--wl-signal)] px-2.5 py-1 font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-signal)]">
+                    ⚑ Review
+                  </span>
+                )}
+              </span>
             </div>
 
             <div className="mt-10">
@@ -719,6 +755,20 @@ export default function VendorsPage() {
               >
                 Block vendor
               </button>
+              <button
+                type="button"
+                disabled={flagToggling || !isConnected}
+                title={!isConnected ? "Connect wallet first." : undefined}
+                onClick={() => void toggleVendorFlag(selected)}
+                className="rounded-full border border-[var(--wl-line)] px-4 py-2.5 font-mono text-[9px] tracking-[.1em] text-[var(--wl-body)] transition-all duration-[220ms] hover:-translate-y-0.5 hover:border-[var(--wl-signal)] hover:text-[var(--wl-signal)] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isVendorFlagged(selected.address) ? "Unflag review" : "Flag for review"}
+              </button>
+              {!isConnected && (
+                <p className="w-full font-mono text-[9px] tracking-[.1em] text-[var(--wl-mute)]">
+                  CONNECT WALLET FIRST
+                </p>
+              )}
             </div>
 
             {capEditing && (

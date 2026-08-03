@@ -36,6 +36,7 @@ export type LedgerEntry = {
   agentId: string;
   agentName: string;
   counterparty: string;
+  counterpartyAddress: string;
   category: Category;
   action: string;
   amount: number;
