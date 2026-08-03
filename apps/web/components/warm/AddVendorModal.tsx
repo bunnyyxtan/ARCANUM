@@ -64,7 +64,7 @@ export function AddVendorModal({
         className="warm-modal-backdrop absolute inset-0 bg-[rgba(var(--wl-ink-rgb),.35)]"
         onClick={onClose}
       />
-      <section className="warm-modal-panel relative flex max-h-[calc(100dvh-40px)] w-full max-w-[520px] flex-col border border-[var(--wl-line)] bg-[var(--wl-bg)] shadow-[12px_14px_0_var(--wl-line-faint)]">
+      <section className="warm-modal-panel relative flex max-h-[calc(100dvh-40px)] w-full max-w-[520px] flex-col border border-[var(--wl-line)] bg-[var(--wl-bg)] shadow-[0_28px_70px_-18px_rgba(var(--wl-ink-rgb),.45)]">
         <div className="flex h-[52px] items-center justify-between border-b border-[var(--wl-line)] bg-[var(--wl-bg-soft)] px-5">
           <span className="font-mono text-[11px] uppercase tracking-[.18em] text-[var(--wl-ink)]">
             ADD VENDOR

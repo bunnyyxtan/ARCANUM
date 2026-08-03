@@ -329,7 +329,6 @@ html.wl-dark .wl-icon-moon { display: none; }
 }
 .warm-modal-backdrop {
   animation: warmModalBackdrop 260ms ease both;
-  backdrop-filter: blur(3px);
 }
 .warm-modal-panel {
   animation: warmModalPanel 380ms cubic-bezier(0.16, 1, 0.3, 1) 60ms both;

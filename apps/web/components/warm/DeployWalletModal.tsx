@@ -462,7 +462,7 @@ export function DeployWalletModal({
       aria-modal="true"
     >
       <button type="button" aria-label="Close deploy dialog" className="fixed inset-0 -z-10 cursor-default" onClick={onClose} />
-      <section className="warm-modal-panel my-6 w-full max-w-[480px] border border-[var(--wl-line-bold)] bg-[var(--wl-bg)] shadow-[12px_14px_0_var(--wl-line-faint)]">
+      <section className="warm-modal-panel my-6 w-full max-w-[480px] border border-[var(--wl-line-bold)] bg-[var(--wl-bg)] shadow-[0_28px_70px_-18px_rgba(var(--wl-ink-rgb),.45)]">
         <div className="flex items-start justify-between border-b border-[var(--wl-line)] p-7 pb-5">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
