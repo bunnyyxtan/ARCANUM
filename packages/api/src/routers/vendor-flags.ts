@@ -56,7 +56,9 @@ export const vendorFlagsRouter = router({
         .values({ tenantId, vendorAddress, flaggedBy: actorFor(ctx), note })
         .onConflictDoUpdate({
           target: [vendorFlags.tenantId, vendorFlags.vendorAddress],
-          set: { flaggedBy: actorFor(ctx), note },
+          // Re-flagging is a fresh flag: the flagger owns the note again, so
+          // any previous "last edited by" trail is cleared.
+          set: { flaggedBy: actorFor(ctx), note, noteUpdatedBy: null, noteUpdatedAt: null },
         })
         .returning();
 
@@ -93,10 +95,11 @@ export const vendorFlagsRouter = router({
 
       try {
         // Only the note changes — flaggedBy and createdAt are preserved so the
-        // audit trail of who flagged the vendor (and when) stays intact.
+        // audit trail of who flagged the vendor (and when) stays intact. The
+        // editor is stamped so approvers can see who last touched the note.
         const [row] = await ctx.db
           .update(vendorFlags)
-          .set({ note })
+          .set({ note, noteUpdatedBy: actorFor(ctx), noteUpdatedAt: new Date() })
           .where(
             and(eq(vendorFlags.tenantId, tenantId), eq(vendorFlags.vendorAddress, vendorAddress)),
           )

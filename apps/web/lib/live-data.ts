@@ -253,6 +253,10 @@ export type VendorFlagDetail = {
   flaggedByShort: string;
   flaggedAt: string;
   note: string | null;
+  /** Set whenever the note has been edited after flagging. */
+  noteEditedBy: string | null;
+  noteEditedByShort: string | null;
+  noteEditedAt: string | null;
 };
 
 function flagDateLabel(value: Date | string | null | undefined) {
@@ -279,6 +283,10 @@ export function useVendorFlags() {
     for (const flag of enabled ? (query.data ?? []) : []) {
       const address = flag.vendorAddress.toLowerCase();
       addresses.add(address);
+      const noteUpdatedBy =
+        "noteUpdatedBy" in flag && typeof flag.noteUpdatedBy === "string"
+          ? flag.noteUpdatedBy
+          : null;
       details.set(address, {
         flaggedBy: flag.flaggedBy,
         flaggedByShort: shortAddress(flag.flaggedBy),
@@ -287,6 +295,11 @@ export function useVendorFlags() {
           "note" in flag && typeof flag.note === "string" && flag.note.trim() !== ""
             ? flag.note
             : null,
+        noteEditedBy: noteUpdatedBy,
+        noteEditedByShort: noteUpdatedBy ? shortAddress(noteUpdatedBy) : null,
+        noteEditedAt: noteUpdatedBy
+          ? flagDateLabel("noteUpdatedAt" in flag ? (flag.noteUpdatedAt ?? null) : null)
+          : null,
       });
     }
     return { flaggedAddresses: addresses, flagDetails: details };

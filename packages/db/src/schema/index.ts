@@ -192,6 +192,8 @@ export const vendorFlags = pgTable(
     vendorAddress: varchar("vendor_address", { length: 42 }).notNull(),
     flaggedBy: varchar("flagged_by", { length: 42 }).notNull(),
     note: text("note"),
+    noteUpdatedBy: varchar("note_updated_by", { length: 42 }),
+    noteUpdatedAt: timestamp("note_updated_at", { withTimezone: true }),
     createdAt: createdAtColumn(),
   },
   (table) => ({

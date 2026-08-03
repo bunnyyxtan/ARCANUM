@@ -648,6 +648,10 @@ export default function VendorsPage() {
                                 vendorFlagDetail(vendor.address)?.note
                                   ? ` · ${vendorFlagDetail(vendor.address)?.note}`
                                   : ""
+                              }${
+                                vendorFlagDetail(vendor.address)?.noteEditedBy
+                                  ? ` · Note last edited by ${vendorFlagDetail(vendor.address)?.noteEditedBy} · ${vendorFlagDetail(vendor.address)?.noteEditedAt}`
+                                  : ""
                               }`
                             : undefined
                         }
@@ -661,6 +665,12 @@ export default function VendorsPage() {
                             {vendorFlagDetail(vendor.address)?.note && (
                               <span className="max-w-[140px] truncate">
                                 · “{vendorFlagDetail(vendor.address)?.note}”
+                              </span>
+                            )}
+                            {vendorFlagDetail(vendor.address)?.noteEditedBy && (
+                              <span>
+                                {" "}· note edited by {vendorFlagDetail(vendor.address)?.noteEditedByShort} ·{" "}
+                                {vendorFlagDetail(vendor.address)?.noteEditedAt}
                               </span>
                             )}
                           </span>
@@ -785,6 +795,10 @@ export default function VendorsPage() {
                             vendorFlagDetail(selected.address)?.note
                               ? ` · ${vendorFlagDetail(selected.address)?.note}`
                               : ""
+                          }${
+                            vendorFlagDetail(selected.address)?.noteEditedBy
+                              ? ` · Note last edited by ${vendorFlagDetail(selected.address)?.noteEditedBy} · ${vendorFlagDetail(selected.address)?.noteEditedAt}`
+                              : ""
                           }`
                         : undefined
                     }
@@ -798,6 +812,12 @@ export default function VendorsPage() {
                         {vendorFlagDetail(selected.address)?.note && (
                           <span className="block max-w-[180px] truncate">
                             “{vendorFlagDetail(selected.address)?.note}”
+                          </span>
+                        )}
+                        {vendorFlagDetail(selected.address)?.noteEditedBy && (
+                          <span className="block">
+                            note edited by {vendorFlagDetail(selected.address)?.noteEditedByShort} ·{" "}
+                            {vendorFlagDetail(selected.address)?.noteEditedAt}
                           </span>
                         )}
                       </span>

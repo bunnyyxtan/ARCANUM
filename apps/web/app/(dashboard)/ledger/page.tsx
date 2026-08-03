@@ -379,6 +379,10 @@ export default function LedgerPage() {
                         selectedFlagDetail
                           ? `Flagged by ${selectedFlagDetail.flaggedBy} · ${selectedFlagDetail.flaggedAt}${
                               selectedFlagDetail.note ? ` · ${selectedFlagDetail.note}` : ""
+                            }${
+                              selectedFlagDetail.noteEditedBy
+                                ? ` · Note last edited by ${selectedFlagDetail.noteEditedBy} · ${selectedFlagDetail.noteEditedAt}`
+                                : ""
                             }`
                           : undefined
                       }
@@ -391,6 +395,12 @@ export default function LedgerPage() {
                           {selectedFlagDetail.note && (
                             <span className="block max-w-[160px] truncate">
                               “{selectedFlagDetail.note}”
+                            </span>
+                          )}
+                          {selectedFlagDetail.noteEditedBy && (
+                            <span className="block">
+                              note edited by {selectedFlagDetail.noteEditedByShort} ·{" "}
+                              {selectedFlagDetail.noteEditedAt}
                             </span>
                           )}
                         </span>
