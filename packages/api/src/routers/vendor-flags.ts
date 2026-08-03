@@ -1,6 +1,6 @@
 import { vendorFlags } from "@arcanum/db/schema";
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 
 import { protectedProcedure, router } from "../trpc";
@@ -57,8 +57,17 @@ export const vendorFlagsRouter = router({
         .onConflictDoUpdate({
           target: [vendorFlags.tenantId, vendorFlags.vendorAddress],
           // Re-flagging is a fresh flag: the flagger owns the note again, so
-          // any previous "last edited by" trail is cleared.
-          set: { flaggedBy: actorFor(ctx), note, noteUpdatedBy: null, noteUpdatedAt: null },
+          // any previous "last edited by" trail is cleared, and any prior
+          // unflag record is superseded (the row becomes active again).
+          set: {
+            flaggedBy: actorFor(ctx),
+            note,
+            noteUpdatedBy: null,
+            noteUpdatedAt: null,
+            createdAt: new Date(),
+            removedBy: null,
+            removedAt: null,
+          },
         })
         .returning();
 
@@ -101,7 +110,11 @@ export const vendorFlagsRouter = router({
           .update(vendorFlags)
           .set({ note, noteUpdatedBy: actorFor(ctx), noteUpdatedAt: new Date() })
           .where(
-            and(eq(vendorFlags.tenantId, tenantId), eq(vendorFlags.vendorAddress, vendorAddress)),
+            and(
+              eq(vendorFlags.tenantId, tenantId),
+              eq(vendorFlags.vendorAddress, vendorAddress),
+              isNull(vendorFlags.removedAt),
+            ),
           )
           .returning();
 
@@ -126,12 +139,19 @@ export const vendorFlagsRouter = router({
     const vendorAddress = input.vendorAddress.toLowerCase();
 
     try {
-      // Zero deleted rows means the vendor was already unflagged — that is a
+      // Soft delete: the row is kept and stamped with who cleared the flag,
+      // so the review trail records the unflag instead of erasing it.
+      // Zero updated rows means the vendor was already unflagged — that is a
       // legitimate idempotent success, not a failure.
       await ctx.db
-        .delete(vendorFlags)
+        .update(vendorFlags)
+        .set({ removedBy: actorFor(ctx), removedAt: new Date() })
         .where(
-          and(eq(vendorFlags.tenantId, tenantId), eq(vendorFlags.vendorAddress, vendorAddress)),
+          and(
+            eq(vendorFlags.tenantId, tenantId),
+            eq(vendorFlags.vendorAddress, vendorAddress),
+            isNull(vendorFlags.removedAt),
+          ),
         );
 
       return { flagged: false as const };

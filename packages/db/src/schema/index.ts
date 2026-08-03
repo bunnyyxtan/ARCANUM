@@ -195,6 +195,10 @@ export const vendorFlags = pgTable(
     noteUpdatedBy: varchar("note_updated_by", { length: 42 }),
     noteUpdatedAt: timestamp("note_updated_at", { withTimezone: true }),
     createdAt: createdAtColumn(),
+    // Soft delete: unflagging stamps who cleared the flag instead of deleting
+    // the row, so the review trail stays complete. Null = flag is active.
+    removedBy: varchar("removed_by", { length: 42 }),
+    removedAt: timestamp("removed_at", { withTimezone: true }),
   },
   (table) => ({
     tenantVendor: uniqueIndex("vendor_flags_tenant_vendor_idx").on(

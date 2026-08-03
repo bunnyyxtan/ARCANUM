@@ -259,6 +259,12 @@ export type VendorFlagDetail = {
   noteEditedAt: string | null;
 };
 
+export type VendorUnflagDetail = {
+  removedBy: string;
+  removedByShort: string;
+  removedAt: string;
+};
+
 function flagDateLabel(value: Date | string | null | undefined) {
   if (!value) {
     return "N/A";
@@ -277,11 +283,24 @@ export function useVendorFlags() {
     retry: false,
     staleTime: 30_000,
   });
-  const { flaggedAddresses, flagDetails } = useMemo(() => {
+  const { flaggedAddresses, flagDetails, unflagDetails } = useMemo(() => {
     const addresses = new Set<string>();
     const details = new Map<string, VendorFlagDetail>();
+    const removed = new Map<string, VendorUnflagDetail>();
     for (const flag of enabled ? (query.data ?? []) : []) {
       const address = flag.vendorAddress.toLowerCase();
+      const removedBy =
+        "removedBy" in flag && typeof flag.removedBy === "string" ? flag.removedBy : null;
+      if (removedBy) {
+        // Soft-deleted row: the flag was cleared. Surface who removed it and
+        // when instead of treating the vendor as flagged.
+        removed.set(address, {
+          removedBy,
+          removedByShort: shortAddress(removedBy),
+          removedAt: flagDateLabel("removedAt" in flag ? (flag.removedAt ?? null) : null),
+        });
+        continue;
+      }
       addresses.add(address);
       const noteUpdatedBy =
         "noteUpdatedBy" in flag && typeof flag.noteUpdatedBy === "string"
@@ -302,9 +321,9 @@ export function useVendorFlags() {
           : null,
       });
     }
-    return { flaggedAddresses: addresses, flagDetails: details };
+    return { flaggedAddresses: addresses, flagDetails: details, unflagDetails: removed };
   }, [enabled, query.data]);
-  return { ...query, flaggedAddresses, flagDetails };
+  return { ...query, flaggedAddresses, flagDetails, unflagDetails };
 }
 
 export function useLiveEvents() {

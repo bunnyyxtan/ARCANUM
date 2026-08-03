@@ -220,6 +220,9 @@ export default function VendorsPage() {
   const vendorFlagDetail = (vendorAddress: string) =>
     vendorFlagsState.flagDetails.get(vendorAddress.toLowerCase());
 
+  const vendorUnflagDetail = (vendorAddress: string) =>
+    vendorFlagsState.unflagDetails.get(vendorAddress.toLowerCase());
+
   const toggleVendorFlag = async (vendor: Vendor) => {
     if (!isConnected || flagToggling) return;
     const vendorAddress = vendor.address.toLowerCase();
@@ -677,6 +680,18 @@ export default function VendorsPage() {
                         )}
                       </span>
                     )}
+                    {!isVendorFlagged(vendor.address) && vendorUnflagDetail(vendor.address) && (
+                      <span
+                        title={`Review flag removed by ${vendorUnflagDetail(vendor.address)?.removedBy} · ${vendorUnflagDetail(vendor.address)?.removedAt}`}
+                        className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-[var(--wl-line)] px-2 py-0.5 font-mono text-[8px] uppercase tracking-[.12em] text-[var(--wl-mute)]"
+                      >
+                        Unflagged
+                        <span className="normal-case tracking-[.08em]">
+                          by {vendorUnflagDetail(vendor.address)?.removedByShort} ·{" "}
+                          {vendorUnflagDetail(vendor.address)?.removedAt}
+                        </span>
+                      </span>
+                    )}
                   </span>
                   <span className="w-fit rounded-full border border-[var(--wl-line)] px-2.5 py-1 font-mono text-[9px] tracking-[.1em] text-[var(--wl-body)]">
                     {categoryLabel(vendor.category)}
@@ -822,6 +837,18 @@ export default function VendorsPage() {
                         )}
                       </span>
                     )}
+                  </span>
+                )}
+                {!isVendorFlagged(selected.address) && vendorUnflagDetail(selected.address) && (
+                  <span
+                    title={`Review flag removed by ${vendorUnflagDetail(selected.address)?.removedBy} · ${vendorUnflagDetail(selected.address)?.removedAt}`}
+                    className="rounded-full border border-[var(--wl-line)] px-2.5 py-1 text-right font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-mute)]"
+                  >
+                    Unflagged
+                    <span className="block text-[8px] normal-case tracking-[.08em]">
+                      by {vendorUnflagDetail(selected.address)?.removedByShort} ·{" "}
+                      {vendorUnflagDetail(selected.address)?.removedAt}
+                    </span>
                   </span>
                 )}
               </span>
