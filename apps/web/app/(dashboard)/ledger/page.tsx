@@ -54,6 +54,8 @@ export default function LedgerPage() {
   const unflagMutation = trpc.vendorFlags.unflag.useMutation();
   const flagPending = flagMutation.isPending || unflagMutation.isPending;
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
+  const [flagNoteOpen, setFlagNoteOpen] = useState(false);
+  const [flagNote, setFlagNote] = useState("");
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -115,12 +117,20 @@ export default function LedgerPage() {
     if (!isConnected || flagPending) return;
     const vendorAddress = entry.counterpartyAddress.toLowerCase();
     const flagged = vendorFlags.flaggedAddresses.has(vendorAddress);
+    if (!flagged && !flagNoteOpen) {
+      setFlagNote("");
+      setFlagNoteOpen(true);
+      return;
+    }
     try {
       if (flagged) {
         await unflagMutation.mutateAsync({ vendorAddress });
         showNotice(`${entry.counterparty} unflagged / review marker cleared`);
       } else {
-        await flagMutation.mutateAsync({ vendorAddress });
+        const note = flagNote.trim();
+        await flagMutation.mutateAsync(note ? { vendorAddress, note } : { vendorAddress });
+        setFlagNoteOpen(false);
+        setFlagNote("");
         showNotice(`${entry.counterparty} flagged / review marker saved for all approvers`);
       }
       await utils.vendorFlags.list.invalidate();
@@ -128,6 +138,11 @@ export default function LedgerPage() {
       showNotice(caught instanceof Error ? caught.message : "Vendor flag update failed.");
     }
   };
+
+  useEffect(() => {
+    setFlagNoteOpen(false);
+    setFlagNote("");
+  }, [selectedId]);
 
   const selectedFlagged = selected
     ? vendorFlags.flaggedAddresses.has(selected.counterpartyAddress.toLowerCase())
@@ -337,7 +352,9 @@ export default function LedgerPage() {
                     <span
                       title={
                         selectedFlagDetail
-                          ? `Flagged by ${selectedFlagDetail.flaggedBy} · ${selectedFlagDetail.flaggedAt}`
+                          ? `Flagged by ${selectedFlagDetail.flaggedBy} · ${selectedFlagDetail.flaggedAt}${
+                              selectedFlagDetail.note ? ` · ${selectedFlagDetail.note}` : ""
+                            }`
                           : undefined
                       }
                       className="rounded-full border border-[var(--wl-signal)] px-2.5 py-1 text-right font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-signal)]"
@@ -346,6 +363,11 @@ export default function LedgerPage() {
                       {selectedFlagDetail && (
                         <span className="block text-[8px] normal-case tracking-[.08em] text-[var(--wl-secondary)]">
                           by {selectedFlagDetail.flaggedByShort} · {selectedFlagDetail.flaggedAt}
+                          {selectedFlagDetail.note && (
+                            <span className="block max-w-[160px] truncate">
+                              “{selectedFlagDetail.note}”
+                            </span>
+                          )}
                         </span>
                       )}
                     </span>
@@ -399,8 +421,33 @@ export default function LedgerPage() {
                     title={!isConnected ? "Connect wallet first." : undefined}
                     className="rounded-full border border-[var(--wl-signal)] px-3.5 py-2.5 text-[10px] font-semibold text-[var(--wl-signal)] transition-colors duration-[220ms] hover:bg-[var(--wl-signal)] hover:text-[var(--wl-bg)] disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {selectedFlagged ? "Unflag vendor" : "Flag vendor"}
+                    {selectedFlagged ? "Unflag vendor" : flagNoteOpen ? "Save flag" : "Flag vendor"}
                   </button>
+                  {!selectedFlagged && flagNoteOpen && (
+                    <div className="w-full">
+                      <input
+                        autoFocus
+                        value={flagNote}
+                        maxLength={200}
+                        onChange={(event) => setFlagNote(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") void toggleVendorFlag(selected);
+                        }}
+                        placeholder="Optional note — why flag this vendor?"
+                        className="w-full border-b border-[var(--wl-faint)] bg-transparent py-1.5 text-[11px] text-[var(--wl-ink)] outline-none placeholder:text-[var(--wl-mute)] focus:border-[var(--wl-signal)]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFlagNoteOpen(false);
+                          setFlagNote("");
+                        }}
+                        className="mt-1.5 font-mono text-[9px] uppercase tracking-[.1em] text-[var(--wl-secondary)] hover:text-[var(--wl-ink)]"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
                   {!isConnected && (
                     <p className="w-full font-mono text-[9px] tracking-[.1em] text-[var(--wl-mute)]">
                       CONNECT WALLET FIRST

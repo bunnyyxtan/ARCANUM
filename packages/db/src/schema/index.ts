@@ -191,6 +191,7 @@ export const vendorFlags = pgTable(
     tenantId: tenantIdColumn(),
     vendorAddress: varchar("vendor_address", { length: 42 }).notNull(),
     flaggedBy: varchar("flagged_by", { length: 42 }).notNull(),
+    note: text("note"),
     createdAt: createdAtColumn(),
   },
   (table) => ({

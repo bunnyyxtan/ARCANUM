@@ -12,6 +12,14 @@ const vendorFlagInputSchema = z.object({
     .regex(/^0x[a-fA-F0-9]{40}$/, "A valid vendor address is required."),
 });
 
+const vendorFlagCreateSchema = vendorFlagInputSchema.extend({
+  note: z
+    .string()
+    .trim()
+    .max(200, "Keep the review note under 200 characters.")
+    .optional(),
+});
+
 // Vendor flags are persistent review state. Unlike list surfaces that tolerate
 // a demo fallback, these fail closed: a database problem must surface as an
 // error, never as "no flags" or a fake success.
@@ -37,17 +45,18 @@ export const vendorFlagsRouter = router({
     }
   }),
 
-  flag: protectedProcedure.input(vendorFlagInputSchema).mutation(async ({ ctx, input }) => {
+  flag: protectedProcedure.input(vendorFlagCreateSchema).mutation(async ({ ctx, input }) => {
     const tenantId = tenantIdFor(ctx);
     const vendorAddress = input.vendorAddress.toLowerCase();
+    const note = input.note ? input.note : null;
 
     try {
       const [row] = await ctx.db
         .insert(vendorFlags)
-        .values({ tenantId, vendorAddress, flaggedBy: actorFor(ctx) })
+        .values({ tenantId, vendorAddress, flaggedBy: actorFor(ctx), note })
         .onConflictDoUpdate({
           target: [vendorFlags.tenantId, vendorFlags.vendorAddress],
-          set: { flaggedBy: actorFor(ctx) },
+          set: { flaggedBy: actorFor(ctx), note },
         })
         .returning();
 

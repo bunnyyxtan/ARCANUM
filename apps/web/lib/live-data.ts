@@ -252,6 +252,7 @@ export type VendorFlagDetail = {
   flaggedBy: string;
   flaggedByShort: string;
   flaggedAt: string;
+  note: string | null;
 };
 
 function flagDateLabel(value: Date | string | null | undefined) {
@@ -282,6 +283,10 @@ export function useVendorFlags() {
         flaggedBy: flag.flaggedBy,
         flaggedByShort: shortAddress(flag.flaggedBy),
         flaggedAt: flagDateLabel(flag.createdAt),
+        note:
+          "note" in flag && typeof flag.note === "string" && flag.note.trim() !== ""
+            ? flag.note
+            : null,
       });
     }
     return { flaggedAddresses: addresses, flagDetails: details };

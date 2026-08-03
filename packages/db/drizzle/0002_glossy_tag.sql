@@ -1,0 +1,1 @@
+ALTER TABLE "vendor_flags" ADD COLUMN "note" text;

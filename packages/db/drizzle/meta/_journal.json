@@ -15,6 +15,13 @@
       "when": 1785760276744,
       "tag": "0001_harsh_true_believers",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785781204573,
+      "tag": "0002_glossy_tag",
+      "breakpoints": true
     }
   ]
 }

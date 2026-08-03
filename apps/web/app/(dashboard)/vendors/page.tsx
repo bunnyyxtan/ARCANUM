@@ -99,6 +99,8 @@ export default function VendorsPage() {
 
   const [capEditing, setCapEditing] = useState(false);
   const [capValue, setCapValue] = useState("");
+  const [flagNoteOpen, setFlagNoteOpen] = useState(false);
+  const [flagNote, setFlagNote] = useState("");
 
   const [addVendorOpen, setAddVendorOpen] = useState(false);
   const [vendorForm, setVendorForm] = useState<AddVendorFormState>(initialVendorForm);
@@ -202,6 +204,8 @@ export default function VendorsPage() {
   const selectVendor = useCallback((id: string) => {
     setSelectedId(id);
     setCapEditing(false);
+    setFlagNoteOpen(false);
+    setFlagNote("");
   }, []);
 
   const isVendorFlagged = (vendorAddress: string) =>
@@ -213,12 +217,20 @@ export default function VendorsPage() {
   const toggleVendorFlag = async (vendor: Vendor) => {
     if (!isConnected || flagToggling) return;
     const vendorAddress = vendor.address.toLowerCase();
+    if (!isVendorFlagged(vendorAddress) && !flagNoteOpen) {
+      setFlagNote("");
+      setFlagNoteOpen(true);
+      return;
+    }
     try {
       if (isVendorFlagged(vendorAddress)) {
         await unflagMutation.mutateAsync({ vendorAddress });
         setNotice(`${vendor.name.toUpperCase()} REVIEW FLAG CLEARED`);
       } else {
-        await flagMutation.mutateAsync({ vendorAddress });
+        const note = flagNote.trim();
+        await flagMutation.mutateAsync(note ? { vendorAddress, note } : { vendorAddress });
+        setFlagNoteOpen(false);
+        setFlagNote("");
         setNotice(`${vendor.name.toUpperCase()} FLAGGED FOR REVIEW`);
       }
       await utils.vendorFlags.list.invalidate();
@@ -609,7 +621,11 @@ export default function VendorsPage() {
                       <span
                         title={
                           vendorFlagDetail(vendor.address)
-                            ? `Flagged by ${vendorFlagDetail(vendor.address)?.flaggedBy} · ${vendorFlagDetail(vendor.address)?.flaggedAt}`
+                            ? `Flagged by ${vendorFlagDetail(vendor.address)?.flaggedBy} · ${vendorFlagDetail(vendor.address)?.flaggedAt}${
+                                vendorFlagDetail(vendor.address)?.note
+                                  ? ` · ${vendorFlagDetail(vendor.address)?.note}`
+                                  : ""
+                              }`
                             : undefined
                         }
                         className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-[var(--wl-signal)] px-2 py-0.5 font-mono text-[8px] uppercase tracking-[.12em] text-[var(--wl-signal)]"
@@ -619,6 +635,11 @@ export default function VendorsPage() {
                           <span className="normal-case tracking-[.08em] text-[var(--wl-secondary)]">
                             by {vendorFlagDetail(vendor.address)?.flaggedByShort} ·{" "}
                             {vendorFlagDetail(vendor.address)?.flaggedAt}
+                            {vendorFlagDetail(vendor.address)?.note && (
+                              <span className="max-w-[140px] truncate">
+                                · “{vendorFlagDetail(vendor.address)?.note}”
+                              </span>
+                            )}
                           </span>
                         )}
                       </span>
@@ -737,7 +758,11 @@ export default function VendorsPage() {
                   <span
                     title={
                       vendorFlagDetail(selected.address)
-                        ? `Flagged by ${vendorFlagDetail(selected.address)?.flaggedBy} · ${vendorFlagDetail(selected.address)?.flaggedAt}`
+                        ? `Flagged by ${vendorFlagDetail(selected.address)?.flaggedBy} · ${vendorFlagDetail(selected.address)?.flaggedAt}${
+                            vendorFlagDetail(selected.address)?.note
+                              ? ` · ${vendorFlagDetail(selected.address)?.note}`
+                              : ""
+                          }`
                         : undefined
                     }
                     className="rounded-full border border-[var(--wl-signal)] px-2.5 py-1 text-right font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-signal)]"
@@ -747,6 +772,11 @@ export default function VendorsPage() {
                       <span className="block text-[8px] normal-case tracking-[.08em] text-[var(--wl-secondary)]">
                         by {vendorFlagDetail(selected.address)?.flaggedByShort} ·{" "}
                         {vendorFlagDetail(selected.address)?.flaggedAt}
+                        {vendorFlagDetail(selected.address)?.note && (
+                          <span className="block max-w-[180px] truncate">
+                            “{vendorFlagDetail(selected.address)?.note}”
+                          </span>
+                        )}
                       </span>
                     )}
                   </span>
@@ -791,8 +821,37 @@ export default function VendorsPage() {
                 onClick={() => void toggleVendorFlag(selected)}
                 className="rounded-full border border-[var(--wl-line)] px-4 py-2.5 font-mono text-[9px] tracking-[.1em] text-[var(--wl-body)] transition-all duration-[220ms] hover:-translate-y-0.5 hover:border-[var(--wl-signal)] hover:text-[var(--wl-signal)] disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isVendorFlagged(selected.address) ? "Unflag review" : "Flag for review"}
+                {isVendorFlagged(selected.address)
+                  ? "Unflag review"
+                  : flagNoteOpen
+                    ? "Save flag"
+                    : "Flag for review"}
               </button>
+              {!isVendorFlagged(selected.address) && flagNoteOpen && (
+                <div className="w-full">
+                  <input
+                    autoFocus
+                    value={flagNote}
+                    maxLength={200}
+                    onChange={(event) => setFlagNote(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") void toggleVendorFlag(selected);
+                    }}
+                    placeholder="Optional note — why flag this vendor?"
+                    className="w-full max-w-[360px] border-b border-[var(--wl-faint)] bg-transparent py-1.5 text-[11px] text-[var(--wl-ink)] outline-none placeholder:text-[var(--wl-mute)] focus:border-[var(--wl-signal)]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFlagNoteOpen(false);
+                      setFlagNote("");
+                    }}
+                    className="mt-1.5 block font-mono text-[9px] uppercase tracking-[.1em] text-[var(--wl-secondary)] hover:text-[var(--wl-ink)]"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
               {!isConnected && (
                 <p className="w-full font-mono text-[9px] tracking-[.1em] text-[var(--wl-mute)]">
                   CONNECT WALLET FIRST
