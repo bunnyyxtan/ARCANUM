@@ -248,6 +248,23 @@ export function useLiveVendors() {
   return { ...query, data: vendors };
 }
 
+export type VendorFlagDetail = {
+  flaggedBy: string;
+  flaggedByShort: string;
+  flaggedAt: string;
+};
+
+function flagDateLabel(value: Date | string | null | undefined) {
+  if (!value) {
+    return "N/A";
+  }
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "N/A";
+  }
+  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+}
+
 export function useVendorFlags() {
   const enabled = useLiveQueriesEnabled();
   const query = trpc.vendorFlags.list.useQuery(undefined, {
@@ -255,14 +272,21 @@ export function useVendorFlags() {
     retry: false,
     staleTime: 30_000,
   });
-  const flaggedAddresses = useMemo(
-    () =>
-      new Set(
-        (enabled ? (query.data ?? []) : []).map((flag) => flag.vendorAddress.toLowerCase()),
-      ),
-    [enabled, query.data],
-  );
-  return { ...query, flaggedAddresses };
+  const { flaggedAddresses, flagDetails } = useMemo(() => {
+    const addresses = new Set<string>();
+    const details = new Map<string, VendorFlagDetail>();
+    for (const flag of enabled ? (query.data ?? []) : []) {
+      const address = flag.vendorAddress.toLowerCase();
+      addresses.add(address);
+      details.set(address, {
+        flaggedBy: flag.flaggedBy,
+        flaggedByShort: shortAddress(flag.flaggedBy),
+        flaggedAt: flagDateLabel(flag.createdAt),
+      });
+    }
+    return { flaggedAddresses: addresses, flagDetails: details };
+  }, [enabled, query.data]);
+  return { ...query, flaggedAddresses, flagDetails };
 }
 
 export function useLiveEvents() {

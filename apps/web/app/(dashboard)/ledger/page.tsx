@@ -132,6 +132,9 @@ export default function LedgerPage() {
   const selectedFlagged = selected
     ? vendorFlags.flaggedAddresses.has(selected.counterpartyAddress.toLowerCase())
     : false;
+  const selectedFlagDetail = selected
+    ? vendorFlags.flagDetails.get(selected.counterpartyAddress.toLowerCase())
+    : undefined;
 
   const openArcscan = (hash: string) => {
     const url = getArcscanTxUrl(hash);
@@ -331,8 +334,20 @@ export default function LedgerPage() {
                 </div>
                 <div className="flex items-center gap-3">
                   {selectedFlagged && (
-                    <span className="rounded-full border border-[var(--wl-signal)] px-2.5 py-1 font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-signal)]">
+                    <span
+                      title={
+                        selectedFlagDetail
+                          ? `Flagged by ${selectedFlagDetail.flaggedBy} · ${selectedFlagDetail.flaggedAt}`
+                          : undefined
+                      }
+                      className="rounded-full border border-[var(--wl-signal)] px-2.5 py-1 text-right font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-signal)]"
+                    >
                       ⚑ Flagged
+                      {selectedFlagDetail && (
+                        <span className="block text-[8px] normal-case tracking-[.08em] text-[var(--wl-secondary)]">
+                          by {selectedFlagDetail.flaggedByShort} · {selectedFlagDetail.flaggedAt}
+                        </span>
+                      )}
                     </span>
                   )}
                   <StatusPill status={selected.status} />

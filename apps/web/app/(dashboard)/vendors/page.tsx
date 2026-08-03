@@ -207,6 +207,9 @@ export default function VendorsPage() {
   const isVendorFlagged = (vendorAddress: string) =>
     vendorFlagsState.flaggedAddresses.has(vendorAddress.toLowerCase());
 
+  const vendorFlagDetail = (vendorAddress: string) =>
+    vendorFlagsState.flagDetails.get(vendorAddress.toLowerCase());
+
   const toggleVendorFlag = async (vendor: Vendor) => {
     if (!isConnected || flagToggling) return;
     const vendorAddress = vendor.address.toLowerCase();
@@ -603,8 +606,21 @@ export default function VendorsPage() {
                       {shortAddress(vendor.address)}
                     </small>
                     {isVendorFlagged(vendor.address) && (
-                      <span className="mt-1.5 inline-flex rounded-full border border-[var(--wl-signal)] px-2 py-0.5 font-mono text-[8px] uppercase tracking-[.12em] text-[var(--wl-signal)]">
+                      <span
+                        title={
+                          vendorFlagDetail(vendor.address)
+                            ? `Flagged by ${vendorFlagDetail(vendor.address)?.flaggedBy} · ${vendorFlagDetail(vendor.address)?.flaggedAt}`
+                            : undefined
+                        }
+                        className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-[var(--wl-signal)] px-2 py-0.5 font-mono text-[8px] uppercase tracking-[.12em] text-[var(--wl-signal)]"
+                      >
                         ⚑ Review
+                        {vendorFlagDetail(vendor.address) && (
+                          <span className="normal-case tracking-[.08em] text-[var(--wl-secondary)]">
+                            by {vendorFlagDetail(vendor.address)?.flaggedByShort} ·{" "}
+                            {vendorFlagDetail(vendor.address)?.flaggedAt}
+                          </span>
+                        )}
                       </span>
                     )}
                   </span>
@@ -718,8 +734,21 @@ export default function VendorsPage() {
               <span className="flex flex-col items-end gap-2">
                 <StatePill blocked={selected.trust === "blocked"} />
                 {isVendorFlagged(selected.address) && (
-                  <span className="rounded-full border border-[var(--wl-signal)] px-2.5 py-1 font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-signal)]">
+                  <span
+                    title={
+                      vendorFlagDetail(selected.address)
+                        ? `Flagged by ${vendorFlagDetail(selected.address)?.flaggedBy} · ${vendorFlagDetail(selected.address)?.flaggedAt}`
+                        : undefined
+                    }
+                    className="rounded-full border border-[var(--wl-signal)] px-2.5 py-1 text-right font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-signal)]"
+                  >
                     ⚑ Review
+                    {vendorFlagDetail(selected.address) && (
+                      <span className="block text-[8px] normal-case tracking-[.08em] text-[var(--wl-secondary)]">
+                        by {vendorFlagDetail(selected.address)?.flaggedByShort} ·{" "}
+                        {vendorFlagDetail(selected.address)?.flaggedAt}
+                      </span>
+                    )}
                   </span>
                 )}
               </span>
