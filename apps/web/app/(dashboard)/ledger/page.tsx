@@ -5,7 +5,12 @@ import { useAccount } from "wagmi";
 
 import { getArcscanTxUrl } from "@/lib/arcscan";
 import { categoryLabel, formatUsd, formatUsdCompact } from "@/lib/format";
-import { useLiveLedger, useVendorFlags } from "@/lib/live-data";
+import {
+  useLiveLedger,
+  useVendorFlagHistory,
+  useVendorFlags,
+  vendorFlagEventLabel,
+} from "@/lib/live-data";
 import { matchesSearch, normalizeSearch } from "@/lib/table-state";
 import { trpc } from "@/lib/trpc";
 import type { LedgerEntry, LedgerStatus } from "@/lib/types";
@@ -137,7 +142,10 @@ export default function LedgerPage() {
         setFlagNote("");
         showNotice(`${entry.counterparty} flagged / review marker saved for all approvers`);
       }
-      await utils.vendorFlags.list.invalidate();
+      await Promise.all([
+        utils.vendorFlags.list.invalidate(),
+        utils.vendorFlags.history.invalidate({ vendorAddress }),
+      ]);
     } catch (caught) {
       showNotice(caught instanceof Error ? caught.message : "Vendor flag update failed.");
     }
@@ -156,7 +164,10 @@ export default function LedgerPage() {
           ? `${entry.counterparty} review note updated / flag preserved`
           : `${entry.counterparty} review note cleared / flag preserved`,
       );
-      await utils.vendorFlags.list.invalidate();
+      await Promise.all([
+        utils.vendorFlags.list.invalidate(),
+        utils.vendorFlags.history.invalidate({ vendorAddress }),
+      ]);
     } catch (caught) {
       showNotice(caught instanceof Error ? caught.message : "Review note update failed.");
     }
@@ -178,6 +189,7 @@ export default function LedgerPage() {
   const selectedUnflagDetail = selected
     ? vendorFlags.unflagDetails.get(selected.counterpartyAddress.toLowerCase())
     : undefined;
+  const flagHistory = useVendorFlagHistory(selected?.counterpartyAddress ?? null);
 
   const openArcscan = (hash: string) => {
     const url = getArcscanTxUrl(hash);
@@ -544,6 +556,69 @@ export default function LedgerPage() {
                     <p className="w-full font-mono text-[9px] tracking-[.1em] text-[var(--wl-mute)]">
                       CONNECT WALLET FIRST
                     </p>
+                  )}
+                </div>
+                <div className="border-t border-[var(--wl-line)] pb-5">
+                  <div className="flex items-center justify-between border-b border-[var(--wl-line)] py-4">
+                    <span className="font-mono text-[10px] uppercase tracking-[.16em] text-[var(--wl-secondary)]">
+                      Review history
+                    </span>
+                    <span className="font-mono text-[9px] text-[var(--wl-mute)]">
+                      {flagHistory.entries.length > 0
+                        ? `${flagHistory.entries.length} EVENTS`
+                        : "AUDIT TRAIL"}
+                    </span>
+                  </div>
+                  {flagHistory.isLoading ? (
+                    <p className="py-4 font-mono text-[9px] tracking-[.1em] text-[var(--wl-mute)]">
+                      LOADING REVIEW TRAIL…
+                    </p>
+                  ) : flagHistory.isError ? (
+                    <p className="py-4 font-mono text-[9px] tracking-[.1em] text-[var(--wl-signal)]">
+                      REVIEW TRAIL UNAVAILABLE — RETRY SHORTLY
+                    </p>
+                  ) : flagHistory.entries.length === 0 ? (
+                    <p className="py-4 font-mono text-[9px] tracking-[.1em] text-[var(--wl-mute)]">
+                      NO REVIEW EVENTS RECORDED FOR THIS COUNTERPARTY
+                    </p>
+                  ) : (
+                    <ol className="divide-y divide-[var(--wl-line)]">
+                      {flagHistory.entries.map((entry) => (
+                        <li key={entry.id} className="flex items-start justify-between gap-4 py-3">
+                          <span className="min-w-0">
+                            <span
+                              className={`block text-[11px] ${
+                                entry.eventType === "unflagged"
+                                  ? "text-[var(--wl-secondary2)]"
+                                  : "text-[var(--wl-body)]"
+                              }`}
+                            >
+                              {entry.eventType === "flagged" && (
+                                <span className="mr-1.5 text-[var(--wl-signal)]">⚑</span>
+                              )}
+                              {vendorFlagEventLabel(entry.eventType)}
+                            </span>
+                            {entry.note && (
+                              <span className="mt-1 block truncate font-mono text-[9px] text-[var(--wl-secondary)]">
+                                “{entry.note}”
+                              </span>
+                            )}
+                            {!entry.note && entry.eventType === "note_updated" && (
+                              <span className="mt-1 block font-mono text-[9px] text-[var(--wl-mute)]">
+                                note cleared
+                              </span>
+                            )}
+                          </span>
+                          <span
+                            title={entry.actor}
+                            className="shrink-0 text-right font-mono text-[9px] text-[var(--wl-mute)]"
+                          >
+                            {entry.actorShort}
+                            <span className="block">{entry.at}</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
                   )}
                 </div>
               </div>
