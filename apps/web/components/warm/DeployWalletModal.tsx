@@ -198,9 +198,6 @@ export function DeployWalletModal({
   const recordCreatedWallet = trpc.agents.recordCreatedWallet.useMutation();
   const deployment = deployContractStatus();
   const walletFactoryAddress = configuredAddress(process.env.NEXT_PUBLIC_WALLET_FACTORY);
-  const missingLabels = deployment.contracts
-    .filter((contract) => !contract.configured)
-    .map((contract) => contract.label);
   const [form, setForm] = useState<DeployWalletFormState>(initialDeployWalletForm);
   const [txHash, setTxHash] = useState<Hash | null>(null);
   const [createdWallet, setCreatedWallet] = useState<Address | null>(null);
@@ -212,7 +209,6 @@ export function DeployWalletModal({
   >("idle");
   const [persistenceMessage, setPersistenceMessage] = useState<string | null>(null);
   const [pendingSyncInput, setPendingSyncInput] = useState<CreatedWalletSyncInput | null>(null);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [advancedGovernanceOpen, setAdvancedGovernanceOpen] = useState(false);
   const submittingRef = useRef(false);
   const readyForTransaction =
@@ -457,18 +453,18 @@ export function DeployWalletModal({
 
   return (
     <div
-      className="warm-modal-backdrop fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[rgba(var(--wl-ink-rgb),.28)] p-4 md:items-center"
+      className="warm-modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-[rgba(var(--wl-ink-rgb),.28)] p-4"
       role="dialog"
       aria-modal="true"
     >
       <button type="button" aria-label="Close deploy dialog" className="fixed inset-0 -z-10 cursor-default" onClick={onClose} />
-      <section className="warm-modal-panel my-6 w-full max-w-[480px] border border-[var(--wl-line-bold)] bg-[var(--wl-bg)] shadow-[0_28px_70px_-18px_rgba(var(--wl-ink-rgb),.45)]">
-        <div className="flex items-start justify-between border-b border-[var(--wl-line)] p-7 pb-5">
+      <section className="warm-modal-panel flex max-h-[calc(100dvh-40px)] w-full max-w-[480px] flex-col border border-[var(--wl-line-bold)] bg-[var(--wl-bg)] shadow-[0_28px_70px_-18px_rgba(var(--wl-ink-rgb),.45)]">
+        <div className="flex shrink-0 items-start justify-between border-b border-[var(--wl-line)] p-6 pb-4">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
               FLEET / NEW WALLET
             </p>
-            <h2 className="font-display mt-4 text-[28px] font-semibold tracking-[-.015em] text-[var(--wl-ink)]">
+            <h2 className="font-display mt-2 text-[24px] font-semibold tracking-[-.015em] text-[var(--wl-ink)]">
               Deploy governed wallet
             </h2>
           </div>
@@ -481,56 +477,7 @@ export function DeployWalletModal({
             CLOSE
           </button>
         </div>
-        <div className="space-y-4 p-5 text-[12px] leading-relaxed text-[var(--wl-secondary)]">
-          <p>
-            {!deployment.ready
-              ? `Deployment is paused until ${missingLabels.join(", ")} ${
-                  missingLabels.length === 1 ? "is" : "are"
-                } configured in the frontend environment.`
-              : isConnected
-                ? chainId === arcTestnet.id
-                  ? "Arc Testnet contracts are ready. WalletFactory is configured for real governed wallet creation."
-                  : "Wallet is connected. Switch to Arc Testnet before creating a governed wallet."
-                : "Connect and authenticate wallet to deploy a governed wallet."}
-          </p>
-          <p className="font-mono text-[9px] leading-[1.6] text-[var(--wl-mute)]">
-            A fresh wallet starts frozen. Publish a policy before it can move capital.
-          </p>
-          <div className="flex items-center justify-between border border-[var(--wl-line)] bg-[var(--wl-bg-soft)] px-3 py-2">
-            <span
-              className={`font-mono text-[10px] uppercase tracking-[.12em] ${deployment.ready ? "text-[var(--wl-green)]" : "text-[var(--wl-signal)]"}`}
-            >
-              {deployment.ready ? "ARC TESTNET CONTRACTS READY" : "DEPLOYMENT CONFIG INCOMPLETE"}
-            </span>
-            <button
-              type="button"
-              onClick={() => setAdvancedOpen((open) => !open)}
-              className="font-mono text-[10px] uppercase tracking-[.14em] text-[var(--wl-secondary)] hover:text-[var(--wl-ink)]"
-            >
-              ADVANCED DEPLOYMENT DETAILS {advancedOpen ? "-" : "+"}
-            </button>
-          </div>
-          {advancedOpen ? (
-            <div className="space-y-2 border border-[var(--wl-line)] bg-[var(--wl-bg-soft)] p-3">
-              {deployment.contracts.map((contract) => (
-                <div
-                  key={contract.label}
-                  className="grid grid-cols-[170px_minmax(0,1fr)_72px] items-center gap-3 font-mono text-[10px] uppercase tracking-[.12em]"
-                >
-                  <span className="text-[var(--wl-mute)]">{contract.label}</span>
-                  <span
-                    className={`min-w-0 truncate ${contract.configured ? "text-[var(--wl-body)]" : "text-[var(--wl-signal)]"}`}
-                    title={contract.value ?? "not configured"}
-                  >
-                    {contract.configured ? shortAddress(contract.value ?? "") : "MISSING"}
-                  </span>
-                  <span className={contract.configured ? "text-[var(--wl-green)]" : "text-[var(--wl-signal)]"}>
-                    {contract.configured ? "READY" : "MISSING"}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : null}
+        <div className="min-h-0 space-y-4 overflow-y-auto p-5 text-[12px] leading-relaxed text-[var(--wl-secondary)]">
           {hasSuccess ? (
             <div
               className={`space-y-4 border bg-[var(--wl-green-tint)] p-4 ${persistenceFailed ? "border-[var(--wl-amber)]" : "border-[var(--wl-green)]"}`}

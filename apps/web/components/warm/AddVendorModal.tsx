@@ -80,11 +80,6 @@ export function AddVendorModal({
           </button>
         </div>
         <div className="min-h-0 space-y-4 overflow-y-auto p-5 text-[12px] text-[var(--wl-secondary)]">
-          <p className="leading-relaxed">
-            Vendors are approved payment destinations for your governed wallet. Agent spend requests
-            to vendors still pass through policy checks.
-          </p>
-
           <label className="block">
             <span className="block font-mono text-[10px] uppercase tracking-[.14em] text-[var(--wl-secondary)]">
               GOVERNED WALLET
@@ -150,8 +145,7 @@ export function AddVendorModal({
               className={`${fieldClass} font-mono`}
             />
             <span className="mt-1.5 block font-mono text-[10px] leading-[1.5] tracking-[.08em] text-[var(--wl-mute)]">
-              On-chain VendorRegistry writes require a 0x destination address. Domains can be
-              captured in notes.
+              Needs a 0x destination address — put domains in notes.
             </span>
           </label>
 
@@ -175,23 +169,12 @@ export function AddVendorModal({
             <span className="block font-mono text-[10px] uppercase tracking-[.14em] text-[var(--wl-secondary)]">
               NOTES
             </span>
-            <textarea
+            <input
               value={form.notes}
               onChange={(event) => onChange({ notes: event.target.value })}
               placeholder="approval context, domain, owner"
-              className="mt-2 min-h-20 w-full resize-none border border-[var(--wl-line)] bg-[var(--wl-bg-raised)] px-3 py-2 text-[12px] text-[var(--wl-ink)] outline-none placeholder:text-[var(--wl-mute)] focus:border-[var(--wl-signal)]"
+              className={fieldClass}
             />
-          </label>
-
-          <label className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[.12em] text-[var(--wl-secondary)]">
-            <input
-              type="checkbox"
-              checked={false}
-              disabled
-              readOnly
-              className="h-4 w-4 border border-[var(--wl-line)] bg-[var(--wl-bg-raised)]"
-            />
-            REVIEW-REQUIRED FLAG IS NOT SUPPORTED BY THE DEPLOYED CONTRACT
           </label>
 
           {networkNotice ? (
