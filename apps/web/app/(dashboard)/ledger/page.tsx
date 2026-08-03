@@ -25,6 +25,7 @@ const statusFilters: readonly StatusFilter[] = [
   "frozen",
 ];
 
+
 const statusClasses: Record<LedgerStatus, string> = {
   approved: "bg-[var(--wl-green-tint)] text-[var(--wl-green)]",
   rejected: "bg-[var(--wl-signal)] text-[var(--wl-bg)]",
@@ -61,6 +62,7 @@ export default function LedgerPage() {
   const flagPending =
     flagMutation.isPending || unflagMutation.isPending || updateNoteMutation.isPending;
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
+  const [flaggedOnly, setFlaggedOnly] = useState(false);
   const [flagNoteOpen, setFlagNoteOpen] = useState(false);
   const [flagNote, setFlagNote] = useState("");
   const [noteEditOpen, setNoteEditOpen] = useState(false);
@@ -69,11 +71,14 @@ export default function LedgerPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const baseRows = liveLedger.data;
+  const flaggedAddresses = vendorFlags.flaggedAddresses;
 
   const visibleRows = useMemo(() => {
     const query = normalizeSearch(search);
     return baseRows.filter((row) => {
       const statusMatches = statusFilter === "ALL" || row.status === statusFilter;
+      const flaggedMatches =
+        !flaggedOnly || flaggedAddresses.has(row.counterpartyAddress.toLowerCase());
       const queryMatches = matchesSearch(query, [
         row.agentName,
         row.counterparty,
@@ -82,9 +87,9 @@ export default function LedgerPage() {
         row.status,
         row.hash,
       ]);
-      return statusMatches && queryMatches;
+      return statusMatches && flaggedMatches && queryMatches;
     });
-  }, [baseRows, search, statusFilter]);
+  }, [baseRows, search, statusFilter, flaggedOnly, flaggedAddresses]);
 
   const selected: LedgerEntry | null = useMemo(() => {
     if (!baseRows.length) return null;
@@ -288,6 +293,19 @@ export default function LedgerPage() {
                 {item}
               </button>
             ))}
+            <button
+              type="button"
+              onClick={() => setFlaggedOnly((value) => !value)}
+              aria-pressed={flaggedOnly}
+              title="Only show payments to counterparties currently flagged for review"
+              className={`rounded-full border px-3.5 py-2 font-mono text-[9px] uppercase tracking-[.14em] transition-all duration-[220ms] ${
+                flaggedOnly
+                  ? "border-[var(--wl-signal)] bg-[var(--wl-signal)] text-[var(--wl-bg)]"
+                  : "border-[var(--wl-line)] text-[var(--wl-secondary2)] hover:border-[var(--wl-signal)] hover:text-[var(--wl-signal)]"
+              }`}
+            >
+              ⚑ Flagged
+            </button>
           </div>
           <label className="flex min-w-0 items-center gap-3 border-b border-[var(--wl-faint)] pb-2 text-[var(--wl-mute)] xl:w-[260px]">
             <span className="font-mono text-[10px]">⌕</span>
@@ -357,6 +375,14 @@ export default function LedgerPage() {
                     </div>
                     <span className="text-[12px] font-medium">{row.agentName}</span>
                     <span className="hidden truncate text-[12px] text-[var(--wl-body)] md:block">
+                      {flaggedAddresses.has(row.counterpartyAddress.toLowerCase()) && (
+                        <span
+                          title="Counterparty flagged for review"
+                          className="mr-1.5 text-[var(--wl-signal)]"
+                        >
+                          ⚑
+                        </span>
+                      )}
                       {row.counterparty}
                     </span>
                     <span className="hidden font-mono text-[10px] uppercase tracking-[.08em] text-[var(--wl-secondary2)] md:block">
