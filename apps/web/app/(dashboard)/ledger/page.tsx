@@ -175,6 +175,9 @@ export default function LedgerPage() {
   const selectedFlagDetail = selected
     ? vendorFlags.flagDetails.get(selected.counterpartyAddress.toLowerCase())
     : undefined;
+  const selectedUnflagDetail = selected
+    ? vendorFlags.unflagDetails.get(selected.counterpartyAddress.toLowerCase())
+    : undefined;
 
   const openArcscan = (hash: string) => {
     const url = getArcscanTxUrl(hash);
@@ -405,6 +408,17 @@ export default function LedgerPage() {
                           )}
                         </span>
                       )}
+                    </span>
+                  )}
+                  {!selectedFlagged && selectedUnflagDetail && (
+                    <span
+                      title={`Review flag removed by ${selectedUnflagDetail.removedBy} · ${selectedUnflagDetail.removedAt}`}
+                      className="rounded-full border border-[var(--wl-line)] px-2.5 py-1 text-right font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-mute)]"
+                    >
+                      Unflagged
+                      <span className="block text-[8px] normal-case tracking-[.08em]">
+                        by {selectedUnflagDetail.removedByShort} · {selectedUnflagDetail.removedAt}
+                      </span>
                     </span>
                   )}
                   <StatusPill status={selected.status} />
