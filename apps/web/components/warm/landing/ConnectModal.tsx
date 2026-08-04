@@ -9,12 +9,31 @@ import { useAccount, useConnect } from "wagmi";
 type WalletOption = { name: string; hint: string; logo: string; match: string[]; tag?: string };
 
 const WALLET_OPTIONS: WalletOption[] = [
-  { name: "MetaMask", hint: "Browser extension", logo: "/wallets/metamask.png", match: ["metamask", "io.metamask"], tag: "INSTALLED" },
-  { name: "Rabby", hint: "Browser extension", logo: "/wallets/rabby.png", match: ["rabby", "io.rabby"] },
-  { name: "Coinbase Wallet", hint: "Extension · mobile", logo: "/wallets/coinbase.png", match: ["coinbase", "coinbasewalletsdk", "com.coinbase.wallet"] },
+  {
+    name: "MetaMask",
+    hint: "Browser extension",
+    logo: "/wallets/metamask.png",
+    match: ["metamask", "io.metamask"],
+    tag: "INSTALLED",
+  },
+  {
+    name: "Rabby",
+    hint: "Browser extension",
+    logo: "/wallets/rabby.png",
+    match: ["rabby", "io.rabby"],
+  },
+  {
+    name: "Coinbase Wallet",
+    hint: "Extension · mobile",
+    logo: "/wallets/coinbase.png",
+    match: ["coinbase", "coinbasewalletsdk", "com.coinbase.wallet"],
+  },
 ];
 
-function resolveConnector(connectors: readonly Connector[], option: WalletOption): Connector | undefined {
+function resolveConnector(
+  connectors: readonly Connector[],
+  option: WalletOption,
+): Connector | undefined {
   const lowerMatch = option.match;
   const byId = connectors.find((connector) =>
     lowerMatch.some((needle) => connector.id.toLowerCase().includes(needle)),
@@ -26,7 +45,9 @@ function resolveConnector(connectors: readonly Connector[], option: WalletOption
   if (byName) return byName;
   // Fall back to a generic injected connector so the flow still works when the
   // specific extension is not individually surfaced by wagmi.
-  return connectors.find((connector) => connector.id === "injected" || connector.type === "injected");
+  return connectors.find(
+    (connector) => connector.id === "injected" || connector.type === "injected",
+  );
 }
 
 export function ConnectModal({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -109,7 +130,9 @@ export function ConnectModal({ open, onClose }: { open: boolean; onClose: () => 
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-[var(--wl-line-soft)] px-7 py-4">
-          <p className="font-mono text-[10px] uppercase tracking-[.2em] text-[var(--wl-signal)]">ARCANUM / ACCESS</p>
+          <p className="font-mono text-[10px] uppercase tracking-[.2em] text-[var(--wl-signal)]">
+            ARCANUM / ACCESS
+          </p>
           <button
             type="button"
             aria-label="Close"
@@ -123,15 +146,21 @@ export function ConnectModal({ open, onClose }: { open: boolean; onClose: () => 
           <div className="px-7 py-10">
             <div className="flex items-center gap-4">
               <span className="relative flex h-12 w-12 items-center justify-center border border-[var(--wl-line-soft)] bg-[var(--wl-glass-strong)]">
-                {chosenWallet && <img src={chosenWallet.logo} alt="" className="h-7 w-7 object-contain" />}
+                {chosenWallet && (
+                  <img src={chosenWallet.logo} alt="" className="h-7 w-7 object-contain" />
+                )}
                 <span className="absolute -right-1 -top-1 flex h-2.5 w-2.5">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--wl-signal)] opacity-60" />
                   <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[var(--wl-signal)]" />
                 </span>
               </span>
               <div>
-                <p className="font-mono text-[10px] uppercase tracking-[.14em] text-[var(--wl-signal)]">CONNECTING / ARC TESTNET</p>
-                <p className="mt-1 text-[15px] font-semibold tracking-[-.02em]">{chosenWallet?.name ?? "Wallet"}</p>
+                <p className="font-mono text-[10px] uppercase tracking-[.14em] text-[var(--wl-signal)]">
+                  CONNECTING / ARC TESTNET
+                </p>
+                <p className="mt-1 text-[15px] font-semibold tracking-[-.02em]">
+                  {chosenWallet?.name ?? "Wallet"}
+                </p>
               </div>
             </div>
             <p className="mt-5 text-[14px] leading-[1.5] text-[var(--wl-body)]">
@@ -143,7 +172,9 @@ export function ConnectModal({ open, onClose }: { open: boolean; onClose: () => 
                 style={{ animation: "warmScan 1.1s cubic-bezier(.45,.05,.55,.95) infinite" }}
               />
             </div>
-            <p className="mt-3 font-mono text-[9px] tracking-[.12em] text-[var(--wl-muted)]">SIWE · NO CUSTODY · POLICY-SCOPED SESSION</p>
+            <p className="mt-3 font-mono text-[9px] tracking-[.12em] text-[var(--wl-muted)]">
+              SIWE · NO CUSTODY · POLICY-SCOPED SESSION
+            </p>
             <button
               type="button"
               onClick={() => setConnecting(false)}
@@ -154,9 +185,12 @@ export function ConnectModal({ open, onClose }: { open: boolean; onClose: () => 
           </div>
         ) : (
           <div className="px-7 pb-7 pt-6">
-            <h2 className="font-display text-[26px] font-semibold leading-[1.02] tracking-[-.015em]">Connect your governed wallet.</h2>
+            <h2 className="font-display text-[26px] font-semibold leading-[1.02] tracking-[-.015em]">
+              Connect your governed wallet.
+            </h2>
             <p className="mt-3 text-[13.5px] leading-[1.55] text-[var(--wl-body)]">
-              ARCANUM never takes custody. Sign in to inspect the governed ledger and manage policies.
+              ARCANUM never takes custody. Sign in to inspect the governed ledger and manage
+              policies.
             </p>
             <div className="mt-6 space-y-2.5">
               {WALLET_OPTIONS.map((option) => (
@@ -171,7 +205,9 @@ export function ConnectModal({ open, onClose }: { open: boolean; onClose: () => 
                   </span>
                   <span className="flex-1">
                     <span className="flex items-center gap-2">
-                      <span className="block text-[13.5px] font-semibold tracking-[-.01em]">{option.name}</span>
+                      <span className="block text-[13.5px] font-semibold tracking-[-.01em]">
+                        {option.name}
+                      </span>
                       {option.tag && (
                         <span className="rounded-full bg-[var(--wl-green-tint)] px-2 py-0.5 font-mono text-[8px] tracking-[.1em] text-[var(--wl-green)]">
                           {option.tag}
@@ -182,12 +218,16 @@ export function ConnectModal({ open, onClose }: { open: boolean; onClose: () => 
                       {option.hint.toUpperCase()}
                     </span>
                   </span>
-                  <span className="warm-wallet-arrow font-mono text-[12px] text-[var(--wl-signal)]">→</span>
+                  <span className="warm-wallet-arrow font-mono text-[12px] text-[var(--wl-signal)]">
+                    →
+                  </span>
                 </button>
               ))}
             </div>
             <div className="mt-5 flex items-center justify-between border-t border-[var(--wl-line-soft)] pt-4">
-              <p className="font-mono text-[9px] tracking-[.12em] text-[var(--wl-muted)]">SIWE · ARC TESTNET</p>
+              <p className="font-mono text-[9px] tracking-[.12em] text-[var(--wl-muted)]">
+                SIWE · ARC TESTNET
+              </p>
               <button
                 type="button"
                 onClick={readOnly}

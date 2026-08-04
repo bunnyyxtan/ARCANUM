@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { useAccount } from "wagmi";
 
 import { useLiveMembers, useLiveOrg } from "@/lib/live-data";
@@ -53,10 +53,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <main
-      className="min-h-[100dvh] bg-[var(--wl-bg)] text-[var(--wl-ink)]"
-
-    >
+    <main className="min-h-[100dvh] bg-[var(--wl-bg)] text-[var(--wl-ink)]">
       <style>{`
         .member-row{transition:transform 220ms cubic-bezier(.16,1,.3,1),background-color 220ms ease}
         .member-row:hover{transform:translateX(3px);background:var(--wl-bg-soft)}
@@ -172,10 +169,7 @@ export default function SettingsPage() {
                   <div>
                     {liveMembers.isLoading ? (
                       Array.from({ length: 3 }).map((_, i) => (
-                        <div
-                          key={i}
-                          className="border-b border-[var(--wl-line-soft)] px-4 py-4"
-                        >
+                        <div key={i} className="border-b border-[var(--wl-line-soft)] px-4 py-4">
                           <div className="h-8 w-full animate-pulse rounded bg-[var(--wl-bg-soft)]" />
                         </div>
                       ))
@@ -332,7 +326,10 @@ export default function SettingsPage() {
         </div>
       )}
       {notice && (
-        <div role="status" className="fixed bottom-6 right-6 border border-[var(--wl-line)] bg-[var(--wl-bg-soft)] px-5 py-4 text-[12px] text-[var(--wl-ink)] shadow-[0_10px_30px_-20px_rgba(var(--wl-ink-rgb),.7)]">
+        <div
+          role="status"
+          className="fixed bottom-6 right-6 border border-[var(--wl-line)] bg-[var(--wl-bg-soft)] px-5 py-4 text-[12px] text-[var(--wl-ink)] shadow-[0_10px_30px_-20px_rgba(var(--wl-ink-rgb),.7)]"
+        >
           {notice}
         </div>
       )}

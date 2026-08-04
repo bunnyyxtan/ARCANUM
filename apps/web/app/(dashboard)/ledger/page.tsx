@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { useAccount } from "wagmi";
 
 import { getArcscanTxUrl } from "@/lib/arcscan";
@@ -24,7 +24,6 @@ const statusFilters: readonly StatusFilter[] = [
   "escalated",
   "frozen",
 ];
-
 
 const statusClasses: Record<LedgerStatus, string> = {
   approved: "bg-[var(--wl-green-tint)] text-[var(--wl-green)]",
@@ -178,6 +177,7 @@ export default function LedgerPage() {
     }
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset note editors whenever the selected row changes
   useEffect(() => {
     setFlagNoteOpen(false);
     setFlagNote("");
@@ -259,9 +259,7 @@ export default function LedgerPage() {
                 index > 1 ? "border-t md:border-t-0" : ""
               }`}
             >
-              <p className="font-mono text-[9px] tracking-[.15em] text-[var(--wl-mute)]">
-                {label}
-              </p>
+              <p className="font-mono text-[9px] tracking-[.15em] text-[var(--wl-mute)]">{label}</p>
               <p
                 className={`font-display mt-3 text-[clamp(1.5rem,3vw,2.15rem)] font-medium tabular-nums tracking-[-.015em] ${
                   accent ? "text-[var(--wl-signal)]" : ""
@@ -478,12 +476,18 @@ export default function LedgerPage() {
                 <dl className="divide-y divide-[var(--wl-line)] font-mono text-[10px]">
                   {[
                     ["STATUS", selected.status.toUpperCase()],
-                    ["TIME / UTC", `${timePart(selected.timestamp)} · ${datePart(selected.timestamp)}`],
+                    [
+                      "TIME / UTC",
+                      `${timePart(selected.timestamp)} · ${datePart(selected.timestamp)}`,
+                    ],
                     ["AMOUNT", formatUsd(selected.amount)],
                     ["CATEGORY", categoryLabel(selected.category)],
                     ["AGENT", selected.agentName],
                     ["COUNTERPARTY", selected.counterparty],
-                    ["BLOCK HEIGHT", selected.block > 0 ? selected.block.toLocaleString("en-US") : "PENDING"],
+                    [
+                      "BLOCK HEIGHT",
+                      selected.block > 0 ? selected.block.toLocaleString("en-US") : "PENDING",
+                    ],
                     ["GAS USED", selected.gasUsed],
                     ["TX HASH", selected.hash],
                   ].map(([label, value]) => (
@@ -525,7 +529,11 @@ export default function LedgerPage() {
                       title={!isConnected ? "Connect wallet first." : undefined}
                       className="arc-pill arc-ghost rounded-full border border-[var(--wl-line)] px-3.5 py-2.5 text-[10px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {noteEditOpen ? "Save note" : selectedFlagDetail?.note ? "Edit note" : "Add note"}
+                      {noteEditOpen
+                        ? "Save note"
+                        : selectedFlagDetail?.note
+                          ? "Edit note"
+                          : "Add note"}
                     </button>
                   )}
                   {selectedFlagged && noteEditOpen && (
@@ -652,7 +660,10 @@ export default function LedgerPage() {
           )}
         </div>
         {notice && (
-          <div role="status" className="fixed bottom-5 left-1/2 z-20 -translate-x-1/2 border border-[var(--wl-ink)] bg-[var(--wl-ink)] px-4 py-3 font-mono text-[10px] text-[var(--wl-bg)] shadow-[0_12px_28px_rgba(var(--wl-ink-rgb),.18)]">
+          <div
+            role="status"
+            className="fixed bottom-5 left-1/2 z-20 -translate-x-1/2 border border-[var(--wl-ink)] bg-[var(--wl-ink)] px-4 py-3 font-mono text-[10px] text-[var(--wl-bg)] shadow-[0_12px_28px_rgba(var(--wl-ink-rgb),.18)]"
+          >
             {notice}
           </div>
         )}

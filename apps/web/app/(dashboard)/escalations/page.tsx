@@ -1,20 +1,20 @@
 "use client";
 
 import { arcTestnet } from "@arcanum/shared";
-import type { Address, Hash } from "viem";
 import {
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
-  type MouseEvent as ReactMouseEvent,
 } from "react";
-import { useAccount, usePublicClient, useSwitchChain, useWriteContract } from "wagmi";
 import { toast } from "sonner";
+import type { Address, Hash } from "viem";
+import { useAccount, usePublicClient, useSwitchChain, useWriteContract } from "wagmi";
 
-import { useWorkspaceMode } from "@/lib/auth-session";
 import { getArcscanTxUrl } from "@/lib/arcscan";
+import { useWorkspaceMode } from "@/lib/auth-session";
 import { escalationManagerAbi, escalationStatusLabels } from "@/lib/contracts";
 import { isConfiguredAddress, isZeroAddress, shortAddress } from "@/lib/format/address";
 import { formatUsd } from "@/lib/format/money";
@@ -66,13 +66,7 @@ function formatFooterTimestamp(value: string | null) {
   return `${day} · ${time} UTC`;
 }
 
-type TxStage =
-  | "idle"
-  | "checking"
-  | "wallet"
-  | "confirming"
-  | "pending_indexer"
-  | "error";
+type TxStage = "idle" | "checking" | "wallet" | "confirming" | "pending_indexer" | "error";
 
 function EscalationCard({
   item,
@@ -283,11 +277,7 @@ function EscalationCard({
                 : "border border-[var(--wl-signal)] text-[var(--wl-signal)]"
             }`}
           >
-            {resolved
-              ? lastAction === "approve"
-                ? "APPROVED"
-                : "REJECTED"
-              : "PENDING"}
+            {resolved ? (lastAction === "approve" ? "APPROVED" : "REJECTED") : "PENDING"}
           </span>
           {resolved && (
             <span className="arc-stamp px-2 py-1 font-mono text-[8px] tracking-[.12em]">
@@ -299,7 +289,9 @@ function EscalationCard({
 
       <div className="grid gap-7 py-6 md:grid-cols-[1fr_1.1fr]">
         <div>
-          <p className="font-mono text-[9px] uppercase tracking-[.13em] text-[var(--wl-mute)]">REQUEST</p>
+          <p className="font-mono text-[9px] uppercase tracking-[.13em] text-[var(--wl-mute)]">
+            REQUEST
+          </p>
           <p className="mt-3 text-[27px] font-medium tracking-[-.05em]">
             {amountLabel} <span className="text-[var(--wl-mute)]">→</span> {item.counterparty}
           </p>
@@ -315,7 +307,9 @@ function EscalationCard({
             <div className="flex min-h-[62px] flex-1 flex-col justify-between border border-[var(--wl-faint)] bg-[var(--wl-bg-soft)] p-3">
               <span className="font-mono text-[9px] text-[var(--wl-green)]">SIGNED</span>
               <span className="text-[11px] font-medium">{item.quorumCurrent}</span>
-              <span className="font-mono text-[8px] text-[var(--wl-mute)]">of {item.quorumRequired}</span>
+              <span className="font-mono text-[8px] text-[var(--wl-mute)]">
+                of {item.quorumRequired}
+              </span>
             </div>
             <div className="flex min-h-[62px] flex-1 flex-col justify-between border border-dashed border-[var(--wl-signal)] p-3">
               <span className="font-mono text-[9px] text-[var(--wl-mute)]">AWAITING</span>
@@ -324,7 +318,9 @@ function EscalationCard({
             </div>
           </div>
           <div className="mt-5 flex items-baseline justify-between border-t border-[var(--wl-line)] pt-4">
-            <span className="font-mono text-[9px] tracking-[.12em] text-[var(--wl-mute)]">EXPIRY</span>
+            <span className="font-mono text-[9px] tracking-[.12em] text-[var(--wl-mute)]">
+              EXPIRY
+            </span>
             <span
               className={`font-mono text-[12px] tabular-nums ${
                 isNear ? "text-[var(--wl-signal)]" : "text-[var(--wl-body)]"
@@ -428,15 +424,13 @@ export default function EscalationsPage() {
       showNotice("The queue is clear.");
       return;
     }
-    showNotice(`Reviewing ${shortAddress(next.id, { head: 8, tail: 4 })}, the oldest open request.`);
-    document
-      .getElementById(`escalation-${next.id}`)
-      ?.scrollIntoView({
-        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-          ? "auto"
-          : "smooth",
-        block: "start",
-      });
+    showNotice(
+      `Reviewing ${shortAddress(next.id, { head: 8, tail: 4 })}, the oldest open request.`,
+    );
+    document.getElementById(`escalation-${next.id}`)?.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      block: "start",
+    });
   };
 
   const loading = liveEscalations.isLoading && queue.length === 0;
@@ -495,11 +489,15 @@ export default function EscalationsPage() {
         </div>
         <div className="border-l border-[var(--wl-line)] py-6 pl-5 md:pl-7">
           <p className="font-mono text-[9px] tracking-[.15em] text-[var(--wl-mute)]">IN QUEUE</p>
-          <p className="font-display mt-3 text-[34px] font-medium tracking-[-.015em]">{queue.length}</p>
+          <p className="font-display mt-3 text-[34px] font-medium tracking-[-.015em]">
+            {queue.length}
+          </p>
         </div>
         <div className="border-l border-[var(--wl-line)] py-6 pl-5 md:pl-7">
           <p className="font-mono text-[9px] tracking-[.15em] text-[var(--wl-mute)]">RESOLVED</p>
-          <p className="font-display mt-3 text-[34px] font-medium tracking-[-.015em]">{resolvedIds.size}</p>
+          <p className="font-display mt-3 text-[34px] font-medium tracking-[-.015em]">
+            {resolvedIds.size}
+          </p>
         </div>
       </section>
 

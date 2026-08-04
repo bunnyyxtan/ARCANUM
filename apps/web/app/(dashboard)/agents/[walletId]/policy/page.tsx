@@ -3,25 +3,25 @@
 import { arcTestnet } from "@arcanum/shared";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { toast } from "sonner";
 import { formatUnits, parseUnits } from "viem";
 import type { Address, Hash } from "viem";
 import { useAccount, usePublicClient, useSwitchChain, useWriteContract } from "wagmi";
 
+import { useWorkspaceMode } from "@/lib/auth-session";
 import {
+  type DoctrineCategoryValue,
+  type PolicyDraftState,
+  type PolicyEnvelopeValue,
   allPolicyCategoriesMask,
   doctrineCategoryOptions,
   guardedWalletControlAbi,
   initialPolicyDraft,
-  type DoctrineCategoryValue,
-  type PolicyDraftState,
-  type PolicyEnvelopeValue,
 } from "@/lib/contracts";
 import { isEvmAddress, isSameAddress, shortAddress } from "@/lib/format/address";
 import { trpc } from "@/lib/trpc";
-import { useWorkspaceMode } from "@/lib/auth-session";
 
 /* ------------------------------------------------------------------ */
 /* Policy math + validation preserved from the old PolicyEditor          */
@@ -100,7 +100,10 @@ function buildPolicyEnvelope(draft: PolicyDraftState): PolicyEnvelopeValue {
   const perTxCap = parseUsdcInput(normalized.perTxCap, "Per transaction cap");
   const daily24hCap = parseUsdcInput(normalized.dailyCap, "Daily cap");
   const monthlyRollingCap = parseUsdcInput(normalized.monthlyCap, "Monthly cap");
-  const escalationThreshold = parseUsdcInput(normalized.escalationThreshold, "Escalation threshold");
+  const escalationThreshold = parseUsdcInput(
+    normalized.escalationThreshold,
+    "Escalation threshold",
+  );
   const allowedCategories = categoryMaskFromDraft(normalized.enabledCategories);
 
   if (perTxCap > daily24hCap) {
@@ -232,7 +235,9 @@ export default function PolicyEditorPage() {
   const [activePolicyDraft, setActivePolicyDraft] = useState<PolicyDraftState>(initialPolicyDraft);
   const [selectedPolicyWalletAddress, setSelectedPolicyWalletAddress] = useState("");
   const [policyWalletOwner, setPolicyWalletOwner] = useState<Address | null>(null);
-  const [policyReadStatus, setPolicyReadStatus] = useState<"idle" | "checking" | "ready" | "error">("idle");
+  const [policyReadStatus, setPolicyReadStatus] = useState<"idle" | "checking" | "ready" | "error">(
+    "idle",
+  );
   const [policyError, setPolicyError] = useState<string | null>(null);
   const [policySaving, setPolicySaving] = useState(false);
   const [policyTxHash, setPolicyTxHash] = useState<Hash | null>(null);
@@ -271,7 +276,9 @@ export default function PolicyEditorPage() {
   useEffect(() => {
     if (
       selectedPolicyWalletAddress &&
-      policyWalletOptions.some((wallet) => isSameAddress(wallet.address, selectedPolicyWalletAddress))
+      policyWalletOptions.some((wallet) =>
+        isSameAddress(wallet.address, selectedPolicyWalletAddress),
+      )
     ) {
       return;
     }
@@ -352,7 +359,9 @@ export default function PolicyEditorPage() {
                 ? "No policy changes to submit."
                 : null;
   const policyNetworkNotice =
-    isConnected && chainId !== arcTestnet.id ? "Wallet will be asked to switch to Arc Testnet." : null;
+    isConnected && chainId !== arcTestnet.id
+      ? "Wallet will be asked to switch to Arc Testnet."
+      : null;
 
   const toggleCategory = (category: DoctrineCategoryValue) => {
     setPolicyDraft((current) => {
@@ -448,10 +457,7 @@ export default function PolicyEditorPage() {
       : "ACTIVE";
 
   return (
-    <main
-      className="min-h-[100dvh] bg-[var(--wl-bg)] text-[var(--wl-ink)]"
-
-    >
+    <main className="min-h-[100dvh] bg-[var(--wl-bg)] text-[var(--wl-ink)]">
       <style>{`
         .policy-in{animation:policyIn 560ms cubic-bezier(.16,1,.3,1) calc(var(--i,0)*80ms) both}@keyframes policyIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
         @media(prefers-reduced-motion:reduce){.policy-in{animation:none}}
@@ -512,7 +518,10 @@ export default function PolicyEditorPage() {
         </div>
 
         {policyWalletOptions.length > 0 ? (
-          <div className="policy-in flex flex-wrap items-center gap-3 border-b border-[var(--wl-line)] py-5" style={{ "--i": 1 } as CSSProperties}>
+          <div
+            className="policy-in flex flex-wrap items-center gap-3 border-b border-[var(--wl-line)] py-5"
+            style={{ "--i": 1 } as CSSProperties}
+          >
             <span className="font-mono text-[9px] uppercase tracking-[.14em] text-[var(--wl-secondary)]">
               GOVERNED WALLET
             </span>
@@ -559,7 +568,10 @@ export default function PolicyEditorPage() {
               <div className="px-6 py-10 md:px-9">
                 <div className="space-y-4">
                   {[0, 1, 2].map((index) => (
-                    <div key={index} className="h-10 animate-pulse rounded bg-[var(--wl-line-soft)]" />
+                    <div
+                      key={index}
+                      className="h-10 animate-pulse rounded bg-[var(--wl-line-soft)]"
+                    />
                   ))}
                 </div>
               </div>
@@ -575,7 +587,9 @@ export default function PolicyEditorPage() {
             ) : !selectedGovernedWalletAddress ? (
               <div className="px-6 py-14 text-center md:px-9">
                 <p className="font-mono text-[10px] uppercase tracking-[.14em] text-[var(--wl-secondary)]">
-                  {walletsQuery.isLoading ? "Loading governed wallets" : "No governed wallet selected"}
+                  {walletsQuery.isLoading
+                    ? "Loading governed wallets"
+                    : "No governed wallet selected"}
                 </p>
                 <Link
                   href="/agents"
@@ -732,13 +746,18 @@ export default function PolicyEditorPage() {
             </div>
           </section>
 
-          <aside className="policy-in bg-[var(--wl-bg-soft)] p-6 md:p-7" style={{ "--i": 3 } as CSSProperties}>
+          <aside
+            className="policy-in bg-[var(--wl-bg-soft)] p-6 md:p-7"
+            style={{ "--i": 3 } as CSSProperties}
+          >
             <div className="flex items-start justify-between border-b border-[var(--wl-line)] pb-5">
               <div>
                 <p className="font-mono text-[10px] uppercase tracking-[.17em] text-[var(--wl-signal)]">
                   SIGNING / CONTROL
                 </p>
-                <h2 className="font-display mt-2 text-[22px] font-medium tracking-[-.015em]">Deployment record</h2>
+                <h2 className="font-display mt-2 text-[22px] font-medium tracking-[-.015em]">
+                  Deployment record
+                </h2>
               </div>
               <span
                 className={`rounded-full px-2.5 py-1 font-mono text-[9px] tracking-[.12em] ${
@@ -753,7 +772,12 @@ export default function PolicyEditorPage() {
             <dl className="divide-y divide-[var(--wl-line)] py-3 font-mono text-[10px]">
               {(
                 [
-                  ["WALLET", selectedGovernedWalletAddress ? shortAddress(selectedGovernedWalletAddress) : "—"],
+                  [
+                    "WALLET",
+                    selectedGovernedWalletAddress
+                      ? shortAddress(selectedGovernedWalletAddress)
+                      : "—",
+                  ],
                   ["OWNER", policyWalletOwner ? shortAddress(policyWalletOwner) : "—"],
                   ["CONNECTED", address ? shortAddress(address) : "not connected"],
                   ["NETWORK", "ARC TESTNET"],
@@ -804,7 +828,9 @@ export default function PolicyEditorPage() {
                 className="group font-mono text-[10px] uppercase tracking-[.13em] text-[var(--wl-body)] hover:text-[var(--wl-signal)]"
               >
                 Return to dossier
-                <span className="ml-2 inline-block transition-transform group-hover:-translate-x-1">←</span>
+                <span className="ml-2 inline-block transition-transform group-hover:-translate-x-1">
+                  ←
+                </span>
               </Link>
             </div>
           </aside>
@@ -812,7 +838,11 @@ export default function PolicyEditorPage() {
 
         <footer className="mt-14 flex flex-col justify-between gap-3 border-t border-[var(--wl-line)] pt-5 font-mono text-[9px] uppercase tracking-[.13em] text-[var(--wl-mute)] sm:flex-row">
           <span>Draft changes · no capital movement until signed</span>
-          <span>{policyPendingIndexer ? "Revision deployed · pending indexer sync" : "Arc Testnet policy"}</span>
+          <span>
+            {policyPendingIndexer
+              ? "Revision deployed · pending indexer sync"
+              : "Arc Testnet policy"}
+          </span>
         </footer>
       </div>
     </main>

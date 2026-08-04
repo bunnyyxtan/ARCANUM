@@ -5,9 +5,5 @@ type PublicLayoutProps = Readonly<{
 }>;
 
 export default function PublicLayout({ children }: PublicLayoutProps) {
-  return (
-    <div className="min-h-[100dvh] bg-[var(--wl-bg)] text-[var(--wl-ink)]">
-      {children}
-    </div>
-  );
+  return <div className="min-h-[100dvh] bg-[var(--wl-bg)] text-[var(--wl-ink)]">{children}</div>;
 }

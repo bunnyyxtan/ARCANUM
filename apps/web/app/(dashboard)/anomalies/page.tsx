@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  useMemo,
-  useState,
-  type CSSProperties,
-  type MouseEvent as ReactMouseEvent,
-} from "react";
+import { type CSSProperties, type MouseEvent as ReactMouseEvent, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useAccount } from "wagmi";
 
@@ -48,15 +43,31 @@ function Sparkline({ points }: { points: readonly number[] }) {
   const first = parts[0] ?? "2,24";
   const last = parts[parts.length - 1] ?? "59,5";
   return (
-    <svg aria-label="anomaly trend" viewBox="0 0 62 28" className="h-7 w-[62px]" fill="none">
+    <svg
+      role="img"
+      aria-label="anomaly trend"
+      viewBox="0 0 62 28"
+      className="h-7 w-[62px]"
+      fill="none"
+    >
       <polyline
         points={line}
         style={{ stroke: "var(--wl-secondary)" }}
         strokeWidth="1.2"
         vectorEffect="non-scaling-stroke"
       />
-      <polyline points={`${first} ${last}`} stroke={ORANGE} strokeWidth="1.8" vectorEffect="non-scaling-stroke" />
-      <circle cx={Number(last.split(",")[0])} cy={Number(last.split(",")[1])} r="1.8" fill={ORANGE} />
+      <polyline
+        points={`${first} ${last}`}
+        stroke={ORANGE}
+        strokeWidth="1.8"
+        vectorEffect="non-scaling-stroke"
+      />
+      <circle
+        cx={Number(last.split(",")[0])}
+        cy={Number(last.split(",")[1])}
+        r="1.8"
+        fill={ORANGE}
+      />
     </svg>
   );
 }
@@ -101,7 +112,10 @@ function AnomalyRow({
   const severity = item.score >= 5 ? "CRITICAL" : "ELEVATED";
   const frozen = state === "restrained" || item.suggestedAction === "freeze";
 
-  const settle = async (next: "restrained" | "dismissed", event: ReactMouseEvent<HTMLButtonElement>) => {
+  const settle = async (
+    next: "restrained" | "dismissed",
+    event: ReactMouseEvent<HTMLButtonElement>,
+  ) => {
     const action = next === "dismissed" ? "anomalies.dismiss" : "anomalies.acknowledge";
     if (!allowTrustedMutation(action, event)) {
       return;
@@ -152,7 +166,9 @@ function AnomalyRow({
           agent wallet · {shortAddress(item.agentId)}
         </div>
       </div>
-      <span className="font-mono text-[10px] tabular-nums text-[var(--wl-body)]">{item.timestamp}</span>
+      <span className="font-mono text-[10px] tabular-nums text-[var(--wl-body)]">
+        {item.timestamp}
+      </span>
       <div>
         <StatusPill frozen={frozen} />
         <span className="ml-2 font-mono text-[9px] tracking-[.1em] text-[var(--wl-secondary)] md:hidden">
@@ -267,10 +283,7 @@ export default function AnomaliesPage() {
   const [investigated, setInvestigated] = useState<string | null>(null);
 
   const anomalies = liveAnomalies.data;
-  const critical = useMemo(
-    () => anomalies.filter((item) => item.score >= 5).length,
-    [anomalies],
-  );
+  const critical = useMemo(() => anomalies.filter((item) => item.score >= 5).length, [anomalies]);
   const elevated = anomalies.length - critical;
   const peakScore = anomalies[0]?.score.toFixed(1) ?? "0.0";
 
@@ -300,7 +313,9 @@ export default function AnomaliesPage() {
         </div>
         <button
           type="button"
-          onClick={() => document.getElementById("register")?.scrollIntoView({ behavior: "smooth" })}
+          onClick={() =>
+            document.getElementById("register")?.scrollIntoView({ behavior: "smooth" })
+          }
           className="warm-pill w-fit rounded-full bg-[var(--wl-signal)] px-5 py-3 text-[11px] font-semibold text-[var(--wl-bg)]"
         >
           Review register <span className="ml-2">↘</span>
@@ -323,14 +338,18 @@ export default function AnomaliesPage() {
                 </span>
               </div>
             </div>
-            <span className="font-mono text-[9px] tracking-[.15em] text-[var(--wl-mute)]">LIVE / 24H</span>
+            <span className="font-mono text-[9px] tracking-[.15em] text-[var(--wl-mute)]">
+              LIVE / 24H
+            </span>
           </div>
           <p className="mt-5 font-mono text-[9px] uppercase tracking-[.15em] text-[var(--wl-secondary)]">
             peak deviation / 24h
           </p>
           <div className="mt-10">
             <div className="relative h-4 border-t border-[var(--wl-ink)]">
-              <span className="absolute left-0 top-2 font-mono text-[9px] text-[var(--wl-secondary)]">0</span>
+              <span className="absolute left-0 top-2 font-mono text-[9px] text-[var(--wl-secondary)]">
+                0
+              </span>
               {[1, 2, 3, 4, 5, 6, 7, 8].map((tick) => (
                 <span
                   key={tick}
@@ -342,7 +361,9 @@ export default function AnomaliesPage() {
                 className="absolute top-[-5px] h-3 w-[2px] bg-[var(--wl-signal)]"
                 style={{ left: `${Math.min(100, (Number(peakScore) / 8) * 100)}%` }}
               />
-              <span className="absolute right-0 top-2 font-mono text-[9px] text-[var(--wl-secondary)]">8</span>
+              <span className="absolute right-0 top-2 font-mono text-[9px] text-[var(--wl-secondary)]">
+                8
+              </span>
             </div>
             <div className="mt-4 flex justify-between font-mono text-[9px] uppercase tracking-[.13em] text-[var(--wl-mute)]">
               <span>nominal</span>
@@ -353,22 +374,30 @@ export default function AnomaliesPage() {
         </div>
         <div className="grid grid-cols-3 divide-x divide-[var(--wl-line)] border border-[var(--wl-line)] bg-[var(--wl-bg-raised)]">
           <div className="p-4 sm:p-6">
-            <span className="font-mono text-[9px] tracking-[.14em] text-[var(--wl-secondary)]">CRITICAL</span>
+            <span className="font-mono text-[9px] tracking-[.14em] text-[var(--wl-secondary)]">
+              CRITICAL
+            </span>
             <strong className="font-display mt-9 block text-4xl font-semibold tracking-[-.015em] text-[var(--wl-signal)]">
               {critical}
             </strong>
             <span className="mt-2 block font-mono text-[9px] text-[var(--wl-mute)]">NOW</span>
           </div>
           <div className="p-4 sm:p-6">
-            <span className="font-mono text-[9px] tracking-[.14em] text-[var(--wl-secondary)]">ELEVATED</span>
-            <strong className="font-display mt-9 block text-4xl font-semibold tracking-[-.015em]">{elevated}</strong>
+            <span className="font-mono text-[9px] tracking-[.14em] text-[var(--wl-secondary)]">
+              ELEVATED
+            </span>
+            <strong className="font-display mt-9 block text-4xl font-semibold tracking-[-.015em]">
+              {elevated}
+            </strong>
             <span className="mt-2 block font-mono text-[9px] text-[var(--wl-mute)]">OPEN</span>
           </div>
           <div className="p-4 sm:p-6">
             <span className="font-mono text-[9px] leading-[1.3] tracking-[.14em] text-[var(--wl-secondary)]">
               RESOLVED / 30D
             </span>
-            <strong className="font-display mt-9 block text-4xl font-semibold tracking-[-.015em]">—</strong>
+            <strong className="font-display mt-9 block text-4xl font-semibold tracking-[-.015em]">
+              —
+            </strong>
             <span className="mt-2 block font-mono text-[9px] text-[var(--wl-mute)]">CLOSED</span>
           </div>
         </div>
@@ -380,9 +409,13 @@ export default function AnomaliesPage() {
             <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
               REGISTER / ACTIVE
             </p>
-            <h2 className="font-display mt-3 text-2xl font-semibold tracking-[-.015em]">Anomaly register</h2>
+            <h2 className="font-display mt-3 text-2xl font-semibold tracking-[-.015em]">
+              Anomaly register
+            </h2>
           </div>
-          <span className="font-mono text-[9px] tracking-[.12em] text-[var(--wl-mute)]">{notice}</span>
+          <span className="font-mono text-[9px] tracking-[.12em] text-[var(--wl-mute)]">
+            {notice}
+          </span>
         </div>
         <div className="hidden grid-cols-[1.08fr_1fr_.72fr_.55fr_1.4fr_.75fr_1.55fr] gap-4 border-b border-[var(--wl-line)] px-4 py-3 font-mono text-[9px] uppercase tracking-[.14em] text-[var(--wl-mute)] md:grid">
           <span>Agent</span>
@@ -396,7 +429,10 @@ export default function AnomaliesPage() {
         <div className="divide-y divide-[var(--wl-line-soft)] border-b border-[var(--wl-line)]">
           {loading ? (
             [0, 1, 2].map((row) => (
-              <div key={row} className="grid gap-3 px-4 py-5 md:grid-cols-[1.08fr_1fr_.72fr_.55fr_1.4fr_.75fr_1.55fr]">
+              <div
+                key={row}
+                className="grid gap-3 px-4 py-5 md:grid-cols-[1.08fr_1fr_.72fr_.55fr_1.4fr_.75fr_1.55fr]"
+              >
                 <div className="h-4 w-28 animate-pulse rounded bg-[var(--wl-line-soft)]" />
                 <div className="h-4 w-20 animate-pulse rounded bg-[var(--wl-line-soft)]" />
                 <div className="h-4 w-16 animate-pulse rounded bg-[var(--wl-line-soft)]" />

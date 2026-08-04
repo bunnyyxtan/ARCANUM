@@ -33,16 +33,26 @@ export function ShortcutsDialog({ open, onClose }: { open: boolean; onClose: () 
       >
         <div className="flex items-start justify-between border-b border-[var(--wl-line)] pb-4">
           <div>
-            <p className="font-mono text-[9px] uppercase tracking-[.17em] text-[var(--wl-signal)]">OPERATOR / REFERENCE</p>
+            <p className="font-mono text-[9px] uppercase tracking-[.17em] text-[var(--wl-signal)]">
+              OPERATOR / REFERENCE
+            </p>
             <h2 className="mt-2 text-2xl font-semibold tracking-[-.05em]">Keyboard shortcuts</h2>
           </div>
-          <button type="button" onClick={onClose} className="font-mono text-[9px] text-[var(--wl-secondary)]">CLOSE</button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="font-mono text-[9px] text-[var(--wl-secondary)]"
+          >
+            CLOSE
+          </button>
         </div>
         <div className="divide-y divide-[var(--wl-line-soft)]">
           {shortcuts.map(([key, label]) => (
             <div key={key} className="flex items-center justify-between py-4">
               <span className="text-[13px] text-[var(--wl-body)]">{label}</span>
-              <kbd className="border border-[var(--wl-line-bold)] bg-[var(--wl-bg-soft)] px-2 py-1 font-mono text-[9px] text-[var(--wl-ink)]">{key}</kbd>
+              <kbd className="border border-[var(--wl-line-bold)] bg-[var(--wl-bg-soft)] px-2 py-1 font-mono text-[9px] text-[var(--wl-ink)]">
+                {key}
+              </kbd>
             </div>
           ))}
         </div>

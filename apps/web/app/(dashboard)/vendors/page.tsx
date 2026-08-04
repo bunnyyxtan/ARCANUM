@@ -1,28 +1,34 @@
 "use client";
 
 import { arcTestnet } from "@arcanum/shared";
-import { keccak256, parseUnits, toBytes } from "viem";
-import type { Address } from "viem";
 import {
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
-  type MouseEvent as ReactMouseEvent,
 } from "react";
-import { useAccount, usePublicClient, useReadContract, useSwitchChain, useWriteContract } from "wagmi";
 import { toast } from "sonner";
+import { keccak256, parseUnits, toBytes } from "viem";
+import type { Address } from "viem";
+import {
+  useAccount,
+  usePublicClient,
+  useReadContract,
+  useSwitchChain,
+  useWriteContract,
+} from "wagmi";
 
 import { AddVendorModal } from "@/components/warm/AddVendorModal";
 import { useWorkspaceMode } from "@/lib/auth-session";
 import {
+  type AddVendorFormState,
+  type VendorCategoryValue,
   guardedWalletControlAbi,
   initialVendorForm,
   vendorCategoryOptions,
-  type AddVendorFormState,
-  type VendorCategoryValue,
 } from "@/lib/contracts";
 import { isEvmAddress, isSameAddress, isZeroAddress, shortAddress } from "@/lib/format/address";
 import {
@@ -388,10 +394,7 @@ export default function VendorsPage() {
       });
       return;
     }
-    if (
-      vendor.walletAddress &&
-      !isSameAddress(vendor.walletAddress, selectedWalletAddress)
-    ) {
+    if (vendor.walletAddress && !isSameAddress(vendor.walletAddress, selectedWalletAddress)) {
       toast.info("Vendor action unavailable", {
         description: "Select this vendor's governed wallet before writing.",
       });
@@ -532,21 +535,37 @@ export default function VendorsPage() {
 
       <section className="mt-8 grid grid-cols-3 divide-x divide-[var(--wl-line)] border border-[var(--wl-line)] bg-[var(--wl-bg-soft)]">
         <div className="p-5 sm:p-7">
-          <span className="font-mono text-[9px] tracking-[.15em] text-[var(--wl-secondary)]">APPROVED</span>
-          <strong className="font-display mt-6 block text-4xl font-semibold tracking-[-.015em]">{approvedCount}</strong>
-          <span className="mt-2 block font-mono text-[9px] text-[var(--wl-mute)]">COUNTERPARTIES</span>
+          <span className="font-mono text-[9px] tracking-[.15em] text-[var(--wl-secondary)]">
+            APPROVED
+          </span>
+          <strong className="font-display mt-6 block text-4xl font-semibold tracking-[-.015em]">
+            {approvedCount}
+          </strong>
+          <span className="mt-2 block font-mono text-[9px] text-[var(--wl-mute)]">
+            COUNTERPARTIES
+          </span>
         </div>
         <div className="p-5 sm:p-7">
-          <span className="font-mono text-[9px] tracking-[.15em] text-[var(--wl-secondary)]">CATEGORIES</span>
-          <strong className="font-display mt-6 block text-4xl font-semibold tracking-[-.015em]">{categoryCount}</strong>
-          <span className="mt-2 block font-mono text-[9px] text-[var(--wl-mute)]">ACTIVE GROUPS</span>
+          <span className="font-mono text-[9px] tracking-[.15em] text-[var(--wl-secondary)]">
+            CATEGORIES
+          </span>
+          <strong className="font-display mt-6 block text-4xl font-semibold tracking-[-.015em]">
+            {categoryCount}
+          </strong>
+          <span className="mt-2 block font-mono text-[9px] text-[var(--wl-mute)]">
+            ACTIVE GROUPS
+          </span>
         </div>
         <div className="p-5 sm:p-7">
-          <span className="font-mono text-[9px] tracking-[.15em] text-[var(--wl-secondary)]">BLOCKED</span>
+          <span className="font-mono text-[9px] tracking-[.15em] text-[var(--wl-secondary)]">
+            BLOCKED
+          </span>
           <strong className="font-display mt-6 block text-4xl font-semibold tracking-[-.015em] text-[var(--wl-signal)]">
             {blockedCount}
           </strong>
-          <span className="mt-2 block font-mono text-[9px] text-[var(--wl-mute)]">COUNTERPARTIES</span>
+          <span className="mt-2 block font-mono text-[9px] text-[var(--wl-mute)]">
+            COUNTERPARTIES
+          </span>
         </div>
       </section>
 
@@ -556,9 +575,13 @@ export default function VendorsPage() {
             <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
               REGISTRY / GOVERNED
             </p>
-            <h2 className="font-display mt-3 text-2xl font-semibold tracking-[-.015em]">Vendor registry</h2>
+            <h2 className="font-display mt-3 text-2xl font-semibold tracking-[-.015em]">
+              Vendor registry
+            </h2>
           </div>
-          <span className="font-mono text-[9px] tracking-[.12em] text-[var(--wl-mute)]">{notice}</span>
+          <span className="font-mono text-[9px] tracking-[.12em] text-[var(--wl-mute)]">
+            {notice}
+          </span>
         </div>
 
         <div className="flex flex-col justify-between gap-4 border-b border-[var(--wl-line)] py-4 sm:flex-row sm:items-center">
@@ -601,7 +624,10 @@ export default function VendorsPage() {
         <div className="divide-y divide-[var(--wl-line-soft)] border-b border-[var(--wl-line)]">
           {loading ? (
             [0, 1, 2].map((row) => (
-              <div key={row} className="grid gap-3 px-4 py-5 lg:grid-cols-[1.1fr_.7fr_1fr_1.2fr_.8fr_.65fr]">
+              <div
+                key={row}
+                className="grid gap-3 px-4 py-5 lg:grid-cols-[1.1fr_.7fr_1fr_1.2fr_.8fr_.65fr]"
+              >
                 <div className="h-4 w-32 animate-pulse rounded bg-[var(--wl-line-soft)]" />
                 <div className="h-4 w-16 animate-pulse rounded bg-[var(--wl-line-soft)]" />
                 <div className="h-4 w-20 animate-pulse rounded bg-[var(--wl-line-soft)]" />
@@ -679,7 +705,9 @@ export default function VendorsPage() {
                             )}
                             {vendorFlagDetail(vendor.address)?.noteEditedBy && (
                               <span>
-                                {" "}· note edited by {vendorFlagDetail(vendor.address)?.noteEditedByShort} ·{" "}
+                                {" "}
+                                · note edited by{" "}
+                                {vendorFlagDetail(vendor.address)?.noteEditedByShort} ·{" "}
                                 {vendorFlagDetail(vendor.address)?.noteEditedAt}
                               </span>
                             )}
@@ -802,7 +830,9 @@ export default function VendorsPage() {
                 <p className="font-mono text-[10px] uppercase tracking-[.17em] text-[var(--wl-signal)]">
                   SELECTED / COUNTERPARTY
                 </p>
-                <h3 className="font-display mt-4 text-3xl font-semibold tracking-[-.015em]">{selected.name}</h3>
+                <h3 className="font-display mt-4 text-3xl font-semibold tracking-[-.015em]">
+                  {selected.name}
+                </h3>
                 <p className="mt-2 font-mono text-[10px] text-[var(--wl-secondary)]">
                   {shortAddress(selected.address)} · {categoryLabel(selected.category)}
                 </p>
@@ -1016,7 +1046,8 @@ export default function VendorsPage() {
                   </button>
                 </div>
                 <p className="mt-2 font-mono text-[8.5px] tracking-[.08em] text-[var(--wl-mute)]">
-                  WRITES addVendor WITH THE REVISED PER-VENDOR CAP · TAKES EFFECT NEXT SETTLEMENT WINDOW
+                  WRITES addVendor WITH THE REVISED PER-VENDOR CAP · TAKES EFFECT NEXT SETTLEMENT
+                  WINDOW
                 </p>
               </div>
             )}
@@ -1027,7 +1058,9 @@ export default function VendorsPage() {
               <span className="font-mono text-[10px] uppercase tracking-[.16em] text-[var(--wl-secondary)]">
                 Counterparty detail
               </span>
-              <span className="font-mono text-[9px] text-[var(--wl-mute)]">{selected.trust.toUpperCase()}</span>
+              <span className="font-mono text-[9px] text-[var(--wl-mute)]">
+                {selected.trust.toUpperCase()}
+              </span>
             </div>
             <div className="divide-y divide-[var(--wl-line)]">
               <div className="flex items-center justify-between gap-4 py-4">
@@ -1042,7 +1075,9 @@ export default function VendorsPage() {
               </div>
               <div className="flex items-center justify-between gap-4 py-4">
                 <span className="text-[12px] text-[var(--wl-body)]">Confidential</span>
-                <span className="font-mono text-[11px]">{selected.confidential ? "YES" : "NO"}</span>
+                <span className="font-mono text-[11px]">
+                  {selected.confidential ? "YES" : "NO"}
+                </span>
               </div>
             </div>
             <p className="mt-8 max-w-[390px] font-mono text-[9px] leading-[1.6] tracking-[.08em] text-[var(--wl-mute)]">
@@ -1055,7 +1090,9 @@ export default function VendorsPage() {
                   Review history
                 </span>
                 <span className="font-mono text-[9px] text-[var(--wl-mute)]">
-                  {flagHistory.entries.length > 0 ? `${flagHistory.entries.length} EVENTS` : "AUDIT TRAIL"}
+                  {flagHistory.entries.length > 0
+                    ? `${flagHistory.entries.length} EVENTS`
+                    : "AUDIT TRAIL"}
                 </span>
               </div>
               {flagHistory.isLoading ? (

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 
 const sections = [
   { id: "orientation", number: "00", label: "Read this first" },
@@ -19,7 +19,9 @@ function Reveal({ children, index = 0 }: { children: ReactNode; index?: number }
 function Note({ label, children }: { label: string; children: ReactNode }) {
   return (
     <aside className="border-l border-[var(--wl-signal)] pl-4 text-[12px] leading-[1.5] text-[var(--wl-body)]">
-      <p className="font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-signal)]">{label}</p>
+      <p className="font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-signal)]">
+        {label}
+      </p>
       <div className="mt-2">{children}</div>
     </aside>
   );
@@ -33,7 +35,9 @@ function CodeBlock({ label, children }: { label?: string; children: ReactNode })
           <span>{label}</span>
         </div>
       )}
-      <pre className="overflow-x-auto p-5 font-mono text-[11px] leading-[1.85] text-[var(--wl-strong3)]">{children}</pre>
+      <pre className="overflow-x-auto p-5 font-mono text-[11px] leading-[1.85] text-[var(--wl-strong3)]">
+        {children}
+      </pre>
     </div>
   );
 }
@@ -41,7 +45,9 @@ function CodeBlock({ label, children }: { label?: string; children: ReactNode })
 export default function DocsPage() {
   const [copied, setCopied] = useState(false);
   const copyCommand = () => {
-    void navigator.clipboard?.writeText("arcana wallet inspect --wallet 0x3f...9a2c --network arc-testnet").catch(() => {});
+    void navigator.clipboard
+      ?.writeText("arcana wallet inspect --wallet 0x3f...9a2c --network arc-testnet")
+      .catch(() => {});
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1600);
   };
@@ -65,18 +71,23 @@ export default function DocsPage() {
         <Reveal>
           <div className="flex flex-col justify-between gap-8 border-b border-[var(--wl-line)] pb-10 lg:flex-row lg:items-end">
             <div>
-              <p className="font-mono text-[10px] uppercase tracking-[.2em] text-[var(--wl-signal)]">ARCANUM / FIELD MANUAL 01</p>
+              <p className="font-mono text-[10px] uppercase tracking-[.2em] text-[var(--wl-signal)]">
+                ARCANUM / FIELD MANUAL 01
+              </p>
               <h1 className="font-display mt-5 max-w-[850px] text-[clamp(3.2rem,7vw,6.6rem)] font-semibold leading-[.84] tracking-[-.015em]">
-                Govern the wallet.<br />
+                Govern the wallet.
+                <br />
                 <span className="text-[var(--wl-dim)]">Then let it move.</span>
               </h1>
               <p className="mt-7 max-w-[540px] text-[15px] leading-[1.5] text-[var(--wl-body)]">
-                A practical guide to deploying an agent wallet on Arc, writing the doctrine that constrains it, and taking the first
-                restraint without guesswork.
+                A practical guide to deploying an agent wallet on Arc, writing the doctrine that
+                constrains it, and taking the first restraint without guesswork.
               </p>
             </div>
             <div className="max-w-[230px] border-l border-[var(--wl-signal)] pl-4">
-              <p className="font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-signal)]">READING TIME / 08 MIN</p>
+              <p className="font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-signal)]">
+                READING TIME / 08 MIN
+              </p>
               <p className="mt-3 text-[12px] leading-[1.5] text-[var(--wl-secondary2)]">
                 For operators at HELIX-DAO. Assumes an Arc testnet wallet and a signed SIWE session.
               </p>
@@ -86,7 +97,9 @@ export default function DocsPage() {
 
         <div className="grid gap-12 lg:grid-cols-[200px_minmax(0,730px)_200px] lg:gap-16">
           <nav className="pt-10 lg:sticky lg:top-5 lg:h-fit" aria-label="Documentation sections">
-            <p className="font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)]">ON THIS PAGE</p>
+            <p className="font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)]">
+              ON THIS PAGE
+            </p>
             <div className="mt-4 border-t border-[var(--wl-line)]">
               {sections.map((section) => (
                 <a
@@ -94,7 +107,9 @@ export default function DocsPage() {
                   href={`#${section.id}`}
                   className="docs-nav-link flex items-center gap-3 border-b border-[var(--wl-line-soft)] py-3 text-[12px] text-[var(--wl-secondary2)]"
                 >
-                  <span className="font-mono text-[9px] text-[var(--wl-mute)]">{section.number}</span>
+                  <span className="font-mono text-[9px] text-[var(--wl-mute)]">
+                    {section.number}
+                  </span>
                   {section.label}
                 </a>
               ))}
@@ -109,12 +124,20 @@ export default function DocsPage() {
 
           <article className="min-w-0 pt-10">
             <Reveal>
-              <section id="orientation" className="docs-anchor border-b border-[var(--wl-line)] pb-12">
-                <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">00 / READ THIS FIRST</p>
-                <h2 className="font-display mt-4 text-[28px] font-medium tracking-[-.015em]">A governed wallet is a boundary, not a bank account.</h2>
+              <section
+                id="orientation"
+                className="docs-anchor border-b border-[var(--wl-line)] pb-12"
+              >
+                <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
+                  00 / READ THIS FIRST
+                </p>
+                <h2 className="font-display mt-4 text-[28px] font-medium tracking-[-.015em]">
+                  A governed wallet is a boundary, not a bank account.
+                </h2>
                 <p className="mt-5 text-[15px] leading-[1.55] text-[var(--wl-body)]">
-                  The agent proposes a transaction. ARCANUM evaluates the proposal against a signed policy doctrine. Only the governed
-                  wallet can settle it, and every verdict becomes a ledger record. The model never receives the operator key.
+                  The agent proposes a transaction. ARCANUM evaluates the proposal against a signed
+                  policy doctrine. Only the governed wallet can settle it, and every verdict becomes
+                  a ledger record. The model never receives the operator key.
                 </p>
                 <div className="mt-8 grid border-y border-[var(--wl-line)] sm:grid-cols-3">
                   {[
@@ -128,7 +151,9 @@ export default function DocsPage() {
                     >
                       <span className="font-mono text-[10px] text-[var(--wl-signal)]">{n}</span>
                       <h3 className="mt-8 text-[16px] font-medium">{title}</h3>
-                      <p className="mt-2 text-[12px] leading-[1.45] text-[var(--wl-secondary2)]">{copy}</p>
+                      <p className="mt-2 text-[12px] leading-[1.45] text-[var(--wl-secondary2)]">
+                        {copy}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -137,17 +162,31 @@ export default function DocsPage() {
 
             <Reveal index={1}>
               <section id="wallet" className="docs-anchor border-b border-[var(--wl-line)] py-14">
-                <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">01 / DEPLOY A GOVERNED WALLET</p>
-                <h2 className="font-display mt-4 text-[28px] font-medium tracking-[-.015em]">Start with a wallet that cannot improvise.</h2>
+                <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
+                  01 / DEPLOY A GOVERNED WALLET
+                </p>
+                <h2 className="font-display mt-4 text-[28px] font-medium tracking-[-.015em]">
+                  Start with a wallet that cannot improvise.
+                </h2>
                 <p className="mt-5 text-[15px] leading-[1.55] text-[var(--wl-body)]">
-                  Create the wallet from the HELIX-DAO operator console, then bind the first doctrine before funding it. Use Arc testnet
-                  for the complete rehearsal: the same signing ceremony, a safe balance.
+                  Create the wallet from the HELIX-DAO operator console, then bind the first
+                  doctrine before funding it. Use Arc testnet for the complete rehearsal: the same
+                  signing ceremony, a safe balance.
                 </p>
                 <ol className="mt-9 space-y-7">
                   {[
-                    ["Connect the operator", "Open the console with your EOA and complete Sign-In with Ethereum (SIWE). The message includes HELIX-DAO, Arc testnet, a nonce, and an expiry. Never paste a private key into an agent runtime."],
-                    ["Name the boundary", "Register the wallet as procurement-bot and record 0x3f…9a2c in the inventory. The wallet address is the stable identity used in every ledger decision."],
-                    ["Fund the rehearsal", "Send a small USDC balance on Arc testnet. Confirm the chain ID and token contract in the wallet drawer before your first proposal."],
+                    [
+                      "Connect the operator",
+                      "Open the console with your EOA and complete Sign-In with Ethereum (SIWE). The message includes HELIX-DAO, Arc testnet, a nonce, and an expiry. Never paste a private key into an agent runtime.",
+                    ],
+                    [
+                      "Name the boundary",
+                      "Register the wallet as procurement-bot and record 0x3f…9a2c in the inventory. The wallet address is the stable identity used in every ledger decision.",
+                    ],
+                    [
+                      "Fund the rehearsal",
+                      "Send a small USDC balance on Arc testnet. Confirm the chain ID and token contract in the wallet drawer before your first proposal.",
+                    ],
                   ].map(([title, copy], i) => (
                     <li key={title} className="grid grid-cols-[28px_1fr] gap-4">
                       <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--wl-ink)] font-mono text-[10px] text-[var(--wl-bg)]">
@@ -155,7 +194,9 @@ export default function DocsPage() {
                       </span>
                       <div>
                         <h3 className="text-[16px] font-medium">{title}</h3>
-                        <p className="mt-2 text-[13px] leading-[1.5] text-[var(--wl-secondary2)]">{copy}</p>
+                        <p className="mt-2 text-[13px] leading-[1.5] text-[var(--wl-secondary2)]">
+                          {copy}
+                        </p>
                       </div>
                     </li>
                   ))}
@@ -177,11 +218,16 @@ export default function DocsPage() {
 
             <Reveal index={2}>
               <section id="doctrine" className="docs-anchor border-b border-[var(--wl-line)] py-14">
-                <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">02 / AUTHOR A POLICY DOCTRINE</p>
-                <h2 className="font-display mt-4 text-[28px] font-medium tracking-[-.015em]">Write the exception before the request.</h2>
+                <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
+                  02 / AUTHOR A POLICY DOCTRINE
+                </p>
+                <h2 className="font-display mt-4 text-[28px] font-medium tracking-[-.015em]">
+                  Write the exception before the request.
+                </h2>
                 <p className="mt-5 text-[15px] leading-[1.55] text-[var(--wl-body)]">
-                  A doctrine is executable policy with an accountable author. Keep it narrow: name approved vendors, set a transaction
-                  cap, and describe what happens when the facts fall outside the line.
+                  A doctrine is executable policy with an accountable author. Keep it narrow: name
+                  approved vendors, set a transaction cap, and describe what happens when the facts
+                  fall outside the line.
                 </p>
                 <div className="mt-8 border border-[var(--wl-line-bold)] bg-[var(--wl-bg-raised)] p-5 shadow-[12px_14px_0_var(--wl-line-faint)] md:p-7">
                   <div className="flex justify-between border-b border-[var(--wl-line)] pb-4 font-mono text-[9px] uppercase tracking-[.15em] text-[var(--wl-mute)]">
@@ -193,7 +239,8 @@ export default function DocsPage() {
                     <br />
                     <span className="text-[var(--wl-signal)]">vendor</span> in [ AWS, OpenAI ]
                     <br />
-                    <span className="text-[var(--wl-signal)]">and amount</span> ≤ <span className="text-[var(--wl-signal)]">$500</span>
+                    <span className="text-[var(--wl-signal)]">and amount</span> ≤{" "}
+                    <span className="text-[var(--wl-signal)]">$500</span>
                     <br />
                     <br />
                     <span className="text-[var(--wl-mute)]">then</span>
@@ -209,25 +256,45 @@ export default function DocsPage() {
                   </div>
                 </div>
                 <p className="mt-7 text-[13px] leading-[1.5] text-[var(--wl-secondary2)]">
-                  Publish only after a second operator reviews the rendered rule. A doctrine change is a new signed instrument; it does
-                  not rewrite previous ledger decisions.
+                  Publish only after a second operator reviews the rendered rule. A doctrine change
+                  is a new signed instrument; it does not rewrite previous ledger decisions.
                 </p>
               </section>
             </Reveal>
 
             <Reveal index={3}>
-              <section id="restraint" className="docs-anchor border-b border-[var(--wl-line)] py-14">
-                <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">03 / HANDLE YOUR FIRST RESTRAINT</p>
-                <h2 className="font-display mt-4 text-[28px] font-medium tracking-[-.015em]">A pause is a successful control.</h2>
+              <section
+                id="restraint"
+                className="docs-anchor border-b border-[var(--wl-line)] py-14"
+              >
+                <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
+                  03 / HANDLE YOUR FIRST RESTRAINT
+                </p>
+                <h2 className="font-display mt-4 text-[28px] font-medium tracking-[-.015em]">
+                  A pause is a successful control.
+                </h2>
                 <p className="mt-5 text-[15px] leading-[1.55] text-[var(--wl-body)]">
-                  When growth-bot asks Anthropic for $2,100.00, the request should stop. Review the reason, compare it to the doctrine,
-                  then make a recorded decision. Speed is not the objective; legibility is.
+                  When growth-bot asks Anthropic for $2,100.00, the request should stop. Review the
+                  reason, compare it to the doctrine, then make a recorded decision. Speed is not
+                  the objective; legibility is.
                 </p>
                 <div className="mt-8 grid gap-5 md:grid-cols-2">
-                  <Note label="CHECK / 01">Confirm the requesting wallet, vendor, amount, and expiry. A familiar agent does not make an unfamiliar destination safe.</Note>
-                  <Note label="CHECK / 02">Read the policy trace. If the request is valid but over cap, approve only when the escalation quorum and reason are present.</Note>
-                  <Note label="CHECK / 03">Approve or reject in the restraint queue. The decision is signed, immutable, and visible in the ledger.</Note>
-                  <Note label="CHECK / 04">If the request is unexpected, freeze the wallet first, then investigate the agent runtime and rotate the doctrine.</Note>
+                  <Note label="CHECK / 01">
+                    Confirm the requesting wallet, vendor, amount, and expiry. A familiar agent does
+                    not make an unfamiliar destination safe.
+                  </Note>
+                  <Note label="CHECK / 02">
+                    Read the policy trace. If the request is valid but over cap, approve only when
+                    the escalation quorum and reason are present.
+                  </Note>
+                  <Note label="CHECK / 03">
+                    Approve or reject in the restraint queue. The decision is signed, immutable, and
+                    visible in the ledger.
+                  </Note>
+                  <Note label="CHECK / 04">
+                    If the request is unexpected, freeze the wallet first, then investigate the
+                    agent runtime and rotate the doctrine.
+                  </Note>
                 </div>
                 <Link
                   href="/escalations"
@@ -240,8 +307,12 @@ export default function DocsPage() {
 
             <Reveal index={1}>
               <section id="runbook" className="docs-anchor border-b border-[var(--wl-line)] py-14">
-                <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">04 / OPERATOR RUNBOOK</p>
-                <h2 className="font-display mt-4 text-[28px] font-medium tracking-[-.015em]">Keep the record useful.</h2>
+                <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
+                  04 / OPERATOR RUNBOOK
+                </p>
+                <h2 className="font-display mt-4 text-[28px] font-medium tracking-[-.015em]">
+                  Keep the record useful.
+                </h2>
                 <div className="mt-6 divide-y divide-[var(--wl-line)] border-y border-[var(--wl-line)]">
                   {[
                     "Review pending restraints at the start of every shift.",
@@ -250,7 +321,9 @@ export default function DocsPage() {
                     "Leave the ledger with a clear answer: allowed, blocked, or human-decided.",
                   ].map((item, i) => (
                     <div key={item} className="flex gap-4 py-4">
-                      <span className="font-mono text-[10px] text-[var(--wl-signal)]">0{i + 1}</span>
+                      <span className="font-mono text-[10px] text-[var(--wl-signal)]">
+                        0{i + 1}
+                      </span>
                       <span className="text-[13px] text-[var(--wl-body)]">{item}</span>
                     </div>
                   ))}
@@ -274,19 +347,38 @@ export default function DocsPage() {
 
             <Reveal index={2}>
               <section id="sdk" className="docs-anchor py-14">
-                <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">05 / SDK QUICKSTART</p>
-                <h2 className="font-display mt-4 text-[28px] font-medium tracking-[-.015em]">Deploy your first GuardedWallet.</h2>
+                <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
+                  05 / SDK QUICKSTART
+                </p>
+                <h2 className="font-display mt-4 text-[28px] font-medium tracking-[-.015em]">
+                  Deploy your first GuardedWallet.
+                </h2>
                 <p className="mt-5 text-[15px] leading-[1.55] text-[var(--wl-body)]">
-                  Stand up a governed agent wallet on Arc Testnet in five steps. Every transaction it attempts will be evaluated
-                  against a Doctrine before it can settle on-chain.
+                  Stand up a governed agent wallet on Arc Testnet in five steps. Every transaction
+                  it attempts will be evaluated against a Doctrine before it can settle on-chain.
                 </p>
                 <ol className="mt-9 space-y-7">
                   {[
-                    ["Install the SDK", "Add the Arcanum SDK to your project. It ships with typed GuardedWallet helpers and Arc Testnet chain config."],
-                    ["Configure the signer", "Point the client at Arc Testnet and supply an admin signer that will own the Doctrine."],
-                    ["Deploy the wallet with a Doctrine", "Create a GuardedWallet through WalletFactory and attach spend limits, category caps, and an escalation quorum."],
-                    ["Fund the wallet", "Transfer test USDC to the deployed address; it appears in the AGENT REGISTER immediately."],
-                    ["Watch the Event Stream", "Every attempted transaction now flows through the governed event stream with a verdict."],
+                    [
+                      "Install the SDK",
+                      "Add the Arcanum SDK to your project. It ships with typed GuardedWallet helpers and Arc Testnet chain config.",
+                    ],
+                    [
+                      "Configure the signer",
+                      "Point the client at Arc Testnet and supply an admin signer that will own the Doctrine.",
+                    ],
+                    [
+                      "Deploy the wallet with a Doctrine",
+                      "Create a GuardedWallet through WalletFactory and attach spend limits, category caps, and an escalation quorum.",
+                    ],
+                    [
+                      "Fund the wallet",
+                      "Transfer test USDC to the deployed address; it appears in the AGENT REGISTER immediately.",
+                    ],
+                    [
+                      "Watch the Event Stream",
+                      "Every attempted transaction now flows through the governed event stream with a verdict.",
+                    ],
                   ].map(([title, copy], i) => (
                     <li key={title} className="grid grid-cols-[28px_1fr] gap-4">
                       <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--wl-ink)] font-mono text-[10px] text-[var(--wl-bg)]">
@@ -294,7 +386,9 @@ export default function DocsPage() {
                       </span>
                       <div>
                         <h3 className="text-[16px] font-medium">{title}</h3>
-                        <p className="mt-2 text-[13px] leading-[1.5] text-[var(--wl-secondary2)]">{copy}</p>
+                        <p className="mt-2 text-[13px] leading-[1.5] text-[var(--wl-secondary2)]">
+                          {copy}
+                        </p>
                       </div>
                     </li>
                   ))}
@@ -321,25 +415,34 @@ const txHash = await walletClient.writeContract({
                 <div className="mt-8 space-y-3">
                   <div className="flex gap-3 border-l-2 border-[var(--wl-signal)] bg-[rgba(var(--wl-signal-rgb),.06)] px-4 py-3">
                     <div>
-                      <div className="font-mono text-[11px] uppercase tracking-[.12em] text-[var(--wl-signal)]">RESTRAINT</div>
+                      <div className="font-mono text-[11px] uppercase tracking-[.12em] text-[var(--wl-signal)]">
+                        RESTRAINT
+                      </div>
                       <p className="mt-1 text-[12.5px] leading-[1.5] text-[var(--wl-body)]">
-                        On-chain policy changes affect real testnet state. Test with small limits first.
+                        On-chain policy changes affect real testnet state. Test with small limits
+                        first.
                       </p>
                     </div>
                   </div>
                   <div className="flex gap-3 border-l-2 border-[var(--wl-amber)] bg-[var(--wl-bg-soft)] px-4 py-3">
                     <div>
-                      <div className="font-mono text-[11px] uppercase tracking-[.12em] text-[var(--wl-amber)]">WARNING</div>
+                      <div className="font-mono text-[11px] uppercase tracking-[.12em] text-[var(--wl-amber)]">
+                        WARNING
+                      </div>
                       <p className="mt-1 text-[12.5px] leading-[1.5] text-[var(--wl-body)]">
-                        A quorum of 1 disables multi-party approval. Use at least 2 for treasury wallets.
+                        A quorum of 1 disables multi-party approval. Use at least 2 for treasury
+                        wallets.
                       </p>
                     </div>
                   </div>
                   <div className="flex gap-3 border-l-2 border-[var(--wl-green)] bg-[var(--wl-bg-soft)] px-4 py-3">
                     <div>
-                      <div className="font-mono text-[11px] uppercase tracking-[.12em] text-[var(--wl-green)]">INFO</div>
+                      <div className="font-mono text-[11px] uppercase tracking-[.12em] text-[var(--wl-green)]">
+                        INFO
+                      </div>
                       <p className="mt-1 text-[12.5px] leading-[1.5] text-[var(--wl-body)]">
-                        USDC token amounts are expressed in 6-decimal base units. The SDK exposes usdcErc20() helpers.
+                        USDC token amounts are expressed in 6-decimal base units. The SDK exposes
+                        usdcErc20() helpers.
                       </p>
                     </div>
                   </div>
@@ -365,7 +468,9 @@ const txHash = await walletClient.writeContract({
           </article>
 
           <aside className="hidden border-l border-[var(--wl-line)] pl-5 pt-10 lg:block">
-            <p className="font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)]">FIELD NOTES</p>
+            <p className="font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)]">
+              FIELD NOTES
+            </p>
             <div className="mt-5 space-y-7 text-[12px] leading-[1.5] text-[var(--wl-secondary2)]">
               <p>
                 <span className="font-mono text-[9px] text-[var(--wl-signal)]">01</span>
@@ -374,8 +479,7 @@ const txHash = await walletClient.writeContract({
               </p>
               <p>
                 <span className="font-mono text-[9px] text-[var(--wl-signal)]">02</span>
-                <br />
-                A policy is a promise about what happens next.
+                <br />A policy is a promise about what happens next.
               </p>
               <p>
                 <span className="font-mono text-[9px] text-[var(--wl-signal)]">03</span>

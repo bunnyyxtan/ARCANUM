@@ -4,7 +4,10 @@
     "rules": {
       "a11y": {
         "useButtonType": "off",
-        "noLabelWithoutControl": "off"
+        "noLabelWithoutControl": "off",
+        "noAutofocus": "off",
+        "useSemanticElements": "off",
+        "useKeyWithClickEvents": "off"
       },
       "suspicious": {
         "noExplicitAny": "off",

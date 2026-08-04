@@ -18,7 +18,10 @@ export default function AgentDetailLoading() {
         <div className="grid gap-10 pt-10 xl:grid-cols-[minmax(0,1.5fr)_minmax(340px,.8fr)]">
           <div className="space-y-4">
             {[0, 1, 2, 3].map((index) => (
-              <div key={index} className="h-12 animate-pulse rounded border-b border-[var(--wl-line-soft)] bg-[var(--wl-line-soft)]" />
+              <div
+                key={index}
+                className="h-12 animate-pulse rounded border-b border-[var(--wl-line-soft)] bg-[var(--wl-line-soft)]"
+              />
             ))}
           </div>
           <div className="h-[480px] animate-pulse rounded bg-[var(--wl-bg-soft)]" />

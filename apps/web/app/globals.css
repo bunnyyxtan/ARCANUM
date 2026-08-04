@@ -144,8 +144,7 @@ html.wl-dark [class*="bg-[var(--wl-bg)]"] {
       0deg,
       rgba(255, 255, 255, 0.018) 0 1px,
       transparent 1px 38px
-    ),
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 38px);
+    ), repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 38px);
 }
 
 /* Panels / tints sit flat, like the old foundry panels. */
@@ -168,10 +167,18 @@ select option {
 }
 
 /* Theme toggle icon swap */
-.wl-icon-sun { display: none; }
-.wl-icon-moon { display: inline-flex; }
-html.wl-dark .wl-icon-sun { display: inline-flex; }
-html.wl-dark .wl-icon-moon { display: none; }
+.wl-icon-sun {
+  display: none;
+}
+.wl-icon-moon {
+  display: inline-flex;
+}
+html.wl-dark .wl-icon-sun {
+  display: inline-flex;
+}
+html.wl-dark .wl-icon-moon {
+  display: none;
+}
 
 /* ------------------------------------------------------------------ */
 /* Warm Ledger interaction primitives (shared across landing + app)    */
@@ -181,10 +188,8 @@ html.wl-dark .wl-icon-moon { display: none; }
   --mag-x: 0px;
   --mag-y: 0px;
   transform: translate3d(var(--mag-x), var(--mag-y), 0);
-  transition:
-    transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
-    color 220ms ease,
-    border-color 220ms ease;
+  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1), color 220ms ease, border-color 220ms
+    ease;
 }
 .warm-interaction:active {
   transform: translate3d(var(--mag-x), calc(var(--mag-y) + 2px), 0);
@@ -195,11 +200,8 @@ html.wl-dark .wl-icon-moon { display: none; }
   isolation: isolate;
   overflow: hidden;
   box-shadow: 0 1px 2px rgba(var(--wl-ink-rgb), 0.06);
-  transition:
-    transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
-    box-shadow 320ms cubic-bezier(0.16, 1, 0.3, 1),
-    color 220ms ease,
-    border-color 220ms ease;
+  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 320ms
+    cubic-bezier(0.16, 1, 0.3, 1), color 220ms ease, border-color 220ms ease;
 }
 .warm-pill::before {
   content: "";
@@ -212,9 +214,8 @@ html.wl-dark .wl-icon-moon { display: none; }
   transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 .warm-pill:hover {
-  box-shadow:
-    0 10px 28px -8px rgba(var(--wl-signal-rgb), 0.45),
-    0 2px 6px rgba(var(--wl-ink-rgb), 0.08);
+  box-shadow: 0 10px 28px -8px rgba(var(--wl-signal-rgb), 0.45), 0 2px 6px
+    rgba(var(--wl-ink-rgb), 0.08);
 }
 .warm-pill:hover::before {
   transform: translateY(0);
@@ -234,11 +235,8 @@ html.wl-dark .wl-icon-moon { display: none; }
   isolation: isolate;
   overflow: hidden;
   box-shadow: 0 1px 2px rgba(var(--wl-ink-rgb), 0.06);
-  transition:
-    transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
-    box-shadow 320ms cubic-bezier(0.16, 1, 0.3, 1),
-    color 220ms ease,
-    border-color 220ms ease;
+  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 320ms
+    cubic-bezier(0.16, 1, 0.3, 1), color 220ms ease, border-color 220ms ease;
 }
 .warm-button::before {
   content: "";
@@ -252,9 +250,8 @@ html.wl-dark .wl-icon-moon { display: none; }
 }
 .warm-button:hover {
   transform: translateY(-1px);
-  box-shadow:
-    0 10px 28px -8px rgba(var(--wl-signal-rgb), 0.42),
-    0 2px 6px rgba(var(--wl-ink-rgb), 0.08);
+  box-shadow: 0 10px 28px -8px rgba(var(--wl-signal-rgb), 0.42), 0 2px 6px
+    rgba(var(--wl-ink-rgb), 0.08);
 }
 .warm-button:hover::before {
   transform: translateY(0);
@@ -269,11 +266,21 @@ html.wl-dark .wl-icon-moon { display: none; }
 }
 
 /* Entrance stagger indexes (in-app pages animate on mount). */
-.warm-reveal-1 { --i: 1; }
-.warm-reveal-2 { --i: 2; }
-.warm-reveal-3 { --i: 3; }
-.warm-reveal-4 { --i: 4; }
-.warm-reveal-5 { --i: 5; }
+.warm-reveal-1 {
+  --i: 1;
+}
+.warm-reveal-2 {
+  --i: 2;
+}
+.warm-reveal-3 {
+  --i: 3;
+}
+.warm-reveal-4 {
+  --i: 4;
+}
+.warm-reveal-5 {
+  --i: 5;
+}
 
 .warm-link {
   position: relative;
@@ -314,31 +321,65 @@ html.wl-dark .wl-icon-moon { display: none; }
 .warm-reveal[data-reveal-kind="headline"].is-visible {
   animation: warmHeadline 560ms cubic-bezier(0.16, 1, 0.3, 1) calc(var(--i, 0) * 120ms) both;
 }
-.delay-1 { --i: 1; }
-.delay-2 { --i: 2; }
-.delay-3 { --i: 3; }
+.delay-1 {
+  --i: 1;
+}
+.delay-2 {
+  --i: 2;
+}
+.delay-3 {
+  --i: 3;
+}
 
 @keyframes warmIn {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 @keyframes warmHeadline {
-  from { opacity: 0; transform: translateY(11px); clip-path: inset(0 0 100% 0); }
-  to { opacity: 1; transform: translateY(0); clip-path: inset(0 0 0 0); }
+  from {
+    opacity: 0;
+    transform: translateY(11px);
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    clip-path: inset(0 0 0 0);
+  }
 }
 
 /* Modals */
 @keyframes warmModalBackdrop {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 @keyframes warmModalPanel {
-  from { opacity: 0; transform: translateY(18px) scale(0.985); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 @keyframes warmScan {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(340%); }
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(340%);
+  }
 }
 .warm-modal-backdrop {
   animation: warmModalBackdrop 260ms ease both;
@@ -348,10 +389,8 @@ html.wl-dark .wl-icon-moon { display: none; }
 }
 
 .warm-wallet-option {
-  transition:
-    border-color 200ms ease,
-    background 200ms ease,
-    transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: border-color 200ms ease, background 200ms ease, transform 220ms
+    cubic-bezier(0.16, 1, 0.3, 1);
 }
 .warm-wallet-option:hover {
   border-color: var(--wl-ink);
@@ -365,18 +404,14 @@ html.wl-dark .wl-icon-moon { display: none; }
 .warm-wallet-arrow {
   opacity: 0;
   transform: translateX(-6px);
-  transition:
-    opacity 200ms ease,
-    transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 200ms ease, transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Live ledger rows */
 .warm-ledger-row {
   opacity: 0.3;
   transform: translateY(8px);
-  transition:
-    transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
-    opacity 220ms ease;
+  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1), opacity 220ms ease;
 }
 .warm-ledger-row.is-live {
   opacity: 1;
@@ -391,8 +426,14 @@ html.wl-dark .wl-icon-moon { display: none; }
   opacity: 0.26;
 }
 @keyframes ledgerIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Verdict pills */
@@ -412,10 +453,8 @@ html.wl-dark .wl-icon-moon { display: none; }
   max-width: 0;
   opacity: 0;
   transform: translateX(-8px);
-  transition:
-    max-width 420ms cubic-bezier(0.16, 1, 0.3, 1),
-    transform 420ms cubic-bezier(0.16, 1, 0.3, 1),
-    opacity 220ms ease;
+  transition: max-width 420ms cubic-bezier(0.16, 1, 0.3, 1), transform 420ms
+    cubic-bezier(0.16, 1, 0.3, 1), opacity 220ms ease;
 }
 .warm-ledger-row.is-live .approval-chip {
   max-width: 45px;
@@ -423,10 +462,19 @@ html.wl-dark .wl-icon-moon { display: none; }
   transform: translateX(0);
 }
 @keyframes blockedSlam {
-  0%, 100% { transform: translateX(0); }
-  20% { transform: translateX(-1px); }
-  40% { transform: translateX(1px); }
-  60% { transform: translateX(-1px); }
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-1px);
+  }
+  40% {
+    transform: translateX(1px);
+  }
+  60% {
+    transform: translateX(-1px);
+  }
 }
 
 /* Section numbers count in */
@@ -439,8 +487,14 @@ html.wl-dark .wl-icon-moon { display: none; }
   animation: numberIn 420ms cubic-bezier(0.16, 1, 0.3, 1) 180ms both;
 }
 @keyframes numberIn {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Policy document */
@@ -466,12 +520,22 @@ html.wl-dark .wl-icon-moon { display: none; }
   animation: lineDraw 420ms cubic-bezier(0.16, 1, 0.3, 1) 220ms both;
 }
 @keyframes policyIn {
-  from { opacity: 0.8; transform: scale(0.96); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0.8;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 @keyframes lineDraw {
-  from { transform: scaleX(0); }
-  to { transform: scaleX(1); }
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
 }
 
 /* Brand period pulse */
@@ -480,8 +544,13 @@ html.wl-dark .wl-icon-moon { display: none; }
   animation: periodPulse 420ms cubic-bezier(0.16, 1, 0.3, 1) 420ms both;
 }
 @keyframes periodPulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.18); }
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.18);
+  }
 }
 
 /* Section rail scroll tracker */
@@ -494,9 +563,7 @@ html.wl-dark .wl-icon-moon { display: none; }
   background: var(--wl-signal);
   opacity: var(--dot-o, 0);
   transform: translateY(var(--dot-y, 0px));
-  transition:
-    transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
-    opacity 220ms ease;
+  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1), opacity 220ms ease;
 }
 .warm-nav-dot {
   position: relative;

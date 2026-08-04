@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, type CSSProperties } from "react";
+import { type CSSProperties, useMemo, useState } from "react";
 
 import { DeployWalletModal } from "@/components/warm/DeployWalletModal";
 import { formatUsd } from "@/lib/format/money";
@@ -19,7 +19,10 @@ function statusLabel(agent: Agent): "ACTIVE" | "FROZEN" | "IDLE" {
 
 function Arrow() {
   return (
-    <span aria-hidden="true" className="ml-1.5 inline-block transition-transform duration-[220ms] group-hover:translate-x-1">
+    <span
+      aria-hidden="true"
+      className="ml-1.5 inline-block transition-transform duration-[220ms] group-hover:translate-x-1"
+    >
       →
     </span>
   );
@@ -32,7 +35,9 @@ function StatusPill({ status }: { status: "ACTIVE" | "FROZEN" | "IDLE" }) {
     IDLE: "border border-[var(--wl-line)] text-[var(--wl-secondary)]",
   };
   return (
-    <span className={`inline-flex rounded-full px-2.5 py-1 font-mono text-[9px] tracking-[.12em] ${styles[status]}`}>
+    <span
+      className={`inline-flex rounded-full px-2.5 py-1 font-mono text-[9px] tracking-[.12em] ${styles[status]}`}
+    >
       {status}
     </span>
   );
@@ -66,10 +71,7 @@ export default function AgentsPage() {
   const idleCount = agents.filter((agent) => statusLabel(agent) === "IDLE").length;
 
   return (
-    <main
-      className="min-h-[100dvh] bg-[var(--wl-bg)] text-[var(--wl-ink)]"
-
-    >
+    <main className="min-h-[100dvh] bg-[var(--wl-bg)] text-[var(--wl-ink)]">
       <style>{`
         .agents-reveal{animation:agentsIn 420ms cubic-bezier(.16,1,.3,1) calc(var(--i,0) * 90ms) both}@keyframes agentsIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
         .agent-row{transition:transform 220ms cubic-bezier(.16,1,.3,1),background-color 220ms ease}.agent-row:hover{transform:translateX(3px);background:var(--wl-bg-soft)}.meter{height:4px;background:var(--wl-line-soft)}.meter>span{display:block;height:100%;background:var(--wl-ink);transform-origin:left;transition:transform 420ms cubic-bezier(.16,1,.3,1)}
@@ -156,7 +158,9 @@ export default function AgentsPage() {
                 <p className="font-mono text-[10px] uppercase tracking-[.17em] text-[var(--wl-signal)]">
                   REGISTRY / {visibleAgents.length.toString().padStart(2, "0")}
                 </p>
-                <h2 className="font-display mt-2 text-[22px] font-medium tracking-[-.015em]">Agent register</h2>
+                <h2 className="font-display mt-2 text-[22px] font-medium tracking-[-.015em]">
+                  Agent register
+                </h2>
               </div>
               <span className="hidden font-mono text-[9px] uppercase tracking-[.13em] text-[var(--wl-mute)] md:inline">
                 arc testnet
@@ -174,7 +178,10 @@ export default function AgentsPage() {
             {agentsQuery.isLoading ? (
               <div className="divide-y divide-[var(--wl-line-soft)]">
                 {[0, 1, 2, 3].map((index) => (
-                  <div key={index} className="grid animate-pulse gap-3 px-3 py-5 md:grid-cols-[.9fr_1.35fr_1fr_1fr_1.1fr_1.3fr] md:items-center">
+                  <div
+                    key={index}
+                    className="grid animate-pulse gap-3 px-3 py-5 md:grid-cols-[.9fr_1.35fr_1fr_1fr_1.1fr_1.3fr] md:items-center"
+                  >
                     <div className="h-4 w-16 rounded-full bg-[var(--wl-line-soft)]" />
                     <div className="h-4 w-32 rounded bg-[var(--wl-line-soft)]" />
                     <div className="h-4 w-20 rounded bg-[var(--wl-line-soft)]" />
@@ -204,9 +211,7 @@ export default function AgentsPage() {
                     const status = statusLabel(agent);
                     const postureWidth = Math.max(0, Math.min(100, agent.posture)) / 100;
                     const capWidth =
-                      agent.dailyLimit > 0
-                        ? Math.min(1, agent.dailySpend / agent.dailyLimit)
-                        : 0;
+                      agent.dailyLimit > 0 ? Math.min(1, agent.dailySpend / agent.dailyLimit) : 0;
                     return (
                       <button
                         type="button"
@@ -315,7 +320,10 @@ export default function AgentsPage() {
             )}
           </div>
 
-          <aside className="agents-reveal bg-[var(--wl-bg-soft)] p-6 md:p-7" style={{ "--i": 3 } as CSSProperties}>
+          <aside
+            className="agents-reveal bg-[var(--wl-bg-soft)] p-6 md:p-7"
+            style={{ "--i": 3 } as CSSProperties}
+          >
             {selectedAgent ? (
               <>
                 <div className="flex items-start justify-between border-b border-[var(--wl-line)] pb-5">
@@ -345,13 +353,17 @@ export default function AgentsPage() {
                     <p className="font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-secondary)]">
                       DAILY SPEND
                     </p>
-                    <p className="mt-2 font-mono text-[13px]">{formatUsd(selectedAgent.dailySpend)}</p>
+                    <p className="mt-2 font-mono text-[13px]">
+                      {formatUsd(selectedAgent.dailySpend)}
+                    </p>
                   </div>
                   <div>
                     <p className="font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-secondary)]">
                       DAILY CAP
                     </p>
-                    <p className="mt-2 font-mono text-[13px]">{formatUsd(selectedAgent.dailyLimit)}</p>
+                    <p className="mt-2 font-mono text-[13px]">
+                      {formatUsd(selectedAgent.dailyLimit)}
+                    </p>
                   </div>
                   <div>
                     <p className="font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-secondary)]">

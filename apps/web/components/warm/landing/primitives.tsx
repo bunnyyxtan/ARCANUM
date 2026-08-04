@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import {
-  useEffect,
-  useRef,
-  useState,
   type CSSProperties,
   type PointerEvent,
   type ReactNode,
+  useEffect,
+  useRef,
+  useState,
 } from "react";
 
 export function Arrow() {
@@ -65,7 +65,14 @@ type MagneticAnchorProps = {
  * Anchor with a subtle magnetic hover offset. Uses next/link for internal
  * routes and a plain anchor for hash links / external links.
  */
-export function MagneticAnchor({ children, className = "", href, rel, target, onClick }: MagneticAnchorProps) {
+export function MagneticAnchor({
+  children,
+  className = "",
+  href,
+  rel,
+  target,
+  onClick,
+}: MagneticAnchorProps) {
   const onMove = (event: PointerEvent<HTMLAnchorElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
     const x = Math.max(-4, Math.min(4, (event.clientX - (rect.left + rect.width / 2)) * 0.08));
@@ -127,12 +134,41 @@ export function StatusPill({ status }: { status: "ALLOWED" | "BLOCKED" | "ESCALA
 
 export function LedgerRows({ dark = false }: { dark?: boolean }) {
   const rows = [
-    { agent: "procurement-bot", vendor: "AWS", amount: "$184.20", detail: "0x3f…9a2c", status: "ALLOWED" as const, time: "09:41:08" },
-    { agent: "support-agent", vendor: "OpenAI", amount: "$740.00", detail: "0x71…4be1", status: "BLOCKED" as const, time: "09:41:12" },
-    { agent: "growth-bot", vendor: "Anthropic", amount: "$2,100.00", detail: "0xa8…c912", status: "ESCALATED" as const, time: "09:41:16" },
-    { agent: "procurement-bot", vendor: "AWS", amount: "$316.40", detail: "0x3f…9a2c", status: "ALLOWED" as const, time: "09:41:19" },
+    {
+      agent: "procurement-bot",
+      vendor: "AWS",
+      amount: "$184.20",
+      detail: "0x3f…9a2c",
+      status: "ALLOWED" as const,
+      time: "09:41:08",
+    },
+    {
+      agent: "support-agent",
+      vendor: "OpenAI",
+      amount: "$740.00",
+      detail: "0x71…4be1",
+      status: "BLOCKED" as const,
+      time: "09:41:12",
+    },
+    {
+      agent: "growth-bot",
+      vendor: "Anthropic",
+      amount: "$2,100.00",
+      detail: "0xa8…c912",
+      status: "ESCALATED" as const,
+      time: "09:41:16",
+    },
+    {
+      agent: "procurement-bot",
+      vendor: "AWS",
+      amount: "$316.40",
+      detail: "0x3f…9a2c",
+      status: "ALLOWED" as const,
+      time: "09:41:19",
+    },
   ];
   const [visible, setVisible] = useState(2);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only ticker; rows is a static array
   useEffect(() => {
     const id = window.setInterval(() => setVisible((v) => (v >= rows.length ? 1 : v + 1)), 2500);
     return () => window.clearInterval(id);
@@ -141,19 +177,27 @@ export function LedgerRows({ dark = false }: { dark?: boolean }) {
   const line = dark ? "border-[var(--wl-strong2)]" : "border-[var(--wl-line)]";
   const quiet = dark ? "text-[var(--wl-dim2)]" : "text-[var(--wl-mute)]";
   return (
-    <div className={`overflow-hidden border ${line} ${dark ? "bg-[var(--wl-ink-soft)]" : "bg-[var(--wl-bg-raised)]"}`}>
+    <div
+      className={`overflow-hidden border ${line} ${dark ? "bg-[var(--wl-ink-soft)]" : "bg-[var(--wl-bg-raised)]"}`}
+    >
       <div className={`flex items-center justify-between border-b px-5 py-4 ${line}`}>
-        <span className={`font-mono text-[10px] uppercase tracking-[.18em] ${quiet}`}>Live governed ledger</span>
+        <span className={`font-mono text-[10px] uppercase tracking-[.18em] ${quiet}`}>
+          Live governed ledger
+        </span>
         <span className={`font-mono text-[10px] ${quiet}`}>ARC / USDC</span>
       </div>
-      <div className={`grid grid-cols-[1.3fr_1fr_.9fr_1fr_140px] gap-3 border-b px-5 py-3 font-mono text-[9px] uppercase tracking-[.13em] ${line} ${quiet}`}>
+      <div
+        className={`grid grid-cols-[1.3fr_1fr_.9fr_1fr_140px] gap-3 border-b px-5 py-3 font-mono text-[9px] uppercase tracking-[.13em] ${line} ${quiet}`}
+      >
         <span>Agent</span>
         <span>Vendor</span>
         <span className="text-right">Amount</span>
         <span>Wallet</span>
         <span className="text-right">Verdict</span>
       </div>
-      <div className={`divide-y ${dark ? "divide-[var(--wl-strong4)]" : "divide-[var(--wl-line-faint)]"}`}>
+      <div
+        className={`divide-y ${dark ? "divide-[var(--wl-strong4)]" : "divide-[var(--wl-line-faint)]"}`}
+      >
         {rows.map((r, i) => (
           <div
             key={r.time}
@@ -161,11 +205,23 @@ export function LedgerRows({ dark = false }: { dark?: boolean }) {
             className={`warm-ledger-row grid grid-cols-[1.3fr_1fr_.9fr_1fr_140px] items-center gap-3 px-5 py-4 ${i < visible ? "is-live" : "is-quiet"}`}
           >
             <div>
-              <div className={`text-[12px] font-medium ${dark ? "text-[var(--wl-bg-tint)]" : "text-[var(--wl-ink)]"}`}>{r.agent}</div>
+              <div
+                className={`text-[12px] font-medium ${dark ? "text-[var(--wl-bg-tint)]" : "text-[var(--wl-ink)]"}`}
+              >
+                {r.agent}
+              </div>
               <div className={`mt-1 font-mono text-[9px] ${quiet}`}>{r.time} UTC</div>
             </div>
-            <span className={`text-[12px] ${dark ? "text-[var(--wl-line-bolder)]" : "text-[var(--wl-strong)]"}`}>{r.vendor}</span>
-            <span className={`text-right font-mono text-[12px] tabular-nums ${dark ? "text-[var(--wl-bg-tint)]" : "text-[var(--wl-ink)]"}`}>{r.amount}</span>
+            <span
+              className={`text-[12px] ${dark ? "text-[var(--wl-line-bolder)]" : "text-[var(--wl-strong)]"}`}
+            >
+              {r.vendor}
+            </span>
+            <span
+              className={`text-right font-mono text-[12px] tabular-nums ${dark ? "text-[var(--wl-bg-tint)]" : "text-[var(--wl-ink)]"}`}
+            >
+              {r.amount}
+            </span>
             <span className={`font-mono text-[10px] ${quiet}`}>{r.detail}</span>
             <span className="flex justify-end">
               <StatusPill status={r.status} />

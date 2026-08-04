@@ -81,7 +81,9 @@ type RootLayoutProps = Readonly<{
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
-      <body className={`${fraunces.variable} ${schibsted.variable} ${plexMono.variable} antialiased`}>
+      <body
+        className={`${fraunces.variable} ${schibsted.variable} ${plexMono.variable} antialiased`}
+      >
         <Script src="/theme-init.js" strategy="beforeInteractive" />
         <Providers>{children}</Providers>
       </body>

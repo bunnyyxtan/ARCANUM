@@ -3,7 +3,7 @@
 import { arcTestnet } from "@arcanum/shared";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { toast } from "sonner";
 import type { Address, Hash } from "viem";
@@ -61,7 +61,9 @@ function ledgerStatusLabel(status: LedgerStatus): "APPROVED" | "REJECTED" | "ESC
   return "APPROVED";
 }
 
-function StatusPill({ status }: { status: "ACTIVE" | "FROZEN" | "APPROVED" | "REJECTED" | "ESCALATED" }) {
+function StatusPill({
+  status,
+}: { status: "ACTIVE" | "FROZEN" | "APPROVED" | "REJECTED" | "ESCALATED" }) {
   const styles = {
     ACTIVE: "bg-[var(--wl-green-tint)] text-[var(--wl-green)]",
     FROZEN: "bg-[var(--wl-ink)] text-[var(--wl-bg)]",
@@ -70,7 +72,9 @@ function StatusPill({ status }: { status: "ACTIVE" | "FROZEN" | "APPROVED" | "RE
     ESCALATED: "border border-[var(--wl-signal)] text-[var(--wl-signal)]",
   };
   return (
-    <span className={`inline-flex rounded-full px-2.5 py-1 font-mono text-[9px] tracking-[.12em] ${styles[status]}`}>
+    <span
+      className={`inline-flex rounded-full px-2.5 py-1 font-mono text-[9px] tracking-[.12em] ${styles[status]}`}
+    >
       {status}
     </span>
   );
@@ -78,7 +82,10 @@ function StatusPill({ status }: { status: "ACTIVE" | "FROZEN" | "APPROVED" | "RE
 
 function Arrow() {
   return (
-    <span aria-hidden="true" className="ml-1 transition-transform duration-[220ms] group-hover:translate-x-1">
+    <span
+      aria-hidden="true"
+      className="ml-1 transition-transform duration-[220ms] group-hover:translate-x-1"
+    >
       →
     </span>
   );
@@ -102,14 +109,15 @@ function AgentSignerPanel({ governedWalletAddress }: { governedWalletAddress: Ad
   const [signerAuthorized, setSignerAuthorized] = useState<boolean | null>(null);
   const [readStatus, setReadStatus] = useState<"idle" | "loading" | "verified" | "error">("idle");
   const [readError, setReadError] = useState<string | null>(null);
-  const [txStatus, setTxStatus] = useState<"idle" | "wallet" | "confirming" | "syncing" | "synced" | "sync_failed" | "error">("idle");
+  const [txStatus, setTxStatus] = useState<
+    "idle" | "wallet" | "confirming" | "syncing" | "synced" | "sync_failed" | "error"
+  >("idle");
   const [txHash, setTxHash] = useState<Hash | null>(null);
   const [txError, setTxError] = useState<string | null>(null);
 
   const trimmedSigner = signerInput.trim();
   const signerAddress = isEvmAddress(trimmedSigner) ? (trimmedSigner as Address) : null;
-  const usableSignerAddress =
-    signerAddress && !isZeroAddress(signerAddress) ? signerAddress : null;
+  const usableSignerAddress = signerAddress && !isZeroAddress(signerAddress) ? signerAddress : null;
   const signerValidation =
     trimmedSigner.length === 0
       ? "Enter an agent signer public address."
@@ -198,7 +206,7 @@ function AgentSignerPanel({ governedWalletAddress }: { governedWalletAddress: Ad
       : readStatus === "loading"
         ? "Checking governed wallet owner."
         : readStatus === "error"
-          ? readError ?? "Unable to read governed wallet on Arc Testnet."
+          ? (readError ?? "Unable to read governed wallet on Arc Testnet.")
           : !ownerMatchesConnectedWallet
             ? "Only the governed wallet owner can manage the agent signer."
             : chainId !== arcTestnet.id
@@ -420,7 +428,11 @@ export default function AgentDetailPage() {
   const decisions: LedgerEntry[] = ledgerQuery.data;
 
   const frozen = agent?.status === "frozen";
-  const agentName = agent?.name ?? (governedWalletAddress ? `Governed Wallet ${shortAddress(governedWalletAddress)}` : "Invalid wallet");
+  const agentName =
+    agent?.name ??
+    (governedWalletAddress
+      ? `Governed Wallet ${shortAddress(governedWalletAddress)}`
+      : "Invalid wallet");
 
   const approvedCount = decisions.filter((d) => d.status === "approved").length;
   const rejectedCount = decisions.filter((d) => d.status === "rejected").length;
@@ -446,10 +458,7 @@ export default function AgentDetailPage() {
   const behaviorBars = decisions.slice(0, 20).reverse();
 
   return (
-    <main
-      className="min-h-[100dvh] bg-[var(--wl-bg)] text-[var(--wl-ink)]"
-
-    >
+    <main className="min-h-[100dvh] bg-[var(--wl-bg)] text-[var(--wl-ink)]">
       <style>{`
         .detail-in{animation:detailIn 420ms cubic-bezier(.16,1,.3,1) calc(var(--i,0)*75ms) both}@keyframes detailIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
         .decision-row{transition:transform 220ms cubic-bezier(.16,1,.3,1),background-color 220ms ease}.decision-row:hover{transform:translateX(3px);background:var(--wl-bg-soft)}
@@ -506,8 +515,16 @@ export default function AgentDetailPage() {
             [
               ["POSTURE", `${agent?.posture ?? 0} / 100`, agent ? "arc testnet" : "invalid route"],
               ["TODAY'S SPEND", formatUsd(dailySpend), `of ${formatUsd(dailyLimit)} cap`],
-              ["DECISIONS", decisions.length.toString(), `${approvedCount} approved · ${rejectedCount} rejected`],
-              ["GOVERNANCE", frozen ? "FROZEN" : "ACTIVE", frozen ? "operator restraint" : (agent?.doctrineVersion ?? "arc testnet")],
+              [
+                "DECISIONS",
+                decisions.length.toString(),
+                `${approvedCount} approved · ${rejectedCount} rejected`,
+              ],
+              [
+                "GOVERNANCE",
+                frozen ? "FROZEN" : "ACTIVE",
+                frozen ? "operator restraint" : (agent?.doctrineVersion ?? "arc testnet"),
+              ],
             ] as const
           ).map(([label, value, note], i) => (
             <div
@@ -537,7 +554,9 @@ export default function AgentDetailPage() {
                 <p className="font-mono text-[10px] uppercase tracking-[.17em] text-[var(--wl-signal)]">
                   BEHAVIOR / INDEXED
                 </p>
-                <h2 className="font-display mt-2 text-[22px] font-medium tracking-[-.015em]">Spending behavior</h2>
+                <h2 className="font-display mt-2 text-[22px] font-medium tracking-[-.015em]">
+                  Spending behavior
+                </h2>
               </div>
               <span className="font-mono text-[9px] uppercase tracking-[.13em] text-[var(--wl-mute)]">
                 USD · UTC
@@ -590,7 +609,8 @@ export default function AgentDetailPage() {
                   No spend indexed yet
                 </p>
                 <p className="mx-auto mt-3 max-w-[360px] text-[12px] leading-[1.5] text-[var(--wl-body)]">
-                  Behavior charts populate once this governed wallet settles payments on Arc Testnet.
+                  Behavior charts populate once this governed wallet settles payments on Arc
+                  Testnet.
                 </p>
               </div>
             )}
@@ -600,7 +620,9 @@ export default function AgentDetailPage() {
                 <p className="font-mono text-[10px] uppercase tracking-[.17em] text-[var(--wl-signal)]">
                   DECISIONS / RECENT
                 </p>
-                <h2 className="font-display mt-2 text-[22px] font-medium tracking-[-.015em]">Decision record</h2>
+                <h2 className="font-display mt-2 text-[22px] font-medium tracking-[-.015em]">
+                  Decision record
+                </h2>
               </div>
               <Link
                 href="/ledger"
@@ -614,7 +636,10 @@ export default function AgentDetailPage() {
             {ledgerQuery.isLoading ? (
               <div>
                 {[0, 1, 2, 3].map((index) => (
-                  <div key={index} className="grid animate-pulse gap-2 border-b border-[var(--wl-line-soft)] px-3 py-4 md:grid-cols-[.8fr_1.2fr_1.1fr_.8fr_auto] md:items-center">
+                  <div
+                    key={index}
+                    className="grid animate-pulse gap-2 border-b border-[var(--wl-line-soft)] px-3 py-4 md:grid-cols-[.8fr_1.2fr_1.1fr_.8fr_auto] md:items-center"
+                  >
                     <div className="h-4 w-16 rounded bg-[var(--wl-line-soft)]" />
                     <div className="h-4 w-28 rounded bg-[var(--wl-line-soft)]" />
                     <div className="h-4 w-24 rounded bg-[var(--wl-line-soft)]" />
@@ -666,20 +691,28 @@ export default function AgentDetailPage() {
             )}
           </div>
 
-          <aside className="detail-in bg-[var(--wl-bg-soft)] p-6 md:p-7" style={{ "--i": 4 } as CSSProperties}>
+          <aside
+            className="detail-in bg-[var(--wl-bg-soft)] p-6 md:p-7"
+            style={{ "--i": 4 } as CSSProperties}
+          >
             <div className="flex items-start justify-between border-b border-[var(--wl-line)] pb-5">
               <div>
                 <p className="font-mono text-[10px] uppercase tracking-[.17em] text-[var(--wl-signal)]">
                   IDENTITY / CONTROL
                 </p>
-                <h2 className="font-display mt-2 text-[22px] font-medium tracking-[-.015em]">Wallet file</h2>
+                <h2 className="font-display mt-2 text-[22px] font-medium tracking-[-.015em]">
+                  Wallet file
+                </h2>
               </div>
               <StatusPill status={frozen ? "FROZEN" : "ACTIVE"} />
             </div>
             <dl className="divide-y divide-[var(--wl-line)] font-mono text-[10px]">
               {(
                 [
-                  ["WALLET", governedWalletAddress ? shortAddress(governedWalletAddress) : "invalid"],
+                  [
+                    "WALLET",
+                    governedWalletAddress ? shortAddress(governedWalletAddress) : "invalid",
+                  ],
                   ["NETWORK", "ARC TESTNET"],
                   ["ASSET", "USDC"],
                   ["POLICY", agent?.doctrineVersion ?? "—"],
@@ -750,7 +783,9 @@ export default function AgentDetailPage() {
         </section>
 
         <footer className="mt-14 flex justify-between border-t border-[var(--wl-line)] pt-5 font-mono text-[9px] uppercase tracking-[.13em] text-[var(--wl-mute)]">
-          <span>{agent?.doctrineVersion ?? "arc testnet"} · caps {formatUsd(dailyLimit)} / day</span>
+          <span>
+            {agent?.doctrineVersion ?? "arc testnet"} · caps {formatUsd(dailyLimit)} / day
+          </span>
           <span>{governedWalletAddress ? "SYNCED" : "INVALID ROUTE"}</span>
         </footer>
       </div>

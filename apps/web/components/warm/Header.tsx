@@ -2,15 +2,15 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { useAccount, useDisconnect } from "wagmi";
 
 import { useLiveAnomalies, useLiveEscalations } from "@/lib/live-data";
 
 import { CommandPalette } from "./CommandPalette";
-import { ConnectModal } from "./landing/ConnectModal";
 import { ShortcutsDialog } from "./ShortcutsDialog";
 import { ThemeToggle } from "./ThemeToggle";
+import { ConnectModal } from "./landing/ConnectModal";
 
 type HeaderProps = { children?: ReactNode };
 
@@ -45,13 +45,13 @@ export function Header({ children }: HeaderProps) {
       kind: "ESCALATION" as const,
       text: `${item.id} is awaiting operator approval`,
       time: item.expiresIn ? `expires ${item.expiresIn}` : "pending",
-      href: `/escalations`,
+      href: "/escalations",
     })),
     ...anomalies.slice(0, 3).map((item) => ({
       kind: "ANOMALY" as const,
       text: `${item.agentName} crossed the ${item.score.toFixed(1)}σ threshold`,
       time: item.timestamp,
-      href: `/anomalies`,
+      href: "/anomalies",
     })),
   ].slice(0, 4);
   const inboxCount = inboxItems.length;
@@ -66,7 +66,8 @@ export function Header({ children }: HeaderProps) {
           target.tagName === "SELECT" ||
           target.isContentEditable;
         const paletteOpen = !!document.querySelector('[aria-label="Command palette"]');
-        if (!typing && !paletteOpen && !event.metaKey && !event.ctrlKey && !event.altKey) setShortcuts(true);
+        if (!typing && !paletteOpen && !event.metaKey && !event.ctrlKey && !event.altKey)
+          setShortcuts(true);
       }
       if (event.key === "Escape") {
         setNotifications(false);
@@ -91,7 +92,10 @@ export function Header({ children }: HeaderProps) {
   return (
     <header className="relative z-20 flex h-[68px] items-center justify-between border-b border-[var(--wl-line)] bg-[var(--wl-bg)] px-5 md:px-8">
       <div className="flex min-w-0 items-center gap-7">
-        <Link href="/" className="font-display shrink-0 text-[18px] font-bold tracking-[-.015em] transition-transform duration-[220ms] hover:-translate-y-0.5">
+        <Link
+          href="/"
+          className="font-display shrink-0 text-[18px] font-bold tracking-[-.015em] transition-transform duration-[220ms] hover:-translate-y-0.5"
+        >
           ARCANUM<span className="text-[var(--wl-signal)]">.</span>
         </Link>
         <nav className="flex min-w-0 gap-5 overflow-x-auto pb-0.5">
@@ -110,7 +114,9 @@ export function Header({ children }: HeaderProps) {
         </nav>
       </div>
       <div className="flex shrink-0 items-center gap-3">
-        <span className="hidden font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)] sm:inline">ARC TESTNET</span>
+        <span className="hidden font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)] sm:inline">
+          ARC TESTNET
+        </span>
         <ThemeToggle />
         <div className="relative" data-notifications>
           <button
@@ -191,16 +197,28 @@ export function Header({ children }: HeaderProps) {
             <span className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-[var(--wl-ink)] font-mono text-[9px] text-[var(--wl-bg)]">
               {shortAddress ? shortAddress.slice(2, 4).toUpperCase() : "RO"}
             </span>
-            <span className="hidden font-mono text-[11px] font-medium sm:inline">{shortAddress ?? "READ-ONLY"}</span>
-            <span className={`font-mono text-[10px] text-[var(--wl-secondary)] transition-transform duration-[220ms] ${open ? "rotate-180" : ""}`}>⌄</span>
+            <span className="hidden font-mono text-[11px] font-medium sm:inline">
+              {shortAddress ?? "READ-ONLY"}
+            </span>
+            <span
+              className={`font-mono text-[10px] text-[var(--wl-secondary)] transition-transform duration-[220ms] ${open ? "rotate-180" : ""}`}
+            >
+              ⌄
+            </span>
           </button>
           {open && (
             <div className="absolute right-0 top-[calc(100%+10px)] z-30 w-[250px] border border-[var(--wl-line-bold)] bg-[var(--wl-bg-raised)] p-4 shadow-[12px_14px_0_var(--wl-line-faint)]">
-              <p className="font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-signal)]">WALLET / OPERATOR</p>
-              <p className="mt-3 text-[14px] font-medium">{isConnected ? "CONNECTED OPERATOR" : "READ-ONLY PREVIEW"}</p>
+              <p className="font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-signal)]">
+                WALLET / OPERATOR
+              </p>
+              <p className="mt-3 text-[14px] font-medium">
+                {isConnected ? "CONNECTED OPERATOR" : "READ-ONLY PREVIEW"}
+              </p>
               {address && (
                 <div className="mt-1 flex items-center gap-2">
-                  <p className="font-mono text-[10px] text-[var(--wl-secondary)]">{truncateAddress(address)}</p>
+                  <p className="font-mono text-[10px] text-[var(--wl-secondary)]">
+                    {truncateAddress(address)}
+                  </p>
                   <button
                     type="button"
                     onClick={() => {

@@ -12,11 +12,11 @@ import { useAccount, usePublicClient, useSwitchChain, useWriteContract } from "w
 
 import { getArcscanAddressUrl, getArcscanTxUrl } from "@/lib/arcscan";
 import {
+  type DeployWalletFormState,
   allPolicyCategoriesMask,
   deployedContracts,
   initialDeployWalletForm,
   walletFactoryAbi,
-  type DeployWalletFormState,
 } from "@/lib/contracts";
 import { isConfiguredAddress, shortAddress } from "@/lib/format/address";
 import { trpc } from "@/lib/trpc";
@@ -143,7 +143,11 @@ function walletCreatedFromReceipt(logs: readonly unknown[]) {
 
 /* ------------------------------------------------------------------ */
 
-function ResultLine({ href, label, value }: Readonly<{ href?: string; label: string; value: string }>) {
+function ResultLine({
+  href,
+  label,
+  value,
+}: Readonly<{ href?: string; label: string; value: string }>) {
   const copyValue = async () => {
     try {
       await navigator.clipboard.writeText(value);
@@ -185,7 +189,8 @@ function ResultLine({ href, label, value }: Readonly<{ href?: string; label: str
 
 const fieldClass =
   "w-full border-b border-[var(--wl-faint)] bg-transparent py-3 text-[15px] text-[var(--wl-ink)] outline-none placeholder:text-[var(--wl-mute)] focus:border-[var(--wl-signal)]";
-const fieldLabelClass = "font-mono text-[9px] uppercase tracking-[.14em] text-[var(--wl-secondary)]";
+const fieldLabelClass =
+  "font-mono text-[9px] uppercase tracking-[.14em] text-[var(--wl-secondary)]";
 
 export function DeployWalletModal({
   onClose,
@@ -457,7 +462,12 @@ export function DeployWalletModal({
       role="dialog"
       aria-modal="true"
     >
-      <button type="button" aria-label="Close deploy dialog" className="fixed inset-0 -z-10 cursor-default" onClick={onClose} />
+      <button
+        type="button"
+        aria-label="Close deploy dialog"
+        className="fixed inset-0 -z-10 cursor-default"
+        onClick={onClose}
+      />
       <section className="warm-modal-panel flex max-h-[calc(100dvh-40px)] w-full max-w-[480px] flex-col border border-[var(--wl-line-bold)] bg-[var(--wl-bg)] shadow-[0_28px_70px_-18px_rgba(var(--wl-ink-rgb),.45)]">
         <div className="flex shrink-0 items-start justify-between border-b border-[var(--wl-line)] p-6 pb-4">
           <div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
+import { type CSSProperties, useState } from "react";
 
 import { getArcscanAddressUrl } from "@/lib/arcscan";
 import { deployedContracts } from "@/lib/contracts";
@@ -84,12 +84,12 @@ export default function StatusPage() {
     const result = await health.refetch();
     if (result.status === "success") {
       setCheckedAt(
-        new Date().toLocaleTimeString([], {
+        `${new Date().toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
           second: "2-digit",
           hour12: false,
-        }) + " UTC",
+        })} UTC`,
       );
     }
   };
@@ -131,7 +131,7 @@ export default function StatusPage() {
     : rpc?.status === "available"
       ? "OPERATIONAL"
       : "DEGRADED";
-  const rpcMetric = health.isLoading ? "…" : rpc?.latestBlock ?? "—";
+  const rpcMetric = health.isLoading ? "…" : (rpc?.latestBlock ?? "—");
   const rpcMetricLabel = health.isLoading
     ? "CHECKING"
     : rpc?.status === "available"
@@ -139,10 +139,7 @@ export default function StatusPage() {
       : (rpc?.error ?? "RPC STATUS UNKNOWN");
 
   return (
-    <main
-      className="min-h-[100dvh] bg-[var(--wl-bg)] text-[var(--wl-ink)]"
-
-    >
+    <main className="min-h-[100dvh] bg-[var(--wl-bg)] text-[var(--wl-ink)]">
       <style>{`
         .health-card{transition:transform 220ms cubic-bezier(.16,1,.3,1),box-shadow 220ms ease}
         .health-card:hover{transform:translateY(-2px);box-shadow:0 12px 24px -20px rgba(var(--wl-ink-rgb),.5)}
@@ -214,7 +211,9 @@ export default function StatusPage() {
           <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
             DEPLOYMENT / CONTRACT ADDRESSES
           </p>
-          <h2 className="font-display mt-6 text-[26px] font-semibold tracking-[-.015em]">Deployed contracts.</h2>
+          <h2 className="font-display mt-6 text-[26px] font-semibold tracking-[-.015em]">
+            Deployed contracts.
+          </h2>
           <div className="mt-8 divide-y divide-[var(--wl-line)] border-t border-[var(--wl-line)]">
             {deployedContracts.map((contract) => {
               const url = getArcscanAddressUrl(contract.value);
@@ -261,8 +260,8 @@ export default function StatusPage() {
               READ MODEL / HOW TO READ THIS
             </p>
             <p className="mt-8 text-[16px] leading-[1.5] text-[var(--wl-body)]">
-              The read model stores wallet-creation writes so the dashboard can answer quickly. The indexer
-              tracks on-chain history and may lag behind the latest Arc block.
+              The read model stores wallet-creation writes so the dashboard can answer quickly. The
+              indexer tracks on-chain history and may lag behind the latest Arc block.
             </p>
             <p className="mt-5 text-[16px] leading-[1.5] text-[var(--wl-body)]">
               Fresh wallets may show no indexed activity until their first transactions are picked

@@ -16,7 +16,10 @@ export default function EscalationsLoading() {
       </div>
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         {[0, 1].map((card) => (
-          <div key={card} className="border border-[var(--wl-line-bold)] bg-[var(--wl-bg-raised)] p-5 md:p-7">
+          <div
+            key={card}
+            className="border border-[var(--wl-line-bold)] bg-[var(--wl-bg-raised)] p-5 md:p-7"
+          >
             <div className="h-3 w-40 animate-pulse rounded bg-[var(--wl-line-soft)]" />
             <div className="mt-6 h-8 w-3/4 animate-pulse rounded bg-[var(--wl-line-soft)]" />
             <div className="mt-4 h-4 w-2/3 animate-pulse rounded bg-[var(--wl-line-soft)]" />

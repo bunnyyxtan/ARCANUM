@@ -10,7 +10,10 @@ export default function AgentsLoading() {
         <div className="grid gap-10 pt-10 xl:grid-cols-[minmax(0,1.65fr)_minmax(330px,.75fr)]">
           <div className="space-y-4">
             {[0, 1, 2, 3, 4].map((index) => (
-              <div key={index} className="grid animate-pulse gap-3 border-b border-[var(--wl-line-soft)] px-3 py-5 md:grid-cols-6 md:items-center">
+              <div
+                key={index}
+                className="grid animate-pulse gap-3 border-b border-[var(--wl-line-soft)] px-3 py-5 md:grid-cols-6 md:items-center"
+              >
                 <div className="h-4 w-16 rounded-full bg-[var(--wl-line-soft)]" />
                 <div className="h-4 w-32 rounded bg-[var(--wl-line-soft)]" />
                 <div className="h-4 w-20 rounded bg-[var(--wl-line-soft)]" />

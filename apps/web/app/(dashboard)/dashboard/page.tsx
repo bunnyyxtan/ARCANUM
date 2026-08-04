@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { categoryLabel, formatUsdCompact } from "@/lib/format";
 import {
@@ -76,7 +76,7 @@ function CountUp({
     const started = performance.now();
     const tick = (now: number) => {
       const progress = Math.min((now - started) / 900, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
+      const eased = 1 - (1 - progress) ** 3;
       setValue(target * eased);
       if (progress < 1) frame = window.requestAnimationFrame(tick);
     };
@@ -86,7 +86,10 @@ function CountUp({
   return (
     <>
       {prefix}
-      {value.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}
+      {value.toLocaleString("en-US", {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
+      })}
       {suffix}
     </>
   );
@@ -173,13 +176,15 @@ export default function DashboardPage() {
               Dashboard
             </h1>
             <p className="mt-5 max-w-[430px] text-[14px] leading-[1.45] text-[var(--wl-secondary2)]">
-              A quiet view of autonomous spend, restraint decisions, and the agents moving capital on
-              Arc.
+              A quiet view of autonomous spend, restraint decisions, and the agents moving capital
+              on Arc.
             </p>
           </div>
           <button
             type="button"
-            onClick={() => document.getElementById("stream")?.scrollIntoView({ behavior: "smooth" })}
+            onClick={() =>
+              document.getElementById("stream")?.scrollIntoView({ behavior: "smooth" })
+            }
             className="warm-pill group w-fit rounded-full bg-[var(--wl-signal)] px-5 py-3 text-[11px] font-semibold text-white"
           >
             Review governed events
@@ -269,14 +274,12 @@ export default function DashboardPage() {
                   NO ACTIVITY YET
                 </p>
                 <p className="mt-3 text-[13px] text-[var(--wl-secondary2)]">
-                  Policy updates, agent payments, and escalations will appear here once your governed
-                  wallet is active.
+                  Policy updates, agent payments, and escalations will appear here once your
+                  governed wallet is active.
                 </p>
               </div>
             ) : (
-              streamEvents.map((event, i) => (
-                <StreamRow key={event.id} event={event} index={i} />
-              ))
+              streamEvents.map((event, i) => <StreamRow key={event.id} event={event} index={i} />)
             )}
           </div>
           <Link
@@ -294,7 +297,9 @@ export default function DashboardPage() {
                 <p className="font-mono text-[10px] uppercase tracking-[.17em] text-[var(--wl-signal)]">
                   ACTION REQUIRED
                 </p>
-                <h2 className="font-display mt-2 text-[22px] font-medium tracking-[-.015em]">Restraint queue</h2>
+                <h2 className="font-display mt-2 text-[22px] font-medium tracking-[-.015em]">
+                  Restraint queue
+                </h2>
               </div>
               <span className="rounded-full bg-[var(--wl-signal)] px-2 py-1 font-mono text-[9px] text-white">
                 {String(escalations.data.length).padStart(2, "0")}
@@ -339,8 +344,7 @@ export default function DashboardPage() {
                     <b className="font-normal text-[var(--wl-ink)]">{pendingItem.expiresIn}</b>
                   </span>
                   <span className="col-span-2">
-                    wallet{" "}
-                    <b className="font-normal text-[var(--wl-ink)]">{pendingItem.wallet}</b>
+                    wallet <b className="font-normal text-[var(--wl-ink)]">{pendingItem.wallet}</b>
                   </span>
                 </div>
                 <div className="mt-6 flex items-center gap-3">
