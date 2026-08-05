@@ -13,6 +13,7 @@ import {
   MagneticAnchor,
   Reveal,
   SectionNumber,
+  XMark,
 } from "@/components/warm/landing/primitives";
 
 const GITHUB_URL = "https://github.com/bunnyyxtan/ARCANUM";
@@ -453,10 +454,18 @@ export default function LandingPage() {
               <GitHubMark className="h-3 w-3" />
               GitHub
             </MagneticAnchor>
+            <MagneticAnchor
+              href="https://x.com/arcanumOS"
+              target="_blank"
+              rel="noreferrer"
+              className="warm-link inline-flex items-center gap-1.5 hover:text-[var(--wl-signal)]"
+            >
+              <XMark className="h-3 w-3" />X
+            </MagneticAnchor>
             <MagneticAnchor href="/dashboard" className="warm-link hover:text-[var(--wl-signal)]">
               Dashboard
             </MagneticAnchor>
-            <span className="font-mono">© 2025 ARCANUM</span>
+            <span className="font-mono">© 2026 ARCANUM</span>
           </div>
         </footer>
       </div>
