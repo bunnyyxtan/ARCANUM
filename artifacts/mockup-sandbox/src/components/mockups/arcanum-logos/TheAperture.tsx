@@ -1,146 +1,107 @@
-const paper = "#faf6f1";
-const ink = "#292522";
-const umber = "#655d56";
-const signal = "#ff3c00";
-const hairline = "#ded7d0";
-const guide = "#9b9289";
+const PAPER = "#faf6f1";
+const INK = "#292522";
+const FOUNDRY = "#1d1a18";
+const SIGNAL = "#ff3c00";
+const UMBER = "#655d56";
+const HAIRLINE = "#ded7d0";
+const GUIDE = "#9b9289";
+const META = "#837a72";
+const MONO = '"DM Mono", "IBM Plex Mono", monospace';
 
-/*
- * Construction system: 32px module, eight-fold symmetry, 45° rotation.
- * Outer vault radius = 144px; inner aperture radius = 86px; signal core = 18px.
- * The shutter is a single 1:1 blade, repeated only by exact rotational symmetry.
+/**
+ * THE APERTURE / STUDY 61/63
+ *
+ * Two concentric rounded forms, engineered as an 8M × 8M aperture. The
+ * outer foundry ring is 1.25M thick, with a .8M corner radius. Its base is
+ * deliberately a 3.5M flattened chord, lifted .35M above the circular datum:
+ * that ownership cue keeps this from becoming a generic donut.
+ * The inner PAPER core is 5.5M × 5.5M, radius 1.15M. Both fields are baked
+ * into the mark: the same SVG is placed on paper and foundry dark grounds.
+ * The one .38M signal point sits dead center and is always the smallest
+ * focal element. Hairline containment is 0.08M / 2px.
+ *
+ * Squint checks: not a coin, eye, target, ring, arch, shield, seal, letter,
+ * or keyhole. The flattened base and rounded-square opening read as a
+ * controlled vault aperture. At 16px the ink wall, paper core, flat datum,
+ * and signal remain. One-color engraving drops signal and uses the wall/core.
  */
-const vaultRing =
-  "M 333 200 L 301.8 301.8 L 200 333 L 98.2 301.8 L 67 200 L 98.2 98.2 L 200 67 L 301.8 98.2 Z " +
-  "M 260.8 200 L 242.8 242.8 L 200 260.8 L 157.2 242.8 L 139.2 200 L 157.2 157.2 L 200 139.2 L 242.8 157.2 Z";
-const blade =
-  "M 200 85 L 229 114 L 229 200 L 200 171 Z";
-const core =
-  "M 200 182 L 218 200 L 200 218 L 182 200 Z";
+const OUTER = "M200 52 C282 52 332 108 332 176 C332 194 326 211 314 224 L86 224 C74 211 68 194 68 176 C68 108 118 52 200 52 Z";
+const CORE = "M200 96 C244 96 274 126 274 166 C274 180 270 190 263 198 H137 C130 190 126 180 126 166 C126 126 156 96 200 96 Z";
 
-function ConstructionSystem() {
+function Mark({ construction = false, opacity = 1, small = false }: { construction?: boolean; opacity?: number; small?: boolean }) {
   return (
-    <svg viewBox="0 0 400 400" role="img" aria-label="The Aperture construction system" className="construction-svg">
-      <g fill="none" stroke={guide} strokeWidth="1" opacity="0.62">
-        {/* These are the actual 144 / 86 radii and the 45° rotational axes used by the mark. */}
-        <circle cx="200" cy="200" r="144" />
-        <circle cx="200" cy="200" r="86" />
-        <circle cx="200" cy="200" r="18" />
-        <path d="M 56 200 H 344 M 200 56 V 344 M 98.2 98.2 L 301.8 301.8 M 301.8 98.2 L 98.2 301.8" />
-        <path d="M 200 56 L 344 200 L 200 344 L 56 200 Z" opacity="0.48" />
-      </g>
-      <g stroke={guide} strokeWidth="1" opacity="0.72">
-        {/* 32px module ticks document the octagonal vault's exact radial stations. */}
-        <path d="M 56 194 V 206 M 88 194 V 206 M 120 194 V 206 M 152 194 V 206 M 184 194 V 206 M 216 194 V 206 M 248 194 V 206 M 280 194 V 206 M 312 194 V 206 M 344 194 V 206" />
-        <path d="M 194 56 H 206 M 194 88 H 206 M 194 120 H 206 M 194 152 H 206 M 194 184 H 206 M 194 216 H 206 M 194 248 H 206 M 194 280 H 206 M 194 312 H 206 M 194 344 H 206" />
-      </g>
-      <path d={vaultRing} fill={ink} fillRule="evenodd" opacity="0.3" />
-      <g fill={umber} opacity="0.42">
-        <path d={blade} />
-        <path d={blade} transform="rotate(45 200 200)" />
-        <path d={blade} transform="rotate(90 200 200)" />
-        <path d={blade} transform="rotate(135 200 200)" />
-        <path d={blade} transform="rotate(180 200 200)" />
-        <path d={blade} transform="rotate(225 200 200)" />
-        <path d={blade} transform="rotate(270 200 200)" />
-        <path d={blade} transform="rotate(315 200 200)" />
-      </g>
-      <path d={core} fill={signal} opacity="0.72" />
-    </svg>
+    <g opacity={opacity}>
+      {construction ? (
+        <>
+          <g fill="none" stroke={HAIRLINE} strokeWidth="1">
+            <path d="M52 36V244M68 36V244M84 36V244M100 36V244M116 36V244M132 36V244M148 36V244M164 36V244M180 36V244M196 36V244M212 36V244M228 36V244M244 36V244M260 36V244M276 36V244M292 36V244M308 36V244M324 36V244M340 36V244" />
+            <path d="M52 36H340M52 52H340M52 68H340M52 84H340M52 100H340M52 116H340M52 132H340M52 148H340M52 164H340M52 180H340M52 196H340M52 212H340M52 228H340M52 244H340" />
+          </g>
+          <g fill="none" stroke={UMBER} strokeWidth="1" strokeDasharray="4 5">
+            <path d={OUTER} />
+            <path d={CORE} />
+            <circle cx="200" cy="166" r="2" />
+            <path d="M68 224H332M200 36V244" />
+          </g>
+          <g fill={GUIDE} fontFamily={MONO} fontSize="7" letterSpacing=".7">
+            <text x="202" y="47">OUTER / 8M · R .8M · WALL 1.25M</text>
+            <text x="202" y="91">CORE / 5.5M · R 1.15M</text>
+            <text x="202" y="238">FLAT CHORD / 3.5M · +.35M · SIGNAL / .38M</text>
+          </g>
+        </>
+      ) : null}
+      <path d={OUTER} fill={INK} stroke={HAIRLINE} strokeWidth="2" />
+      <path d={CORE} fill={PAPER} stroke={HAIRLINE} strokeWidth="2" />
+      <circle cx="200" cy="166" r={small ? 6 : 7} fill={SIGNAL} />
+    </g>
+  );
+}
+
+function MarkSvg({ size, ground }: { size: number; ground: string }) {
+  return (
+    <div style={{ width: size, height: size, display: "grid", placeItems: "center", background: ground }}>
+      <svg viewBox="54 38 292 210" width={size} height={size} role="img" aria-label={`${size}px aperture mark`} style={{ width: size, height: size, display: "block" }}>
+        <Mark small={size < 32} />
+      </svg>
+    </div>
+  );
+}
+
+function Construction() {
+  return (
+    <section style={{ borderTop: `1px solid ${HAIRLINE}`, padding: "9px 30px 0", background: PAPER }}>
+      <svg viewBox="0 0 700 164" width="100%" height="164" role="img" aria-label="Aperture module grid and flattened chord construction" style={{ display: "block" }}>
+        <g transform="translate(218,-42) scale(.7)">
+          <Mark construction opacity={0.52} />
+        </g>
+      </svg>
+    </section>
+  );
+}
+
+function ProofRow() {
+  return (
+    <section style={{ padding: "4px 30px 0", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: HAIRLINE }} aria-label="Theme proof at small sizes">
+      {[[PAPER, "PAPER GROUND"], [FOUNDRY, "FOUNDRY DARK"]].map(([ground, label]) => (
+        <div key={label} style={{ minHeight: 94, background: ground, display: "flex", alignItems: "center", justifyContent: "center", gap: 27, position: "relative" }}>
+          {[64, 32, 16].map(size => <figure key={size} style={{ margin: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}><MarkSvg size={size} ground={ground} /><figcaption style={{ color: ground === PAPER ? GUIDE : HAIRLINE, fontSize: 8 }}>{size}</figcaption></figure>)}
+          <span style={{ position: "absolute", left: 9, top: 7, color: ground === PAPER ? META : HAIRLINE, fontSize: 8, letterSpacing: ".12em" }}>{label}</span>
+        </div>
+      ))}
+    </section>
   );
 }
 
 export default function TheAperture() {
   return (
-    <main className="arcanum-plate aperture-plate">
-      <style>{`
-        .arcanum-plate {
-          min-height: 100vh;
-          width: 100%;
-          box-sizing: border-box;
-          padding: 30px 34px 28px;
-          background: ${paper};
-          color: ${ink};
-          display: flex;
-          flex-direction: column;
-          font-family: "IBM Plex Mono", "Courier New", monospace;
-        }
-        .plate-meta {
-          display: flex;
-          justify-content: space-between;
-          gap: 24px;
-          color: #837a72;
-          font-size: 10px;
-          line-height: 1.2;
-          letter-spacing: .14em;
-          text-transform: uppercase;
-          white-space: nowrap;
-        }
-        .plate-meta span:last-child { text-align: right; }
-        .plate-hero {
-          flex: 1 1 auto;
-          min-height: 422px;
-          display: grid;
-          place-items: center;
-        }
-        .hero-svg {
-          width: min(380px, 74vw);
-          height: auto;
-          display: block;
-        }
-        .construction {
-          border-top: 1px solid ${hairline};
-          min-height: 216px;
-          display: grid;
-          place-items: center;
-        }
-        .construction-svg {
-          width: min(186px, 44vw);
-          height: auto;
-          display: block;
-        }
-        .plate-rationale {
-          margin: 19px 0 0;
-          color: ${guide};
-          font-size: 9px;
-          line-height: 1.4;
-          letter-spacing: .1em;
-          text-transform: uppercase;
-        }
-        @media (max-width: 520px) {
-          .arcanum-plate { padding: 25px 22px 22px; }
-          .plate-hero { min-height: 372px; }
-          .construction { min-height: 186px; }
-          .plate-rationale { margin-top: 15px; }
-        }
-      `}</style>
-      <header className="plate-meta">
-        <span>ARCANUM — STUDY 31/34</span>
-        <span>THE APERTURE</span>
-      </header>
-      <section className="plate-hero" aria-label="Finished Aperture symbol">
-        <svg viewBox="0 0 400 400" role="img" aria-label="Eight-sided vault aperture with human signal core" className="hero-svg">
-          {/* The eight-sided vault is a single compound silhouette, not a camera or letterform. */}
-          <path d={vaultRing} fill={ink} fillRule="evenodd" />
-          {/* Flat shutter blades turn inward on the documented 45° system. Negative wedges between them are the aperture. */}
-          <g fill={umber}>
-            <path d={blade} />
-            <path d={blade} transform="rotate(45 200 200)" />
-            <path d={blade} transform="rotate(90 200 200)" />
-            <path d={blade} transform="rotate(135 200 200)" />
-            <path d={blade} transform="rotate(180 200 200)" />
-            <path d={blade} transform="rotate(225 200 200)" />
-            <path d={blade} transform="rotate(270 200 200)" />
-            <path d={blade} transform="rotate(315 200 200)" />
-          </g>
-          {/* Optical correction: the 18px core is inset by 2px from the blade tips so the eye stays quiet at 16px. */}
-          <path d={core} fill={signal} />
-        </svg>
+    <main style={{ minHeight: "100dvh", boxSizing: "border-box", background: PAPER, color: INK, padding: "27px 0 14px", display: "flex", flexDirection: "column", fontFamily: MONO }}>
+      <header style={{ width: "100%", padding: "0 30px", boxSizing: "border-box", display: "flex", justifyContent: "space-between", color: META, fontSize: 10, lineHeight: 1.2, letterSpacing: ".14em", textTransform: "uppercase" }}><span>ARCANUM — STUDY 61/63</span><span>THE APERTURE</span></header>
+      <section style={{ flex: "1 1 auto", minHeight: 365, marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: HAIRLINE }} aria-label="Identical aperture mark on light and dark grounds">
+        {[PAPER, FOUNDRY].map((ground, index) => <div key={ground} style={{ minHeight: 365, background: ground, display: "grid", placeItems: "center" }}><svg viewBox="54 38 292 210" width="300" height="300" role="img" aria-label={`Aperture mark on ${index === 0 ? "paper" : "foundry dark"} ground`} style={{ width: "min(300px, 40vw)", height: "min(300px, 40vw)", display: "block" }}><Mark /></svg></div>)}
       </section>
-      <section className="construction" aria-label="Aperture construction drawing">
-        <ConstructionSystem />
-      </section>
-      <p className="plate-rationale">EIGHT BLADES WATCH THE HUMAN CHECKPOINT AT THE CENTER.</p>
+      <Construction />
+      <ProofRow />
+      <p style={{ padding: "8px 30px 0", margin: 0, color: GUIDE, fontSize: 9, lineHeight: 1.35, letterSpacing: ".12em", textTransform: "uppercase" }}>A CONTROLLED OPENING FOR POLICY: THE SAME APERTURE HOLDS ITS CONTRAST IN EITHER THEME.</p>
     </main>
   );
 }
