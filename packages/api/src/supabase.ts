@@ -57,6 +57,9 @@ type SupabaseRequestOptions = {
   order?: string;
 };
 
+/** How many recent ledger events the public trust figures are computed over. */
+const PUBLIC_AGGREGATE_WINDOW = 2000;
+
 type SupabaseWriteResult<T> =
   | { ok: true; data: T }
   | { ok: false; reason: "unconfigured" | "unavailable"; message: string };
@@ -589,7 +592,25 @@ export async function readSupabasePublicLedger(
     limit,
   });
 
-  return rows.map((row) => transferFromRow(row, [wallet]));
+  // The public record proves what the wallet did; it must not hand out the
+  // tenant's internal wiring or the free-text decision rationale.
+  return rows.map((row) => {
+    const transfer = transferFromRow(row, [wallet]);
+    return {
+      ...transfer,
+      tenantId: "",
+      walletId: "",
+      agentId: null,
+      reason: "",
+    };
+  });
+}
+
+/** Base units (6dp USDC) to a decimal string without going through a float. */
+function formatUsdcBaseUnits(value: bigint) {
+  const whole = value / 1_000_000n;
+  const cents = (value % 1_000_000n).toString().padStart(6, "0").slice(0, 2);
+  return `${whole.toString()}.${cents}`;
 }
 
 export async function readSupabaseEscalations(
@@ -1085,7 +1106,14 @@ export async function readSupabasePublicWalletProfile(
   }
 
   const stored = rows[0] ? publicProfileFromRow(rows[0], "supabase") : null;
-  const ledger = await readSupabasePublicLedger(ctx, walletAddress, 500);
+  // Aggregates cover the most recent PUBLIC_AGGREGATE_WINDOW events; the read
+  // model has no aggregate endpoint, so very long histories would need the
+  // indexer to maintain running totals.
+  const ledger = await readSupabasePublicLedger(
+    ctx,
+    walletAddress,
+    PUBLIC_AGGREGATE_WINDOW
+  );
 
   // Every published figure is derived from indexed activity: a trust mark that
   // invents numbers is worse than one that shows nothing.
@@ -1111,7 +1139,7 @@ export async function readSupabasePublicWalletProfile(
       : stored?.state ?? "UNKNOWN",
     spend:
       ledger.length > 0
-        ? (Number(settledBaseUnits) / 1e6).toFixed(2)
+        ? formatUsdcBaseUnits(settledBaseUnits)
         : stored?.spend ?? null,
     threatsBlocked:
       ledger.length > 0 ? blocked : stored?.threatsBlocked ?? null,
