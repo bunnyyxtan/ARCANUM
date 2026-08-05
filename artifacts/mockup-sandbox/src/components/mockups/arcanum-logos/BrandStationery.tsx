@@ -17,7 +17,7 @@ function CardFront() {
   return <div style={{ position: "absolute", left: 0, top: 36, width: 360, height: 210, padding: 20, background: PAPER, boxShadow: paperShadow, border: `1px solid ${HAIRLINE}`, zIndex: 2 }}><ArchwayCoinMark size={38} /><div style={{ position: "absolute", left: 20, bottom: 19 }}><div style={{ fontFamily: DISPLAY, fontSize: 18, letterSpacing: "-.02em" }}>TANMAY …</div><Meta>FOUNDER · ARCANUM</Meta></div><div style={{ position: "absolute", right: 20, bottom: 20, textAlign: "right" }}><Meta>tanmay@arcanum.systems</Meta><br /><Meta>ARC TESTNET / 46C</Meta></div></div>;
 }
 function CardBack() {
-  return <div style={{ position: "absolute", left: 115, top: 0, width: 360, height: 210, padding: 20, background: INK, boxShadow: paperShadow, zIndex: 1, display: "grid", placeItems: "center" }}><ArchwayCoinMark size={86} mode="reversed" /></div>;
+  return <div style={{ position: "absolute", left: 115, top: 0, width: 360, height: 210, padding: 20, background: INK, boxShadow: paperShadow, zIndex: 1, display: "grid", placeItems: "center" }}><ArchwayCoinMark size={86} /></div>;
 }
 
 export default function BrandStationery() {

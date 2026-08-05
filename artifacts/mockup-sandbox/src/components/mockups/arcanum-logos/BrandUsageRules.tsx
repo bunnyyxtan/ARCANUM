@@ -25,8 +25,8 @@ export default function BrandUsageRules() {
       <section style={{ padding: "28px 0 22px", borderBottom: `1px solid ${HAIRLINE}` }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "end", marginBottom: 14 }}><div><p style={{ margin: 0, color: SIGNAL, fontFamily: MONO, fontSize: 9, letterSpacing: ".15em" }}>THE MARK IN THE WILD</p><h1 style={{ margin: "8px 0 0", fontFamily: DISPLAY, fontSize: 34, fontWeight: 500, letterSpacing: "-.03em" }}>Protect the entrance.</h1></div><p style={{ maxWidth: 285, margin: 0, color: UMBER, fontSize: 12, lineHeight: 1.45 }}>The coin is a fixed piece of engineered geometry. Its authority comes from consistency, not decoration.</p></div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
           <Tile title="PAPER / FULL-COLOR"><ArchwayCoinMark size={72} /></Tile>
-          <Tile title="FOUNDRY / FULL-COLOR" bg="#121419"><ArchwayCoinMark size={72} mode="dark" /></Tile>
-          <Tile title="PHOTO-DARK / REVERSED" bg="#383634"><ArchwayCoinMark size={72} mode="reversed" /></Tile>
+          <Tile title="FOUNDRY / UNIVERSAL" bg="#121419"><ArchwayCoinMark size={72} /></Tile>
+          <Tile title="PHOTO-DARK / UNIVERSAL" bg="#383634"><ArchwayCoinMark size={72} /></Tile>
         </div>
       </section>
       <section style={{ paddingTop: 22 }}><div style={{ display: "flex", justifyContent: "space-between", marginBottom: 13 }}><span style={{ color: SIGNAL, fontFamily: MONO, fontSize: 9, letterSpacing: ".15em" }}>NON-NEGOTIABLES</span><span style={{ color: MUTED, fontFamily: MONO, fontSize: 8, letterSpacing: ".12em" }}>SIGNAL ORANGE IS NEVER A SECOND LOGO</span></div>

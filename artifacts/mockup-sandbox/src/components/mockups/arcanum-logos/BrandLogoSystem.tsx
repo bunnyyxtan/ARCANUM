@@ -16,11 +16,11 @@ function Label({ children }: { children: string }) {
   return <div style={{ color: MUTED, fontFamily: MONO, fontSize: 9, letterSpacing: ".14em", textTransform: "uppercase" }}>{children}</div>;
 }
 
-function Lockup({ stacked = false, reversed = false }: { stacked?: boolean; reversed?: boolean }) {
+function Lockup({ stacked = false }: { stacked?: boolean }) {
   return (
-    <div style={{ display: "flex", flexDirection: stacked ? "column" : "row", alignItems: stacked ? "flex-start" : "center", gap: stacked ? 10 : 14, color: reversed ? PAPER : INK }}>
-      <ArchwayCoinMark size={stacked ? 62 : 42} mode={reversed ? "reversed" : "full"} />
-      <span style={{ fontFamily: DISPLAY, fontSize: stacked ? 34 : 29, fontWeight: 600, letterSpacing: "-.025em", lineHeight: .92 }}>ARCANUM<span style={{ color: reversed ? PAPER : SIGNAL }}>.</span></span>
+    <div style={{ display: "flex", flexDirection: stacked ? "column" : "row", alignItems: stacked ? "flex-start" : "center", gap: stacked ? 10 : 14, color: INK }}>
+      <ArchwayCoinMark size={stacked ? 62 : 42} />
+      <span style={{ fontFamily: DISPLAY, fontSize: stacked ? 34 : 29, fontWeight: 600, letterSpacing: "-.025em", lineHeight: .92 }}>ARCANUM<span style={{ color: SIGNAL }}>.</span></span>
     </div>
   );
 }
@@ -42,10 +42,10 @@ export default function BrandLogoSystem() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 14 }}><Label>02 / Color architecture</Label><span style={{ color: GUIDE, fontFamily: MONO, fontSize: 8 }}>SIGNAL IS ALWAYS THE SMALLEST FOCAL ELEMENT</span></div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
           {[
-            { name: "FULL-COLOR / PAPER", bg: PAPER, mode: "full" as const, note: "#292522 + #ff3c00" },
-            { name: "FULL-COLOR / FOUNDRY", bg: "#121419", mode: "dark" as const, note: "#edf0f3 + #ff5a1f" },
-            { name: "1-COLOR / INK", bg: PAPER, mode: "ink" as const, note: "#292522 only" },
-            { name: "1-COLOR / REVERSED", bg: INK, mode: "reversed" as const, note: "#faf6f1 only" },
+            { name: "UNIVERSAL / PAPER", bg: PAPER, mode: "universal" as const, note: "#292522 + #faf6f1 + #ff3c00" },
+            { name: "UNIVERSAL / FOUNDRY", bg: "#121419", mode: "universal" as const, note: "same mark · no swap" },
+            { name: "1-COLOR FALLBACK / INK", bg: PAPER, mode: "inkFallback" as const, note: "print / engraving only" },
+            { name: "UNIVERSAL / INK GROUND", bg: INK, mode: "universal" as const, note: "same mark · no reversal" },
           ].map(item => <div key={item.name} style={{ background: item.bg, border: `1px solid ${item.bg === PAPER ? HAIRLINE : "#282c34"}`, padding: 14, minHeight: 122 }}><ArchwayCoinMark size={62} mode={item.mode} /><div style={{ marginTop: 11, color: item.bg === PAPER ? MUTED : "#aab0b9", fontFamily: MONO, fontSize: 8, lineHeight: 1.35, letterSpacing: ".11em" }}>{item.name}<br /><span style={{ letterSpacing: ".04em" }}>{item.note}</span></div></div>)}
         </div>
       </section>
