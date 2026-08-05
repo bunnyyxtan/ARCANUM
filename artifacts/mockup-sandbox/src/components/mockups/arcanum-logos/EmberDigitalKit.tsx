@@ -47,11 +47,11 @@ export default function EmberDigitalKit() {
       </section>
       <section style={{ maxWidth: 880, margin: "28px auto 0", borderTop: `1px solid ${HAIRLINE}`, paddingTop: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 38 }}>
         <div><div style={{ fontFamily: MONO, fontSize: 9, color: MUTED, letterSpacing: ".14em" }}>02 / BROWSER TAB LOCKUP</div><div style={{ display: "flex", gap: 14, marginTop: 14 }}><Browser /><Browser dark /></div></div>
-        <div><div style={{ fontFamily: MONO, fontSize: 9, color: MUTED, letterSpacing: ".14em" }}>03 / APP HEADER LOCKUP</div><div style={{ marginTop: 14, height: 58, background: FOUNDRY, display: "flex", alignItems: "center", gap: 8, padding: "0 16px", color: PAPER }}><EmberMark size={29} /><span style={{ fontFamily: DISPLAY, fontSize: 21 }}>ARCANUM<span style={{ color: SIGNAL }}>.</span></span><span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: 8, color: "#a99f97" }}>ARC TESTNET</span></div><div style={{ marginTop: 7, fontFamily: MONO, fontSize: 8, color: MUTED }}>MARK 29U · WORDMARK 21PX · GAP 8U</div></div>
+        <div><div style={{ fontFamily: MONO, fontSize: 9, color: MUTED, letterSpacing: ".14em" }}>03 / APP HEADER LOCKUP</div><div style={{ marginTop: 14, height: 58, background: FOUNDRY, display: "flex", alignItems: "center", gap: 8, padding: "0 16px", color: PAPER }}><EmberMark size={29} /><span style={{ fontFamily: DISPLAY, fontSize: 21 }}>ARCANUM</span><span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: 8, color: "#a99f97" }}>ARC TESTNET</span></div><div style={{ marginTop: 7, fontFamily: MONO, fontSize: 8, color: MUTED }}>MARK 29U · WORDMARK 21PX · GAP 8U</div></div>
       </section>
       <section style={{ maxWidth: 880, margin: "28px auto 0", background: FOUNDRY, color: PAPER, minHeight: 155, padding: "18px 24px", display: "grid", gridTemplateColumns: "130px 1fr", alignItems: "center" }}>
         <EmberMark size={110} />
-        <div><div style={{ fontFamily: DISPLAY, fontSize: 33 }}>ARCANUM<span style={{ color: SIGNAL }}>.</span></div><div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: ".12em", color: "#aaa19a", marginTop: 5 }}>MONEY WITH A POLICY LAYER.</div><div style={{ fontFamily: MONO, fontSize: 8, color: "#716861", marginTop: 20 }}>OG / 1200 × 630 · FOUNDRY FIELD · SINGLE EMBER ASSET</div></div>
+        <div><div style={{ fontFamily: DISPLAY, fontSize: 33 }}>ARCANUM</div><div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: ".12em", color: "#aaa19a", marginTop: 5 }}>MONEY WITH A POLICY LAYER.</div><div style={{ fontFamily: MONO, fontSize: 8, color: "#716861", marginTop: 20 }}>OG / 1200 × 630 · FOUNDRY FIELD · SINGLE EMBER ASSET</div></div>
       </section>
     </main>
   );

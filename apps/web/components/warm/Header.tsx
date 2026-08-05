@@ -98,7 +98,7 @@ export function Header({ children }: HeaderProps) {
           className="flex shrink-0 items-center gap-2 font-display text-[18px] font-bold tracking-[-.015em] transition-transform duration-[220ms] hover:-translate-y-0.5"
         >
           <EmberMark size={24} />
-          ARCANUM<span className="text-[var(--wl-signal)]">.</span>
+          ARCANUM
         </Link>
         <nav className="flex min-w-0 gap-5 overflow-x-auto pb-0.5">
           {links.map(({ label, href }) => {

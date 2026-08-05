@@ -264,7 +264,7 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
           className="font-display flex items-center gap-2 text-[18px] font-bold tracking-[-.015em]"
         >
           <EmberMark size={24} />
-          ARCANUM<span className="text-[var(--wl-signal)]">.</span>
+          ARCANUM
         </Link>
         <div className="flex items-center gap-5">
           <span className="hidden font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)] sm:inline">

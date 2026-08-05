@@ -84,8 +84,13 @@ export default function LandingPage() {
   return (
     <main className="min-h-[100dvh] overflow-hidden bg-[var(--wl-bg)] text-[var(--wl-ink)]">
       <aside className="fixed bottom-0 left-0 top-0 z-20 hidden w-[86px] flex-col items-center justify-between border-r border-[var(--wl-line)] bg-[var(--wl-bg)] py-7 lg:flex">
-        <MagneticAnchor href="#" className="flex items-center" aria-label="ARCANUM">
-          <EmberMark size={30} />
+        <MagneticAnchor
+          href="#"
+          className="flex flex-col items-center gap-2.5"
+          aria-label="ARCANUM"
+        >
+          <EmberMark size={28} />
+          <span className="font-display text-[12px] font-bold tracking-[-.01em]">ARCANUM</span>
         </MagneticAnchor>
         <div
           className="font-mono text-[9px] tracking-[.18em] text-[var(--wl-mute)]"
@@ -120,7 +125,7 @@ export default function LandingPage() {
             className="font-display flex items-center gap-2 text-[18px] font-bold tracking-[-.015em]"
           >
             <EmberMark size={24} />
-            ARCANUM<span className="text-[var(--wl-signal)]">.</span>
+            ARCANUM
           </MagneticAnchor>
           <button
             type="button"
@@ -429,7 +434,7 @@ export default function LandingPage() {
         <footer className="flex flex-col justify-between gap-6 px-6 pb-10 text-[11px] text-[var(--wl-secondary)] lg:flex-row lg:px-10">
           <span className="font-display flex items-center gap-2 font-semibold tracking-[-.015em] text-[var(--wl-ink)]">
             <EmberMark size={18} />
-            ARCANUM<span className="warm-period text-[var(--wl-signal)]">.</span>
+            ARCANUM
           </span>
           <div className="flex gap-7">
             <MagneticAnchor
