@@ -12,7 +12,42 @@ import type {
 } from "@arcanum/db/schema";
 
 import type { ApiContext } from "./context";
-import { fallbackAgents, fallbackOrgId, fallbackWallets } from "./mock-fallback";
+
+/**
+ * An agent enriched with the doctrine it spends under, so the dashboard can
+ * show real caps and posture without an extra request per row.
+ */
+export type AgentWithDoctrine = Agent & {
+  walletAddress: string | null;
+  perTxCap: string | null;
+  daily24hCap: string | null;
+  monthlyRollingCap: string | null;
+  escalationThreshold: string | null;
+  policyVersion: number | null;
+  postureScore: number | null;
+};
+
+/**
+ * Widen an agent that has no doctrine attached. The doctrine fields stay null
+ * so the UI can say "unknown" instead of rendering a zero cap that looks real.
+ */
+export function agentWithoutDoctrine(agent: Agent): AgentWithDoctrine {
+  return {
+    ...agent,
+    walletAddress: null,
+    perTxCap: null,
+    daily24hCap: null,
+    monthlyRollingCap: null,
+    escalationThreshold: null,
+    policyVersion: null,
+    postureScore: null,
+  };
+}
+import {
+  fallbackAgents,
+  fallbackOrgId,
+  fallbackWallets,
+} from "./mock-fallback";
 
 type SupabaseRow = Record<string, unknown>;
 
@@ -76,14 +111,39 @@ export type SupabaseCreatedWalletInput = {
   quorum: number;
 };
 
+export type SupabaseDeployedPolicyInput = {
+  walletAddress: `0x${string}`;
+  txHash: `0x${string}`;
+  perTxCap: number;
+  dailyCap: number;
+  monthlyCap: number;
+  escalationThreshold: number;
+  allowedCategories: string[];
+  requireAllowlist: boolean;
+};
+
+export type SupabaseEscalationDecisionInput = {
+  escalationKey: `0x${string}`;
+  status: "released" | "denied" | "expired";
+  txHash: `0x${string}`;
+  approvalsCount: number;
+};
+
 export type SupabaseServiceRoleClient = {
   configured: boolean;
-  selectRows: (table: string, options?: SupabaseRequestOptions) => Promise<SupabaseRow[]>;
-  upsertRows: (table: string, rows: SupabaseRow[], onConflict?: string) => Promise<SupabaseRow[]>;
+  selectRows: (
+    table: string,
+    options?: SupabaseRequestOptions
+  ) => Promise<SupabaseRow[]>;
+  upsertRows: (
+    table: string,
+    rows: SupabaseRow[],
+    onConflict?: string
+  ) => Promise<SupabaseRow[]>;
   patchRows: (
     table: string,
     patch: SupabaseRow,
-    filters: Record<string, string | number | boolean>,
+    filters: Record<string, string | number | boolean>
   ) => Promise<SupabaseRow[]>;
 };
 
@@ -95,7 +155,10 @@ export function createSupabaseServiceRoleClient(): SupabaseServiceRoleClient | n
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!url || !serviceRoleKey) {
-    warnSupabase("service-role.env", "Supabase service-role env is not configured.");
+    warnSupabase(
+      "service-role.env",
+      "Supabase service-role env is not configured."
+    );
     return null;
   }
 
@@ -108,7 +171,7 @@ export function createSupabaseServiceRoleClient(): SupabaseServiceRoleClient | n
     options?: SupabaseRequestOptions & {
       body?: SupabaseRow | SupabaseRow[];
       onConflict?: string;
-    },
+    }
   ) {
     const endpoint = new URL(`${baseUrl}/rest/v1/${table}`);
     endpoint.searchParams.set("select", "*");
@@ -149,7 +212,9 @@ export function createSupabaseServiceRoleClient(): SupabaseServiceRoleClient | n
     if (!response.ok) {
       const body = await response.text().catch(() => "");
       throw new Error(
-        `${table} ${method} failed with ${response.status}: ${safeSupabaseError(body)}`,
+        `${table} ${method} failed with ${response.status}: ${safeSupabaseError(
+          body
+        )}`
       );
     }
 
@@ -159,8 +224,10 @@ export function createSupabaseServiceRoleClient(): SupabaseServiceRoleClient | n
   return {
     configured: true,
     selectRows: (table, options) => request("GET", table, options),
-    upsertRows: (table, rows, onConflict) => request("POST", table, { body: rows, onConflict }),
-    patchRows: (table, patch, filters) => request("PATCH", table, { body: patch, filters }),
+    upsertRows: (table, rows, onConflict) =>
+      request("POST", table, { body: rows, onConflict }),
+    patchRows: (table, patch, filters) =>
+      request("PATCH", table, { body: patch, filters }),
   };
 }
 
@@ -200,7 +267,10 @@ export async function readSupabaseWallets(ctx: ApiContext): Promise<Wallet[]> {
   return scopedRows(ctx, rows).map(walletFromGovernedWalletRow);
 }
 
-export async function readSupabaseWalletByLooseId(ctx: ApiContext, looseWalletId: string) {
+export async function readSupabaseWalletByLooseId(
+  ctx: ApiContext,
+  looseWalletId: string
+) {
   const normalized = looseWalletId.toLowerCase();
   const wallets = await readSupabaseWallets(ctx);
   return (
@@ -208,18 +278,24 @@ export async function readSupabaseWalletByLooseId(ctx: ApiContext, looseWalletId
       (wallet) =>
         wallet.id === looseWalletId ||
         wallet.address.toLowerCase() === normalized ||
-        wallet.label.toLowerCase() === normalized,
+        wallet.label.toLowerCase() === normalized
     ) ?? null
   );
 }
 
-export async function readSupabaseAgents(ctx: ApiContext, status?: Agent["status"]) {
+export async function readSupabaseAgents(
+  ctx: ApiContext,
+  status?: Agent["status"]
+) {
   const wallets = await readSupabaseWallets(ctx);
   const rows = await agentsForWallets(ctx, wallets);
   return status ? rows.filter((agent) => agent.status === status) : rows;
 }
 
-export async function readSupabaseAgentByLooseId(ctx: ApiContext, looseWalletId: string) {
+export async function readSupabaseAgentByLooseId(
+  ctx: ApiContext,
+  looseWalletId: string
+) {
   const normalized = looseWalletId.toLowerCase();
   const wallets = await readSupabaseWallets(ctx);
   const agents = await agentsForWallets(ctx, wallets);
@@ -230,7 +306,7 @@ export async function readSupabaseAgentByLooseId(ctx: ApiContext, looseWalletId:
     (item) =>
       item.id === looseWalletId ||
       item.address.toLowerCase() === normalized ||
-      item.label.toLowerCase() === normalized,
+      item.label.toLowerCase() === normalized
   );
 
   return (
@@ -238,7 +314,9 @@ export async function readSupabaseAgentByLooseId(ctx: ApiContext, looseWalletId:
       (agent) =>
         agent.id === looseWalletId ||
         agent.signerAddress.toLowerCase() === normalized ||
-        (wallet ? agent.walletId === wallet.id : agent.walletId === looseWalletId),
+        (wallet
+          ? agent.walletId === wallet.id
+          : agent.walletId === looseWalletId)
     ) ?? null
   );
 }
@@ -248,22 +326,35 @@ export async function readSupabaseAgentByLooseId(ctx: ApiContext, looseWalletId:
  * the wallet itself. A governed wallet with no authorized signer has no agent,
  * and we say so rather than inventing one from the wallet address.
  */
-async function agentsForWallets(ctx: ApiContext, wallets: Wallet[]): Promise<Agent[]> {
+async function agentsForWallets(
+  ctx: ApiContext,
+  wallets: Wallet[]
+): Promise<AgentWithDoctrine[]> {
   if (wallets.length === 0) {
     return [];
   }
 
-  // Fetch only the current doctrine of each wallet the caller owns, rather than
-  // reading the whole doctrines table and filtering afterwards.
-  const doctrines = await Promise.all(
-    wallets.map((wallet) =>
-      selectRows(ctx, "doctrines", {
-        filters: { governed_wallet_id: wallet.id },
-        order: "updated_at.desc",
-        limit: 1,
-      }),
+  // Fetch only the current doctrine and public profile of each wallet the
+  // caller owns, rather than reading whole tables and filtering afterwards.
+  const [doctrines, profiles] = await Promise.all([
+    Promise.all(
+      wallets.map((wallet) =>
+        selectRows(ctx, "doctrines", {
+          filters: { governed_wallet_id: wallet.id },
+          order: "updated_at.desc",
+          limit: 1,
+        })
+      )
     ),
-  );
+    Promise.all(
+      wallets.map((wallet) =>
+        selectRows(ctx, "public_wallet_profiles", {
+          filters: { wallet_address: wallet.address },
+          limit: 1,
+        })
+      )
+    ),
+  ]);
 
   return wallets.flatMap((wallet, index) => {
     const [current] = doctrines[index] ?? [];
@@ -271,14 +362,19 @@ async function agentsForWallets(ctx: ApiContext, wallets: Wallet[]): Promise<Age
       return [];
     }
 
+    const posture = numberField(profiles[index]?.[0], ["posture_score"], 0);
+
     return arrayField(current, ["signers"])
       .map((signer) => signer.toLowerCase())
       .filter((signer) => signer.startsWith("0x") && signer !== zeroWallet())
-      .map((signer) => agentFromSigner(wallet, signer));
+      .map((signer) => agentFromSigner(wallet, signer, current, posture));
   });
 }
 
-export async function readSupabasePolicy(ctx: ApiContext, wallet: Wallet | null) {
+export async function readSupabasePolicy(
+  ctx: ApiContext,
+  wallet: Wallet | null
+) {
   if (!wallet) {
     return null;
   }
@@ -294,7 +390,7 @@ export async function readSupabasePolicy(ctx: ApiContext, wallet: Wallet | null)
 
 export async function syncSupabaseSignerState(
   ctx: ApiContext,
-  input: { authorized: boolean; signerAddress: `0x${string}`; wallet: Wallet },
+  input: { authorized: boolean; signerAddress: `0x${string}`; wallet: Wallet }
 ): Promise<SupabaseWriteResult<{ signers: `0x${string}`[]; status: string }>> {
   const client = ctx.supabase;
   if (!client) {
@@ -313,7 +409,7 @@ export async function syncSupabaseSignerState(
     if (!existing) {
       return unavailableWrite(
         "signer state",
-        new Error("No doctrine row exists for this governed wallet."),
+        new Error("No doctrine row exists for this governed wallet.")
       );
     }
 
@@ -331,7 +427,7 @@ export async function syncSupabaseSignerState(
         signers: nextSigners,
         updated_at: new Date().toISOString(),
       },
-      { id: doctrineId },
+      { id: doctrineId }
     );
 
     return {
@@ -347,7 +443,10 @@ export async function syncSupabaseSignerState(
   }
 }
 
-export async function readSupabasePolicies(ctx: ApiContext, wallet: Wallet | null) {
+export async function readSupabasePolicies(
+  ctx: ApiContext,
+  wallet: Wallet | null
+) {
   if (!wallet) {
     return [];
   }
@@ -360,7 +459,10 @@ export async function readSupabasePolicies(ctx: ApiContext, wallet: Wallet | nul
   return rows.map((row) => policyFromDoctrineRow(row, wallet));
 }
 
-export async function readSupabaseVendors(ctx: ApiContext, wallet?: Wallet | null) {
+export async function readSupabaseVendors(
+  ctx: ApiContext,
+  wallet?: Wallet | null
+) {
   if (wallet) {
     const rows = await selectRows(ctx, "vendors", {
       filters: { organization_id: wallet.orgId },
@@ -375,7 +477,9 @@ export async function readSupabaseVendors(ctx: ApiContext, wallet?: Wallet | nul
   }
 
   const rows = await selectRows(ctx, "vendors", { order: "created_at.desc" });
-  return rowsForWallets(rows, wallets).map((row) => vendorFromRow(row, walletForRow(row, wallets)));
+  return orgScopedRowsForWallets(rows, wallets).map(({ row, wallet }) =>
+    vendorFromRow(row, wallet)
+  );
 }
 
 export async function writeSupabaseVendor(
@@ -387,9 +491,14 @@ export async function writeSupabaseVendor(
     category: string;
     perVendorCap: number;
     kycStatus: "public" | "arcanevm";
+    status?: Vendor["status"];
   },
-  wallet: Wallet,
-): Promise<SupabaseWriteResult<Vendor & { name: string; kycStatus: "public" | "arcanevm" }>> {
+  wallet: Wallet
+): Promise<
+  SupabaseWriteResult<
+    Vendor & { name: string; kycStatus: "public" | "arcanevm" }
+  >
+> {
   const client = ctx.supabase;
   if (!client) {
     return unconfiguredWrite("vendor");
@@ -401,7 +510,7 @@ export async function writeSupabaseVendor(
     vendor_address: input.address.toLowerCase(),
     name: input.name,
     category: input.category,
-    status: "allowed",
+    status: input.status ?? "allowed",
     data_source: "live",
     source: "supabase",
     updated_at: now,
@@ -409,7 +518,10 @@ export async function writeSupabaseVendor(
 
   try {
     const [existing] = await client.selectRows("vendors", {
-      filters: { organization_id: wallet.orgId, vendor_address: input.address.toLowerCase() },
+      filters: {
+        organization_id: wallet.orgId,
+        vendor_address: input.address.toLowerCase(),
+      },
       limit: 1,
     });
     const existingId = stringField(existing, ["id"], "");
@@ -427,21 +539,35 @@ export async function writeSupabaseVendor(
 }
 
 export async function readSupabaseTransfers(ctx: ApiContext) {
-  const rows = await selectRows(ctx, "ledger_events", { order: "event_time.desc" });
+  const rows = await selectRows(ctx, "ledger_events", {
+    order: "event_time.desc",
+  });
   const wallets = await readSupabaseWallets(ctx);
-  return rowsForWalletIdentity(rows, wallets).map((row) => transferFromRow(row, wallets));
+  return rowsForWalletIdentity(rows, wallets).map((row) =>
+    transferFromRow(row, wallets)
+  );
 }
 
-export async function readSupabaseEscalations(ctx: ApiContext, status?: Escalation["status"]) {
+export async function readSupabaseEscalations(
+  ctx: ApiContext,
+  status?: Escalation["status"]
+) {
   const rows = await selectRows(ctx, "escalations", {
     order: "expires_at.asc",
   });
   const wallets = await readSupabaseWallets(ctx);
-  const escalations = rowsForWallets(rows, wallets).map((row) => escalationFromRow(row, wallets));
-  return status ? escalations.filter((item) => item.status === status) : escalations;
+  const escalations = rowsForWallets(rows, wallets).map((row) =>
+    escalationFromRow(row, wallets)
+  );
+  return status
+    ? escalations.filter((item) => item.status === status)
+    : escalations;
 }
 
-export async function readSupabaseEscalationByTxHash(ctx: ApiContext, txHash: string) {
+export async function readSupabaseEscalationByTxHash(
+  ctx: ApiContext,
+  txHash: string
+) {
   const rows = await selectRows(ctx, "escalations", {
     filters: { escalation_key: txHash },
     limit: 1,
@@ -454,12 +580,112 @@ export async function readSupabaseEscalationByTxHash(ctx: ApiContext, txHash: st
 export async function readSupabaseAnomalies(ctx: ApiContext) {
   const rows = await selectRows(ctx, "anomalies", { order: "score.desc" });
   const wallets = await readSupabaseWallets(ctx);
-  return rowsForWallets(rows, wallets).map((row) => anomalyFromRow(row, wallets));
+  return rowsForWallets(rows, wallets).map((row) =>
+    anomalyFromRow(row, wallets)
+  );
+}
+
+/**
+ * Persist a policy revision that is already live on-chain, so the read model
+ * stops advertising caps the wallet no longer enforces.
+ */
+export async function recordSupabaseDeployedPolicy(
+  ctx: ApiContext,
+  wallet: Wallet,
+  input: SupabaseDeployedPolicyInput
+): Promise<SupabaseWriteResult<{ version: number }>> {
+  const client = ctx.supabase;
+  if (!client) {
+    return unconfiguredWrite("policy deployment");
+  }
+
+  try {
+    const [current] = await client.selectRows("doctrines", {
+      filters: { governed_wallet_id: wallet.id },
+      order: "version.desc",
+      limit: 1,
+    });
+
+    const version = numberField(current, ["version"], 0) + 1;
+    const now = new Date().toISOString();
+
+    await writeDoctrineRow(
+      client,
+      {
+        governed_wallet_id: wallet.id,
+        organization_id: current
+          ? stringField(current, ["organization_id"], wallet.orgId)
+          : wallet.orgId,
+        name: stringField(current, ["name"], `${wallet.label} Doctrine`),
+        version,
+        daily_cap_usdc: input.dailyCap,
+        per_tx_cap_usdc: input.perTxCap,
+        per_vendor_daily_cap_usdc: input.perTxCap,
+        monthly_cap_usdc: input.monthlyCap,
+        escalate_above_usdc: input.escalationThreshold,
+        allowed_categories: input.allowedCategories,
+        require_vendor_allowlist: input.requireAllowlist,
+        // Signers, council and quorum are governed by their own on-chain
+        // transactions, so a policy deployment must carry them over untouched.
+        signers: arrayField(current, ["signers"]),
+        escalation_council: arrayField(current, ["escalation_council"]),
+        quorum: numberField(current, ["quorum"], 1),
+        status: "active",
+        source: "on_chain",
+        updated_at: now,
+      },
+      wallet.id
+    );
+
+    return { ok: true, data: { version } };
+  } catch (error) {
+    warnSupabase("policy-deployment.write", error);
+    return unavailableWrite("policy deployment", error);
+  }
+}
+
+/**
+ * Mirror an escalation decision that is already settled on-chain. Callers must
+ * verify the on-chain status first; this only writes what the chain reports.
+ */
+export async function recordSupabaseEscalationDecision(
+  ctx: ApiContext,
+  wallet: Wallet,
+  input: SupabaseEscalationDecisionInput
+): Promise<SupabaseWriteResult<{ status: string }>> {
+  const client = ctx.supabase;
+  if (!client) {
+    return unconfiguredWrite("escalation decision");
+  }
+
+  try {
+    const patch: SupabaseRow = {
+      status: input.status,
+      approvals_count: input.approvalsCount,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (input.status === "released") {
+      patch.release_tx_hash = input.txHash;
+    }
+    if (input.status === "denied") {
+      patch.deny_tx_hash = input.txHash;
+    }
+
+    await client.patchRows("escalations", patch, {
+      escalation_key: input.escalationKey,
+      governed_wallet_id: wallet.id,
+    });
+
+    return { ok: true, data: { status: input.status } };
+  } catch (error) {
+    return unavailableWrite("escalation decision", error);
+  }
 }
 
 export async function recordSupabaseCreatedWallet(
   ctx: ApiContext,
-  input: SupabaseCreatedWalletInput,
+  input: SupabaseCreatedWalletInput
 ): Promise<SupabaseWriteResult<{ wallet: Wallet; agent: Agent | null }>> {
   const client = ctx.supabase;
   if (!client) {
@@ -494,9 +720,13 @@ export async function recordSupabaseCreatedWallet(
     const [writtenWallet] = await client.upsertRows(
       "governed_wallets",
       [walletRow],
-      "wallet_address,chain_id",
+      "wallet_address,chain_id"
     );
-    const walletId = requiredStringField(writtenWallet ?? walletRow, ["id"], "governed_wallets.id");
+    const walletId = requiredStringField(
+      writtenWallet ?? walletRow,
+      ["id"],
+      "governed_wallets.id"
+    );
 
     const doctrineRow = {
       governed_wallet_id: walletId,
@@ -536,7 +766,14 @@ export async function recordSupabaseCreatedWallet(
       ok: true,
       data: {
         wallet,
-        agent: primarySigner ? agentFromSigner(wallet, primarySigner) : null,
+        agent: primarySigner
+          ? agentFromSigner(
+              wallet,
+              primarySigner,
+              doctrineRow,
+              publicProfileRow.posture_score
+            )
+          : null,
       },
     };
   } catch (error) {
@@ -547,7 +784,7 @@ export async function recordSupabaseCreatedWallet(
 
 async function ensureOwnerWorkspaceForWallet(
   client: SupabaseServiceRoleClient,
-  ownerAddress: string,
+  ownerAddress: string
 ) {
   const walletAddress = ownerAddress.toLowerCase();
   const now = new Date().toISOString();
@@ -587,7 +824,11 @@ async function ensureOwnerWorkspaceForWallet(
         },
       ])
     )[0];
-  const organizationId = requiredStringField(organization, ["id"], "organizations.id");
+  const organizationId = requiredStringField(
+    organization,
+    ["id"],
+    "organizations.id"
+  );
 
   await client.upsertRows(
     "organization_members",
@@ -598,7 +839,7 @@ async function ensureOwnerWorkspaceForWallet(
         role: "owner",
       },
     ],
-    "organization_id,profile_id",
+    "organization_id,profile_id"
   );
 
   return { profileId, organizationId };
@@ -607,7 +848,7 @@ async function ensureOwnerWorkspaceForWallet(
 async function writeDoctrineRow(
   client: SupabaseServiceRoleClient,
   row: SupabaseRow,
-  governedWalletId: string,
+  governedWalletId: string
 ) {
   const version = numberField(row, ["version"], 1);
   const [existing] = await client.selectRows("doctrines", {
@@ -621,13 +862,15 @@ async function writeDoctrineRow(
     return;
   }
 
-  await client.upsertRows("doctrines", [{ ...row, created_at: new Date().toISOString() }]);
+  await client.upsertRows("doctrines", [
+    { ...row, created_at: new Date().toISOString() },
+  ]);
 }
 
 async function writePublicWalletProfileRow(
   client: SupabaseServiceRoleClient,
   row: SupabaseRow,
-  walletAddress: string,
+  walletAddress: string
 ) {
   const [existing] = await client.selectRows("public_wallet_profiles", {
     filters: { wallet_address: walletAddress },
@@ -645,7 +888,9 @@ async function writePublicWalletProfileRow(
   ]);
 }
 
-export async function readSupabaseRuntimeHealth(ctx: ApiContext): Promise<SupabaseRuntimeHealth> {
+export async function readSupabaseRuntimeHealth(
+  ctx: ApiContext
+): Promise<SupabaseRuntimeHealth> {
   const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -697,12 +942,18 @@ export async function readSupabaseRuntimeHealth(ctx: ApiContext): Promise<Supaba
   }
 
   const client = ctx.supabase;
-  const readModel = await safeHealthRead(() => client.selectRows("governed_wallets", { limit: 1 }));
-  const checkpoint = await safeHealthRead(() =>
-    client.selectRows("indexer_checkpoints", { limit: 1 }),
+  const readModel = await safeHealthRead(() =>
+    client.selectRows("governed_wallets", { limit: 1 })
   );
-  const readModelError = readModel.ok ? null : safeSupabaseError(readModel.error);
-  const checkpointError = checkpoint.ok ? null : safeSupabaseError(checkpoint.error);
+  const checkpoint = await safeHealthRead(() =>
+    client.selectRows("indexer_checkpoints", { limit: 1 })
+  );
+  const readModelError = readModel.ok
+    ? null
+    : safeSupabaseError(readModel.error);
+  const checkpointError = checkpoint.ok
+    ? null
+    : safeSupabaseError(checkpoint.error);
   const checkpointRow = checkpoint.ok ? checkpoint.data[0] : undefined;
 
   return {
@@ -710,7 +961,10 @@ export async function readSupabaseRuntimeHealth(ctx: ApiContext): Promise<Supaba
     api: {
       ...base.api,
       status: readModel.ok || checkpoint.ok ? "available" : "unavailable",
-      error: readModel.ok || checkpoint.ok ? null : (readModelError ?? checkpointError),
+      error:
+        readModel.ok || checkpoint.ok
+          ? null
+          : readModelError ?? checkpointError,
     },
     readModel: {
       status: readModel.ok ? "available" : "unavailable",
@@ -718,7 +972,11 @@ export async function readSupabaseRuntimeHealth(ctx: ApiContext): Promise<Supaba
       error: readModelError,
     },
     indexerCheckpoint: {
-      status: checkpoint.ok ? (checkpointRow ? "available" : "empty") : "unavailable",
+      status: checkpoint.ok
+        ? checkpointRow
+          ? "available"
+          : "empty"
+        : "unavailable",
       lastIndexedBlock: checkpointRow ? checkpointBlock(checkpointRow) : null,
       lastIndexedAt: checkpointRow ? checkpointTime(checkpointRow) : null,
       error: checkpointError,
@@ -726,7 +984,10 @@ export async function readSupabaseRuntimeHealth(ctx: ApiContext): Promise<Supaba
   };
 }
 
-export async function readSupabasePublicWalletProfile(ctx: ApiContext, address: string) {
+export async function readSupabasePublicWalletProfile(
+  ctx: ApiContext,
+  address: string
+) {
   const walletAddress = address.toLowerCase();
   const rows = await selectRows(ctx, "public_wallet_profiles", {
     filters: { wallet_address: walletAddress },
@@ -754,7 +1015,11 @@ export async function readSupabasePublicWalletProfile(ctx: ApiContext, address: 
   } satisfies SupabasePublicWalletProfile;
 }
 
-async function selectRows(ctx: ApiContext, table: string, options?: SupabaseRequestOptions) {
+async function selectRows(
+  ctx: ApiContext,
+  table: string,
+  options?: SupabaseRequestOptions
+) {
   const client = ctx.supabase;
   if (!client) {
     return [];
@@ -783,36 +1048,69 @@ function scopedRows(ctx: ApiContext, rows: SupabaseRow[]) {
   return filtered;
 }
 
+/**
+ * Keep only the rows that belong to a wallet the caller owns. Uses the same
+ * identity precedence as walletForRow so a row is never listed for one wallet
+ * and then attributed to another.
+ */
 function rowsForWallets(rows: SupabaseRow[], wallets: Wallet[]) {
-  const walletAddresses = new Set(wallets.map((wallet) => wallet.address.toLowerCase()));
-  const walletIds = new Set(wallets.map((wallet) => wallet.id));
-  const organizationIds = new Set(wallets.map((wallet) => wallet.orgId));
-  if (walletAddresses.size === 0) {
+  if (wallets.length === 0) {
     return [];
   }
 
-  return rows.filter((row) => {
-    const walletAddress = stringField(row, ["wallet_address"], "").toLowerCase();
-    const governedWalletId = stringField(row, ["governed_wallet_id", "wallet_id"], "");
-    const organizationId = stringField(row, ["organization_id"], "");
-    return (
-      (Boolean(walletAddress) && walletAddresses.has(walletAddress)) ||
-      (Boolean(governedWalletId) && walletIds.has(governedWalletId)) ||
-      (Boolean(organizationId) && organizationIds.has(organizationId))
-    );
-  });
+  return rows.filter((row) => walletForRow(row, wallets) !== null);
+}
+
+/**
+ * Vendors are organisation-scoped: the table has no wallet column, so a row can
+ * only be tied to the org. Keep every row for an org the caller owns a wallet
+ * in, and attribute it to that org's first wallet purely for display.
+ */
+function orgScopedRowsForWallets(rows: SupabaseRow[], wallets: Wallet[]) {
+  if (wallets.length === 0) {
+    return [] as { row: SupabaseRow; wallet: Wallet }[];
+  }
+
+  const walletsByOrg = new Map<string, Wallet>();
+  for (const wallet of wallets) {
+    if (!walletsByOrg.has(wallet.orgId)) {
+      walletsByOrg.set(wallet.orgId, wallet);
+    }
+  }
+
+  const matched: { row: SupabaseRow; wallet: Wallet }[] = [];
+  for (const row of rows) {
+    const wallet =
+      walletForRow(row, wallets) ??
+      walletsByOrg.get(stringField(row, ["organization_id"], ""));
+    if (wallet) {
+      matched.push({ row, wallet });
+    }
+  }
+
+  return matched;
 }
 
 function rowsForWalletIdentity(rows: SupabaseRow[], wallets: Wallet[]) {
-  const walletAddresses = new Set(wallets.map((wallet) => wallet.address.toLowerCase()));
+  const walletAddresses = new Set(
+    wallets.map((wallet) => wallet.address.toLowerCase())
+  );
   const walletIds = new Set(wallets.map((wallet) => wallet.id));
   if (walletAddresses.size === 0) {
     return [];
   }
 
   return rows.filter((row) => {
-    const walletAddress = stringField(row, ["wallet_address"], "").toLowerCase();
-    const governedWalletId = stringField(row, ["governed_wallet_id", "wallet_id"], "");
+    const walletAddress = stringField(
+      row,
+      ["wallet_address"],
+      ""
+    ).toLowerCase();
+    const governedWalletId = stringField(
+      row,
+      ["governed_wallet_id", "wallet_id"],
+      ""
+    );
     return (
       (Boolean(walletAddress) && walletAddresses.has(walletAddress)) ||
       (Boolean(governedWalletId) && walletIds.has(governedWalletId))
@@ -820,26 +1118,61 @@ function rowsForWalletIdentity(rows: SupabaseRow[], wallets: Wallet[]) {
   });
 }
 
+/**
+ * Resolve the wallet a Supabase row belongs to, strongest identity first.
+ *
+ * The organization is a last resort and only decides the row when the org owns
+ * exactly one wallet: every wallet in an org shares its id, so matching on it
+ * first would file each row under whichever wallet happened to be listed first.
+ */
 function walletForRow(row: SupabaseRow, wallets: Wallet[]) {
   const walletAddress = stringField(row, ["wallet_address"], "").toLowerCase();
-  const governedWalletId = stringField(row, ["governed_wallet_id", "wallet_id"], "");
-  const organizationId = stringField(row, ["organization_id"], "");
+  if (walletAddress) {
+    const byAddress = wallets.find(
+      (wallet) => wallet.address.toLowerCase() === walletAddress
+    );
+    if (byAddress) {
+      return byAddress;
+    }
+  }
 
-  return (
-    wallets.find(
-      (wallet) =>
-        (walletAddress && wallet.address.toLowerCase() === walletAddress) ||
-        (governedWalletId && wallet.id === governedWalletId) ||
-        (organizationId && wallet.orgId === organizationId),
-    ) ?? null
+  const governedWalletId = stringField(
+    row,
+    ["governed_wallet_id", "wallet_id"],
+    ""
   );
+  if (governedWalletId) {
+    const byId = wallets.find((wallet) => wallet.id === governedWalletId);
+    if (byId) {
+      return byId;
+    }
+  }
+
+  // A row that names a wallet we do not own is not ours to reassign.
+  if (walletAddress || governedWalletId) {
+    return null;
+  }
+
+  const organizationId = stringField(row, ["organization_id"], "");
+  if (!organizationId) {
+    return null;
+  }
+
+  const orgWallets = wallets.filter(
+    (wallet) => wallet.orgId === organizationId
+  );
+  return orgWallets.length === 1 ? orgWallets[0] : null;
 }
 
 function ownerScope(ctx: ApiContext) {
   return ctx.session?.walletAddress.toLowerCase() ?? null;
 }
 
-function requiredStringField(row: SupabaseRow | undefined, keys: string[], label: string) {
+function requiredStringField(
+  row: SupabaseRow | undefined,
+  keys: string[],
+  label: string
+) {
   const value = stringField(row, keys, "");
   if (!value) {
     throw new Error(`${label} was not returned by Supabase.`);
@@ -857,9 +1190,21 @@ function workspaceSlugForWallet(walletAddress: string) {
 }
 
 function walletFromGovernedWalletRow(row: SupabaseRow): Wallet {
-  const walletAddress = stringField(row, ["wallet_address", "address"], zeroWallet());
-  const label = stringField(row, ["label", "name"], shortAddress(walletAddress));
-  const status = stringField(row, ["status", "indexer_status"], "active").toLowerCase();
+  const walletAddress = stringField(
+    row,
+    ["wallet_address", "address"],
+    zeroWallet()
+  );
+  const label = stringField(
+    row,
+    ["label", "name"],
+    shortAddress(walletAddress)
+  );
+  const status = stringField(
+    row,
+    ["status", "indexer_status"],
+    "active"
+  ).toLowerCase();
 
   return {
     id: stringField(row, ["id"], stableUuid(`wallet:${walletAddress}`)),
@@ -873,14 +1218,19 @@ function walletFromGovernedWalletRow(row: SupabaseRow): Wallet {
     factoryAddress: stringField(
       row,
       ["wallet_factory_address"],
-      process.env.NEXT_PUBLIC_WALLET_FACTORY ?? zeroWallet(),
+      process.env.NEXT_PUBLIC_WALLET_FACTORY ?? zeroWallet()
     ),
     frozen: status.includes("frozen") || status.includes("restraint"),
     policyVersion: numberField(row, ["policy_version", "doctrine_version"], 1),
   };
 }
 
-function agentFromSigner(wallet: Wallet, signerAddress: string): Agent {
+function agentFromSigner(
+  wallet: Wallet,
+  signerAddress: string,
+  doctrine: SupabaseRow,
+  postureScore: number
+): AgentWithDoctrine {
   const label = wallet.label || shortAddress(wallet.address);
   return {
     id: stableUuid(`agent:${wallet.address}:${signerAddress}`),
@@ -894,18 +1244,36 @@ function agentFromSigner(wallet: Wallet, signerAddress: string): Agent {
     // An authorized signer on an unfrozen wallet can spend right now; a frozen
     // wallet blocks every signer regardless of authorization.
     status: wallet.frozen ? "frozen" : "active",
+    walletAddress: wallet.address,
+    // The caps the agent actually spends under, so the UI never has to guess.
+    perTxCap: moneyBaseUnits(doctrine, ["per_tx_cap_usdc"]),
+    daily24hCap: moneyBaseUnits(doctrine, ["daily_cap_usdc"]),
+    monthlyRollingCap: moneyBaseUnits(doctrine, ["monthly_cap_usdc"]),
+    escalationThreshold: moneyBaseUnits(doctrine, ["escalate_above_usdc"]),
+    policyVersion: numberField(
+      doctrine,
+      ["version", "policy_version"],
+      wallet.policyVersion
+    ),
+    postureScore,
   };
 }
 
 function policyFromDoctrineRow(
   row: SupabaseRow,
-  wallet: Wallet,
+  wallet: Wallet
 ): Policy & { doctrineStatus: string; signers: string[] } {
   return {
-    id: stableUuid(`policy:${wallet.address}:${stringField(row, ["version"], "1")}`),
+    id: stableUuid(
+      `policy:${wallet.address}:${stringField(row, ["version"], "1")}`
+    ),
     tenantId: wallet.tenantId,
     walletId: wallet.id,
-    version: numberField(row, ["version", "policy_version"], wallet.policyVersion),
+    version: numberField(
+      row,
+      ["version", "policy_version"],
+      wallet.policyVersion
+    ),
     perTxCap: moneyBaseUnits(row, ["per_tx_cap_usdc"]),
     daily24hCap: moneyBaseUnits(row, ["daily_cap_usdc"]),
     monthlyRollingCap: moneyBaseUnits(row, ["monthly_cap_usdc"]),
@@ -921,25 +1289,39 @@ function policyFromDoctrineRow(
 
 function vendorFromRow(
   row: SupabaseRow,
-  wallet?: Wallet | null,
-): Vendor & { name: string; kycStatus: "public" | "arcanevm"; walletAddress: string } {
+  wallet?: Wallet | null
+): Vendor & {
+  name: string;
+  kycStatus: "public" | "arcanevm";
+  walletAddress: string;
+} {
   const vendorAddress = stringField(row, ["vendor_address"], zeroWallet());
   const walletAddress = wallet?.address ?? primaryFallbackWallet().address;
   const walletId = wallet?.id ?? stableUuid(`wallet:${walletAddress}`);
 
   return {
-    id: stringField(row, ["id"], stableUuid(`vendor:${walletAddress}:${vendorAddress}`)),
+    id: stringField(
+      row,
+      ["id"],
+      stableUuid(`vendor:${walletAddress}:${vendorAddress}`)
+    ),
     tenantId: stringField(row, ["tenant_id"], FALLBACK_TENANT_ID),
     walletId,
     address: vendorAddress.toLowerCase(),
     category: stringField(row, ["category"], "other"),
     status: vendorStatusFromString(stringField(row, ["status"], "allowed")),
     perVendorCap: "0",
-    metadataHash: stringField(row, ["metadata_hash"], stableHash(`vendor:${vendorAddress}`)),
+    metadataHash: stringField(
+      row,
+      ["metadata_hash"],
+      stableHash(`vendor:${vendorAddress}`)
+    ),
     addedAt: dateField(row, ["created_at"]),
     addedBy: wallet?.ownerAddress ?? ownerScopeFromEnv(),
     name: stringField(row, ["name", "label"], shortAddress(vendorAddress)),
-    kycStatus: booleanField(row, ["confidential"], false) ? "arcanevm" : "public",
+    kycStatus: booleanField(row, ["confidential"], false)
+      ? "arcanevm"
+      : "public",
     walletAddress,
   };
 }
@@ -950,7 +1332,7 @@ function transferFromRow(row: SupabaseRow, wallets: Wallet[]): Transfer {
   const txHash = stringField(
     row,
     ["tx_hash", "hash"],
-    stableHash(`transfer:${JSON.stringify(row)}`),
+    stableHash(`transfer:${JSON.stringify(row)}`)
   );
 
   return {
@@ -961,9 +1343,15 @@ function transferFromRow(row: SupabaseRow, wallets: Wallet[]): Transfer {
     txHash,
     blockNumber: numberField(row, ["block_number"], 0),
     timestamp: dateField(row, ["event_time", "created_at"]),
-    toAddress: stringField(row, ["to_address", "counterparty_address"], zeroWallet()),
+    toAddress: stringField(
+      row,
+      ["to_address", "counterparty_address"],
+      zeroWallet()
+    ),
     amount: moneyBaseUnits(row, ["amount", "amount_usdc"]),
-    verdict: verdictFromString(stringField(row, ["verdict", "status"], "ALLOW")),
+    verdict: verdictFromString(
+      stringField(row, ["verdict", "status"], "ALLOW")
+    ),
     reason: stringField(row, ["decision_reason"], "indexed from Supabase"),
     vendorCategory: stringField(row, ["vendor_category", "category"], "other"),
     dailySpentAfter: moneyBaseUnits(row, ["daily_spent_after"], 0),
@@ -973,18 +1361,33 @@ function transferFromRow(row: SupabaseRow, wallets: Wallet[]): Transfer {
 function escalationFromRow(row: SupabaseRow, wallets: Wallet[]): Escalation {
   const wallet = walletForRow(row, wallets);
   const walletAddress = wallet?.address ?? primaryFallbackWallet().address;
-  const id = stringField(row, ["id", "tx_hash"], stableHash(`escalation:${JSON.stringify(row)}`));
+  // The dashboard and the public approver portal both call the escalation
+  // manager with this id, so it must be the on-chain escalation key. Falling
+  // back to the Supabase UUID leaves approve/reject permanently disabled.
+  const id = stringField(
+    row,
+    ["escalation_key", "tx_hash", "id"],
+    stableHash(`escalation:${JSON.stringify(row)}`)
+  );
 
   return {
     id,
     tenantId: stringField(row, ["tenant_id"], FALLBACK_TENANT_ID),
     walletId: wallet?.id ?? stableUuid(`wallet:${walletAddress}`),
     transferId: stringField(row, ["ledger_event_id"], null),
-    toAddress: stringField(row, ["to_address", "counterparty_address"], zeroWallet()),
+    toAddress: stringField(
+      row,
+      ["to_address", "counterparty_address"],
+      zeroWallet()
+    ),
     amount: moneyBaseUnits(row, ["amount", "amount_usdc"]),
     reason: stringField(row, ["reason"], "Supabase escalation"),
     createdAt: dateField(row, ["created_at"]),
-    expiresAt: dateField(row, ["expires_at"], new Date(Date.now() + 30 * 60_000)),
+    expiresAt: dateField(
+      row,
+      ["expires_at"],
+      new Date(Date.now() + 30 * 60_000)
+    ),
     status: escalationStatusFromString(stringField(row, ["status"], "pending")),
     signaturesCount: numberField(row, ["approvals_count"], 0),
     threshold: numberField(row, ["quorum_required"], 1),
@@ -1013,9 +1416,13 @@ function anomalyFromRow(row: SupabaseRow, wallets: Wallet[]): Anomaly {
 
 function publicProfileFromRow(
   row: SupabaseRow,
-  source: SupabasePublicWalletProfile["dataSource"],
+  source: SupabasePublicWalletProfile["dataSource"]
 ): SupabasePublicWalletProfile {
-  const walletAddress = stringField(row, ["wallet_address", "address"], zeroWallet());
+  const walletAddress = stringField(
+    row,
+    ["wallet_address", "address"],
+    zeroWallet()
+  );
 
   return {
     walletAddress,
@@ -1028,26 +1435,38 @@ function publicProfileFromRow(
     dataSource: stringField(
       row,
       ["data_source"],
-      source,
+      source
     ) as SupabasePublicWalletProfile["dataSource"],
   };
 }
 
 function stableUuid(seed: string) {
   const hex = createHash("sha256").update(seed).digest("hex");
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-8${hex.slice(
-    17,
-    20,
-  )}-${hex.slice(20, 32)}`;
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(
+    13,
+    16
+  )}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
 }
 
 function stableHash(seed: string) {
   return `0x${createHash("sha256").update(seed).digest("hex")}`;
 }
 
-function stringField(row: SupabaseRow | undefined, keys: string[], fallback?: string): string;
-function stringField(row: SupabaseRow | undefined, keys: string[], fallback: null): string | null;
-function stringField(row: SupabaseRow | undefined, keys: string[], fallback: string | null = "") {
+function stringField(
+  row: SupabaseRow | undefined,
+  keys: string[],
+  fallback?: string
+): string;
+function stringField(
+  row: SupabaseRow | undefined,
+  keys: string[],
+  fallback: null
+): string | null;
+function stringField(
+  row: SupabaseRow | undefined,
+  keys: string[],
+  fallback: string | null = ""
+) {
   for (const key of keys) {
     const value = row?.[key];
     if (typeof value === "string" && value.trim()) {
@@ -1061,7 +1480,11 @@ function stringField(row: SupabaseRow | undefined, keys: string[], fallback: str
   return fallback;
 }
 
-function numberField(row: SupabaseRow | undefined, keys: string[], fallback = 0) {
+function numberField(
+  row: SupabaseRow | undefined,
+  keys: string[],
+  fallback = 0
+) {
   for (const key of keys) {
     const value = row?.[key];
     if (typeof value === "number" && Number.isFinite(value)) {
@@ -1095,7 +1518,11 @@ function numberOrNull(row: SupabaseRow | undefined, keys: string[]) {
   return null;
 }
 
-function booleanField(row: SupabaseRow | undefined, keys: string[], fallback: boolean) {
+function booleanField(
+  row: SupabaseRow | undefined,
+  keys: string[],
+  fallback: boolean
+) {
   for (const key of keys) {
     const value = row?.[key];
     if (typeof value === "boolean") {
@@ -1120,7 +1547,11 @@ function arrayField(row: SupabaseRow | undefined, keys: string[]) {
   return [];
 }
 
-function dateField(row: SupabaseRow | undefined, keys: string[], fallback = new Date()) {
+function dateField(
+  row: SupabaseRow | undefined,
+  keys: string[],
+  fallback = new Date()
+) {
   for (const key of keys) {
     const value = row?.[key];
     if (value instanceof Date) {
@@ -1140,7 +1571,7 @@ function dateField(row: SupabaseRow | undefined, keys: string[], fallback = new 
 function moneyBaseUnits(
   row: SupabaseRow | undefined,
   keys: string[],
-  fallback: string | number = "0",
+  fallback: string | number = "0"
 ) {
   for (const key of keys) {
     const value = row?.[key];
@@ -1158,7 +1589,9 @@ function moneyBaseUnits(
     }
   }
 
-  return typeof fallback === "number" ? String(Math.round(fallback * 1_000_000)) : fallback;
+  return typeof fallback === "number"
+    ? String(Math.round(fallback * 1_000_000))
+    : fallback;
 }
 
 function agentTypeFromLabel(label: string): Agent["type"] {
@@ -1212,7 +1645,11 @@ function verdictFromString(value: string): Transfer["verdict"] {
 
 function escalationStatusFromString(value: string): Escalation["status"] {
   const normalized = value.toLowerCase();
-  if (normalized === "executed" || normalized === "released" || normalized === "approved") {
+  if (
+    normalized === "executed" ||
+    normalized === "released" ||
+    normalized === "approved"
+  ) {
     return "EXECUTED";
   }
   if (normalized === "rejected" || normalized === "denied") {
@@ -1227,7 +1664,11 @@ function escalationStatusFromString(value: string): Escalation["status"] {
 
 function anomalySeverityFromString(value: string): Anomaly["severity"] {
   const normalized = value.toLowerCase();
-  if (normalized === "critical" || normalized === "high" || normalized === "danger") {
+  if (
+    normalized === "critical" ||
+    normalized === "high" ||
+    normalized === "danger"
+  ) {
     return "danger";
   }
   if (normalized === "medium" || normalized === "warning") {
@@ -1237,13 +1678,28 @@ function anomalySeverityFromString(value: string): Anomaly["severity"] {
   return "info";
 }
 
+/** Bit positions of RestraintCategory in the on-chain policy bitmask. */
+const CATEGORY_BITS: Record<string, number> = {
+  api: 1,
+  compute: 2,
+  data: 4,
+  subcontracting: 8,
+  other: 16,
+};
+
+const ALL_CATEGORIES_MASK = 31;
+
 function allowedCategoryMask(row: SupabaseRow) {
   const categories = arrayField(row, ["allowed_categories"]);
   if (categories.length === 0) {
-    return 31;
+    return ALL_CATEGORIES_MASK;
   }
 
-  return categories.length;
+  return categories.reduce(
+    (mask, category) =>
+      mask | (CATEGORY_BITS[category.trim().toLowerCase()] ?? 0),
+    0
+  );
 }
 
 function zeroWallet() {
@@ -1261,12 +1717,15 @@ function primaryFallbackWallet() {
 
 function ownerScopeFromEnv() {
   return (
-    process.env.ARCANUM_DEMO_OWNER_WALLET?.toLowerCase() ?? primaryFallbackWallet().ownerAddress
+    process.env.ARCANUM_DEMO_OWNER_WALLET?.toLowerCase() ??
+    primaryFallbackWallet().ownerAddress
   );
 }
 
 function shortAddress(value: string) {
-  return value.length > 12 ? `${value.slice(0, 6)}...${value.slice(-4)}` : value;
+  return value.length > 12
+    ? `${value.slice(0, 6)}...${value.slice(-4)}`
+    : value;
 }
 
 function unconfiguredWrite<T>(label: string): SupabaseWriteResult<T> {
@@ -1277,7 +1736,10 @@ function unconfiguredWrite<T>(label: string): SupabaseWriteResult<T> {
   };
 }
 
-function unavailableWrite<T>(label: string, error: unknown): SupabaseWriteResult<T> {
+function unavailableWrite<T>(
+  label: string,
+  error: unknown
+): SupabaseWriteResult<T> {
   warnSupabase(`${label}.write-unavailable`, error);
 
   return {
@@ -1299,15 +1761,26 @@ function warnSupabase(label: string, error: unknown) {
 
 function safeSupabaseError(message: string) {
   return message
-    .replaceAll(process.env.SUPABASE_SERVICE_ROLE_KEY ?? "__never__", "[redacted]")
-    .replaceAll(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "__never__", "[redacted]");
+    .replaceAll(
+      process.env.SUPABASE_SERVICE_ROLE_KEY ?? "__never__",
+      "[redacted]"
+    )
+    .replaceAll(
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "__never__",
+      "[redacted]"
+    );
 }
 
-async function safeHealthRead(operation: () => Promise<SupabaseRow[] | undefined>) {
+async function safeHealthRead(
+  operation: () => Promise<SupabaseRow[] | undefined>
+) {
   try {
     return { ok: true as const, data: (await operation()) ?? [] };
   } catch (error) {
-    return { ok: false as const, error: error instanceof Error ? error.message : String(error) };
+    return {
+      ok: false as const,
+      error: error instanceof Error ? error.message : String(error),
+    };
   }
 }
 
@@ -1325,7 +1798,7 @@ function checkpointTime(row: SupabaseRow) {
   const value = stringField(
     row,
     ["last_indexed_at", "updated_at", "timestamp", "created_at"],
-    null,
+    null
   );
 
   if (!value) {

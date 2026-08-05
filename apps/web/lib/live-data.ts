@@ -133,25 +133,53 @@ export function useLiveAgents() {
     retry: false,
     staleTime: 30_000,
   });
+  // Shares react-query's cache with useLiveLedger, so this costs no extra request.
+  const ledgerQuery = trpc.ledger.list.useQuery(
+    { page: 0, pageSize: 100 },
+    { enabled, retry: false, refetchOnWindowFocus: false, staleTime: 30_000 },
+  );
+
   const walletAddressById = new Map(
     (enabled ? (walletsQuery.data ?? []) : []).map((wallet) => [wallet.id, wallet.address]),
   );
-  const agents: Agent[] = (enabled ? (query.data ?? []) : []).map((agent) => ({
-    id: agent.id,
-    name: agent.label,
-    // Routes and on-chain reads key on the governed wallet, not the signer key.
-    wallet: walletAddressById.get(agent.walletId) ?? agent.walletId,
-    signer: agent.signerAddress,
-    owner: "Owner synced in Supabase",
-    status: agentStatus(agent.status),
-    posture: 0,
-    dailySpend: 0,
-    dailyLimit: 0,
-    lastActivity: "No activity yet",
-    doctrineVersion: "Supabase synced",
-    mandate: agent.type.toUpperCase(),
-    categories: [],
-  }));
+
+  const transfers = enabled ? (ledgerQuery.data ?? []) : [];
+  const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
+  const spendByWallet = new Map<string, number>();
+  const lastSeenByWallet = new Map<string, number>();
+
+  for (const transfer of transfers) {
+    const at = new Date(transfer.timestamp ?? 0).getTime();
+    if (Number.isFinite(at)) {
+      lastSeenByWallet.set(transfer.walletId, Math.max(lastSeenByWallet.get(transfer.walletId) ?? 0, at));
+    }
+    if (transfer.verdict === "ALLOW" && at >= dayAgo) {
+      spendByWallet.set(
+        transfer.walletId,
+        (spendByWallet.get(transfer.walletId) ?? 0) + usdcNumber(transfer.amount),
+      );
+    }
+  }
+
+  const agents: Agent[] = (enabled ? (query.data ?? []) : []).map((agent) => {
+    const lastSeen = lastSeenByWallet.get(agent.walletId);
+    return {
+      id: agent.id,
+      name: agent.label,
+      // Routes and on-chain reads key on the governed wallet, not the signer key.
+      wallet: walletAddressById.get(agent.walletId) ?? agent.walletId,
+      signer: agent.signerAddress,
+      owner: "Owner synced in Supabase",
+      status: agentStatus(agent.status),
+      posture: agent.postureScore ?? 0,
+      dailySpend: spendByWallet.get(agent.walletId) ?? 0,
+      dailyLimit: agent.daily24hCap === null ? 0 : usdcNumber(agent.daily24hCap),
+      lastActivity: lastSeen ? formatTimestampOrNA(new Date(lastSeen)) : "No activity yet",
+      doctrineVersion: agent.policyVersion === null ? "unknown" : `v${agent.policyVersion}`,
+      mandate: agent.type.toUpperCase(),
+      categories: [],
+    };
+  });
   return { ...query, data: agents };
 }
 

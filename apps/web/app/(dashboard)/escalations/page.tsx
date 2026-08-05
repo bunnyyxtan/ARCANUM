@@ -79,6 +79,7 @@ function EscalationCard({
   const { switchChainAsync, isPending: switchPending } = useSwitchChain();
   const { writeContractAsync, isPending: writePending } = useWriteContract();
   const utils = trpc.useUtils();
+  const recordDecision = trpc.escalations.recordDecision.useMutation();
   const submittingRef = useRef(false);
 
   const [txStage, setTxStage] = useState<TxStage>("idle");
@@ -214,11 +215,24 @@ function EscalationCard({
         throw new Error("Escalation transaction reverted.");
       }
 
-      await utils.escalations.list.invalidate();
+      // The chain is settled; mirror it into the read model so the queue does
+      // not keep showing a decision the owner already made.
+      let syncFailed: string | null = null;
+      try {
+        await recordDecision.mutateAsync({ escalationKey: escalationId, txHash: hash });
+      } catch (caught) {
+        syncFailed = errorMessage(caught);
+      }
+
+      await Promise.all([utils.escalations.list.invalidate(), utils.ledger.list.invalidate()]);
       setTxStage("pending_indexer");
       onResolved();
 
-      if (action === "approve") {
+      if (syncFailed) {
+        toast.warning("DECISION LIVE ON-CHAIN · QUEUE NOT SYNCED", {
+          description: `The decision is settled on Arc Testnet, but the queue could not be updated: ${syncFailed}`,
+        });
+      } else if (action === "approve") {
         const nextCount = preflight.signaturesCount + 1;
         toast.success(
           nextCount >= preflight.threshold
@@ -227,13 +241,13 @@ function EscalationCard({
           {
             description:
               nextCount >= preflight.threshold
-                ? `Release for ${amountLabel} to ${item.counterparty} executed in the approval transaction. Pending indexer sync.`
-                : `Vote for ${amountLabel} to ${item.counterparty} confirmed on-chain. Pending indexer sync.`,
+                ? `Release for ${amountLabel} to ${item.counterparty} executed in the approval transaction.`
+                : `Vote for ${amountLabel} to ${item.counterparty} confirmed on-chain.`,
           },
         );
       } else {
         toast.success("ESCALATION REJECTED", {
-          description: `Rejection for ${amountLabel} to ${item.counterparty} confirmed on-chain. Pending indexer sync.`,
+          description: `Rejection for ${amountLabel} to ${item.counterparty} confirmed on-chain.`,
         });
       }
     } catch (caught) {

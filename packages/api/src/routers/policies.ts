@@ -6,7 +6,11 @@ import { createPublicClient, http, isAddress } from "viem";
 import { z } from "zod";
 
 import { fallbackPolicies } from "../mock-fallback";
-import { readSupabasePolicy } from "../supabase";
+import {
+  readSupabasePolicy,
+  readSupabaseWalletByLooseId,
+  recordSupabaseDeployedPolicy,
+} from "../supabase";
 import { protectedProcedure, publicProcedure, router } from "../trpc";
 import { canUseDemoFallback, findWalletByLooseId, readDbOrFallback, tenantIdFor } from "./helpers";
 
@@ -50,6 +54,19 @@ const onChainPolicyInputSchema = z.object({
   walletAddress: z
     .string()
     .refine((value) => isAddress(value), { message: "Invalid wallet address" }),
+});
+
+const deployedPolicyInputSchema = z.object({
+  walletAddress: z
+    .string()
+    .refine((value) => isAddress(value), { message: "Invalid wallet address" }),
+  txHash: z.string().regex(/^0x[0-9a-fA-F]{64}$/, "Invalid transaction hash"),
+  perTxCap: z.number().nonnegative(),
+  dailyCap: z.number().nonnegative(),
+  monthlyCap: z.number().nonnegative(),
+  escalationThreshold: z.number().nonnegative(),
+  allowedCategories: z.array(z.string().min(1)).max(8),
+  requireAllowlist: z.boolean(),
 });
 
 export const policiesRouter = router({
@@ -139,6 +156,44 @@ export const policiesRouter = router({
 
     return onChainPolicyWriteOnly();
   }),
+
+  /**
+   * Mirror a policy revision that is already confirmed on-chain into the read
+   * model. Without this the dashboard keeps showing the previous caps while the
+   * wallet enforces the new ones.
+   */
+  recordDeployed: protectedProcedure
+    .input(deployedPolicyInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      const walletAddress = input.walletAddress.toLowerCase();
+      const wallet = await readSupabaseWalletByLooseId(ctx, walletAddress);
+
+      if (!wallet || wallet.address.toLowerCase() !== walletAddress) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Governed wallet was not found for the signed-in owner.",
+        });
+      }
+
+      if (wallet.ownerAddress.toLowerCase() !== ctx.session.walletAddress.toLowerCase()) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only the governed wallet owner can record a policy deployment.",
+        });
+      }
+
+      const result = await recordSupabaseDeployedPolicy(ctx, wallet, {
+        ...input,
+        walletAddress: walletAddress as `0x${string}`,
+        txHash: input.txHash as `0x${string}`,
+      });
+
+      if (!result.ok) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: result.message });
+      }
+
+      return result.data;
+    }),
 
   count: publicProcedure.query(async ({ ctx }) => {
     if (canUseDemoFallback(ctx)) {

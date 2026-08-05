@@ -21,6 +21,7 @@ import {
   fallbackWalletRows,
 } from "../mock-fallback";
 import {
+  agentWithoutDoctrine,
   readSupabaseAgents,
   readSupabasePolicy,
   readSupabaseWalletByLooseId,
@@ -53,9 +54,11 @@ export const agentsRouter = router({
     .input(z.object({ status: agentStatusSchema.optional() }).optional())
     .query(async ({ ctx, input }) => {
       if (canUseDemoFallback(ctx)) {
-        return input?.status
-          ? fallbackAgents.filter((agent) => agent.status === input.status)
-          : fallbackAgents;
+        return (
+          input?.status
+            ? fallbackAgents.filter((agent) => agent.status === input.status)
+            : fallbackAgents
+        ).map(agentWithoutDoctrine);
       }
 
       const tenantId = tenantIdFor(ctx);
@@ -83,10 +86,12 @@ export const agentsRouter = router({
       );
 
       if (rows.length > 0) {
-        return rows;
+        return rows.map(agentWithoutDoctrine);
       }
 
-      return status ? fallbackAgents.filter((agent) => agent.status === status) : fallbackAgents;
+      return (
+        status ? fallbackAgents.filter((agent) => agent.status === status) : fallbackAgents
+      ).map(agentWithoutDoctrine);
     }),
 
   byWalletId: publicProcedure.input(agentByWalletInputSchema).query(async ({ ctx, input }) => {

@@ -9,9 +9,15 @@ import { Toaster } from "sonner";
 import { WagmiProvider } from "wagmi";
 
 import { WalletAuthBridge } from "@/components/arcanum/WalletAuthBridge";
+import { TestWalletBridge } from "@/components/dev/TestWalletBridge";
 import { TelemetryProvider } from "@/lib/telemetry";
 import { createTrpcClient, trpc } from "@/lib/trpc";
 import { wagmiConfig } from "@/lib/wagmi";
+
+// Automated browser tests need a wallet that can sign without an extension.
+// Never enabled in a production build.
+const testWalletEnabled =
+  process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_ARCANUM_TEST_WALLET === "1";
 
 type ProvidersProps = Readonly<{
   children: ReactNode;
@@ -46,6 +52,7 @@ export function Providers({ children }: ProvidersProps) {
             })}
           >
             <TelemetryProvider>
+              {testWalletEnabled ? <TestWalletBridge /> : null}
               <WalletAuthBridge />
               {children}
               <Toaster

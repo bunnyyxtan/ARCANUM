@@ -77,6 +77,13 @@ function categoryMaskFromDraft(categories: ReadonlySet<DoctrineCategoryValue>) {
   return mask;
 }
 
+/** Doctrine category names as the read model stores them (lowercase). */
+function draftCategoryNames(draft: PolicyDraftState) {
+  return doctrineCategoryOptions
+    .filter((category) => draft.enabledCategories.has(category.value))
+    .map((category) => category.value.toLowerCase());
+}
+
 function categoriesFromMask(mask: bigint) {
   return new Set(
     doctrineCategoryOptions
@@ -230,6 +237,7 @@ export default function PolicyEditorPage() {
   const { switchChainAsync, isPending: switchPending } = useSwitchChain();
   const { writeContractAsync, isPending: writePending } = useWriteContract();
   const utils = trpc.useUtils();
+  const recordDeployedPolicy = trpc.policies.recordDeployed.useMutation();
 
   const [policyDraft, setPolicyDraft] = useState<PolicyDraftState>(initialPolicyDraft);
   const [activePolicyDraft, setActivePolicyDraft] = useState<PolicyDraftState>(initialPolicyDraft);
@@ -426,13 +434,41 @@ export default function PolicyEditorPage() {
 
       setActivePolicyDraft(policyDraft);
       setPolicyPendingIndexer(true);
-      await utils.policies.get.invalidate();
-      await utils.policies.readOnChain.invalidate();
-      await utils.wallets.listPolicies.invalidate();
-      toast.success("POLICY TX CONFIRMED", {
-        description:
-          "Policy update is confirmed on-chain. Event indexer may lag before read-model refresh.",
-      });
+
+      // Mirror the confirmed revision into the read model, otherwise the
+      // dossier keeps advertising the caps the wallet no longer enforces.
+      let syncFailed: string | null = null;
+      try {
+        await recordDeployedPolicy.mutateAsync({
+          walletAddress: governedWallet,
+          txHash: hash,
+          perTxCap: Number(nextPolicy.perTxCap) / 1e6,
+          dailyCap: Number(nextPolicy.daily24hCap) / 1e6,
+          monthlyCap: Number(nextPolicy.monthlyRollingCap) / 1e6,
+          escalationThreshold: Number(nextPolicy.escalationThreshold) / 1e6,
+          allowedCategories: draftCategoryNames(policyDraft),
+          requireAllowlist: nextPolicy.requireAllowlist,
+        });
+      } catch (caught) {
+        syncFailed = errorMessage(caught);
+      }
+
+      await Promise.all([
+        utils.policies.get.invalidate(),
+        utils.policies.readOnChain.invalidate(),
+        utils.wallets.listPolicies.invalidate(),
+        utils.agents.list.invalidate(),
+      ]);
+
+      if (syncFailed) {
+        toast.warning("POLICY LIVE ON-CHAIN · DASHBOARD NOT SYNCED", {
+          description: `The wallet now enforces the new policy, but the dashboard could not be updated: ${syncFailed}`,
+        });
+      } else {
+        toast.success("POLICY TX CONFIRMED", {
+          description: "Policy update is confirmed on-chain and reflected across the dashboard.",
+        });
+      }
     } catch (caught) {
       const message = errorMessage(caught);
       setPolicyError(message);

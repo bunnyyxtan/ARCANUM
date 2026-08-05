@@ -15,6 +15,7 @@ export function DashboardRouteGuard({ children }: DashboardRouteGuardProps) {
   const [allowLocalPreview, setAllowLocalPreview] = useState(false);
   const [hasResolvedPreview, setHasResolvedPreview] = useState(false);
   const [reconnectGraceElapsed, setReconnectGraceElapsed] = useState(false);
+  const [resolveDeadlineElapsed, setResolveDeadlineElapsed] = useState(false);
   const isResolvingConnection = status === "connecting" || status === "reconnecting";
 
   useEffect(() => {
@@ -24,7 +25,14 @@ export function DashboardRouteGuard({ children }: DashboardRouteGuardProps) {
     // to the landing page on every refresh, so give the reconnect a short grace
     // window before treating "disconnected" as real.
     const timer = window.setTimeout(() => setReconnectGraceElapsed(true), 1500);
-    return () => window.clearTimeout(timer);
+    // A wallet that never answers (locked extension, dismissed prompt) leaves
+    // wagmi in "reconnecting" forever. Without a deadline the page would sit on
+    // "Checking access…" with no way out, so fall back to the landing page.
+    const deadline = window.setTimeout(() => setResolveDeadlineElapsed(true), 8000);
+    return () => {
+      window.clearTimeout(timer);
+      window.clearTimeout(deadline);
+    };
   }, []);
 
   useEffect(() => {
@@ -56,7 +64,10 @@ export function DashboardRouteGuard({ children }: DashboardRouteGuardProps) {
       return;
     }
 
-    if (reconnectGraceElapsed && !isResolvingConnection && !isConnected) {
+    const settledDisconnected = reconnectGraceElapsed && !isResolvingConnection && !isConnected;
+    const stuckResolving = resolveDeadlineElapsed && !isConnected;
+
+    if (settledDisconnected || stuckResolving) {
       router.replace("/");
     }
   }, [
@@ -65,6 +76,7 @@ export function DashboardRouteGuard({ children }: DashboardRouteGuardProps) {
     isConnected,
     isResolvingConnection,
     reconnectGraceElapsed,
+    resolveDeadlineElapsed,
     router,
   ]);
 

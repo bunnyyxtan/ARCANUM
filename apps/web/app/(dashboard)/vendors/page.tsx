@@ -101,8 +101,38 @@ export default function VendorsPage() {
   const flagMutation = trpc.vendorFlags.flag.useMutation();
   const unflagMutation = trpc.vendorFlags.unflag.useMutation();
   const updateNoteMutation = trpc.vendorFlags.updateNote.useMutation();
+  const recordVendorStateMutation = trpc.vendors.recordOnChainState.useMutation();
   const flagToggling =
     flagMutation.isPending || unflagMutation.isPending || updateNoteMutation.isPending;
+
+  /**
+   * Mirror a settled VendorRegistry write into the read model. The server
+   * re-reads the registry on-chain, so this can only record what is true.
+   * Returns an error message when the sync failed, or null on success.
+   */
+  const recordVendorState = async (
+    governedWallet: Address,
+    vendorAddress: Address,
+    details: {
+      name: string;
+      category: string;
+      kycStatus: "public" | "arcanevm";
+      perVendorCap: number;
+    },
+  ) => {
+    try {
+      await recordVendorStateMutation.mutateAsync({
+        walletAddress: governedWallet,
+        vendorAddress,
+        ...details,
+      });
+      return null;
+    } catch (caught) {
+      const message = errorMessage(caught);
+      toast.warning("VENDOR WRITE LIVE ON-CHAIN · REGISTRY NOT SYNCED", { description: message });
+      return message;
+    }
+  };
 
   const [category, setCategory] = useState<string>("ALL");
   const [query, setQuery] = useState("");
@@ -358,11 +388,22 @@ export default function VendorsPage() {
         throw new Error("VendorRegistry transaction reverted.");
       }
 
+      const syncFailed = await recordVendorState(governedWallet, vendorAddress, {
+        name,
+        category: vendorForm.category,
+        kycStatus: vendorForm.confidential ? "arcanevm" : "public",
+        perVendorCap: Number(perVendorCap) / 1e6,
+      });
+
       await utils.vendors.list.invalidate();
       await liveVendors.refetch();
       setVendorForm(initialVendorForm);
       setAddVendorOpen(false);
-      setNotice(`${name.toUpperCase()} WRITE CONFIRMED · PENDING INDEXER`);
+      setNotice(
+        syncFailed
+          ? `${name.toUpperCase()} WRITE CONFIRMED · REGISTRY NOT SYNCED`
+          : `${name.toUpperCase()} WRITE CONFIRMED · REGISTRY UPDATED`,
+      );
       toast.success("VENDOR WRITE CONFIRMED", {
         description:
           "On-chain write confirmed. Event indexer may lag before the read model updates.",
@@ -419,15 +460,23 @@ export default function VendorsPage() {
         throw new Error("VendorRegistry transaction reverted.");
       }
 
+      const syncFailed = await recordVendorState(governedWallet, vendor.address as Address, {
+        name: vendor.name,
+        category: vendor.category,
+        kycStatus: vendor.confidential ? "arcanevm" : "public",
+        perVendorCap: 0,
+      });
+
       await utils.vendors.list.invalidate();
       await liveVendors.refetch();
       setNotice(
         `${vendor.name.toUpperCase()} ${action === "block" ? "BLOCKED" : "REMOVED"} · CONFIRMED`,
       );
-      toast.success(action === "block" ? "VENDOR BLOCK CONFIRMED" : "VENDOR REMOVE CONFIRMED", {
-        description:
-          "On-chain write confirmed. Event indexer may lag before the read model updates.",
-      });
+      if (!syncFailed) {
+        toast.success(action === "block" ? "VENDOR BLOCK CONFIRMED" : "VENDOR REMOVE CONFIRMED", {
+          description: "On-chain write confirmed and the vendor registry has been updated.",
+        });
+      }
     } catch (caught) {
       const message = errorMessage(caught);
       toast.error("VENDOR ACTION FAILED", { description: message });
@@ -480,15 +529,24 @@ export default function VendorsPage() {
         if (receipt?.status !== "success") {
           throw new Error("VendorRegistry transaction reverted.");
         }
+        const syncFailed = await recordVendorState(governedWallet, selected.address as Address, {
+          name: selected.name,
+          category: selected.category,
+          kycStatus: selected.confidential ? "arcanevm" : "public",
+          perVendorCap: Number(perVendorCap) / 1e6,
+        });
+
         await utils.vendors.list.invalidate();
         await liveVendors.refetch();
         setCapEditing(false);
         setNotice(
           `${selected.name.toUpperCase()} CAP REVISED TO $${amount.toLocaleString("en-US")} / MO`,
         );
-        toast.success("VENDOR CAP CONFIRMED", {
-          description: "On-chain write confirmed. Pending indexer sync.",
-        });
+        if (!syncFailed) {
+          toast.success("VENDOR CAP CONFIRMED", {
+            description: "On-chain write confirmed and the vendor registry has been updated.",
+          });
+        }
       } catch (caught) {
         const message = errorMessage(caught);
         setNotice(message.toUpperCase());
