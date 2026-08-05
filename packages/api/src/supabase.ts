@@ -267,6 +267,25 @@ export async function readSupabaseWallets(ctx: ApiContext): Promise<Wallet[]> {
   return scopedRows(ctx, rows).map(walletFromGovernedWalletRow);
 }
 
+/**
+ * Resolve a governed wallet by its on-chain address WITHOUT scoping to the
+ * signed-in owner. An escalation approver is often a council member rather than
+ * the owner, so the owner-scoped lookup would hide the wallet from them.
+ * Callers must enforce their own authorization (owner or on-chain signer)
+ * before acting on the result.
+ */
+export async function readSupabaseWalletByAddressUnscoped(
+  ctx: ApiContext,
+  address: string
+) {
+  const rows = await selectRows(ctx, "governed_wallets", {
+    filters: { wallet_address: address.toLowerCase() },
+    limit: 1,
+  });
+  const [row] = rows;
+  return row ? walletFromGovernedWalletRow(row) : null;
+}
+
 export async function readSupabaseWalletByLooseId(
   ctx: ApiContext,
   looseWalletId: string
@@ -511,6 +530,7 @@ export async function writeSupabaseVendor(
     name: input.name,
     category: input.category,
     status: input.status ?? "allowed",
+    confidential: input.kycStatus === "arcanevm",
     data_source: "live",
     source: "supabase",
     updated_at: now,
@@ -546,6 +566,30 @@ export async function readSupabaseTransfers(ctx: ApiContext) {
   return rowsForWalletIdentity(rows, wallets).map((row) =>
     transferFromRow(row, wallets)
   );
+}
+
+/**
+ * Public, unscoped ledger for one governed wallet. The explorer and badge pages
+ * are meant to be verifiable by anyone, so they cannot use the owner-scoped
+ * read: an anonymous visitor has no session and would always see zero rows.
+ */
+export async function readSupabasePublicLedger(
+  ctx: ApiContext,
+  address: string,
+  limit = 100
+): Promise<Transfer[]> {
+  const wallet = await readSupabaseWalletByAddressUnscoped(ctx, address);
+  if (!wallet) {
+    return [];
+  }
+
+  const rows = await selectRows(ctx, "ledger_events", {
+    filters: { governed_wallet_id: wallet.id },
+    order: "event_time.desc",
+    limit,
+  });
+
+  return rows.map((row) => transferFromRow(row, [wallet]));
 }
 
 export async function readSupabaseEscalations(
@@ -605,6 +649,32 @@ export async function recordSupabaseDeployedPolicy(
       order: "version.desc",
       limit: 1,
     });
+
+    // Mirroring the same on-chain policy twice must not inflate the doctrine
+    // version: a retry after a network blip should be a no-op.
+    const currentCategories = arrayField(current, ["allowed_categories"])
+      .map((category) => String(category).toLowerCase())
+      .sort();
+    const nextCategories = [...input.allowedCategories]
+      .map((category) => category.toLowerCase())
+      .sort();
+    const unchanged =
+      Boolean(current) &&
+      numberField(current, ["daily_cap_usdc"], -1) === input.dailyCap &&
+      numberField(current, ["per_tx_cap_usdc"], -1) === input.perTxCap &&
+      numberField(current, ["monthly_cap_usdc"], -1) === input.monthlyCap &&
+      numberField(current, ["escalate_above_usdc"], -1) ===
+        input.escalationThreshold &&
+      booleanField(current, ["require_vendor_allowlist"], false) ===
+        input.requireAllowlist &&
+      currentCategories.join(",") === nextCategories.join(",");
+
+    if (unchanged) {
+      return {
+        ok: true,
+        data: { version: numberField(current, ["version"], 1) },
+      };
+    }
 
     const version = numberField(current, ["version"], 0) + 1;
     const now = new Date().toISOString();
@@ -672,10 +742,21 @@ export async function recordSupabaseEscalationDecision(
       patch.deny_tx_hash = input.txHash;
     }
 
-    await client.patchRows("escalations", patch, {
+    const updated = await client.patchRows("escalations", patch, {
       escalation_key: input.escalationKey,
       governed_wallet_id: wallet.id,
     });
+
+    // Reporting success for a patch that matched nothing would leave the queue
+    // showing a decision that was never mirrored.
+    if (!updated || updated.length === 0) {
+      return {
+        ok: false,
+        reason: "unavailable",
+        message:
+          "The escalation is settled on-chain but no matching row exists in the read model yet.",
+      };
+    }
 
     return { ok: true, data: { status: input.status } };
   } catch (error) {
@@ -1688,6 +1769,29 @@ const CATEGORY_BITS: Record<string, number> = {
 };
 
 const ALL_CATEGORIES_MASK = 31;
+
+/**
+ * Inverse of allowedCategoryMask: turn the bitmask the wallet enforces back
+ * into the category names the read model stores.
+ */
+export function categoryNamesFromMask(mask: number): string[] {
+  return Object.entries(CATEGORY_BITS)
+    .filter(([, bit]) => (mask & bit) !== 0)
+    .map(([name]) => name);
+}
+
+/** VendorRegistry category enum order, mirrored from the contract. */
+const VENDOR_CATEGORY_ORDER = [
+  "api",
+  "compute",
+  "data",
+  "subcontracting",
+  "other",
+] as const;
+
+export function vendorCategoryFromIndex(index: number): string {
+  return VENDOR_CATEGORY_ORDER[index] ?? "other";
+}
 
 function allowedCategoryMask(row: SupabaseRow) {
   const categories = arrayField(row, ["allowed_categories"]);

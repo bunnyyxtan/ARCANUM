@@ -1,23 +1,35 @@
 import { policies } from "@arcanum/db/schema";
-import { agentByWalletInputSchema, arcTestnet, policyUpdateInputSchema } from "@arcanum/shared";
+import {
+  agentByWalletInputSchema,
+  arcTestnet,
+  policyUpdateInputSchema,
+} from "@arcanum/shared";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { createPublicClient, http, isAddress } from "viem";
 import { z } from "zod";
 
+import { readWalletPolicyChainState } from "../chain";
 import { fallbackPolicies } from "../mock-fallback";
 import {
+  categoryNamesFromMask,
   readSupabasePolicy,
   readSupabaseWalletByLooseId,
   recordSupabaseDeployedPolicy,
 } from "../supabase";
 import { protectedProcedure, publicProcedure, router } from "../trpc";
-import { canUseDemoFallback, findWalletByLooseId, readDbOrFallback, tenantIdFor } from "./helpers";
+import {
+  canUseDemoFallback,
+  findWalletByLooseId,
+  readDbOrFallback,
+  tenantIdFor,
+} from "./helpers";
 
 function onChainPolicyWriteOnly(): never {
   throw new TRPCError({
     code: "PRECONDITION_FAILED",
-    message: "Policy updates must be submitted on-chain by the governed wallet owner.",
+    message:
+      "Policy updates must be submitted on-chain by the governed wallet owner.",
   });
 }
 
@@ -70,92 +82,116 @@ const deployedPolicyInputSchema = z.object({
 });
 
 export const policiesRouter = router({
-  readOnChain: publicProcedure.input(onChainPolicyInputSchema).query(async ({ input }) => {
-    const address = input.walletAddress as `0x${string}`;
+  readOnChain: publicProcedure
+    .input(onChainPolicyInputSchema)
+    .query(async ({ input }) => {
+      const address = input.walletAddress as `0x${string}`;
 
-    const bytecode = await arcReadClient.getCode({ address }).catch((error: unknown) => {
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Arc Testnet RPC is unavailable. Please retry.",
-        cause: error,
-      });
-    });
+      const bytecode = await arcReadClient
+        .getCode({ address })
+        .catch((error: unknown) => {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Arc Testnet RPC is unavailable. Please retry.",
+            cause: error,
+          });
+        });
 
-    if (!bytecode || bytecode === "0x") {
-      throw new TRPCError({
-        code: "NOT_FOUND",
-        message: "No governed wallet contract found at this address on Arc Testnet.",
-      });
-    }
+      if (!bytecode || bytecode === "0x") {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message:
+            "No governed wallet contract found at this address on Arc Testnet.",
+        });
+      }
 
-    try {
-      const [owner, policy] = await Promise.all([
-        arcReadClient.readContract({ address, abi: guardedWalletReadAbi, functionName: "owner" }),
-        arcReadClient.readContract({ address, abi: guardedWalletReadAbi, functionName: "policy" }),
-      ]);
-      return {
-        owner,
-        policy: {
-          perTxCap: policy[0].toString(),
-          daily24hCap: policy[1].toString(),
-          monthlyRollingCap: policy[2].toString(),
-          allowedCategories: policy[3].toString(),
-          escalationThreshold: policy[4].toString(),
-          requireAllowlist: policy[5],
-        },
-      };
-    } catch (error) {
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Failed to read policy from Arc Testnet. Please retry.",
-        cause: error,
-      });
-    }
-  }),
+      try {
+        const [owner, policy] = await Promise.all([
+          arcReadClient.readContract({
+            address,
+            abi: guardedWalletReadAbi,
+            functionName: "owner",
+          }),
+          arcReadClient.readContract({
+            address,
+            abi: guardedWalletReadAbi,
+            functionName: "policy",
+          }),
+        ]);
+        return {
+          owner,
+          policy: {
+            perTxCap: policy[0].toString(),
+            daily24hCap: policy[1].toString(),
+            monthlyRollingCap: policy[2].toString(),
+            allowedCategories: policy[3].toString(),
+            escalationThreshold: policy[4].toString(),
+            requireAllowlist: policy[5],
+          },
+        };
+      } catch (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to read policy from Arc Testnet. Please retry.",
+          cause: error,
+        });
+      }
+    }),
 
-  get: publicProcedure.input(agentByWalletInputSchema).query(async ({ ctx, input }) => {
-    if (canUseDemoFallback(ctx)) {
+  get: publicProcedure
+    .input(agentByWalletInputSchema)
+    .query(async ({ ctx, input }) => {
+      if (canUseDemoFallback(ctx)) {
+        const wallet = await findWalletByLooseId(ctx, input.walletId);
+        return (
+          fallbackPolicies.find((policy) => policy.walletId === wallet?.id) ??
+          null
+        );
+      }
+
+      const tenantId = tenantIdFor(ctx);
       const wallet = await findWalletByLooseId(ctx, input.walletId);
-      return fallbackPolicies.find((policy) => policy.walletId === wallet?.id) ?? null;
-    }
+      const supabasePolicy = await readSupabasePolicy(ctx, wallet);
 
-    const tenantId = tenantIdFor(ctx);
-    const wallet = await findWalletByLooseId(ctx, input.walletId);
-    const supabasePolicy = await readSupabasePolicy(ctx, wallet);
+      if (supabasePolicy) {
+        return supabasePolicy;
+      }
 
-    if (supabasePolicy) {
-      return supabasePolicy;
-    }
+      if (!canUseDemoFallback(ctx)) {
+        return null;
+      }
 
-    if (!canUseDemoFallback(ctx)) {
-      return null;
-    }
+      const row = await readDbOrFallback(
+        "policies.get",
+        () =>
+          ctx.db.query.policies.findFirst({
+            where: and(
+              eq(policies.tenantId, tenantId),
+              eq(policies.walletId, wallet?.id ?? input.walletId)
+            ),
+            orderBy: desc(policies.version),
+          }),
+        undefined
+      );
 
-    const row = await readDbOrFallback(
-      "policies.get",
-      () =>
-        ctx.db.query.policies.findFirst({
-          where: and(
-            eq(policies.tenantId, tenantId),
-            eq(policies.walletId, wallet?.id ?? input.walletId),
-          ),
-          orderBy: desc(policies.version),
-        }),
-      undefined,
-    );
+      return (
+        row ??
+        fallbackPolicies.find((policy) => policy.walletId === wallet?.id) ??
+        null
+      );
+    }),
 
-    return row ?? fallbackPolicies.find((policy) => policy.walletId === wallet?.id) ?? null;
-  }),
+  update: protectedProcedure
+    .input(policyUpdateInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      const wallet = await findWalletByLooseId(ctx, input.walletId);
 
-  update: protectedProcedure.input(policyUpdateInputSchema).mutation(async ({ ctx, input }) => {
-    const wallet = await findWalletByLooseId(ctx, input.walletId);
+      if (!wallet) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Wallet not found" });
+      }
 
-    if (!wallet) {
-      throw new TRPCError({ code: "NOT_FOUND", message: "Wallet not found" });
-    }
-
-    return onChainPolicyWriteOnly();
-  }),
+      return onChainPolicyWriteOnly();
+    }),
 
   /**
    * Mirror a policy revision that is already confirmed on-chain into the read
@@ -175,21 +211,51 @@ export const policiesRouter = router({
         });
       }
 
-      if (wallet.ownerAddress.toLowerCase() !== ctx.session.walletAddress.toLowerCase()) {
+      if (
+        wallet.ownerAddress.toLowerCase() !==
+        ctx.session.walletAddress.toLowerCase()
+      ) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "Only the governed wallet owner can record a policy deployment.",
+          message:
+            "Only the governed wallet owner can record a policy deployment.",
         });
       }
 
+      // Never trust the caps the client claims to have deployed: read back what
+      // the wallet actually enforces and mirror that.
+      const chainPolicy = await readWalletPolicyChainState(
+        walletAddress as `0x${string}`
+      );
+
+      if (!chainPolicy) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "The wallet policy could not be read from Arc Testnet; nothing was recorded.",
+        });
+      }
+
+      const toUsdc = (value: bigint) => Number(value) / 1e6;
+
       const result = await recordSupabaseDeployedPolicy(ctx, wallet, {
-        ...input,
         walletAddress: walletAddress as `0x${string}`,
         txHash: input.txHash as `0x${string}`,
+        perTxCap: toUsdc(chainPolicy.perTxCap),
+        dailyCap: toUsdc(chainPolicy.daily24hCap),
+        monthlyCap: toUsdc(chainPolicy.monthlyRollingCap),
+        escalationThreshold: toUsdc(chainPolicy.escalationThreshold),
+        allowedCategories: categoryNamesFromMask(
+          Number(chainPolicy.allowedCategories)
+        ),
+        requireAllowlist: chainPolicy.requireAllowlist,
       });
 
       if (!result.ok) {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: result.message });
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: result.message,
+        });
       }
 
       return result.data;
@@ -213,7 +279,7 @@ export const policiesRouter = router({
           .select({ count: sql<number>`count(*)::int` })
           .from(policies)
           .where(eq(policies.tenantId, tenantId)),
-      [],
+      []
     );
 
     return row?.count ?? fallbackPolicies.length;

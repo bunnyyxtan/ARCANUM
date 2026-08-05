@@ -1,4 +1,8 @@
-import { EscalationManagerAbi, VendorRegistryAbi } from "@arcanum/contracts";
+import {
+  EscalationManagerAbi,
+  GuardedWalletAbi,
+  VendorRegistryAbi,
+} from "@arcanum/contracts";
 import { arcTestnet } from "@arcanum/shared";
 import { createPublicClient, http, type Address, type Hex } from "viem";
 
@@ -7,7 +11,12 @@ import { createPublicClient, http, type Address, type Hex } from "viem";
  * what happened on-chain, so decisions are verified here before they are
  * mirrored into Supabase.
  */
-const escalationStatusByIndex = ["pending", "released", "denied", "expired"] as const;
+const escalationStatusByIndex = [
+  "pending",
+  "released",
+  "denied",
+  "expired",
+] as const;
 
 export type EscalationChainStatus = (typeof escalationStatusByIndex)[number];
 
@@ -29,12 +38,14 @@ function escalationManagerAddress(): Address | null {
 function publicClient() {
   return createPublicClient({
     chain: arcTestnet,
-    transport: http(process.env.ARC_RPC_URL ?? arcTestnet.rpcUrls.default.http[0]),
+    transport: http(
+      process.env.ARC_RPC_URL ?? arcTestnet.rpcUrls.default.http[0]
+    ),
   });
 }
 
 export async function readEscalationChainState(
-  escalationKey: Hex,
+  escalationKey: Hex
 ): Promise<EscalationChainState | null> {
   const manager = escalationManagerAddress();
   if (!manager) {
@@ -64,6 +75,42 @@ export async function readEscalationChainState(
   };
 }
 
+export type WalletPolicyChainState = {
+  perTxCap: bigint;
+  daily24hCap: bigint;
+  monthlyRollingCap: bigint;
+  allowedCategories: bigint;
+  escalationThreshold: bigint;
+  requireAllowlist: boolean;
+};
+
+/**
+ * Read the policy the wallet actually enforces. The read model must never
+ * record caps the client claims to have deployed, only what the wallet returns.
+ */
+export async function readWalletPolicyChainState(
+  wallet: Address
+): Promise<WalletPolicyChainState | null> {
+  try {
+    const policy = (await publicClient().readContract({
+      address: wallet,
+      abi: GuardedWalletAbi,
+      functionName: "policy",
+    })) as readonly [bigint, bigint, bigint, bigint, bigint, boolean];
+
+    return {
+      perTxCap: policy[0],
+      daily24hCap: policy[1],
+      monthlyRollingCap: policy[2],
+      allowedCategories: policy[3],
+      escalationThreshold: policy[4],
+      requireAllowlist: Boolean(policy[5]),
+    };
+  } catch {
+    return null;
+  }
+}
+
 export type VendorChainState = {
   allowed: boolean;
   blocked: boolean;
@@ -73,7 +120,7 @@ export type VendorChainState = {
 
 export async function readVendorChainState(
   wallet: Address,
-  vendor: Address,
+  vendor: Address
 ): Promise<VendorChainState | null> {
   const registry = process.env.NEXT_PUBLIC_VENDOR_REGISTRY;
   if (!registry || !registry.startsWith("0x")) {
@@ -85,7 +132,12 @@ export async function readVendorChainState(
     abi: VendorRegistryAbi,
     functionName: "getVendorFor",
     args: [wallet, vendor],
-  })) as { allowed: boolean; blocked: boolean; category: number; perVendorCap: bigint };
+  })) as {
+    allowed: boolean;
+    blocked: boolean;
+    category: number;
+    perVendorCap: bigint;
+  };
 
   return {
     allowed: Boolean(record.allowed),
@@ -95,7 +147,10 @@ export async function readVendorChainState(
   };
 }
 
-export async function isEscalationSigner(wallet: Address, signer: Address): Promise<boolean> {
+export async function isEscalationSigner(
+  wallet: Address,
+  signer: Address
+): Promise<boolean> {
   const manager = escalationManagerAddress();
   if (!manager) {
     return false;
