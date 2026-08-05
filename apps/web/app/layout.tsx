@@ -36,13 +36,16 @@ const publicDescription =
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://thearcanum.in"),
-  title: "ARCANUM",
+  title: {
+    default: "ARCANUM | Money with a policy layer",
+    template: "%s | ARCANUM",
+  },
   description: "Money with a policy layer.",
   alternates: {
     canonical: "https://thearcanum.in",
   },
   openGraph: {
-    title: "ARCANUM",
+    title: "ARCANUM | Money with a policy layer",
     description: "Money with a policy layer.",
     url: "https://thearcanum.in",
     siteName: "ARCANUM",
@@ -58,19 +61,20 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "ARCANUM",
+    title: "ARCANUM | Money with a policy layer",
     description: "Money with a policy layer.",
     images: ["/og.png"],
   },
   icons: {
     icon: [
-      { url: "/favicon.ico?v=2" },
-      { url: "/favicon-16x16.png?v=2", sizes: "16x16", type: "image/png" },
-      { url: "/favicon-32x32.png?v=2", sizes: "32x32", type: "image/png" },
-      { url: "/android-chrome-192x192.png?v=2", sizes: "192x192", type: "image/png" },
-      { url: "/android-chrome-512x512.png?v=2", sizes: "512x512", type: "image/png" },
+      { url: "/favicon.ico?v=3" },
+      { url: "/icon.svg?v=3", type: "image/svg+xml" },
+      { url: "/favicon-16x16.png?v=3", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-32x32.png?v=3", sizes: "32x32", type: "image/png" },
+      { url: "/android-chrome-192x192.png?v=3", sizes: "192x192", type: "image/png" },
+      { url: "/android-chrome-512x512.png?v=3", sizes: "512x512", type: "image/png" },
     ],
-    apple: [{ url: "/apple-icon.png?v=2" }],
+    apple: [{ url: "/apple-icon.png?v=3" }],
   },
 };
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { EmberMark } from "@/components/warm/EmberMark";
 import { ARC_TESTNET_EXPLORER_URL, arcTestnet } from "@arcanum/shared";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Link from "next/link";
@@ -258,7 +259,11 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
         }
       </style>
       <nav className="flex items-center justify-between border-b border-[var(--wl-line)] px-5 py-5 md:px-9">
-        <Link href="/" className="font-display text-[18px] font-bold tracking-[-.015em]">
+        <Link
+          href="/"
+          className="font-display flex items-center gap-2 text-[18px] font-bold tracking-[-.015em]"
+        >
+          <EmberMark size={24} />
           ARCANUM<span className="text-[var(--wl-signal)]">.</span>
         </Link>
         <div className="flex items-center gap-5">
