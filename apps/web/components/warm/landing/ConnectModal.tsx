@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { Connector } from "wagmi";
-import { useAccount, useConnect } from "wagmi";
+import { ConnectorAlreadyConnectedError, useAccount, useConnect, useDisconnect } from "wagmi";
 
 type WalletOption = { name: string; hint: string; logo: string; match: string[]; tag?: string };
 
@@ -53,7 +53,8 @@ function resolveConnector(
 export function ConnectModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const router = useRouter();
   const { connectors, connectAsync } = useConnect();
-  const { isConnected } = useAccount();
+  const { isConnected, connector: activeConnector } = useAccount();
+  const { disconnectAsync } = useDisconnect();
   const [chosenWallet, setChosenWallet] = useState<WalletOption | null>(null);
   const [connecting, setConnecting] = useState(false);
 
@@ -97,14 +98,37 @@ export function ConnectModal({ open, onClose }: { open: boolean; onClose: () => 
       toast.error(`NO CONNECTOR / install the ${option.name} extension and reload`);
       return;
     }
+    // wagmi silently restores the persisted connection after a refresh, so the
+    // wallet may already be connected even though the user is on the landing
+    // page. Same wallet chosen → skip the connect ceremony and go straight to
+    // the dashboard. Different wallet chosen → explicit switch (disconnect the
+    // restored connector first, then connect the requested one).
+    const wantsSwitch = isConnected && activeConnector && activeConnector.id !== connector.id;
+    if (isConnected && !wantsSwitch) {
+      onClose();
+      router.push("/dashboard");
+      return;
+    }
     setChosenWallet(option);
     setConnecting(true);
     try {
+      if (wantsSwitch) {
+        await disconnectAsync();
+      }
       await connectAsync({ connector });
       // WalletAuthBridge (mounted in providers) performs the SIWE ceremony.
       // The isConnected effect above pushes to /dashboard on success.
     } catch (error) {
       setConnecting(false);
+      if (
+        error instanceof ConnectorAlreadyConnectedError ||
+        (error instanceof Error && error.name === "ConnectorAlreadyConnectedError")
+      ) {
+        // Not a failure — the connector reconnected underneath us.
+        onClose();
+        router.push("/dashboard");
+        return;
+      }
       const message = error instanceof Error ? error.message : "Wallet connection failed";
       toast.error(`CONNECT FAILED / ${message}`);
     }

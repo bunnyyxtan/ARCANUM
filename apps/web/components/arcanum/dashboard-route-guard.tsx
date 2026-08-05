@@ -14,7 +14,18 @@ export function DashboardRouteGuard({ children }: DashboardRouteGuardProps) {
   const { isConnected, status } = useAccount();
   const [allowLocalPreview, setAllowLocalPreview] = useState(false);
   const [hasResolvedPreview, setHasResolvedPreview] = useState(false);
+  const [reconnectGraceElapsed, setReconnectGraceElapsed] = useState(false);
   const isResolvingConnection = status === "connecting" || status === "reconnecting";
+
+  useEffect(() => {
+    // On a hard refresh wagmi restores the persisted connection asynchronously:
+    // the very first client frames report "disconnected" before the reconnect
+    // kicks in. Redirecting on that transient state threw connected users back
+    // to the landing page on every refresh, so give the reconnect a short grace
+    // window before treating "disconnected" as real.
+    const timer = window.setTimeout(() => setReconnectGraceElapsed(true), 1500);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     // Read-only preview (?preview=1) is allowed in every environment: it renders
@@ -45,10 +56,17 @@ export function DashboardRouteGuard({ children }: DashboardRouteGuardProps) {
       return;
     }
 
-    if (!isResolvingConnection && !isConnected) {
+    if (reconnectGraceElapsed && !isResolvingConnection && !isConnected) {
       router.replace("/");
     }
-  }, [allowLocalPreview, hasResolvedPreview, isConnected, isResolvingConnection, router]);
+  }, [
+    allowLocalPreview,
+    hasResolvedPreview,
+    isConnected,
+    isResolvingConnection,
+    reconnectGraceElapsed,
+    router,
+  ]);
 
   if (!hasResolvedPreview) {
     return <GuardPending />;
