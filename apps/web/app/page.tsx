@@ -97,7 +97,7 @@ export default function LandingPage() {
           className="font-mono text-[9px] tracking-[.18em] text-[var(--wl-mute)]"
           style={{ writingMode: "vertical-rl" }}
         >
-          ARC · GOVERNED
+          BUILT ON ARC
         </div>
         <div
           ref={railRef}
@@ -189,7 +189,7 @@ export default function LandingPage() {
           <div className="relative mx-auto max-w-[1400px]">
             <Reveal>
               <p className="font-mono text-[10px] uppercase tracking-[.22em] text-[var(--wl-signal)]">
-                Governed autonomy / Arc blockchain
+                Governed autonomy / Built on Arc
               </p>
             </Reveal>
             <Reveal kind="headline" className="delay-1">
@@ -468,6 +468,9 @@ export default function LandingPage() {
             <span className="font-mono">© 2026 ARCANUM</span>
           </div>
         </footer>
+        <p className="px-6 pb-6 font-mono text-[9px] tracking-[.04em] text-[var(--wl-mute)] lg:px-10">
+          Built on Arc. Arc is a trademark of Circle Internet Group, Inc. and/or its affiliates.
+        </p>
       </div>
 
       <ConnectModal open={connectOpen} onClose={() => setConnectOpen(false)} />

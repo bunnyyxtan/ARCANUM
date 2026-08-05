@@ -53,7 +53,8 @@ export const glossary: Record<GlossaryTerm, string> = {
     "The surveillance ledger for abnormal agent spend patterns and response actions.",
   "GOVERNED EVENT STREAM": "The live feed of transaction attempts and their doctrine verdicts.",
   QUORUM: "The number of authorized human signatures required to release a held transaction.",
-  ARCANEVM: "Arc's confidential execution layer for protected agent spend and vendor interactions.",
+  ARCANEVM:
+    "The confidential execution layer on Arc for protected agent spend and vendor interactions.",
   COUNTERPARTY: "The vendor, wallet, contract, or external system receiving an agent transaction.",
   VENDOR:
     "An approved counterparty on the allowlist, categorized for spend limits and confidential enforcement.",
