@@ -11,6 +11,7 @@ import { CommandPalette } from "./CommandPalette";
 import { ShortcutsDialog } from "./ShortcutsDialog";
 import { ThemeToggle } from "./ThemeToggle";
 import { ConnectModal } from "./landing/ConnectModal";
+import { EmberMark } from "./EmberMark";
 
 type HeaderProps = { children?: ReactNode };
 
@@ -94,8 +95,9 @@ export function Header({ children }: HeaderProps) {
       <div className="flex min-w-0 items-center gap-7">
         <Link
           href="/"
-          className="font-display shrink-0 text-[18px] font-bold tracking-[-.015em] transition-transform duration-[220ms] hover:-translate-y-0.5"
+          className="flex shrink-0 items-center gap-2 font-display text-[18px] font-bold tracking-[-.015em] transition-transform duration-[220ms] hover:-translate-y-0.5"
         >
+          <EmberMark size={24} />
           ARCANUM<span className="text-[var(--wl-signal)]">.</span>
         </Link>
         <nav className="flex min-w-0 gap-5 overflow-x-auto pb-0.5">

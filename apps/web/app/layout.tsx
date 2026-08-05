@@ -36,31 +36,31 @@ const publicDescription =
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://thearcanum.in"),
-  title: "Arcanum — Governed Wallets for Autonomous AI Money",
-  description: publicDescription,
+  title: "ARCANUM",
+  description: "Money with a policy layer.",
   alternates: {
     canonical: "https://thearcanum.in",
   },
   openGraph: {
-    title: "Arcanum — Governed Wallets for Autonomous AI Money",
-    description: publicDescription,
+    title: "ARCANUM",
+    description: "Money with a policy layer.",
     url: "https://thearcanum.in",
     siteName: "ARCANUM",
     type: "website",
     images: [
       {
-        url: "https://thearcanum.in/og/arcanum-og.png",
+        url: "/og.png",
         width: 1200,
         height: 630,
-        alt: "Arcanum — Governed Wallets for Autonomous AI Money",
+        alt: "ARCANUM. Money with a policy layer.",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Arcanum — Governed Wallets for Autonomous AI Money",
-    description: "Governance layer for autonomous agent wallets on Arc.",
-    images: ["https://thearcanum.in/og/arcanum-og.png"],
+    title: "ARCANUM",
+    description: "Money with a policy layer.",
+    images: ["/og.png"],
   },
   icons: {
     icon: [
