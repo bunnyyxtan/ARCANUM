@@ -40,6 +40,7 @@ export const modules: ModuleMap = {
   "./components/mockups/arcanum-landing/WarmLedgerClassic.tsx": () => import("../components/mockups/arcanum-landing/WarmLedgerClassic.tsx"),
   "./components/mockups/arcanum-logos/AlchemicalSigil.tsx": () => import("../components/mockups/arcanum-logos/AlchemicalSigil.tsx"),
   "./components/mockups/arcanum-logos/ArcCourse.tsx": () => import("../components/mockups/arcanum-logos/ArcCourse.tsx"),
+  "./components/mockups/arcanum-logos/ArcanumInSitu.tsx": () => import("../components/mockups/arcanum-logos/ArcanumInSitu.tsx"),
   "./components/mockups/arcanum-logos/ChamferA.tsx": () => import("../components/mockups/arcanum-logos/ChamferA.tsx"),
   "./components/mockups/arcanum-logos/CipherMonogram.tsx": () => import("../components/mockups/arcanum-logos/CipherMonogram.tsx"),
   "./components/mockups/arcanum-logos/ContinuousA.tsx": () => import("../components/mockups/arcanum-logos/ContinuousA.tsx"),
@@ -101,7 +102,7 @@ export const modules: ModuleMap = {
   "./components/mockups/arcanum-logos/VaultAperture.tsx": () => import("../components/mockups/arcanum-logos/VaultAperture.tsx"),
   "./components/mockups/arcanum-logos/VaultSun.tsx": () => import("../components/mockups/arcanum-logos/VaultSun.tsx"),
   "./components/mockups/arcanum-logos/VaultTile.tsx": () => import("../components/mockups/arcanum-logos/VaultTile.tsx"),
-  "./components/mockups/templates/MissionControlBentoDashboard-szXZGE/Dashboard.tsx": () => import("../components/mockups/templates/MissionControlBentoDashboard-szXZGE/Dashboard.tsx"),
   "./components/mockups/templates/MissionControlBentoDashboard-up-c3r/Dashboard.tsx": () => import("../components/mockups/templates/MissionControlBentoDashboard-up-c3r/Dashboard.tsx"),
+  "./components/mockups/templates/MissionControlBentoDashboard-szXZGE/Dashboard.tsx": () => import("../components/mockups/templates/MissionControlBentoDashboard-szXZGE/Dashboard.tsx"),
   "./components/mockups/templates/SwissWineryAdminDashboard-DqoIVY/App.tsx": () => import("../components/mockups/templates/SwissWineryAdminDashboard-DqoIVY/App.tsx")
 };

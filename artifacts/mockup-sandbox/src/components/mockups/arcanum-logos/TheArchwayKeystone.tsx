@@ -1,5 +1,3 @@
-import TheArchwayMonolith from "./TheArchwayMonolith";
-
 const PAPER = "#faf6f1";
 const INK = "#292522";
 const SIGNAL = "#ff3c00";
@@ -43,7 +41,6 @@ function Mini({ size }: { size: number }) {
 }
 
 export default function TheArchwayKeystone() {
-  void TheArchwayMonolith;
   return (
     <main style={{ minHeight: "100dvh", boxSizing: "border-box", background: PAPER, color: INK, padding: "27px 30px", display: "flex", flexDirection: "column", fontFamily: MONO }}>
       <header style={{ width: "100%", maxWidth: 640, margin: "0 auto", display: "flex", justifyContent: "space-between", color: META, fontSize: 10, lineHeight: 1.2, letterSpacing: ".14em", textTransform: "uppercase" }}><span>ARCANUM — STUDY 46B</span><span>ARCHWAY — KEYSTONE</span></header>
