@@ -8,10 +8,10 @@ import { useAccount, useDisconnect } from "wagmi";
 import { useLiveAnomalies, useLiveEscalations } from "@/lib/live-data";
 
 import { CommandPalette } from "./CommandPalette";
+import { EmberMark } from "./EmberMark";
 import { ShortcutsDialog } from "./ShortcutsDialog";
 import { ThemeToggle } from "./ThemeToggle";
 import { ConnectModal } from "./landing/ConnectModal";
-import { EmberMark } from "./EmberMark";
 
 type HeaderProps = { children?: ReactNode };
 
