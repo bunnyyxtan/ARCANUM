@@ -1070,28 +1070,52 @@ export async function readSupabasePublicWalletProfile(
   address: string
 ) {
   const walletAddress = address.toLowerCase();
-  const rows = await selectRows(ctx, "public_wallet_profiles", {
-    filters: { wallet_address: walletAddress },
-    limit: 1,
-  });
+  // Anonymous visitors have no session, so the wallet must be resolved unscoped
+  // or the public trust pages would always report "no public profile".
+  const [rows, wallet] = await Promise.all([
+    selectRows(ctx, "public_wallet_profiles", {
+      filters: { wallet_address: walletAddress },
+      limit: 1,
+    }),
+    readSupabaseWalletByAddressUnscoped(ctx, walletAddress),
+  ]);
 
-  if (rows[0]) {
-    return publicProfileFromRow(rows[0], "supabase");
-  }
-
-  const wallet = await readSupabaseWalletByLooseId(ctx, address);
-  if (!wallet) {
+  if (!rows[0] && !wallet) {
     return null;
   }
 
+  const stored = rows[0] ? publicProfileFromRow(rows[0], "supabase") : null;
+  const ledger = await readSupabasePublicLedger(ctx, walletAddress, 500);
+
+  // Every published figure is derived from indexed activity: a trust mark that
+  // invents numbers is worse than one that shows nothing.
+  const settledBaseUnits = ledger
+    .filter((transfer) => transfer.verdict === "ALLOW")
+    .reduce((total, transfer) => total + BigInt(transfer.amount || "0"), 0n);
+  const blocked = ledger.filter(
+    (transfer) => transfer.verdict === "DENY" || transfer.verdict === "FREEZE"
+  ).length;
+  const governedSince = wallet ? new Date(wallet.createdAt).getTime() : NaN;
+  const governedDays = Number.isFinite(governedSince)
+    ? Math.max(0, Math.floor((Date.now() - governedSince) / 86_400_000))
+    : null;
+
   return {
-    walletAddress: wallet.address,
-    label: wallet.label,
-    postureScore: wallet.frozen ? 42 : 87,
-    state: wallet.frozen ? "UNDER RESTRAINT" : "FORTIFIED",
-    spend: null,
-    threatsBlocked: wallet.frozen ? 63 : 12,
-    governedDays: null,
+    walletAddress: wallet?.address ?? stored?.walletAddress ?? walletAddress,
+    label: wallet?.label ?? stored?.label ?? shortAddress(walletAddress),
+    postureScore: stored?.postureScore ?? null,
+    state: wallet
+      ? wallet.frozen
+        ? "UNDER RESTRAINT"
+        : "FORTIFIED"
+      : stored?.state ?? "UNKNOWN",
+    spend:
+      ledger.length > 0
+        ? (Number(settledBaseUnits) / 1e6).toFixed(2)
+        : stored?.spend ?? null,
+    threatsBlocked:
+      ledger.length > 0 ? blocked : stored?.threatsBlocked ?? null,
+    governedDays: governedDays ?? stored?.governedDays ?? null,
     dataSource: "supabase",
   } satisfies SupabasePublicWalletProfile;
 }
