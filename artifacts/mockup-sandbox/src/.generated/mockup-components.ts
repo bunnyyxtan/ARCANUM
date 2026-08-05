@@ -64,6 +64,7 @@ export const modules: ModuleMap = {
   "./components/mockups/arcanum-logos/SharedSecret.tsx": () => import("../components/mockups/arcanum-logos/SharedSecret.tsx"),
   "./components/mockups/arcanum-logos/SignatureGlyph.tsx": () => import("../components/mockups/arcanum-logos/SignatureGlyph.tsx"),
   "./components/mockups/arcanum-logos/SignedArc.tsx": () => import("../components/mockups/arcanum-logos/SignedArc.tsx"),
+  "./components/mockups/arcanum-logos/TheCountersign.tsx": () => import("../components/mockups/arcanum-logos/TheCountersign.tsx"),
   "./components/mockups/arcanum-logos/TwinPeaks.tsx": () => import("../components/mockups/arcanum-logos/TwinPeaks.tsx"),
   "./components/mockups/arcanum-logos/VaultAperture.tsx": () => import("../components/mockups/arcanum-logos/VaultAperture.tsx"),
   "./components/mockups/arcanum-logos/VaultSun.tsx": () => import("../components/mockups/arcanum-logos/VaultSun.tsx"),
