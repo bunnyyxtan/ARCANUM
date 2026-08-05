@@ -6,7 +6,10 @@ export type PageState = "default" | "loading" | "empty" | "error";
 export type Agent = {
   id: string;
   name: string;
+  /** Governed wallet address the agent spends from — the identity every route keys on. */
   wallet: string;
+  /** Authorized signer key the agent signs with. Never the governed wallet address. */
+  signer: string;
   owner: string;
   status: AgentStatus;
   posture: number;

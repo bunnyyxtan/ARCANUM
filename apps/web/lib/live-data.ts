@@ -128,10 +128,20 @@ function useLiveQueriesEnabled() {
 export function useLiveAgents() {
   const enabled = useLiveQueriesEnabled();
   const query = trpc.agents.list.useQuery(undefined, { enabled, retry: false, staleTime: 30_000 });
+  const walletsQuery = trpc.wallets.list.useQuery(undefined, {
+    enabled,
+    retry: false,
+    staleTime: 30_000,
+  });
+  const walletAddressById = new Map(
+    (enabled ? (walletsQuery.data ?? []) : []).map((wallet) => [wallet.id, wallet.address]),
+  );
   const agents: Agent[] = (enabled ? (query.data ?? []) : []).map((agent) => ({
     id: agent.id,
     name: agent.label,
-    wallet: agent.signerAddress,
+    // Routes and on-chain reads key on the governed wallet, not the signer key.
+    wallet: walletAddressById.get(agent.walletId) ?? agent.walletId,
+    signer: agent.signerAddress,
     owner: "Owner synced in Supabase",
     status: agentStatus(agent.status),
     posture: 0,

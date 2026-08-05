@@ -215,26 +215,67 @@ export async function readSupabaseWalletByLooseId(ctx: ApiContext, looseWalletId
 
 export async function readSupabaseAgents(ctx: ApiContext, status?: Agent["status"]) {
   const wallets = await readSupabaseWallets(ctx);
-  const rows = wallets.map((wallet) => agentFromWallet(wallet));
+  const rows = await agentsForWallets(ctx, wallets);
   return status ? rows.filter((agent) => agent.status === status) : rows;
 }
 
 export async function readSupabaseAgentByLooseId(ctx: ApiContext, looseWalletId: string) {
   const normalized = looseWalletId.toLowerCase();
-  const wallet = await readSupabaseWalletByLooseId(ctx, looseWalletId);
-  if (wallet) {
-    return agentFromWallet(wallet);
-  }
+  const wallets = await readSupabaseWallets(ctx);
+  const agents = await agentsForWallets(ctx, wallets);
 
-  const agents = await readSupabaseAgents(ctx);
+  // An agent is addressable by its own signer address, by its id, or by the
+  // governed wallet it spends from (wallet address, wallet id, or label).
+  const wallet = wallets.find(
+    (item) =>
+      item.id === looseWalletId ||
+      item.address.toLowerCase() === normalized ||
+      item.label.toLowerCase() === normalized,
+  );
+
   return (
     agents.find(
       (agent) =>
         agent.id === looseWalletId ||
-        agent.walletId === looseWalletId ||
-        agent.signerAddress.toLowerCase() === normalized,
+        agent.signerAddress.toLowerCase() === normalized ||
+        (wallet ? agent.walletId === wallet.id : agent.walletId === looseWalletId),
     ) ?? null
   );
+}
+
+/**
+ * Agents are the authorized signers recorded on each wallet's doctrine — never
+ * the wallet itself. A governed wallet with no authorized signer has no agent,
+ * and we say so rather than inventing one from the wallet address.
+ */
+async function agentsForWallets(ctx: ApiContext, wallets: Wallet[]): Promise<Agent[]> {
+  if (wallets.length === 0) {
+    return [];
+  }
+
+  // Fetch only the current doctrine of each wallet the caller owns, rather than
+  // reading the whole doctrines table and filtering afterwards.
+  const doctrines = await Promise.all(
+    wallets.map((wallet) =>
+      selectRows(ctx, "doctrines", {
+        filters: { governed_wallet_id: wallet.id },
+        order: "updated_at.desc",
+        limit: 1,
+      }),
+    ),
+  );
+
+  return wallets.flatMap((wallet, index) => {
+    const [current] = doctrines[index] ?? [];
+    if (!current) {
+      return [];
+    }
+
+    return arrayField(current, ["signers"])
+      .map((signer) => signer.toLowerCase())
+      .filter((signer) => signer.startsWith("0x") && signer !== zeroWallet())
+      .map((signer) => agentFromSigner(wallet, signer));
+  });
 }
 
 export async function readSupabasePolicy(ctx: ApiContext, wallet: Wallet | null) {
@@ -419,7 +460,7 @@ export async function readSupabaseAnomalies(ctx: ApiContext) {
 export async function recordSupabaseCreatedWallet(
   ctx: ApiContext,
   input: SupabaseCreatedWalletInput,
-): Promise<SupabaseWriteResult<{ wallet: Wallet; agent: Agent }>> {
+): Promise<SupabaseWriteResult<{ wallet: Wallet; agent: Agent | null }>> {
   const client = ctx.supabase;
   if (!client) {
     return unconfiguredWrite("created wallet");
@@ -490,7 +531,14 @@ export async function recordSupabaseCreatedWallet(
     await writePublicWalletProfileRow(client, publicProfileRow, walletAddress);
 
     const wallet = walletFromGovernedWalletRow(writtenWallet ?? walletRow);
-    return { ok: true, data: { wallet, agent: agentFromWallet(wallet) } };
+    const [primarySigner] = doctrineRow.signers;
+    return {
+      ok: true,
+      data: {
+        wallet,
+        agent: primarySigner ? agentFromSigner(wallet, primarySigner) : null,
+      },
+    };
   } catch (error) {
     warnSupabase("created-wallet.write", error);
     return unavailableWrite("created wallet", error);
@@ -832,18 +880,20 @@ function walletFromGovernedWalletRow(row: SupabaseRow): Wallet {
   };
 }
 
-function agentFromWallet(wallet: Wallet): Agent {
+function agentFromSigner(wallet: Wallet, signerAddress: string): Agent {
   const label = wallet.label || shortAddress(wallet.address);
   return {
-    id: stableUuid(`agent:${wallet.address}`),
+    id: stableUuid(`agent:${wallet.address}:${signerAddress}`),
     tenantId: wallet.tenantId,
     walletId: wallet.id,
-    signerAddress: wallet.address,
+    signerAddress,
     label,
     type: agentTypeFromLabel(label),
     createdAt: wallet.createdAt,
     lastSeenAt: wallet.createdAt,
-    status: wallet.frozen ? "frozen" : "paused",
+    // An authorized signer on an unfrozen wallet can spend right now; a frozen
+    // wallet blocks every signer regardless of authorization.
+    status: wallet.frozen ? "frozen" : "active",
   };
 }
 
