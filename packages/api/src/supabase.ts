@@ -981,7 +981,16 @@ async function writePublicWalletProfileRow(
   const existingId = stringField(existing, ["id"], "");
 
   if (existingId) {
-    await client.patchRows("public_wallet_profiles", row, { id: existingId });
+    // The indexer owns health_grade/summary once it has seen on-chain events
+    // for this wallet; re-recording a deploy must not knock the profile back
+    // into the PENDING INDEXER state.
+    const alreadyIndexed = Boolean(stringField(existing, ["last_indexed_at"], ""));
+    const patch = alreadyIndexed
+      ? Object.fromEntries(
+          Object.entries(row).filter(([key]) => key !== "health_grade" && key !== "summary"),
+        )
+      : row;
+    await client.patchRows("public_wallet_profiles", patch, { id: existingId });
     return;
   }
 
@@ -1561,7 +1570,7 @@ function publicProfileFromRow(
     walletAddress,
     label: stringField(row, ["label", "name"], shortAddress(walletAddress)),
     postureScore: numberOrNull(row, ["posture_score", "posture", "score"]),
-    state: stringField(row, ["status", "state"], "PENDING INDEXER"),
+    state: stringField(row, ["status", "state", "health_grade"], "PENDING INDEXER"),
     spend: stringField(row, ["total_spend", "spend"], null),
     threatsBlocked: numberOrNull(row, ["threats_blocked", "blocked"]),
     governedDays: numberOrNull(row, ["governed_days", "days_under_governance"]),

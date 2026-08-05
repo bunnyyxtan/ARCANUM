@@ -59,11 +59,17 @@ export default createConfig({
   chains: {
     arcTestnet: {
       id: 5_042_002,
-      rpc:
-        process.env.ARC_TESTNET_RPC ??
-        process.env.PONDER_RPC_URL_5042002 ??
+      // The official public RPC (rpc.testnet.arc.network) rate-limits
+      // eth_getLogs so aggressively that a backfill never progresses, so the
+      // dRPC public endpoint goes first and the official one is the fallback.
+      rpc: [
+        process.env.ARC_TESTNET_RPC ?? process.env.PONDER_RPC_URL_5042002,
+        "https://arc-testnet.drpc.org",
         "https://rpc.testnet.arc.network",
-      pollingInterval: 1_000,
+      ].filter((url): url is string => Boolean(url)),
+      pollingInterval: 4_000,
+      maxRequestsPerSecond: 10,
+      ethGetLogsBlockRange: 2_000,
     },
   },
   contracts: contracts as never,

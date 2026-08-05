@@ -12,6 +12,17 @@ import {
 } from "@arcanum/db/schema";
 import { and, eq } from "drizzle-orm";
 
+import {
+  syncAnomaly,
+  syncCheckpoint,
+  syncEscalationApproval,
+  syncEscalationStatus,
+  syncTransferEscalated,
+  syncTransferExecuted,
+  syncWalletCreated,
+  syncWalletFrozenState,
+} from "./supabase-sync";
+
 const ARC_TESTNET_CHAIN_ID = 5_042_002;
 
 function asString(value: unknown) {
@@ -105,6 +116,9 @@ async function findTransferByTx(tenantId: string, txHash: string) {
 }
 
 ponder.on("WalletFactory:WalletCreated", async ({ event }) => {
+  await syncWalletCreated(asAddress(event.args.wallet), blockDate(event.block.timestamp));
+  await syncCheckpoint(Number(event.block.number));
+
   const tenantId = defaultTenantId();
   const walletAddress = asAddress(event.args.wallet);
   const owner = asAddress(event.args.owner);
@@ -152,6 +166,16 @@ ponder.on("WalletFactory:WalletCreated", async ({ event }) => {
 });
 
 ponder.on("GuardedWallet:TransferExecuted", async ({ event }) => {
+  await syncTransferExecuted({
+    walletAddress: asAddress(event.args.wallet),
+    txHash: event.transaction.hash,
+    toAddress: asAddress(event.args.to),
+    amount: asBigint(event.args.amount),
+    blockNumber: Number(event.block.number),
+    timestamp: blockDate(event.block.timestamp),
+  });
+  await syncCheckpoint(Number(event.block.number));
+
   const tenantId = defaultTenantId();
   const walletAddress = asAddress(event.args.wallet);
   const wallet = await findWallet(walletAddress, tenantId);
@@ -195,6 +219,19 @@ ponder.on("GuardedWallet:TransferExecuted", async ({ event }) => {
 });
 
 ponder.on("GuardedWallet:TransferEscalated", async ({ event }) => {
+  await syncTransferEscalated({
+    walletAddress: asAddress(event.args.wallet),
+    txHash: event.transaction.hash,
+    toAddress: asAddress(event.args.to),
+    amount: asBigint(event.args.amount),
+    reason: asString(event.args.reason),
+    escalationId: asString(event.args.escalationId),
+    blockNumber: Number(event.block.number),
+    timestamp: blockDate(event.block.timestamp),
+    expiresAt: new Date(Number(event.block.timestamp + 3_600n) * 1000),
+  });
+  await syncCheckpoint(Number(event.block.number));
+
   const tenantId = defaultTenantId();
   const wallet = await findWallet(asAddress(event.args.wallet), tenantId);
   if (!wallet) {
@@ -260,6 +297,9 @@ ponder.on("GuardedWallet:TransferEscalated", async ({ event }) => {
 });
 
 ponder.on("GuardedWallet:Frozen", async ({ event }) => {
+  await syncWalletFrozenState(asAddress(event.args.wallet), true, blockDate(event.block.timestamp));
+  await syncCheckpoint(Number(event.block.number));
+
   const tenantId = defaultTenantId();
   const wallet = await findWallet(asAddress(event.args.wallet), tenantId);
   if (!wallet) {
@@ -284,6 +324,13 @@ ponder.on("GuardedWallet:Frozen", async ({ event }) => {
 });
 
 ponder.on("GuardedWallet:Unfrozen", async ({ event }) => {
+  await syncWalletFrozenState(
+    asAddress(event.args.wallet),
+    false,
+    blockDate(event.block.timestamp),
+  );
+  await syncCheckpoint(Number(event.block.number));
+
   const tenantId = defaultTenantId();
   const wallet = await findWallet(asAddress(event.args.wallet), tenantId);
   if (!wallet) {
@@ -450,6 +497,9 @@ ponder.on("GuardedWallet:ModuleRotated", async ({ event }) => {
 });
 
 ponder.on("EscalationManager:EscalationApproved", async ({ event }) => {
+  await syncEscalationApproval(asString(event.args.escalationId), asNumber(event.args.count));
+  await syncCheckpoint(Number(event.block.number));
+
   const tenantId = defaultTenantId();
   const escalationId = asString(event.args.escalationId);
   const escalation = await db.query.escalations.findFirst({
@@ -485,14 +535,21 @@ ponder.on("EscalationManager:EscalationApproved", async ({ event }) => {
 });
 
 ponder.on("EscalationManager:EscalationRejected", async ({ event }) => {
+  await syncEscalationStatus(asString(event.args.escalationId), "denied", event.transaction.hash);
+  await syncCheckpoint(Number(event.block.number));
   await updateEscalationStatus(asString(event.args.escalationId), "REJECTED", event);
 });
 
 ponder.on("EscalationManager:EscalationExpired", async ({ event }) => {
+  await syncEscalationStatus(asString(event.args.escalationId), "expired");
+  await syncCheckpoint(Number(event.block.number));
   await updateEscalationStatus(asString(event.args.escalationId), "EXPIRED", event);
 });
 
 ponder.on("EscalationManager:EscalationExecuted", async ({ event }) => {
+  await syncEscalationStatus(asString(event.args.escalationId), "released", event.transaction.hash);
+  await syncCheckpoint(Number(event.block.number));
+
   const tenantId = defaultTenantId();
   const escalationId = asString(event.args.escalationId);
   const updated = await db
@@ -518,6 +575,18 @@ ponder.on("EscalationManager:EscalationExecuted", async ({ event }) => {
 });
 
 ponder.on("AnomalyOracle:AnomalyScoreSubmitted", async ({ event }) => {
+  const sigmaValue = Number(asBigint(event.args.sigmaBps)) / 100;
+  await syncAnomaly({
+    walletAddress: asAddress(event.args.wallet),
+    severity: sigmaValue >= 7 ? "high" : sigmaValue >= 4 ? "medium" : "low",
+    score: sigmaValue,
+    title: "Signed anomaly score",
+    description: `Anomaly oracle submitted a signed score of ${sigmaValue.toFixed(2)}σ.`,
+    timestamp: blockDate(event.block.timestamp),
+    metadata: { txHash: event.transaction.hash, blockNumber: Number(event.block.number) },
+  });
+  await syncCheckpoint(Number(event.block.number));
+
   const tenantId = defaultTenantId();
   const wallet = await findWallet(asAddress(event.args.wallet), tenantId);
   if (!wallet) {

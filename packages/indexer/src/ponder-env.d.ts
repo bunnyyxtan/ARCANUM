@@ -12,3 +12,12 @@ declare module "ponder:registry" {
     ) => void;
   };
 }
+
+declare module "ponder:api" {
+  export const db: unknown;
+}
+
+declare module "ponder:schema" {
+  const schema: Record<string, unknown>;
+  export default schema;
+}
