@@ -1,7 +1,8 @@
-const obsidian = "#16130f";
-const gold = "#c8a558";
-const paleGold = "#e6d3a3";
-const shadowGold = "#6e5a33";
+const paper = "#faf6f1";
+const ink = "#292522";
+const umber = "#655d56";
+const fine = "#9b9289";
+const signal = "#ff3c00";
 
 const chainLink =
   "M -9 -2 C -7 -7 7 -7 9 -2 C 11 3 6 7 0 7 C -6 7 -11 3 -9 -2 Z";
@@ -26,13 +27,13 @@ const chainAngles = Array.from({ length: 48 }, (_, index) => index * 7.5);
 function Key({ mirror = false }: { mirror?: boolean }) {
   return (
     <g transform={mirror ? "rotate(135 210 250)" : "rotate(-45 210 250)"}>
-      <path d={keyPath} fill="none" stroke={gold} strokeWidth="1.7" strokeLinejoin="miter" />
-      <path d={bowPath} fill="none" stroke={paleGold} strokeWidth="1.5" />
-      <path d={keyScroll} fill="none" stroke={gold} strokeWidth="0.9" />
-      {keyHatch.map((offset) => <path key={offset} d={`M ${192 + offset} 40 L ${204 + offset} 80`} stroke={shadowGold} strokeWidth="0.7" fill="none" />)}
+      <path d={keyPath} fill="none" stroke={ink} strokeWidth="2.1" strokeLinejoin="miter" />
+      <path d={bowPath} fill="none" stroke={ink} strokeWidth="1.9" />
+      <path d={keyScroll} fill="none" stroke={umber} strokeWidth="1.2" />
+      {keyHatch.map((offset) => <path key={offset} d={`M ${192 + offset} 40 L ${204 + offset} 80`} stroke={fine} strokeWidth="0.95" fill="none" />)}
       {/* Wards continue beyond the center crossing: each key is full-length, not a V arm. */}
-      <path d={keyTeeth} fill="none" stroke={paleGold} strokeWidth="1.1" />
-      <path d="M 210 126 L 218 126 M 210 134 L 218 134 M 210 142 L 218 142" stroke={shadowGold} strokeWidth="0.7" />
+      <path d={keyTeeth} fill="none" stroke={ink} strokeWidth="1.5" />
+      <path d="M 210 126 L 218 126 M 210 134 L 218 134 M 210 142 L 218 142" stroke={umber} strokeWidth="1" />
     </g>
   );
 }
@@ -46,8 +47,8 @@ export default function TheVaultKeys() {
           width: 100%;
           box-sizing: border-box;
           padding: 30px 34px 28px;
-          background: ${obsidian};
-          color: ${paleGold};
+          background: ${paper};
+          color: ${ink};
           display: flex;
           flex-direction: column;
           font-family: "IBM Plex Mono", "Courier New", monospace;
@@ -56,7 +57,7 @@ export default function TheVaultKeys() {
           display: flex;
           justify-content: space-between;
           gap: 24px;
-          color: ${shadowGold};
+          color: #837a72;
           font-size: 10px;
           line-height: 1.2;
           letter-spacing: .14em;
@@ -72,7 +73,7 @@ export default function TheVaultKeys() {
         }
         .keys-svg { width: min(420px, 78vw); height: auto; display: block; }
         .detail-band {
-          border-top: 1px solid ${shadowGold};
+          border-top: 1px solid #ded7d0;
           min-height: 194px;
           display: grid;
           place-items: center;
@@ -81,7 +82,7 @@ export default function TheVaultKeys() {
         .detail-svg { width: min(420px, 84vw); height: 176px; display: block; }
         .luxury-rationale {
           margin: 18px 0 0;
-          color: ${shadowGold};
+          color: #837a72;
           font-size: 9px;
           line-height: 1.4;
           letter-spacing: .1em;
@@ -102,8 +103,8 @@ export default function TheVaultKeys() {
       <section className="luxury-hero" aria-label="Engraved Vault Keys emblem">
         <svg viewBox="0 0 420 500" role="img" aria-label="Two crossed engraved keys inside a chain border" className="keys-svg">
           {/* Double-rule seal plus a mapped touching rope: unlike floating dots, each link belongs to the border. */}
-          <circle cx="210" cy="250" r="199" fill="none" stroke={shadowGold} strokeWidth="0.75" />
-          <circle cx="210" cy="250" r="190" fill="none" stroke={gold} strokeWidth="0.9" />
+          <circle cx="210" cy="250" r="199" fill="none" stroke={umber} strokeWidth="1.1" />
+          <circle cx="210" cy="250" r="190" fill="none" stroke={ink} strokeWidth="1.25" />
           <g transform="translate(210 250)">
             {chainAngles.map((angle) => (
               <use key={angle} href="#vault-link" transform={`rotate(${angle}) translate(0 -195)`} />
@@ -112,22 +113,22 @@ export default function TheVaultKeys() {
           <Key />
           <g transform="rotate(90 210 250)"><Key /></g>
           <g>
-            <path d={covenantShield} fill={obsidian} stroke={paleGold} strokeWidth="1.4" />
-            <path d="M 204 239 L 216 239 L 216 246 C 216 250 214 253 210 256 C 206 253 204 250 204 246 Z" fill="none" stroke={gold} strokeWidth="0.8" />
+            <path d={covenantShield} fill={paper} stroke={ink} strokeWidth="1.8" />
+            <path d="M 204 239 L 216 239 L 216 246 C 216 250 214 253 210 256 C 206 253 204 250 204 246 Z" fill={signal} stroke={signal} strokeWidth="0.8" />
           </g>
-          <circle cx="210" cy="250" r="30" fill="none" stroke={shadowGold} strokeWidth="0.75" />
+          <circle cx="210" cy="250" r="30" fill="none" stroke={umber} strokeWidth="1" />
         </svg>
         <svg width="0" height="0" aria-hidden="true">
-          <defs><path id="vault-link" d={chainLink} fill="none" stroke={gold} strokeWidth="1.1" /></defs>
+          <defs><path id="vault-link" d={chainLink} fill="none" stroke={umber} strokeWidth="1.35" /></defs>
         </svg>
       </section>
       <section className="detail-band" aria-label="Two-times engraving detail">
         <svg viewBox="170 205 110 110" role="img" aria-label="Enlarged key crossing and covenant detail" className="detail-svg" preserveAspectRatio="xMidYMid meet">
-          <path d={keyPath} fill="none" stroke={gold} strokeWidth="1.7" transform="rotate(-45 210 250)" />
-          <path d={keyPath} fill="none" stroke={paleGold} strokeWidth="1.7" transform="rotate(45 210 250)" />
-          <path d={covenantShield} fill={obsidian} stroke={paleGold} strokeWidth="1.5" />
-          <path d="M 204 239 L 216 239 L 216 246 C 216 250 214 253 210 256 C 206 253 204 250 204 246 Z" fill="none" stroke={gold} strokeWidth="0.8" />
-          {Array.from({ length: 7 }, (_, index) => <path key={index} d={`M ${181 + index * 7} 214 L ${205 + index * 5} 286`} stroke={shadowGold} strokeWidth="0.75" fill="none" opacity="0.8" />)}
+          <path d={keyPath} fill="none" stroke={ink} strokeWidth="2.1" transform="rotate(-45 210 250)" />
+          <path d={keyPath} fill="none" stroke={ink} strokeWidth="2.1" transform="rotate(45 210 250)" />
+          <path d={covenantShield} fill={paper} stroke={ink} strokeWidth="1.8" />
+          <path d="M 204 239 L 216 239 L 216 246 C 216 250 214 253 210 256 C 206 253 204 250 204 246 Z" fill={signal} stroke={signal} strokeWidth="0.8" />
+          {Array.from({ length: 7 }, (_, index) => <path key={index} d={`M ${181 + index * 7} 214 L ${205 + index * 5} 286`} stroke={fine} strokeWidth="1" fill="none" opacity="0.8" />)}
         </svg>
       </section>
       <p className="luxury-rationale">TWO KEYS GUARD ONE COVENANT: AUTONOMOUS CUSTODY WAITS FOR THE COUNTERSIGN.</p>

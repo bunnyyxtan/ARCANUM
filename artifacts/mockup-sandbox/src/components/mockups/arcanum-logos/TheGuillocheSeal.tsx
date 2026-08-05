@@ -1,8 +1,10 @@
-const BG = "#16130f";
-const GOLD = "#c8a558";
-const PALE = "#e6d3a3";
-const SHADOW = "#6e5a33";
-const CREAM = "#f3ead8";
+const BG = "#faf6f1";
+const GOLD = "#292522";
+const PALE = "#292522";
+const SIGNAL = "#ff3c00";
+const SHADOW = "#655d56";
+const HAIRLINE = "#ded7d0";
+const CREAM = "#9b9289";
 const MONO = "IBM Plex Mono, ui-monospace, SFMono-Regular, monospace";
 
 const polar = (cx: number, cy: number, r: number, angle: number) => [
@@ -33,13 +35,13 @@ const rosettePath = (phase: number) => {
 
 function SealArt({ detail = false }: { detail?: boolean }) {
   const rosettes = Array.from({ length: 4 }, (_, i) => (
-    <path key={`rose-${i}`} d={rosettePath((i * Math.PI) / 2)} fill="none" stroke={i % 2 ? SHADOW : GOLD} strokeWidth={i % 2 ? 0.8 : 1.05} opacity={0.9} />
+    <path key={`rose-${i}`} d={rosettePath((i * Math.PI) / 2)} fill="none" stroke={i % 2 ? SHADOW : GOLD} strokeWidth={i % 2 ? 1.05 : 1.3} opacity={0.9} />
   ));
   const arcFamily = Array.from({ length: 8 }, (_, i) => (
-    <circle key={`arc-${i}`} cx="200" cy="200" r={76 + i * 4.2} fill="none" stroke={i % 2 ? SHADOW : GOLD} strokeWidth="0.65" opacity="0.78" />
+    <circle key={`arc-${i}`} cx="200" cy="200" r={76 + i * 4.2} fill="none" stroke={i % 2 ? SHADOW : GOLD} strokeWidth="0.9" opacity="0.78" />
   ));
   const needles = Array.from({ length: 24 }, (_, i) => (
-    <path key={`needle-${i}`} d={`M200 32V${i % 2 ? 42 : 49}`} transform={`rotate(${i * 15} 200 200)`} stroke={i % 2 ? SHADOW : GOLD} strokeWidth={i % 2 ? 0.7 : 1.1} />
+    <path key={`needle-${i}`} d={`M200 32V${i % 2 ? 42 : 49}`} transform={`rotate(${i * 15} 200 200)`} stroke={i % 2 ? SHADOW : GOLD} strokeWidth={i % 2 ? 0.95 : 1.35} />
   ));
   const shield = "M200 150C184 150 171 153 162 159V192C162 219 179 239 200 251C221 239 238 219 238 192V159C229 153 216 150 200 150Z";
   return (
@@ -47,21 +49,21 @@ function SealArt({ detail = false }: { detail?: boolean }) {
       <defs>
         <clipPath id={detail ? "seal-detail-clip" : "seal-clip"}><circle cx="200" cy="200" r="116" /></clipPath>
       </defs>
-      <circle cx="200" cy="200" r="190" fill="none" stroke={SHADOW} strokeWidth="1" />
-      <circle cx="200" cy="200" r="186" fill="none" stroke={GOLD} strokeWidth="1.7" />
+      <circle cx="200" cy="200" r="190" fill="none" stroke={SHADOW} strokeWidth="1.25" />
+      <circle cx="200" cy="200" r="186" fill="none" stroke={GOLD} strokeWidth="2" />
       <g fill="none" strokeLinecap="square">{radialTicks}</g>
-      <circle cx="200" cy="200" r="176" fill="none" stroke={GOLD} strokeWidth="1.2" />
-      <circle cx="200" cy="200" r="169" fill="none" stroke={SHADOW} strokeWidth="0.8" />
+      <circle cx="200" cy="200" r="176" fill="none" stroke={GOLD} strokeWidth="1.5" />
+      <circle cx="200" cy="200" r="169" fill="none" stroke={SHADOW} strokeWidth="1.1" />
       <g clipPath={`url(#${detail ? "seal-detail-clip" : "seal-clip"})`}>{rosettes}{arcFamily}</g>
-      <circle cx="200" cy="200" r="82" fill={BG} stroke={GOLD} strokeWidth="1.5" />
+      <circle cx="200" cy="200" r="82" fill={BG} stroke={GOLD} strokeWidth="1.8" />
       <g opacity="0.7">{needles}</g>
-      <path d={shield} fill="none" stroke={PALE} strokeWidth="1.8" />
-      <path d="M200 159V243" stroke={SHADOW} strokeWidth="0.8" />
-      <path d="M178 184C178 171.8 187.8 162 200 162C212.2 162 222 171.8 222 184" fill="none" stroke={PALE} strokeWidth="1" />
-      <circle cx="200" cy="184" r="5.5" fill={PALE} />
-      <path d="M197.5 189H202.5V207H197.5Z" fill={PALE} />
-      <circle cx="200" cy="200" r="76" fill="none" stroke={SHADOW} strokeWidth="0.75" />
-      <circle cx="200" cy="200" r="82" fill="none" stroke={GOLD} strokeWidth="1" />
+      <path d={shield} fill="none" stroke={GOLD} strokeWidth="2.1" />
+      <path d="M200 159V243" stroke={SHADOW} strokeWidth="1.05" />
+      <path d="M178 184C178 171.8 187.8 162 200 162C212.2 162 222 171.8 222 184" fill="none" stroke={GOLD} strokeWidth="1.25" />
+      <circle cx="200" cy="184" r="5.5" fill={SIGNAL} />
+      <path d="M197.5 189H202.5V207H197.5Z" fill={SIGNAL} />
+      <circle cx="200" cy="200" r="76" fill="none" stroke={SHADOW} strokeWidth="1" />
+      <circle cx="200" cy="200" r="82" fill="none" stroke={GOLD} strokeWidth="1.3" />
     </g>
   );
 }
@@ -69,16 +71,16 @@ function SealArt({ detail = false }: { detail?: boolean }) {
 export default function TheGuillocheSeal() {
   return (
     <main style={{ minHeight: "100dvh", width: "100%", boxSizing: "border-box", background: BG, color: GOLD, padding: "27px 30px 28px", display: "flex", flexDirection: "column", fontFamily: MONO }}>
-      <header style={{ width: "100%", maxWidth: 640, margin: "0 auto", display: "flex", justifyContent: "space-between", gap: 18, color: SHADOW, fontSize: 10, lineHeight: 1.2, letterSpacing: "0.14em", textTransform: "uppercase" }}>
+      <header style={{ width: "100%", maxWidth: 640, margin: "0 auto", display: "flex", justifyContent: "space-between", gap: 18, color: "#837a72", fontSize: 10, lineHeight: 1.2, letterSpacing: "0.14em", textTransform: "uppercase" }}>
         <span>ARCANUM — STUDY 40/42</span><span>THE GUILLOCHÉ SEAL</span>
       </header>
       <section aria-label="Finished engraved seal" style={{ flex: "1 1 auto", minHeight: 390, display: "grid", placeItems: "center", padding: "12px 0 10px" }}>
         <svg viewBox="0 0 400 400" width="400" height="400" role="img" aria-label="A gold guilloche currency seal with a central shield" style={{ width: "min(400px, 78vw)", height: "auto", display: "block" }}><SealArt /></svg>
       </section>
-      <section aria-label="Engraving detail" style={{ width: "100%", maxWidth: 640, margin: "0 auto", borderTop: `1px solid ${SHADOW}`, paddingTop: 14 }}>
+      <section aria-label="Engraving detail" style={{ width: "100%", maxWidth: 640, margin: "0 auto", borderTop: `1px solid ${HAIRLINE}`, paddingTop: 14 }}>
         <svg viewBox="80 70 240 130" width="100%" height="178" role="img" aria-label="Enlarged crop of the seal's rosette linework" style={{ display: "block" }}><SealArt detail /></svg>
       </section>
-      <p style={{ width: "100%", maxWidth: 640, margin: "10px auto 0", color: SHADOW, fontSize: 9, lineHeight: 1.35, letterSpacing: "0.12em", textTransform: "uppercase" }}>GUILLOCHÉ IS MONEY'S ANTI-FORGERY LANGUAGE. THE RULE IS THE SEAL.</p>
+      <p style={{ width: "100%", maxWidth: 640, margin: "10px auto 0", color: "#837a72", fontSize: 9, lineHeight: 1.35, letterSpacing: "0.12em", textTransform: "uppercase" }}>GUILLOCHÉ IS MONEY'S ANTI-FORGERY LANGUAGE. THE RULE IS THE SEAL.</p>
     </main>
   );
 }
