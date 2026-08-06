@@ -378,7 +378,7 @@ function AgentSignerPanel({ governedWalletAddress }: { governedWalletAddress: Ad
           <button
             type="button"
             onClick={switchToArcTestnet}
-            className="warm-pill warm-pill-ghost rounded-full border border-[var(--wl-line)] px-3.5 py-2 text-[10px] font-semibold"
+            className="warm-pill warm-pill-ghost rounded-full border border-[var(--wl-line)] px-3.5 py-2.5 text-[10px] font-semibold"
           >
             Switch to Arc Testnet
           </button>
@@ -388,7 +388,7 @@ function AgentSignerPanel({ governedWalletAddress }: { governedWalletAddress: Ad
               type="button"
               disabled={!canAuthorize}
               onClick={(event) => void submitSignerWrite("authorize", event)}
-              className="warm-pill rounded-full bg-[var(--wl-signal)] px-3.5 py-2 text-[10px] font-semibold text-white disabled:opacity-40"
+              className="warm-pill rounded-full bg-[var(--wl-signal)] px-3.5 py-2.5 text-[10px] font-semibold text-white disabled:opacity-40"
             >
               Authorize signer
             </button>
@@ -396,7 +396,7 @@ function AgentSignerPanel({ governedWalletAddress }: { governedWalletAddress: Ad
               type="button"
               disabled={!canRevoke}
               onClick={(event) => void submitSignerWrite("revoke", event)}
-              className="warm-pill warm-pill-ghost rounded-full border border-[var(--wl-line)] px-3.5 py-2 text-[10px] font-semibold disabled:opacity-40"
+              className="warm-pill warm-pill-ghost rounded-full border border-[var(--wl-line)] px-3.5 py-2.5 text-[10px] font-semibold disabled:opacity-40"
             >
               Revoke signer
             </button>
@@ -791,7 +791,7 @@ export default function AgentDetailPage() {
 
             <AgentSignerPanel governedWalletAddress={governedWalletAddress} />
 
-            <div className="flex flex-wrap gap-2 pt-5">
+            <div className="flex flex-wrap gap-2">
               <Link
                 href={governedWalletAddress ? `/badge/${governedWalletAddress}` : "#"}
                 className="warm-pill warm-pill-ghost rounded-full border border-[var(--wl-line)] px-3.5 py-2.5 text-[10px] font-semibold"
