@@ -11,6 +11,7 @@ import {
   useLiveDashboardMetrics,
   useLiveEscalations,
   useLiveEvents,
+  useLiveOrg,
 } from "@/lib/live-data";
 import type { GovernanceEvent, LedgerStatus } from "@/lib/types";
 
@@ -133,6 +134,7 @@ export default function DashboardPage() {
   const { dataMode, isResolving } = useWorkspaceMode();
   const readOnly = dataMode === "disconnected" && !isResolving;
   const metrics = useLiveDashboardMetrics();
+  const org = useLiveOrg();
   const events = useLiveEvents();
   const escalations = useLiveEscalations("PENDING");
   const anomalies = useLiveAnomalies();
@@ -191,6 +193,22 @@ export default function DashboardPage() {
               on Arc.
             </p>
           </div>
+          {!readOnly && org.data?.name && (
+            <div className="shrink-0 border-l-2 border-[var(--wl-signal)] pl-4 md:border-l-0 md:border-r-2 md:pl-0 md:pr-4 md:text-right">
+              <p className="font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)]">
+                ACTIVE WORKSPACE
+              </p>
+              <p className="font-display mt-1.5 text-[20px] font-medium tracking-[-.01em] text-[var(--wl-ink)]">
+                {org.data.name}
+              </p>
+              <Link
+                href="/settings"
+                className="mt-1 inline-block font-mono text-[8.5px] uppercase tracking-[.12em] text-[var(--wl-secondary)] transition-colors hover:text-[var(--wl-signal)]"
+              >
+                RENAME IN SETTINGS
+              </Link>
+            </div>
+          )}
         </div>
       </Reveal>
 
