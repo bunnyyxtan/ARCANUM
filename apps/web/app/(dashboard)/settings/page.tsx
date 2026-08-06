@@ -4,9 +4,21 @@ import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { useAccount } from "wagmi";
 
 import { useLiveMembers, useLiveOrg } from "@/lib/live-data";
+import { trpc } from "@/lib/trpc";
 import type { TeamMember } from "@/lib/types";
 
 const tabs = ["TEAM", "ORGANIZATION", "INTEGRATIONS", "WEBHOOKS"] as const;
+
+// Ownership is not offered here. Handing the workspace to someone else is a
+// different decision from letting them in, and it deserves its own deliberate
+// act rather than a dropdown entry next to "viewer".
+const inviteRoles = [
+  ["viewer", "Reads the ledger and policies."],
+  ["approver", "Can decide escalations."],
+  ["admin", "Manages the workspace day to day."],
+] as const;
+
+const walletPattern = /^0x[0-9a-fA-F]{40}$/;
 
 function roleClass(role: TeamMember["role"]) {
   if (role === "admin") return "bg-[var(--wl-ink)] text-[var(--wl-bg)]";
@@ -15,20 +27,25 @@ function roleClass(role: TeamMember["role"]) {
 }
 
 export default function SettingsPage() {
-  const { isConnected } = useAccount();
+  const { address, isConnected } = useAccount();
+  const utils = trpc.useUtils();
   const liveMembers = useLiveMembers();
   const org = useLiveOrg();
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>("TEAM");
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [inviteName, setInviteName] = useState("");
-  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteWallet, setInviteWallet] = useState("");
+  const [nameDraft, setNameDraft] = useState<string | null>(null);
+  const [inviteRole, setInviteRole] = useState<(typeof inviteRoles)[number][0]>("viewer");
 
   const members = liveMembers.data;
+  // The database decides who may change access, and the server reports the
+  // caller's role directly. The page mirrors that decision instead of offering
+  // controls that would be refused on submit.
+  const isOwner = org.data?.callerRole === "owner";
   // Before the wallet signs in there is no organisation query to answer this,
   // so the header says what is actually true rather than naming a workspace.
   const orgName = org.data?.name ?? (org.isLoading ? "Loading…" : "Connect Wallet");
-  const memberCaption =
-    members.length > 0 ? "LIVE MEMBERS INDEXED" : "INVITE APPROVERS AFTER WALLET SETUP";
+  const memberCaption = members.length > 0 ? "LIVE MEMBERS INDEXED" : "ADD YOUR FIRST REVIEWER";
 
   const [notice, setNotice] = useState("");
   const noticeTimer = useRef<number | null>(null);
@@ -43,15 +60,46 @@ export default function SettingsPage() {
     };
   }, []);
 
+  const refreshTeam = () =>
+    Promise.all([utils.org.listMembers.invalidate(), utils.org.members.invalidate()]);
+
+  const addMember = trpc.org.addMember.useMutation({
+    onSuccess: async () => {
+      await refreshTeam();
+      setInviteWallet("");
+      setInviteOpen(false);
+      showNotice("Member added to the workspace.");
+    },
+    onError: (error) => showNotice(error.message),
+  });
+
+  const removeMember = trpc.org.removeMember.useMutation({
+    onSuccess: async () => {
+      await refreshTeam();
+      showNotice("Member removed from the workspace.");
+    },
+    onError: (error) => showNotice(error.message),
+  });
+
+  const renameWorkspace = trpc.org.update.useMutation({
+    onSuccess: async () => {
+      await Promise.all([utils.org.getCurrent.invalidate(), utils.org.currentOrg.invalidate()]);
+      setNameDraft(null);
+      showNotice("Workspace name saved.");
+    },
+    onError: (error) => showNotice(error.message),
+  });
+
+  // Until the field is touched it shows whatever the workspace is called now,
+  // without an effect to copy server state into local state.
+  const nameValue = nameDraft ?? org.data?.name ?? "";
+  const renameReady = nameValue.trim().length >= 2 && nameValue.trim() !== org.data?.name;
+
+  const inviteReady = walletPattern.test(inviteWallet.trim());
+
   const invite = () => {
-    if (!isConnected) return;
-    if (!inviteName.trim() || !inviteEmail.trim()) return;
-    setInviteName("");
-    setInviteEmail("");
-    setInviteOpen(false);
-    showNotice(
-      "Invite member / approver invitations are not enabled in this Arc Testnet deployment yet.",
-    );
+    if (!isOwner || !inviteReady || addMember.isPending) return;
+    addMember.mutate({ walletAddress: inviteWallet.trim(), role: inviteRole });
   };
 
   return (
@@ -81,10 +129,16 @@ export default function SettingsPage() {
           <div className="flex flex-col items-start gap-1.5 max-md:w-full md:items-end">
             <button
               type="button"
-              disabled={!isConnected}
-              title={!isConnected ? "Connect wallet first." : undefined}
+              disabled={!isConnected || !isOwner}
+              title={
+                !isConnected
+                  ? "Connect wallet first."
+                  : !isOwner
+                    ? "Only the workspace owner can change who has access."
+                    : undefined
+              }
               onClick={() => {
-                if (!isConnected) return;
+                if (!isConnected || !isOwner) return;
                 setInviteOpen(true);
               }}
               className="warm-pill group rounded-full bg-[var(--wl-signal)] px-5 py-3 text-[12px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
@@ -94,9 +148,13 @@ export default function SettingsPage() {
                 ↗
               </span>
             </button>
-            {!isConnected && (
+            {!isConnected ? (
               <span className="font-mono text-[9px] tracking-[.12em] text-[var(--wl-mute)]">
                 CONNECT WALLET FIRST
+              </span>
+            ) : isOwner ? null : (
+              <span className="font-mono text-[9px] tracking-[.12em] text-[var(--wl-mute)]">
+                OWNER ONLY
               </span>
             )}
           </div>
@@ -190,8 +248,8 @@ export default function SettingsPage() {
                           NO TEAM MEMBERS YET
                         </p>
                         <p className="mt-3 text-[13px] text-[var(--wl-secondary2)]">
-                          Invite approvers after creating a governed wallet and defining the human
-                          review path.
+                          Add a teammate by wallet address to share this workspace&rsquo;s ledger,
+                          policies and escalations.
                         </p>
                       </div>
                     ) : (
@@ -209,8 +267,8 @@ export default function SettingsPage() {
                               <strong className="block truncate text-[13px] font-medium">
                                 {member.name}
                               </strong>
-                              <span className="mt-0.5 block truncate text-[11px] text-[var(--wl-secondary)]">
-                                {member.email}
+                              <span className="mt-0.5 block truncate font-mono text-[10px] text-[var(--wl-secondary)]">
+                                {member.wallet}
                               </span>
                             </span>
                           </div>
@@ -228,13 +286,100 @@ export default function SettingsPage() {
                           >
                             {member.status === "active" ? "active now" : member.lastActive}
                           </span>
-                          <span className="max-md:hidden" />
+                          <span className="flex justify-end max-md:hidden">
+                            {isOwner && member.wallet.toLowerCase() !== address?.toLowerCase() && (
+                              <button
+                                type="button"
+                                disabled={removeMember.isPending}
+                                onClick={() =>
+                                  removeMember.mutate({ walletAddress: member.wallet })
+                                }
+                                className="font-mono text-[9px] uppercase tracking-[.14em] text-[var(--wl-secondary)] transition-colors hover:text-[var(--wl-signal)] disabled:cursor-not-allowed disabled:opacity-40"
+                              >
+                                REMOVE
+                              </button>
+                            )}
+                          </span>
                         </div>
                       ))
                     )}
                   </div>
                 </section>
               </>
+            ) : activeTab === "ORGANIZATION" ? (
+              <section className="warm-reveal is-visible">
+                <div className="border-b border-[var(--wl-line)] pb-4">
+                  <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
+                    WORKSPACE / ORGANIZATION
+                  </p>
+                  <h2 className="font-display mt-4 text-[26px] font-semibold tracking-[-.015em]">
+                    What this workspace is called.
+                  </h2>
+                </div>
+
+                <div className="mt-8 max-w-[560px]">
+                  <label className="block">
+                    <span className="font-mono text-[9px] uppercase tracking-[.14em] text-[var(--wl-secondary)]">
+                      WORKSPACE NAME
+                    </span>
+                    <input
+                      value={nameValue}
+                      disabled={!isOwner || org.isLoading}
+                      onChange={(event) => setNameDraft(event.target.value)}
+                      maxLength={120}
+                      className="mt-2 w-full border-b border-[var(--wl-line)] bg-transparent py-3 text-[16px] outline-none transition-colors focus:border-[var(--wl-signal)] disabled:cursor-not-allowed disabled:text-[var(--wl-secondary)]"
+                    />
+                  </label>
+                  <p className="mt-3 font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-mute)]">
+                    {isOwner
+                      ? "EVERY MEMBER SEES THIS NAME"
+                      : "ONLY THE WORKSPACE OWNER CAN RENAME THIS"}
+                  </p>
+
+                  {isOwner && (
+                    <div className="mt-6 flex items-center gap-3">
+                      <button
+                        type="button"
+                        disabled={!renameReady || renameWorkspace.isPending}
+                        onClick={() => {
+                          if (!renameReady || renameWorkspace.isPending) return;
+                          renameWorkspace.mutate({ name: nameValue.trim() });
+                        }}
+                        className="warm-pill rounded-full bg-[var(--wl-signal)] px-5 py-3 text-[12px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {renameWorkspace.isPending ? "Saving…" : "Save name"}
+                      </button>
+                      {nameDraft !== null && (
+                        <button
+                          type="button"
+                          onClick={() => setNameDraft(null)}
+                          className="font-mono text-[10px] uppercase tracking-[.14em] text-[var(--wl-secondary)] transition-colors hover:text-[var(--wl-ink)]"
+                        >
+                          RESET
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <dl className="mt-14 border-t border-[var(--wl-line)]">
+                  {[
+                    ["NETWORK", "Arc Testnet · chain 5042002"],
+                    ["MEMBERS", `${members.length} with access`],
+                    ["YOUR ROLE", (org.data?.callerRole ?? "—").toUpperCase()],
+                  ].map(([label, value]) => (
+                    <div
+                      key={label}
+                      className="grid grid-cols-[140px_1fr] gap-6 border-b border-[var(--wl-line-soft)] py-4"
+                    >
+                      <dt className="font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)]">
+                        {label}
+                      </dt>
+                      <dd className="text-[13px] text-[var(--wl-body)]">{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </section>
             ) : (
               <section className="warm-reveal is-visible border border-[var(--wl-line)] bg-[var(--wl-bg-soft)] p-8 md:p-10">
                 <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
@@ -287,27 +432,60 @@ export default function SettingsPage() {
             </div>
             <label className="mt-8 block">
               <span className="font-mono text-[9px] uppercase tracking-[.14em] text-[var(--wl-secondary)]">
-                NAME
+                WALLET ADDRESS
               </span>
               <input
-                value={inviteName}
-                onChange={(event) => setInviteName(event.target.value)}
-                className="mt-2 w-full border-b border-[var(--wl-line)] bg-transparent py-3 text-[14px] outline-none transition-colors focus:border-[var(--wl-signal)]"
-                placeholder="New approver"
+                value={inviteWallet}
+                onChange={(event) => setInviteWallet(event.target.value)}
+                spellCheck={false}
+                autoFocus
+                className="mt-2 w-full border-b border-[var(--wl-line)] bg-transparent py-3 font-mono text-[13px] outline-none transition-colors placeholder:text-[var(--wl-mute)] focus:border-[var(--wl-signal)]"
+                placeholder="0x…"
               />
-            </label>
-            <label className="mt-5 block">
-              <span className="font-mono text-[9px] uppercase tracking-[.14em] text-[var(--wl-secondary)]">
-                EMAIL
+              <span className="mt-2 block font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-mute)]">
+                THEY SIGN IN WITH THIS WALLET — NO EMAIL, NO PASSWORD
               </span>
-              <input
-                value={inviteEmail}
-                onChange={(event) => setInviteEmail(event.target.value)}
-                type="email"
-                className="mt-2 w-full border-b border-[var(--wl-line)] bg-transparent py-3 text-[14px] outline-none transition-colors focus:border-[var(--wl-signal)]"
-                placeholder="name@workspace.eth"
-              />
             </label>
+            <fieldset className="mt-7">
+              <legend className="font-mono text-[9px] uppercase tracking-[.14em] text-[var(--wl-secondary)]">
+                ROLE
+              </legend>
+              <div className="mt-3 space-y-1">
+                {inviteRoles.map(([value, detail]) => (
+                  <label
+                    key={value}
+                    className={`flex cursor-pointer items-start gap-3 border-b border-[var(--wl-line-soft)] py-3 ${
+                      inviteRole === value ? "text-[var(--wl-ink)]" : "text-[var(--wl-secondary)]"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="invite-role"
+                      value={value}
+                      checked={inviteRole === value}
+                      onChange={() => setInviteRole(value)}
+                      className="mt-1 accent-[var(--wl-signal)]"
+                    />
+                    <span>
+                      <strong className="block font-mono text-[10px] uppercase tracking-[.14em]">
+                        {value}
+                      </strong>
+                      <span className="mt-1 block text-[12px] text-[var(--wl-secondary)]">
+                        {detail}
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            {addMember.error && (
+              <p
+                role="alert"
+                className="mt-5 border-l-2 border-[var(--wl-signal)] pl-3 text-[12px] leading-[1.5] text-[var(--wl-signal)]"
+              >
+                {addMember.error.message}
+              </p>
+            )}
             <div className="mt-8 flex justify-end gap-3">
               <button
                 type="button"
@@ -319,9 +497,10 @@ export default function SettingsPage() {
               <button
                 type="button"
                 onClick={invite}
-                className="warm-pill rounded-full bg-[var(--wl-signal)] px-5 py-3 text-[12px] font-semibold text-white"
+                disabled={!inviteReady || addMember.isPending}
+                className="warm-pill rounded-full bg-[var(--wl-signal)] px-5 py-3 text-[12px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Stage invite ↗
+                {addMember.isPending ? "Adding…" : "Add member ↗"}
               </button>
             </div>
           </div>

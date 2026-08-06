@@ -101,6 +101,10 @@ export type TeamMember = {
   initials: string;
   email: string;
   role: "admin" | "approver" | "viewer";
+  // The workspace role exactly as the database holds it. `role` above is the
+  // display grouping, which folds owner into admin and would otherwise hide who
+  // actually controls the workspace.
+  rawRole: string;
   wallet: string;
   status: "active" | "pending";
   lastActive: string;

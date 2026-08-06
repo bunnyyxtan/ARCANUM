@@ -472,8 +472,11 @@ export function useLiveMembers() {
     id: user.id,
     name: user.displayName,
     initials: user.displayName.slice(0, 2).toUpperCase(),
-    email: `${user.walletAddress.slice(0, 6)}@helixdao.eth`,
+    // A workspace knows wallets, not mailboxes. The invented address that used
+    // to sit here read as a real contact detail on a live page.
+    email: user.walletAddress,
     role: user.role === "owner" ? "admin" : user.role === "viewer" ? "viewer" : "approver",
+    rawRole: user.role,
     wallet: user.walletAddress,
     status: "active",
     lastActive: formatTimestampOrNA(user.createdAt),
