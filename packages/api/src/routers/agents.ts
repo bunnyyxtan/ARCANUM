@@ -3,7 +3,6 @@ import {
   agentByWalletInputSchema,
   agentCreatedWalletInputSchema,
   agentFreezeInputSchema,
-  agentRegisterInputSchema,
   agentSignerSyncInputSchema,
   agentStatusSchema,
   pageInputSchema,
@@ -108,51 +107,12 @@ export const agentsRouter = router({
     return onChainAgentRestraintWriteOnly();
   }),
 
-  register: protectedProcedure.input(agentRegisterInputSchema).mutation(async ({ ctx, input }) => {
-    const tenantId = tenantIdFor(ctx);
-    // Registration writes fail closed: a database problem is an explicit
-    // error, never a silently dropped agent.
-    const [wallet] = await failClosed("agents.register.insertWallet", () =>
-      ctx.db
-        .insert(wallets)
-        .values({
-          tenantId,
-          orgId: "10000000-0000-4000-8000-000000000001",
-          address: input.walletAddress,
-          label: input.label,
-          ownerAddress: actorFor(ctx),
-          createdBlock: 0,
-          factoryAddress: "0xfac7000000000000000000000000000000000000",
-        })
-        .onConflictDoNothing()
-        .returning(),
-    );
-
-    const persistedWallet = wallet ?? (await findWalletByLooseId(ctx, input.walletAddress));
-
-    if (!persistedWallet) {
-      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Unable to register wallet" });
-    }
-
-    const [created] = await failClosed("agents.register.insertAgent", () =>
-      ctx.db
-        .insert(agents)
-        .values({
-          tenantId,
-          walletId: persistedWallet.id,
-          signerAddress: input.signerAddress,
-          label: input.label,
-          type: input.type,
-          lastSeenAt: new Date(),
-          status: "active",
-        })
-        .onConflictDoNothing()
-        .returning(),
-    );
-
-    return created ?? findAgentByWalletLooseId(ctx, persistedWallet.id);
-  }),
-
+  // There is deliberately no server-side "register an agent" write. An agent
+  // exists because a wallet was deployed on chain and a signer was authorised
+  // there; recordCreatedWallet below records that deployment against the
+  // signed-in owner. The old register mutation wrote straight to a database
+  // production no longer has, under a hardcoded organisation and a placeholder
+  // factory address, so it could only ever fail or fabricate.
   recordCreatedWallet: protectedProcedure
     .input(agentCreatedWalletInputSchema)
     .mutation(async ({ ctx, input }) => {
