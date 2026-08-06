@@ -1,6 +1,6 @@
 {
   "name": "@arcanum/sdk",
-  "version": "0.1.0",
+  "version": "2.0.0",
   "description": "TypeScript SDK for integrating Arcanum governed wallets",
   "type": "module",
   "exports": {
@@ -25,11 +25,11 @@
     "viem": "^2.21.0"
   },
   "dependencies": {
-    "@arcanum/contracts": "0.1.0",
-    "@arcanum/shared": "0.1.0"
+    "@arcanum/contracts": "2.0.0",
+    "@arcanum/shared": "2.0.0"
   },
   "devDependencies": {
-    "@arcanum/config": "0.1.0",
+    "@arcanum/config": "2.0.0",
     "@size-limit/preset-small-lib": "^11.1.6",
     "size-limit": "^11.1.6",
     "tsup": "^8.3.0",
