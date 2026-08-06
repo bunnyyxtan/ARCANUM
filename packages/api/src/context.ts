@@ -29,9 +29,14 @@ export function createContext(input?: {
     requestFingerprint: input?.requestFingerprint ?? null,
     env: {
       authConfigured: input?.env?.authConfigured ?? true,
+      // Fail closed: the local-dev session bypass requires NODE_ENV to be
+      // explicitly "development". A deployment that forgets to set NODE_ENV
+      // (staging, preview) therefore rejects anonymous callers, and
+      // ARCANUM_REQUIRE_AUTH=true (set in production deployment config)
+      // disables the bypass unconditionally.
       allowDevAuth:
         input?.env?.allowDevAuth ??
-        (process.env.NODE_ENV !== "production" && process.env.ARCANUM_REQUIRE_AUTH !== "true"),
+        (process.env.NODE_ENV === "development" && process.env.ARCANUM_REQUIRE_AUTH !== "true"),
     },
     publicClient:
       input?.publicClient ??
