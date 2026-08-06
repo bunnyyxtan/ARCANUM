@@ -32,7 +32,7 @@
 
 ## Overview
 
-Arcanum lets builders give AI agents real USDC wallets without giving them unrestricted control of funds.
+Arcanum lets you give AI agents real USDC wallets without giving them unrestricted control of funds. It works for anyone who runs agents that spend money: individuals, teams, DAOs, and companies.
 
 AI agents are starting to pay for APIs, compute, data, and tools on their own. A normal wallet gives an agent too much freedom: one bad prompt or one compromised key can drain everything. Arcanum puts the rules inside the wallet itself. A GuardedWallet contract checks every spend against its policy before assets move, and escalates the risky ones to humans.
 
@@ -95,7 +95,7 @@ An anomaly layer scores agent behaviour and can flag, restrain, or freeze wallet
 
 ### Public proof surfaces
 
-Every governed wallet has public explorer and badge pages, so builders can show that an agent is governed and link to its live decision record.
+Every governed wallet has public explorer and badge pages, so anyone can show that an agent is governed and link to its live decision record.
 
 <p align="center">
   <img src="./docs/assets/readme/governed-ledger.webp" alt="Governed ledger showing total value, approved and escalated counts, and rows of policy decisions with amounts and statuses" width="920" />
