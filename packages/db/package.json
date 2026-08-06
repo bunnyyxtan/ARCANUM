@@ -1,6 +1,7 @@
 {
   "name": "@arcanum/db",
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "description": "Database schema, migrations, and seed helpers",
   "private": true,
   "type": "module",
   "exports": {

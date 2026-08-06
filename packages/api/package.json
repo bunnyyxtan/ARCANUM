@@ -1,6 +1,7 @@
 {
   "name": "@arcanum/api",
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "description": "tRPC API layer with session-aware Supabase read models",
   "private": true,
   "type": "module",
   "exports": {

@@ -1,10 +1,14 @@
 {
   "name": "arcanum",
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "description": "Governed non-custodial wallets for AI agents on Arc Testnet: policy contracts, operator dashboard, indexer, and SDKs",
   "private": true,
   "type": "module",
   "packageManager": "npm@11.6.2",
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "build": "npm run build --workspace @arcanum/web",
     "dev": "npm run dev --workspace @arcanum/web",
@@ -35,5 +39,17 @@
     "tsx": "^4.19.2",
     "turbo": "^2.9.17",
     "typescript": "^5.6.0"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bunnyyxtan/ARCANUM.git"
+  },
+  "homepage": "https://thearcanum.in",
+  "bugs": {
+    "url": "https://github.com/bunnyyxtan/ARCANUM/issues"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

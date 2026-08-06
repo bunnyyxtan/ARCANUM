@@ -1,6 +1,7 @@
 {
   "name": "@arcanum/auth",
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "description": "SIWE authentication and session helpers",
   "private": true,
   "type": "module",
   "exports": {
