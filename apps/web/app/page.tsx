@@ -118,7 +118,7 @@ export default function LandingPage() {
           <span className="font-display text-[12px] font-bold tracking-[-.01em]">ARCANUM</span>
         </MagneticAnchor>
         <div
-          className="font-mono text-[9px] tracking-[.18em] text-[var(--wl-mute)]"
+          className="font-mono text-[10px] font-bold tracking-[.2em] text-[var(--wl-body)]"
           style={{ writingMode: "vertical-rl" }}
         >
           BUILT ON ARC
