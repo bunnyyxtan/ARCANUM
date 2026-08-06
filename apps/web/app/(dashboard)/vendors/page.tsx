@@ -749,11 +749,11 @@ export default function VendorsPage() {
                               }`
                             : undefined
                         }
-                        className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-[var(--wl-signal)] px-2 py-0.5 font-mono text-[8px] uppercase tracking-[.12em] text-[var(--wl-signal)]"
+                        className="mt-1.5 inline-flex max-w-full items-center gap-1.5 rounded-full border border-[var(--wl-signal)] px-2 py-0.5 font-mono text-[8px] uppercase tracking-[.12em] text-[var(--wl-signal)]"
                       >
-                        ⚑ Review
+                        <span className="shrink-0">⚑ Review</span>
                         {vendorFlagDetail(vendor.address) && (
-                          <span className="normal-case tracking-[.08em] text-[var(--wl-secondary)]">
+                          <span className="min-w-0 truncate normal-case tracking-[.08em] text-[var(--wl-secondary)]">
                             by {vendorFlagDetail(vendor.address)?.flaggedByShort} ·{" "}
                             {vendorFlagDetail(vendor.address)?.flaggedAt}
                             {vendorFlagDetail(vendor.address)?.note && (
@@ -776,10 +776,10 @@ export default function VendorsPage() {
                     {!isVendorFlagged(vendor.address) && vendorUnflagDetail(vendor.address) && (
                       <span
                         title={`Review flag removed by ${vendorUnflagDetail(vendor.address)?.removedBy} · ${vendorUnflagDetail(vendor.address)?.removedAt}`}
-                        className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-[var(--wl-line)] px-2 py-0.5 font-mono text-[8px] uppercase tracking-[.12em] text-[var(--wl-mute)]"
+                        className="mt-1.5 inline-flex max-w-full items-center gap-1.5 rounded-full border border-[var(--wl-line)] px-2 py-0.5 font-mono text-[8px] uppercase tracking-[.12em] text-[var(--wl-mute)]"
                       >
-                        Unflagged
-                        <span className="normal-case tracking-[.08em]">
+                        <span className="shrink-0">Unflagged</span>
+                        <span className="min-w-0 truncate normal-case tracking-[.08em]">
                           by {vendorUnflagDetail(vendor.address)?.removedByShort} ·{" "}
                           {vendorUnflagDetail(vendor.address)?.removedAt}
                         </span>
