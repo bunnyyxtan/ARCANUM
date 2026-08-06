@@ -330,6 +330,8 @@ export default function PolicyEditorPage() {
       setPolicyWalletOwner(null);
       setPolicyReadStatus("error");
       setPolicyError(onChainPolicyQuery.error.message);
+      // The re-read failed, so stop claiming a sync is in flight.
+      setPolicyPendingIndexer(false);
       return;
     }
     if (onChainPolicyQuery.data) {
@@ -348,6 +350,16 @@ export default function PolicyEditorPage() {
     onChainPolicyQuery.isError,
     onChainPolicyQuery.error,
   ]);
+
+  // Safety net: "PENDING INDEXER SYNC" must never become a permanent state.
+  // If no on-chain re-read confirms the update within 90s, stop waiting.
+  useEffect(() => {
+    if (!policyPendingIndexer) {
+      return;
+    }
+    const timer = setTimeout(() => setPolicyPendingIndexer(false), 90_000);
+    return () => clearTimeout(timer);
+  }, [policyPendingIndexer]);
 
   const policyWriteDisabledReason = !selectedGovernedWalletAddress
     ? walletsQuery.isLoading
@@ -427,7 +439,15 @@ export default function PolicyEditorPage() {
       });
       setPolicyTxHash(hash);
 
-      const receipt = await publicClient?.waitForTransactionReceipt({ hash, confirmations: 1 });
+      // A missing receipt must never strand the button on "Waiting for
+      // receipt": bound the wait and tell the owner where the tx stands.
+      const receipt = await publicClient
+        ?.waitForTransactionReceipt({ hash, confirmations: 1, timeout: 120_000 })
+        .catch(() => {
+          throw new Error(
+            "The policy transaction was sent but its confirmation did not arrive within 2 minutes. It may still confirm — check the wallet's activity before retrying.",
+          );
+        });
       if (receipt?.status !== "success") {
         throw new Error("Policy transaction reverted.");
       }
@@ -438,8 +458,19 @@ export default function PolicyEditorPage() {
       // Mirror the confirmed revision into the read model, otherwise the
       // dossier keeps advertising the caps the wallet no longer enforces.
       let syncFailed: string | null = null;
+      let syncTimer: ReturnType<typeof setTimeout> | undefined;
+      let syncTimedOut = false;
+      const refreshPolicyQueries = () =>
+        Promise.all([
+          utils.policies.get.invalidate(),
+          utils.policies.readOnChain.invalidate(),
+          utils.wallets.listPolicies.invalidate(),
+          utils.agents.list.invalidate(),
+        ]).catch(() => undefined);
       try {
-        await recordDeployedPolicy.mutateAsync({
+        // The mirror write must not be able to hang the button either: the
+        // policy is already live on-chain, so cap the dashboard sync wait.
+        const syncPromise = recordDeployedPolicy.mutateAsync({
           walletAddress: governedWallet,
           txHash: hash,
           perTxCap: Number(nextPolicy.perTxCap) / 1e6,
@@ -449,16 +480,41 @@ export default function PolicyEditorPage() {
           allowedCategories: draftCategoryNames(policyDraft),
           requireAllowlist: nextPolicy.requireAllowlist,
         });
+        // If the mutation outlives the 20s wait but then succeeds, reconcile
+        // the UI instead of leaving the earlier "not synced" warning standing.
+        // A late failure must not surface as an unhandled rejection either.
+        syncPromise
+          .then(() => {
+            if (!syncTimedOut) {
+              return;
+            }
+            void refreshPolicyQueries();
+            toast.success("DASHBOARD SYNC CAUGHT UP", {
+              description: "The delayed dashboard update completed after all.",
+            });
+          })
+          .catch(() => undefined);
+        await Promise.race([
+          syncPromise,
+          new Promise<never>((_, reject) => {
+            syncTimer = setTimeout(() => {
+              syncTimedOut = true;
+              reject(
+                new Error(
+                  "The dashboard sync timed out. The ledger catches up from the chain on its own.",
+                ),
+              );
+            }, 20_000);
+          }),
+        ]);
       } catch (caught) {
         syncFailed = errorMessage(caught);
+      } finally {
+        clearTimeout(syncTimer);
       }
 
-      await Promise.all([
-        utils.policies.get.invalidate(),
-        utils.policies.readOnChain.invalidate(),
-        utils.wallets.listPolicies.invalidate(),
-        utils.agents.list.invalidate(),
-      ]);
+      // Fire-and-forget: a hanging refetch must never keep the button busy.
+      void refreshPolicyQueries();
 
       if (syncFailed) {
         toast.warning("POLICY LIVE ON-CHAIN · DASHBOARD NOT SYNCED", {
