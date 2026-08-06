@@ -198,14 +198,20 @@ export async function renameSupabaseOrganization(
 ): Promise<StoredOrganization | null> {
   const client = orgClient(ctx);
   const anchor = await callerOrg(ctx);
-  if (!anchor) {
+  const actor = ctx.session?.walletAddress.toLowerCase();
+  if (!anchor || !actor) {
     return null;
   }
 
-  const [row] = await client.patchRows(
-    ORGANIZATIONS_TABLE,
-    { name, updated_at: new Date().toISOString() },
-    { id: anchor.orgId },
+  // Ownership is proved inside the function, under the same row lock as the
+  // write. Checking it here first and patching afterwards would leave a window
+  // in which an owner revoked mid-request still gets their rename through.
+  const row = rowFromRpc(
+    await client.callFunction("workspace_rename", {
+      p_org: anchor.orgId,
+      p_actor: actor,
+      p_name: name,
+    }),
   );
 
   return row ? organizationFrom(row, anchor) : null;

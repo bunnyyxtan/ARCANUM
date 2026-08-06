@@ -73,16 +73,43 @@ function createReadModel() {
       return (options.limit ? rows.slice(0, options.limit) : rows).map((row) => ({ ...row }));
     },
 
-    patchRows: async (table: string, patch: Row, filters: Record<string, unknown>) => {
-      const hits = tableOf(table).filter((row) => matches(row, filters));
-      for (const row of hits) {
-        Object.assign(row, patch);
-      }
-      return hits.map((row) => ({ ...row }));
+    // Renaming must go through the database function, which proves ownership
+    // under the same lock as the write. A bare PATCH would authorise in one
+    // step and write in another, which is the race this test guards.
+    patchRows: async () => {
+      throw new Error("renaming a workspace must not patch rows directly");
     },
 
     upsertRows: async () => {
       throw new Error("renaming a workspace must not insert rows");
+    },
+
+    callFunction: async (fn: string, args: Record<string, unknown>) => {
+      if (fn !== "workspace_rename") {
+        throw new Error(`the organisation router called an unexpected function: ${fn}`);
+      }
+
+      const org = tables.organizations.find((row) => row.id === args.p_org);
+      if (!org) {
+        throw new Error("workspace_rename: workspace does not exist");
+      }
+
+      const actor = String(args.p_actor ?? "").toLowerCase();
+      const profile = tables.profiles.find(
+        (row) => String(row.wallet_address).toLowerCase() === actor,
+      );
+      const membership = profile
+        ? tables.organization_members.find(
+            (row) => row.organization_id === org.id && row.profile_id === profile.id,
+          )
+        : undefined;
+
+      if (membership?.role !== "owner") {
+        throw new Error("workspace_rename: only a workspace owner can rename this workspace");
+      }
+
+      org.name = String(args.p_name ?? "");
+      return { ...org };
     },
   };
 

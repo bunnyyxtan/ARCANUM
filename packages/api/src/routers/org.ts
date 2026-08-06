@@ -135,15 +135,18 @@ export const orgRouter = router({
     }),
 
   update: protectedProcedure.input(orgUpdateInputSchema).mutation(async ({ ctx, input }) => {
-    await requireWorkspaceOwner(ctx);
-    const updated = await failClosed("org.update", () =>
+    // Who may rename is decided by the database, in the same transaction as the
+    // rename itself. The session's own role field is useless here: it comes
+    // from a user table production cannot reach, so every caller -- the real
+    // owner included -- arrives claiming to be a viewer.
+    const updated = await workspaceWrite("org.update", () =>
       renameSupabaseOrganization(ctx, input.name),
     );
 
     if (!updated) {
       throw new TRPCError({
         code: "PRECONDITION_FAILED",
-        message: "Organization settings could not be saved to the live read model.",
+        message: "You do not have a workspace to rename yet.",
       });
     }
 
@@ -162,7 +165,13 @@ export const orgRouter = router({
 // translated here into something the caller can act on. Anything unrecognised
 // is still treated as an outage rather than reported as the user's fault.
 const workspaceWriteErrors: Array<[RegExp, TRPCError["code"], string]> = [
+  [
+    /only a workspace owner can rename/i,
+    "FORBIDDEN",
+    "Only the workspace owner can change these settings.",
+  ],
   [/only a workspace owner/i, "FORBIDDEN", "Only a workspace owner can change who has access."],
+  [/workspace does not exist/i, "NOT_FOUND", "That workspace no longer exists."],
   [
     /already belongs to another workspace/i,
     "CONFLICT",
@@ -203,26 +212,6 @@ function listMembersFor(ctx: OrgContext) {
   }
 
   return failClosed("org.listMembers", () => readSupabaseOrgMembers(ctx));
-}
-
-// Renaming the workspace is the owner's call, and the read model is the only
-// place that still knows who the owner is. The SIWE session carries a role from
-// the user table production cannot reach, so every caller -- the real owner
-// included -- signs in as a viewer; trusting that field locked the owner out of
-// their own workspace. Membership is read fresh on each write, so revoking
-// someone's ownership takes effect immediately instead of waiting out their
-// week-long session cookie.
-async function requireWorkspaceOwner(ctx: OrgContext & { session: { walletAddress: string } }) {
-  const members = await failClosed("org.update.membership", () => readSupabaseOrgMembers(ctx));
-  const caller = ctx.session.walletAddress.toLowerCase();
-  const membership = members.find((member) => member.walletAddress.toLowerCase() === caller);
-
-  if (membership?.role !== "owner") {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "Only the workspace owner can change these settings.",
-    });
-  }
 }
 
 // A signed-in wallet that governs nothing yet has no organisation to name, and
