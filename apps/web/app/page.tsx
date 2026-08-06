@@ -18,10 +18,24 @@ import {
 
 const GITHUB_URL = "https://github.com/bunnyyxtan/ARCANUM";
 
+type GlobalStats = {
+  capitalGovernedUsdc: number;
+  movements: number;
+  governedWallets: number;
+  workspaces: number;
+};
+
+function formatUsd(value: number): string {
+  if (value >= 1e9) return `$${(value / 1e9).toFixed(1)}B`;
+  if (value >= 1e6) return `$${(value / 1e6).toFixed(1)}M`;
+  if (value >= 1e3) return `$${(value / 1e3).toFixed(1)}k`;
+  return `$${Math.round(value)}`;
+}
+
 export default function LandingPage() {
   const [connectOpen, setConnectOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("");
-  const [capitalGoverned, setCapitalGoverned] = useState(82.4);
+  const [globalStats, setGlobalStats] = useState<GlobalStats | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const railRef = useRef<HTMLDivElement>(null);
 
@@ -42,12 +56,22 @@ export default function LandingPage() {
   }, []);
 
   useEffect(() => {
-    const capitalTimer = window.setInterval(
-      () =>
-        setCapitalGoverned((value) => (value >= 87.8 ? 82.4 : Number((value + 0.1).toFixed(1)))),
-      1800,
-    );
-    return () => window.clearInterval(capitalTimer);
+    // Real global numbers from the read model: every workspace, every governed
+    // decision. No simulated counters on the landing page.
+    let cancelled = false;
+    fetch("/api/public-stats")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((stats: GlobalStats | null) => {
+        if (!cancelled && stats && typeof stats.capitalGovernedUsdc === "number") {
+          setGlobalStats(stats);
+        }
+      })
+      .catch(() => {
+        // Leave the placeholder in place; the record panel stays honest.
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -244,11 +268,16 @@ export default function LandingPage() {
                   Not a demo. A transaction deciding itself in public.
                 </span>
                 <strong className="mt-4 block font-mono text-[20px] font-medium tabular-nums text-[var(--wl-ink)]">
-                  ${capitalGoverned.toFixed(1)}k
+                  {globalStats ? formatUsd(globalStats.capitalGovernedUsdc) : "$ · · ·"}
                 </strong>
                 <span className="block font-mono text-[8px] uppercase tracking-[.12em] text-[var(--wl-secondary)]">
                   capital governed
                 </span>
+                {globalStats && (
+                  <span className="mt-1 block font-mono text-[8px] uppercase tracking-[.12em] text-[var(--wl-muted)]">
+                    {globalStats.governedWallets} wallets · {globalStats.movements} decisions
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -476,8 +505,8 @@ export default function LandingPage() {
         </footer>
         <p className="px-6 pb-6 font-mono text-[9px] tracking-[.04em] text-[var(--wl-mute)] lg:px-10">
           Built on the Arc testnet. Arc is a trademark of Circle Internet Group, Inc. or its
-          affiliates. ARCANUM is an independent project and is not affiliated with, sponsored by,
-          or endorsed by Circle Internet Group, Inc.
+          affiliates. ARCANUM is an independent project and is not affiliated with, sponsored by, or
+          endorsed by Circle Internet Group, Inc.
         </p>
       </div>
 

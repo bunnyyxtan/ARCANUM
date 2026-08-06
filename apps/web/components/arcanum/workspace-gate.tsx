@@ -144,7 +144,6 @@ export function WorkspaceGate({ children }: Readonly<{ children: ReactNode }>) {
             <span className="font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-secondary)]">
               WORKSPACE NAME
             </span>
-            {/* biome-ignore lint/a11y/noAutofocus: this panel exists only to collect this one field */}
             <input
               value={name}
               onChange={(event) => setName(event.target.value)}
