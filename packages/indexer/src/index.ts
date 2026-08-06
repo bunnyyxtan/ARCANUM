@@ -1,4 +1,5 @@
 import { ponder } from "ponder:registry";
+import { EscalationManagerAbi } from "@arcanum/contracts";
 import { db, defaultTenantId } from "@arcanum/db";
 import {
   events,
@@ -11,7 +12,9 @@ import {
   wallets,
 } from "@arcanum/db/schema";
 import { and, eq } from "drizzle-orm";
+import { http, createPublicClient, fallback } from "viem";
 
+import { loadDeployment } from "./deployment";
 import {
   syncAnomaly,
   syncCheckpoint,
@@ -24,6 +27,57 @@ import {
 } from "./supabase-sync";
 
 const ARC_TESTNET_CHAIN_ID = 5_042_002;
+
+/** Fallback expiry used only when the on-chain escalation cannot be read. */
+const DEFAULT_ESCALATION_EXPIRY_SECONDS = 3_600n;
+const DEFAULT_ESCALATION_THRESHOLD = 1;
+
+const chainClient = createPublicClient({
+  transport: fallback(
+    [
+      process.env.ARC_TESTNET_RPC,
+      process.env.PONDER_RPC_URL_5042002,
+      "https://arc-testnet.drpc.org",
+      "https://rpc.testnet.arc.network",
+    ]
+      .filter((url): url is string => Boolean(url))
+      .map((url) => http(url)),
+  ),
+});
+
+/**
+ * Reads the quorum and expiry the EscalationManager actually recorded for an
+ * escalation. These are per-wallet governance settings, so hardcoding them
+ * makes the approval queue show a quorum the contract never enforces (an
+ * operator sees "0 / 2" on an escalation that one signature releases).
+ */
+async function readEscalationTerms(escalationId: string, blockTimestamp: bigint) {
+  const fallback = {
+    threshold: DEFAULT_ESCALATION_THRESHOLD,
+    expiresAt: new Date(Number(blockTimestamp + DEFAULT_ESCALATION_EXPIRY_SECONDS) * 1000),
+  };
+
+  try {
+    const result = await chainClient.readContract({
+      abi: EscalationManagerAbi,
+      address: loadDeployment().escalationManager,
+      functionName: "getEscalation",
+      args: [escalationId as `0x${string}`],
+    });
+
+    const threshold = Number(asBigint(result[6]));
+    const expiresAtSeconds = asBigint(result[5]);
+
+    return {
+      threshold: threshold > 0 ? threshold : fallback.threshold,
+      expiresAt:
+        expiresAtSeconds > 0n ? new Date(Number(expiresAtSeconds) * 1000) : fallback.expiresAt,
+    };
+  } catch (error) {
+    console.error(`[indexer] could not read escalation ${escalationId} terms: ${String(error)}`);
+    return fallback;
+  }
+}
 
 function asString(value: unknown) {
   return typeof value === "string" ? value : "";
@@ -219,6 +273,8 @@ ponder.on("GuardedWallet:TransferExecuted", async ({ event }) => {
 });
 
 ponder.on("GuardedWallet:TransferEscalated", async ({ event }) => {
+  const terms = await readEscalationTerms(asString(event.args.escalationId), event.block.timestamp);
+
   await syncTransferEscalated({
     walletAddress: asAddress(event.args.wallet),
     txHash: event.transaction.hash,
@@ -228,7 +284,8 @@ ponder.on("GuardedWallet:TransferEscalated", async ({ event }) => {
     escalationId: asString(event.args.escalationId),
     blockNumber: Number(event.block.number),
     timestamp: blockDate(event.block.timestamp),
-    expiresAt: new Date(Number(event.block.timestamp + 3_600n) * 1000),
+    expiresAt: terms.expiresAt,
+    quorumRequired: terms.threshold,
   });
   await syncCheckpoint(Number(event.block.number));
 
@@ -276,10 +333,10 @@ ponder.on("GuardedWallet:TransferEscalated", async ({ event }) => {
       amount,
       reason: asString(event.args.reason),
       createdAt: blockDate(event.block.timestamp),
-      expiresAt: new Date(Number(event.block.timestamp + 3_600n) * 1000),
+      expiresAt: terms.expiresAt,
       status: "PENDING",
       signaturesCount: 0,
-      threshold: 2,
+      threshold: terms.threshold,
       signers: [],
     });
   }

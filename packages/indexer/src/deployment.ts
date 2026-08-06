@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { z } from "zod";
 
@@ -17,11 +18,50 @@ const deploymentSchema = z.object({
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
 
+const DEPLOYMENT_RELATIVE_PATH = "packages/contracts/deployments/arc-testnet.json";
+
+/**
+ * Walks up from the working directory (and from this file, for the case where
+ * the indexer is started outside the repo) until the monorepo root that holds
+ * the deployment manifest is found.
+ *
+ * Resolving against `process.cwd()` alone silently returns zero addresses and
+ * `startBlock: 0` whenever the indexer is started from its own package
+ * directory, which makes Ponder scan the chain from genesis for contracts that
+ * do not exist — the read model then never receives a single event.
+ */
+function findDeploymentFile() {
+  const startDirs = [process.cwd(), dirname(fileURLToPath(import.meta.url))];
+
+  for (const startDir of startDirs) {
+    let dir = startDir;
+
+    while (true) {
+      const candidate = resolve(dir, DEPLOYMENT_RELATIVE_PATH);
+      if (existsSync(candidate)) {
+        return candidate;
+      }
+
+      const parent = dirname(dir);
+      if (parent === dir) {
+        break;
+      }
+      dir = parent;
+    }
+  }
+
+  return undefined;
+}
+
 export function loadDeployment() {
-  const path = resolve(process.cwd(), "packages/contracts/deployments/arc-testnet.json");
-  const parsed = existsSync(path)
-    ? deploymentSchema.parse(JSON.parse(readFileSync(path, "utf8")))
-    : {};
+  const path = findDeploymentFile();
+  const parsed = path ? deploymentSchema.parse(JSON.parse(readFileSync(path, "utf8"))) : {};
+
+  if (!path) {
+    console.error(
+      `[indexer] ${DEPLOYMENT_RELATIVE_PATH} not found from ${process.cwd()} — refusing to index zero addresses from genesis.`,
+    );
+  }
 
   return {
     walletFactory: parsed.walletFactory ?? ZERO_ADDRESS,

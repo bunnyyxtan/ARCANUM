@@ -244,6 +244,8 @@ export async function syncTransferEscalated(input: {
   blockNumber: number;
   timestamp: Date;
   expiresAt: Date;
+  /** Signatures the EscalationManager actually requires to release the hold. */
+  quorumRequired: number;
 }) {
   if (!configured()) return;
   const wallet = await findGovernedWallet(input.walletAddress);
@@ -283,6 +285,7 @@ export async function syncTransferEscalated(input: {
           reason: input.reason || "Escalated by on-chain policy.",
           status: "pending",
           approvals_count: 0,
+          quorum_required: input.quorumRequired,
           expires_at: input.expiresAt.toISOString(),
           created_at: input.timestamp.toISOString(),
           data_source: "live",
