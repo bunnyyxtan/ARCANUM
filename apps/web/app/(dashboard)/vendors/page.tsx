@@ -729,8 +729,8 @@ export default function VendorsPage() {
                     selected?.id === vendor.id ? "bg-[var(--wl-bg-soft)]" : ""
                   }`}
                 >
-                  <span>
-                    <strong className="block text-[13px] font-medium">{vendor.name}</strong>
+                  <span className="min-w-0">
+                    <strong className="block truncate text-[13px] font-medium">{vendor.name}</strong>
                     <small className="mt-1 block font-mono text-[9px] text-[var(--wl-mute)]">
                       {shortAddress(vendor.address)}
                     </small>

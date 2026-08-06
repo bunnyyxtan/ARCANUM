@@ -414,7 +414,7 @@ export default function LedgerPage() {
 
         <div className="mt-7 flex flex-col gap-7 xl:flex-row">
           <section className="min-w-0 flex-1 overflow-hidden border border-[var(--wl-line)] bg-[var(--wl-bg-raised)]">
-            <div className="hidden grid-cols-[1.05fr_1.2fr_1fr_1fr_.9fr_auto] gap-4 border-b border-[var(--wl-line)] px-5 py-3 font-mono text-[9px] uppercase tracking-[.14em] text-[var(--wl-mute)] md:grid">
+            <div className="hidden grid-cols-[1.05fr_1.2fr_1fr_1fr_.9fr_90px] gap-4 border-b border-[var(--wl-line)] px-5 py-3 font-mono text-[9px] uppercase tracking-[.14em] text-[var(--wl-mute)] md:grid">
               <span>Time</span>
               <span>Agent</span>
               <span>Counterparty</span>
@@ -455,7 +455,7 @@ export default function LedgerPage() {
                     key={row.id}
                     onClick={() => setSelectedId(row.id)}
                     style={{ "--row-i": index } as CSSProperties}
-                    className={`arc-row grid w-full grid-cols-[1fr_auto] items-center gap-3 border-b border-[var(--wl-line-faint)] px-5 py-4 text-left last:border-b-0 md:grid-cols-[1.05fr_1.2fr_1fr_1fr_.9fr_auto] md:gap-4 ${
+                    className={`arc-row grid w-full grid-cols-[1fr_auto] items-center gap-3 border-b border-[var(--wl-line-faint)] px-5 py-4 text-left last:border-b-0 md:grid-cols-[1.05fr_1.2fr_1fr_1fr_.9fr_90px] md:gap-4 ${
                       selectedId === row.id ? "arc-row-selected" : ""
                     }`}
                   >

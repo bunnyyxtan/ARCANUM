@@ -638,7 +638,7 @@ export default function AgentDetailPage() {
                 {[0, 1, 2, 3].map((index) => (
                   <div
                     key={index}
-                    className="grid animate-pulse gap-2 border-b border-[var(--wl-line-soft)] px-3 py-4 md:grid-cols-[.8fr_1.2fr_1.1fr_.8fr_auto] md:items-center"
+                    className="grid animate-pulse gap-2 border-b border-[var(--wl-line-soft)] px-3 py-4 md:grid-cols-[.8fr_1.2fr_1.1fr_.8fr_90px] md:items-center"
                   >
                     <div className="h-4 w-16 rounded bg-[var(--wl-line-soft)]" />
                     <div className="h-4 w-28 rounded bg-[var(--wl-line-soft)]" />
@@ -676,7 +676,7 @@ export default function AgentDetailPage() {
                 {decisions.map((row) => (
                   <div
                     key={row.id}
-                    className="decision-row grid gap-2 border-b border-[var(--wl-line-soft)] px-3 py-4 md:grid-cols-[.8fr_1.2fr_1.1fr_.8fr_auto] md:items-center"
+                    className="decision-row grid gap-2 border-b border-[var(--wl-line-soft)] px-3 py-4 md:grid-cols-[.8fr_1.2fr_1.1fr_.8fr_90px] md:items-center"
                   >
                     <span className="font-mono text-[10px] text-[var(--wl-secondary)]">
                       {row.timestamp}
