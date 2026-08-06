@@ -471,7 +471,7 @@ export default function LandingPage() {
             <MagneticAnchor href="/terms" className="warm-link hover:text-[var(--wl-signal)]">
               Terms
             </MagneticAnchor>
-            <span className="font-mono">© 2026 ARCANUM</span>
+            <span className="font-mono">2026 ARCANUM</span>
           </div>
         </footer>
         <p className="px-6 pb-6 font-mono text-[9px] tracking-[.04em] text-[var(--wl-mute)] lg:px-10">
