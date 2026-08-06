@@ -26,13 +26,6 @@ export const agentSignerSyncInputSchema = z.object({
   walletAddress: addressSchema,
 });
 
-export const agentRegisterInputSchema = z.object({
-  walletAddress: addressSchema,
-  signerAddress: addressSchema,
-  label: z.string().min(2).max(80),
-  type: agentTypeSchema.default("other"),
-});
-
 export const agentCreatedWalletInputSchema = z.object({
   walletAddress: addressSchema,
   ownerAddress: addressSchema,
