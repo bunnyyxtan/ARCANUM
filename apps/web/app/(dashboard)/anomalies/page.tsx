@@ -311,15 +311,6 @@ export default function AnomaliesPage() {
             Where agent behavior departs from its approved operating shape.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() =>
-            document.getElementById("register")?.scrollIntoView({ behavior: "smooth" })
-          }
-          className="warm-pill w-fit rounded-full bg-[var(--wl-signal)] px-5 py-3 text-[11px] font-semibold text-[var(--wl-bg)]"
-        >
-          Review register <span className="ml-2">↘</span>
-        </button>
       </section>
 
       <section className="mt-8 grid gap-5 lg:grid-cols-[1.35fr_.9fr]">

@@ -184,16 +184,6 @@ export default function DashboardPage() {
               on Arc.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() =>
-              document.getElementById("stream")?.scrollIntoView({ behavior: "smooth" })
-            }
-            className="warm-pill group w-fit rounded-full bg-[var(--wl-signal)] px-5 py-3 text-[11px] font-semibold text-white"
-          >
-            Review governed events
-            <Arrow />
-          </button>
         </div>
       </Reveal>
 
