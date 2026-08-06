@@ -1,0 +1,48 @@
+# Runs the Ponder indexer every 3 hours just long enough to catch the read
+# model up to the chain tip. Full explanation: docs/INDEXER-TOPUP.md
+
+name: Indexer top-up
+
+on:
+  schedule:
+    # Every 3 hours keeps a month comfortably inside GitHub's 2000 free
+    # minutes for private repositories. The odd minute avoids the herd of
+    # jobs the whole world schedules at :00.
+    - cron: "23 */3 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: indexer-topup
+  cancel-in-progress: false
+
+jobs:
+  index:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Index until the chain tip, then stop
+        env:
+          DATABASE_URL: ${{ secrets.INDEXER_DATABASE_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ARC_TESTNET_RPC: https://arc-testnet.drpc.org
+        run: |
+          set +e
+          timeout --signal=SIGINT --kill-after=30 600 \
+            npm run start --workspace @arcanum/indexer
+          code=$?
+          # 124 = the timeout stopped it (expected), 130 = clean SIGINT exit.
+          if [ "$code" = "124" ] || [ "$code" = "130" ] || [ "$code" = "0" ]; then
+            echo "top-up finished (exit $code)"
+            exit 0
+          fi
+          exit "$code"
