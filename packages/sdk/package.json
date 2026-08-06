@@ -25,11 +25,11 @@
     "viem": "^2.21.0"
   },
   "dependencies": {
-    "@arcanum/contracts": "0.0.0",
-    "@arcanum/shared": "0.0.0"
+    "@arcanum/contracts": "0.1.0",
+    "@arcanum/shared": "0.1.0"
   },
   "devDependencies": {
-    "@arcanum/config": "0.0.0",
+    "@arcanum/config": "0.1.0",
     "@size-limit/preset-small-lib": "^11.1.6",
     "size-limit": "^11.1.6",
     "tsup": "^8.3.0",

@@ -27,7 +27,7 @@
     "postgres": "^3.4.5"
   },
   "devDependencies": {
-    "@arcanum/config": "0.0.0",
+    "@arcanum/config": "0.1.0",
     "drizzle-kit": "^0.28.0",
     "typescript": "^5.6.0"
   }

@@ -12,10 +12,10 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@arcanum/api": "0.0.0",
-    "@arcanum/auth": "0.0.0",
-    "@arcanum/shared": "0.0.0",
-    "@arcanum/ui": "0.0.0",
+    "@arcanum/api": "0.1.0",
+    "@arcanum/auth": "0.1.0",
+    "@arcanum/shared": "0.1.0",
+    "@arcanum/ui": "0.1.0",
     "@radix-ui/react-avatar": "^1.1.12",
     "@radix-ui/react-dialog": "^1.1.16",
     "@radix-ui/react-dropdown-menu": "^2.1.17",
@@ -58,7 +58,7 @@
     "wagmi": "^2.12.0"
   },
   "devDependencies": {
-    "@arcanum/config": "0.0.0",
+    "@arcanum/config": "0.1.0",
     "@types/canvas-confetti": "^1.6.4",
     "tailwindcss": "^4.1.8",
     "typescript": "^5.6.0"
