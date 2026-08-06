@@ -10,9 +10,9 @@
   ·
   <a href="#getting-started">Getting started</a>
   ·
-  <a href="./CHANGELOG.md">Changelog</a>
+  <a href="./docs/CHANGELOG.md">Changelog</a>
   ·
-  <a href="./CONTRIBUTING.md">Contributing</a>
+  <a href="./.github/CONTRIBUTING.md">Contributing</a>
 </p>
 
 <p align="center">
@@ -246,11 +246,11 @@ Arcanum is non-custodial. It is not an exchange, not a token sale, not a fiat ra
 
 ## Contributing
 
-Contributions are welcome through focused pull requests. Read [CONTRIBUTING.md](./CONTRIBUTING.md) for setup and the review checklist. Releases follow semantic versioning and are tracked in [CHANGELOG.md](./CHANGELOG.md).
+Contributions are welcome through focused pull requests. Read [CONTRIBUTING.md](./.github/CONTRIBUTING.md) for setup and the review checklist. Releases follow semantic versioning and are tracked in [CHANGELOG.md](./docs/CHANGELOG.md).
 
 ## Security
 
-Do not report vulnerabilities through public issues. Follow the private process in [SECURITY.md](./SECURITY.md). Treat all contracts as unaudited testnet code.
+Do not report vulnerabilities through public issues. Follow the private process in [SECURITY.md](./.github/SECURITY.md). Treat all contracts as unaudited testnet code.
 
 ## License
 

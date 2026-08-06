@@ -45,7 +45,7 @@ the build running at [https://thearcanum.in](https://thearcanum.in).
 ### Security
 
 - Contracts remain testnet-only and unaudited. See
-  [SECURITY.md](./SECURITY.md) for scope and reporting.
+  [SECURITY.md](../.github/SECURITY.md) for scope and reporting.
 
 ## [1.0.0] - 2026-08-02
 
