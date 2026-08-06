@@ -30,7 +30,7 @@ What is real today:
 - Wallet sign-in, dashboard routes, public explorer/badge routes, and approver routes are implemented.
 - The app has read-model adapters for agents, vendors, ledger events, escalations, anomalies, notifications, and public wallet profiles.
 - TypeScript and Python SDK packages exist for direct Arc RPC integrations.
-- Demo data is gated to the configured demo wallet; random wallets and disconnected visitors see empty, live workspace states — not seeded demo rows.
+- Demo data is gated to the configured demo wallet; random wallets and disconnected visitors see empty, live workspace states, not seeded demo rows.
 
 Currently being hardened:
 
@@ -239,7 +239,7 @@ Reviewer checklist before a PR:
 
 Current stage: **Arc Testnet public review build**.
 
-The app is prepared for Vercel deployment and local development through npm workspaces. Demo data is gated to a designated demo wallet. Disconnected visitors and non-demo wallets see empty, live, or onboarding states — not seeded ACME demo activity.
+The app is prepared for Vercel deployment and local development through npm workspaces. Demo data is gated to a designated demo wallet. Disconnected visitors and non-demo wallets see empty, live, or onboarding states, not seeded ACME demo activity.
 
 Real on-chain WalletFactory deployment is wired for Arc Testnet. Some advanced write paths and indexer reconciliation flows are still being hardened for broader testnet usage. Public explorer and badge routes are available, with fallback data kept honest when a wallet has no indexed rows.
 
@@ -253,7 +253,7 @@ Arc Testnet remains the proving ground before any production-funds or mainnet pa
 - Sensitive actions can require human quorum.
 - Demo data is separated from live wallet data.
 - Supabase service-role keys are server-only.
-- `NEXT_PUBLIC_*` variables are visible in the browser — only public chain, contract, explorer, and anon-key values belong there.
+- `NEXT_PUBLIC_*` variables are visible in the browser. Only public chain, contract, explorer, and anon-key values belong there.
 - Private keys must never be committed.
 - A formal audit is required before any mainnet or production-funds use.
 
@@ -315,7 +315,9 @@ Arcanum is currently focused on making governed AI-agent wallets reliable, inspe
 
 ## Contributing
 
-Issues and pull requests are welcome. Please keep changes focused, documented, and easy to review.
+Issues and pull requests are welcome. Please keep changes focused, documented, and easy to review. See [CONTRIBUTING.md](./CONTRIBUTING.md) for setup and checks.
+
+Releases are tagged with semantic versions and tracked in [CHANGELOG.md](./CHANGELOG.md).
 
 Security reports should follow [SECURITY.md](./SECURITY.md).
 
