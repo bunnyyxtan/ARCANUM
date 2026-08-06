@@ -68,3 +68,5 @@ replit.nix
 .upm/
 attached_assets/
 artifacts/
+generated/
+charts/
