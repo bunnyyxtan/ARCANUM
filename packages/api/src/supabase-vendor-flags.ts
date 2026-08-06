@@ -22,7 +22,7 @@ export type VendorFlag = {
   id: string;
   tenantId: string | null;
   vendorAddress: string;
-  flaggedBy: string | null;
+  flaggedBy: string;
   note: string | null;
   noteUpdatedBy: string | null;
   noteUpdatedAt: Date | null;
@@ -34,8 +34,8 @@ export type VendorFlag = {
 export type VendorFlagEvent = {
   id: string;
   vendorAddress: string;
-  eventType: string;
-  actor: string | null;
+  eventType: VendorFlagEventType;
+  actor: string;
   note: string | null;
   createdAt: Date | null;
 };
@@ -63,12 +63,39 @@ function date(row: Row, key: string): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
+export const VENDOR_FLAG_EVENT_TYPES = ["flagged", "note_updated", "unflagged"] as const;
+
+export type VendorFlagEventType = (typeof VENDOR_FLAG_EVENT_TYPES)[number];
+
+/**
+ * Reads a column the schema declares NOT NULL. A missing value means the table
+ * has drifted from the shape the register expects, which is worth failing
+ * loudly over -- a blank flagger or an unattributed trail entry would quietly
+ * corrupt an audit record.
+ */
+function requiredText(row: Row, key: string, table: string): string {
+  const value = text(row, key);
+  if (value === null) {
+    throw new Error(`${table}.${key} is missing from the vendor review register.`);
+  }
+  return value;
+}
+
+function reviewEventType(row: Row): VendorFlagEventType {
+  const value = text(row, "event_type");
+  const known = VENDOR_FLAG_EVENT_TYPES.find((eventType) => eventType === value);
+  if (!known) {
+    throw new Error(`vendor_flag_events.event_type "${value}" is not a review event.`);
+  }
+  return known;
+}
+
 function flagFromRow(row: Row): VendorFlag {
   return {
-    id: text(row, "id") ?? "",
+    id: requiredText(row, "id", FLAGS_TABLE),
     tenantId: text(row, "tenant_id"),
-    vendorAddress: text(row, "vendor_address") ?? "",
-    flaggedBy: text(row, "flagged_by"),
+    vendorAddress: requiredText(row, "vendor_address", FLAGS_TABLE),
+    flaggedBy: requiredText(row, "flagged_by", FLAGS_TABLE),
     note: text(row, "note"),
     noteUpdatedBy: text(row, "note_updated_by"),
     noteUpdatedAt: date(row, "note_updated_at"),
@@ -80,10 +107,10 @@ function flagFromRow(row: Row): VendorFlag {
 
 function eventFromRow(row: Row): VendorFlagEvent {
   return {
-    id: text(row, "id") ?? "",
-    vendorAddress: text(row, "vendor_address") ?? "",
-    eventType: text(row, "event_type") ?? "flagged",
-    actor: text(row, "actor"),
+    id: requiredText(row, "id", EVENTS_TABLE),
+    vendorAddress: requiredText(row, "vendor_address", EVENTS_TABLE),
+    eventType: reviewEventType(row),
+    actor: requiredText(row, "actor", EVENTS_TABLE),
     note: text(row, "note"),
     createdAt: date(row, "created_at"),
   };
@@ -181,7 +208,7 @@ async function recordEvent(
   input: {
     tenantId: string;
     vendorAddress: string;
-    eventType: string;
+    eventType: VendorFlagEventType;
     actor: string;
     note: string | null;
   },
