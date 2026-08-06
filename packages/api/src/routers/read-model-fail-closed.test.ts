@@ -4,6 +4,7 @@ import type { ApiContext } from "../context";
 import { READ_MODEL_UNAVAILABLE_MESSAGE } from "../supabase";
 import { analyticsRouter } from "./analytics";
 import { escalationsRouter } from "./escalations";
+import { eventsRouter } from "./events";
 import { ledgerRouter } from "./ledger";
 import { vendorsRouter } from "./vendors";
 import { walletsRouter } from "./wallets";
@@ -67,5 +68,24 @@ describe("read model fails closed", () => {
 
     const wallets = walletsRouter.createCaller(sessionCtx(brokenSupabase));
     await expect(wallets.list()).rejects.toMatchObject(unavailable);
+  });
+
+  it("surfaces an outage in the governed event stream, not an empty feed", async () => {
+    const events = eventsRouter.createCaller(sessionCtx(brokenSupabase));
+    await expect(events.list({ page: 0, pageSize: 50 })).rejects.toMatchObject(unavailable);
+  });
+
+  it("fails closed for the event stream when Supabase is not configured", async () => {
+    const events = eventsRouter.createCaller(sessionCtx(null));
+    await expect(events.list({ page: 0, pageSize: 50 })).rejects.toMatchObject(unavailable);
+  });
+
+  it("returns an empty event stream (not an error) for anonymous callers", async () => {
+    const anonymous: ApiContext = {
+      ...sessionCtx(brokenSupabase),
+      session: null,
+    };
+    const events = eventsRouter.createCaller(anonymous);
+    await expect(events.list({ page: 0, pageSize: 50 })).resolves.toEqual([]);
   });
 });

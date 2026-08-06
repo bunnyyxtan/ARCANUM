@@ -1,4 +1,4 @@
-import { agents, events, wallets } from "@arcanum/db/schema";
+import { agents, wallets } from "@arcanum/db/schema";
 import {
   agentByWalletInputSchema,
   agentCreatedWalletInputSchema,
@@ -10,11 +10,11 @@ import {
   uuidSchema,
 } from "@arcanum/shared";
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import {
   readSupabaseAgents,
+  readSupabaseEvents,
   readSupabasePolicy,
   readSupabaseTransfers,
   readSupabaseWalletByLooseId,
@@ -59,20 +59,16 @@ export const agentsRouter = router({
   events: publicProcedure
     .input(agentByWalletInputSchema.merge(pageInputSchema.partial()))
     .query(async ({ ctx, input }) => {
-      const tenantId = tenantIdFor(ctx);
       const agent = await findAgentByWalletLooseId(ctx, input.walletId);
       if (!agent) {
         return [];
       }
 
-      return failClosed("agents.events", () =>
-        ctx.db.query.events.findMany({
-          where: and(eq(events.tenantId, tenantId), eq(events.walletId, agent.walletId)),
-          orderBy: desc(events.timestamp),
-          limit: input.pageSize ?? 50,
-          offset: (input.page ?? 0) * (input.pageSize ?? 50),
-        }),
-      );
+      return readSupabaseEvents(ctx, {
+        walletId: agent.walletId,
+        page: input.page,
+        pageSize: input.pageSize,
+      });
     }),
 
   listTransfers: publicProcedure
