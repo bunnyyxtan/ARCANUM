@@ -489,17 +489,15 @@ export default function AgentDetailPage() {
                 : "A governed wallet with observable limits and a legible policy trail."}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <span
-              title="Agent restraint changes are submitted on-chain by the governed wallet owner; this console reflects indexed state."
-              className={`cursor-help rounded-full px-4 py-2.5 font-mono text-[10px] uppercase tracking-[.1em] ${
-                frozen
-                  ? "bg-[var(--wl-ink)] text-[var(--wl-bg)]"
-                  : "border border-[var(--wl-line)] text-[var(--wl-secondary)]"
-              }`}
-            >
-              {frozen ? "FROZEN · ON-CHAIN RESTRAINT" : "RESTRAINT · ON-CHAIN ONLY"}
-            </span>
+          <div className="flex flex-wrap items-center gap-2">
+            {frozen ? (
+              <span
+                title="This wallet is frozen on-chain. Restraint changes are submitted on-chain by the governed wallet owner; this console reflects indexed state."
+                className="cursor-help rounded-full bg-[var(--wl-ink)] px-4 py-2.5 font-mono text-[10px] uppercase tracking-[.1em] text-[var(--wl-bg)]"
+              >
+                FROZEN · ON-CHAIN RESTRAINT
+              </span>
+            ) : null}
             <Link
               href={governedWalletAddress ? `/agents/${governedWalletAddress}/policy` : "/agents"}
               className="warm-pill group rounded-full bg-[var(--wl-signal)] px-5 py-3 text-[11px] font-semibold text-white"
