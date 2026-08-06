@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import type { Connector } from "wagmi";
 import { ConnectorAlreadyConnectedError, useAccount, useConnect, useDisconnect } from "wagmi";
 
-type WalletOption = { name: string; hint: string; logo: string; match: string[]; tag?: string };
+type WalletOption = { name: string; hint: string; logo: string; match: string[] };
 
 const WALLET_OPTIONS: WalletOption[] = [
   {
@@ -14,13 +14,24 @@ const WALLET_OPTIONS: WalletOption[] = [
     hint: "Browser extension",
     logo: "/wallets/metamask.png",
     match: ["metamask", "io.metamask"],
-    tag: "INSTALLED",
   },
   {
     name: "Rabby",
     hint: "Browser extension",
     logo: "/wallets/rabby.png",
     match: ["rabby", "io.rabby"],
+  },
+  {
+    name: "OKX Wallet",
+    hint: "Extension · mobile",
+    logo: "/wallets/okx.png",
+    match: ["okx", "com.okex.wallet"],
+  },
+  {
+    name: "Phantom",
+    hint: "Extension · mobile",
+    logo: "/wallets/phantom.png",
+    match: ["phantom", "app.phantom"],
   },
   {
     name: "Coinbase Wallet",
@@ -30,24 +41,61 @@ const WALLET_OPTIONS: WalletOption[] = [
   },
 ];
 
+function matchesOption(connector: Connector, option: WalletOption): boolean {
+  return option.match.some(
+    (needle) =>
+      connector.id.toLowerCase().includes(needle) || connector.name.toLowerCase().includes(needle),
+  );
+}
+
+/**
+ * A wallet extension announced through EIP-6963 shows up as its own injected
+ * connector with the extension's reverse-DNS id (io.rabby, app.phantom, ...).
+ * The generic "injected" connector is wagmi's catch-all, not a detection.
+ */
+function isAnnouncedExtension(connector: Connector): boolean {
+  return connector.type === "injected" && connector.id !== "injected";
+}
+
+function isDetected(connectors: readonly Connector[], option: WalletOption): boolean {
+  return connectors.some(
+    (connector) => isAnnouncedExtension(connector) && matchesOption(connector, option),
+  );
+}
+
 function resolveConnector(
   connectors: readonly Connector[],
   option: WalletOption,
 ): Connector | undefined {
-  const lowerMatch = option.match;
-  const byId = connectors.find((connector) =>
-    lowerMatch.some((needle) => connector.id.toLowerCase().includes(needle)),
+  // 1. The extension the user actually asked for, announced via EIP-6963.
+  const announced = connectors.find(
+    (connector) => isAnnouncedExtension(connector) && matchesOption(connector, option),
   );
-  if (byId) return byId;
-  const byName = connectors.find((connector) =>
-    lowerMatch.some((needle) => connector.name.toLowerCase().includes(needle)),
+  if (announced) return announced;
+  // 2. SDK-backed connectors (e.g. Coinbase Wallet) work without an extension.
+  const sdk = connectors.find((connector) => matchesOption(connector, option));
+  if (sdk) return sdk;
+  // 3. Development-only test wallet stands in for every option locally.
+  const testWallet = connectors.find(
+    (connector) =>
+      connector.id.toLowerCase().includes("arcanum") ||
+      connector.name.toLowerCase().includes("arcanum"),
   );
-  if (byName) return byName;
-  // Fall back to a generic injected connector so the flow still works when the
-  // specific extension is not individually surfaced by wagmi.
-  return connectors.find(
-    (connector) => connector.id === "injected" || connector.type === "injected",
-  );
+  if (testWallet) return testWallet;
+  // 4. Legacy browsers: a wallet sits on window.ethereum without announcing
+  // itself. Only use the catch-all when NO extension announced itself, so
+  // clicking Phantom can never secretly open MetaMask.
+  const anyAnnounced = connectors.some(isAnnouncedExtension);
+  if (
+    !anyAnnounced &&
+    typeof window !== "undefined" &&
+    (window as { ethereum?: unknown }).ethereum
+  ) {
+    return connectors.find(
+      (connector) => connector.id === "injected" || connector.type === "injected",
+    );
+  }
+  return undefined;
 }
 
 export function ConnectModal({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -95,7 +143,7 @@ export function ConnectModal({ open, onClose }: { open: boolean; onClose: () => 
   const handleConnect = async (option: WalletOption) => {
     const connector = resolveConnector(connectors, option);
     if (!connector) {
-      toast.error(`NO CONNECTOR / install the ${option.name} extension and reload`);
+      toast.error(`NOT DETECTED / install the ${option.name} extension and reload`);
       return;
     }
     // wagmi silently restores the persisted connection after a refresh, so the
@@ -232,9 +280,9 @@ export function ConnectModal({ open, onClose }: { open: boolean; onClose: () => 
                       <span className="block text-[13.5px] font-semibold tracking-[-.01em]">
                         {option.name}
                       </span>
-                      {option.tag && (
+                      {isDetected(connectors, option) && (
                         <span className="rounded-full bg-[var(--wl-green-tint)] px-2 py-0.5 font-mono text-[8px] tracking-[.1em] text-[var(--wl-green)]">
-                          {option.tag}
+                          INSTALLED
                         </span>
                       )}
                     </span>
