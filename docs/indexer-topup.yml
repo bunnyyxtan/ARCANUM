@@ -49,9 +49,22 @@ jobs:
           ARCANUM_DISABLE_PG_MIRROR: "1"
         run: |
           set +e
-          timeout --signal=SIGINT --kill-after=30 600 \
-            npm run start --workspace @arcanum/indexer
-          code=$?
+          run_indexer() {
+            timeout --signal=SIGINT --kill-after=30 600 \
+              npm run start --workspace @arcanum/indexer 2>&1 | tee /tmp/indexer.log
+            return "${PIPESTATUS[0]}"
+          }
+          run_indexer; code=$?
+          # A new indexer build cannot reuse the bookkeeping schema the old
+          # build left behind. Nothing durable lives there -- the RPC cache
+          # (ponder_sync) and the Supabase read model both survive -- so reset
+          # it and run once more.
+          if grep -q "previously used by a different Ponder app" /tmp/indexer.log; then
+            echo "new indexer build detected -- resetting the bookkeeping schema"
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+              -c "drop schema if exists ponder_app cascade;"
+            run_indexer; code=$?
+          fi
           # 124 = the timeout stopped it (expected), 130 = clean SIGINT exit.
           if [ "$code" = "124" ] || [ "$code" = "130" ] || [ "$code" = "0" ]; then
             echo "top-up finished (exit $code)"
