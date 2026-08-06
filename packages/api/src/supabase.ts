@@ -14,6 +14,7 @@ import type {
 import { TRPCError } from "@trpc/server";
 
 import type { ApiContext } from "./context";
+import { computePostureScore } from "./posture";
 
 /**
  * User-facing message for a read-model outage. Deliberately explicit that this
@@ -375,27 +376,18 @@ async function agentsForWallets(
     return [];
   }
 
-  // Fetch only the current doctrine and public profile of each wallet the
-  // caller owns, rather than reading whole tables and filtering afterwards.
-  const [doctrines, profiles] = await Promise.all([
-    Promise.all(
-      wallets.map((wallet) =>
-        selectRows(ctx, "doctrines", {
-          filters: { governed_wallet_id: wallet.id },
-          order: "updated_at.desc",
-          limit: 1,
-        })
-      )
-    ),
-    Promise.all(
-      wallets.map((wallet) =>
-        selectRows(ctx, "public_wallet_profiles", {
-          filters: { wallet_address: wallet.address },
-          limit: 1,
-        })
-      )
-    ),
-  ]);
+  // Fetch only the current doctrine of each wallet the caller owns, rather
+  // than reading whole tables and filtering afterwards. Posture is computed
+  // from that doctrine, so no profile read is needed here.
+  const doctrines = await Promise.all(
+    wallets.map((wallet) =>
+      selectRows(ctx, "doctrines", {
+        filters: { governed_wallet_id: wallet.id },
+        order: "updated_at.desc",
+        limit: 1,
+      })
+    )
+  );
 
   return wallets.flatMap((wallet, index) => {
     const [current] = doctrines[index] ?? [];
@@ -403,7 +395,7 @@ async function agentsForWallets(
       return [];
     }
 
-    const posture = numberField(profiles[index]?.[0], ["posture_score"], 0);
+    const posture = postureFromDoctrineRow(current, wallet.frozen);
 
     return arrayField(current, ["signers"])
       .map((signer) => signer.toLowerCase())
@@ -962,7 +954,7 @@ export async function recordSupabaseCreatedWallet(
       governed_wallet_id: walletId,
       wallet_address: walletAddress,
       show_public_badge: false,
-      posture_score: 78,
+      posture_score: postureFromDoctrineRow(doctrineRow as SupabaseRow, false),
       health_grade: "PENDING INDEXER",
       summary: `${input.label} is synced in Supabase. On-chain event history may lag.`,
       updated_at: now,
@@ -1227,11 +1219,16 @@ export async function readSupabasePublicWalletProfile(
   // Aggregates cover the most recent PUBLIC_AGGREGATE_WINDOW events; the read
   // model has no aggregate endpoint, so very long histories would need the
   // indexer to maintain running totals.
-  const ledger = await readSupabasePublicLedger(
-    ctx,
-    walletAddress,
-    PUBLIC_AGGREGATE_WINDOW
-  );
+  const [ledger, doctrineRows] = await Promise.all([
+    readSupabasePublicLedger(ctx, walletAddress, PUBLIC_AGGREGATE_WINDOW),
+    wallet
+      ? selectRows(ctx, "doctrines", {
+          filters: { governed_wallet_id: wallet.id },
+          order: "updated_at.desc",
+          limit: 1,
+        })
+      : Promise.resolve([] as SupabaseRow[]),
+  ]);
 
   // Every published figure is derived from indexed activity: a trust mark that
   // invents numbers is worse than one that shows nothing.
@@ -1249,7 +1246,13 @@ export async function readSupabasePublicWalletProfile(
   return {
     walletAddress: wallet?.address ?? stored?.walletAddress ?? walletAddress,
     label: wallet?.label ?? stored?.label ?? shortAddress(walletAddress),
-    postureScore: stored?.postureScore ?? null,
+    // Posture is recomputed from the live doctrine so the public number always
+    // matches what the doctrine actually enforces; the stored score is only a
+    // fallback for wallets whose doctrine is not readable.
+    postureScore:
+      wallet && doctrineRows[0]
+        ? postureFromDoctrineRow(doctrineRows[0], wallet.frozen)
+        : stored?.postureScore ?? null,
     state: wallet
       ? wallet.frozen
         ? "UNDER RESTRAINT"
@@ -1479,6 +1482,25 @@ function walletFromGovernedWalletRow(row: SupabaseRow): Wallet {
     frozen: status.includes("frozen") || status.includes("restraint"),
     policyVersion: numberField(row, ["policy_version", "doctrine_version"], 1),
   };
+}
+
+/**
+ * Posture is computed from the doctrine that actually restrains the wallet,
+ * never read from a stored constant, so every agent's score reflects its own
+ * controls and reacts when the policy changes.
+ */
+function postureFromDoctrineRow(row: SupabaseRow, frozen: boolean): number {
+  return computePostureScore({
+    requireVendorAllowlist: booleanField(row, ["require_vendor_allowlist"], false),
+    quorum: numberField(row, ["quorum"], 0),
+    councilSize: arrayField(row, ["escalation_council"]).length,
+    perTxCapUsd: numberField(row, ["per_tx_cap_usdc"], 0),
+    dailyCapUsd: numberField(row, ["daily_cap_usdc"], 0),
+    monthlyCapUsd: numberField(row, ["monthly_cap_usdc"], 0),
+    escalateAboveUsd: numberField(row, ["escalate_above_usdc"], 0),
+    doctrineVersion: numberField(row, ["version", "policy_version"], 1),
+    frozen,
+  });
 }
 
 function agentFromSigner(
