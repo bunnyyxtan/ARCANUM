@@ -406,8 +406,7 @@ export default function VendorsPage() {
           : `${name.toUpperCase()} WRITE CONFIRMED · REGISTRY UPDATED`,
       );
       toast.success("VENDOR WRITE CONFIRMED", {
-        description:
-          "On-chain write confirmed. The record may take a moment to update.",
+        description: "On-chain write confirmed. The record may take a moment to update.",
       });
     } catch (caught) {
       const message = errorMessage(caught);

@@ -931,9 +931,7 @@ export default function PolicyEditorPage() {
         <footer className="mt-14 flex flex-col justify-between gap-3 border-t border-[var(--wl-line)] pt-5 font-mono text-[9px] uppercase tracking-[.13em] text-[var(--wl-mute)] sm:flex-row">
           <span>Draft changes · no capital movement until signed</span>
           <span>
-            {policyPendingIndexer
-              ? "Revision deployed · record updating"
-              : "Arc Testnet policy"}
+            {policyPendingIndexer ? "Revision deployed · record updating" : "Arc Testnet policy"}
           </span>
         </footer>
       </div>
