@@ -43,12 +43,36 @@ function createReadModel(options: FakeOptions = {}) {
     created_at: stamp(),
   });
 
+  // Reviewers belong to their organisation through membership, which is what
+  // the register scopes on. Owning a governed wallet is no longer the way in.
+  const profileFor = (wallet: string): Row => ({
+    id: `profile-${wallet.slice(2, 6)}`,
+    wallet_address: wallet,
+    display_name: `Reviewer ${wallet.slice(2, 6)}`,
+    created_at: stamp(),
+  });
+
+  const memberFor = (wallet: string, organizationId: string, role: string): Row => ({
+    id: `member-${wallet.slice(2, 6)}`,
+    organization_id: organizationId,
+    profile_id: `profile-${wallet.slice(2, 6)}`,
+    role,
+    created_at: stamp(),
+  });
+
   const tables = {
     governed_wallets: [
       walletFor(FLAGGER, ORG),
       walletFor(EDITOR, ORG),
       walletFor(CLEARER, ORG),
       walletFor(OUTSIDER, OTHER_ORG),
+    ],
+    profiles: [profileFor(FLAGGER), profileFor(EDITOR), profileFor(CLEARER), profileFor(OUTSIDER)],
+    organization_members: [
+      memberFor(FLAGGER, ORG, "owner"),
+      memberFor(EDITOR, ORG, "approver"),
+      memberFor(CLEARER, ORG, "approver"),
+      memberFor(OUTSIDER, OTHER_ORG, "owner"),
     ],
     vendor_flags: [] as Row[],
     vendor_flag_events: [] as Row[],

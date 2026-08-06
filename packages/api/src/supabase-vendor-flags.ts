@@ -1,5 +1,5 @@
 import type { ApiContext } from "./context";
-import { readSupabaseWallets } from "./supabase";
+import { readCallerMembership, readSupabaseWallets } from "./supabase";
 
 /**
  * Vendor review register, backed by Supabase.
@@ -126,12 +126,23 @@ function registerClient(ctx: ApiContext) {
   return client;
 }
 
-/** Organisations whose register this caller is allowed to touch. */
+/**
+ * Organisations whose register this caller is allowed to touch. The workspace
+ * they belong to comes first, so a teammate who owns no governed wallet can
+ * still work the register, and writes land in the workspace rather than in
+ * whichever organisation happens to own their oldest wallet.
+ */
 async function callerOrgIds(ctx: ApiContext): Promise<string[]> {
-  const wallets = await readSupabaseWallets(ctx);
+  const [membership, wallets] = await Promise.all([
+    readCallerMembership(ctx),
+    readSupabaseWallets(ctx),
+  ]);
+
   return [
     ...new Set(
-      wallets.map((wallet) => wallet.orgId).filter((orgId): orgId is string => Boolean(orgId)),
+      [membership?.orgId, ...wallets.map((wallet) => wallet.orgId)].filter(
+        (orgId): orgId is string => Boolean(orgId),
+      ),
     ),
   ];
 }

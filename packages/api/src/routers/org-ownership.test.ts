@@ -50,7 +50,7 @@ function createReadModel() {
     organizations: [{ id: ORG, name: "Arcanum Workspace", created_at: stamp() }] as Row[],
     organization_members: [
       { id: "member-owner", organization_id: ORG, profile_id: "profile-1111", role: "owner" },
-      { id: "member-mate", organization_id: ORG, profile_id: "profile-2222", role: "member" },
+      { id: "member-mate", organization_id: ORG, profile_id: "profile-2222", role: "approver" },
     ] as Row[],
     profiles: [profileFor(OWNER, "Owner"), profileFor(TEAMMATE, "Teammate")] as Row[],
   };

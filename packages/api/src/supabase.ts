@@ -284,21 +284,121 @@ export async function syncSupabaseAuthSession(user: {
   }
 }
 
+/**
+ * The workspace a caller belongs to, resolved from their membership rather than
+ * from the wallets they happen to own on chain.
+ *
+ * Ownership of a governed wallet used to be the only way in, which meant a
+ * teammate invited to a workspace saw an empty product and a brand new visitor
+ * had no way to start one. Membership is the durable answer to "whose data is
+ * this", and it survives a wallet being deployed, transferred or retired.
+ *
+ * Resolved once per request: a single dashboard load fans out into a dozen
+ * reads and every one of them asks this question.
+ */
+export type CallerMembership = { orgId: string; role: string; profileId: string };
+
+const membershipByRequest = new WeakMap<ApiContext, Promise<CallerMembership | null>>();
+
+export function readCallerMembership(ctx: ApiContext): Promise<CallerMembership | null> {
+  const wallet = ownerScope(ctx);
+  if (!wallet) {
+    return Promise.resolve(null);
+  }
+
+  const inFlight = membershipByRequest.get(ctx);
+  if (inFlight) {
+    return inFlight;
+  }
+
+  const pending = resolveCallerMembership(ctx, wallet);
+  membershipByRequest.set(ctx, pending);
+  return pending;
+}
+
+/**
+ * Drop the cached membership after a write that changes it. Creating a
+ * workspace makes the caller a member mid-request, and the rest of that request
+ * must not keep reading the answer from before.
+ */
+export function forgetCallerMembership(ctx: ApiContext) {
+  membershipByRequest.delete(ctx);
+}
+
+async function resolveCallerMembership(
+  ctx: ApiContext,
+  wallet: string,
+): Promise<CallerMembership | null> {
+  const [profile] = await selectRows(ctx, "profiles", {
+    filters: { wallet_address: wallet },
+    limit: 1,
+  });
+
+  const profileId = profile ? stringField(profile, ["id"]) : "";
+  if (!profileId) {
+    return null;
+  }
+
+  // Oldest membership wins. A profile should only ever have one, but a handful
+  // of accounts pre-date that rule, and "whose data am I looking at" cannot be
+  // answered differently from one request to the next.
+  const [member] = await selectRows(ctx, "organization_members", {
+    filters: { profile_id: profileId },
+    limit: 1,
+    order: "created_at.asc",
+  });
+
+  const orgId = member ? stringField(member, ["organization_id"]) : "";
+  if (!orgId) {
+    return null;
+  }
+
+  return { orgId, role: stringField(member, ["role"], "viewer"), profileId };
+}
+
 export async function readSupabaseWallets(ctx: ApiContext): Promise<Wallet[]> {
   const owner = ownerScope(ctx);
   if (!owner) {
     return [];
   }
 
-  const rows = await selectRows(ctx, "governed_wallets", {
-    filters: { owner_address: owner },
-    order: "created_at.desc",
-  });
-  if (rows.length === 0) {
-    return [];
+  const membership = await readCallerMembership(ctx);
+
+  // Everything in the caller's workspace, plus anything the caller owns
+  // directly. The union matters in both directions: a teammate owns none of the
+  // workspace's wallets, and an owner from before workspaces existed may hold
+  // wallets the read model never filed under an organisation.
+  const [orgRows, ownedRows] = await Promise.all([
+    membership
+      ? selectRows(ctx, "governed_wallets", {
+          filters: { organization_id: membership.orgId },
+          order: "created_at.desc",
+        })
+      : Promise.resolve([] as SupabaseRow[]),
+    selectRows(ctx, "governed_wallets", {
+      filters: { owner_address: owner },
+      order: "created_at.desc",
+    }),
+  ]);
+
+  const seen = new Set<string>();
+  const merged: SupabaseRow[] = [];
+  for (const row of [...orgRows, ...scopedRows(ctx, ownedRows)]) {
+    const id = stringField(row, ["id"]);
+    if (id && seen.has(id)) {
+      continue;
+    }
+    if (id) {
+      seen.add(id);
+    }
+    merged.push(row);
   }
 
-  return scopedRows(ctx, rows).map(walletFromGovernedWalletRow);
+  merged.sort((left, right) =>
+    stringField(right, ["created_at"]).localeCompare(stringField(left, ["created_at"])),
+  );
+
+  return merged.map(walletFromGovernedWalletRow);
 }
 
 /**
@@ -1033,6 +1133,22 @@ async function ensureOwnerWorkspaceForWallet(
     )[0];
   const profileId = requiredStringField(profile, ["id"], "profiles.id");
 
+  // A wallet that already belongs to a workspace must not be handed a second
+  // one. Provisioning used to look only for a workspace this profile *created*,
+  // so an invited teammate signing in for the first time was given an empty
+  // workspace of their own -- and then "which workspace am I in?" had two
+  // answers, decided by whichever row the database returned first.
+  const [existingMembership] = await client.selectRows("organization_members", {
+    filters: { profile_id: profileId },
+    limit: 1,
+  });
+  const memberOrgId = existingMembership
+    ? stringField(existingMembership, ["organization_id"], "")
+    : "";
+  if (memberOrgId) {
+    return { profileId, organizationId: memberOrgId };
+  }
+
   const [existingOrganization] = await client.selectRows("organizations", {
     filters: { created_by: profileId },
     limit: 1,
@@ -1043,7 +1159,7 @@ async function ensureOwnerWorkspaceForWallet(
     (
       await client.upsertRows("organizations", [
         {
-          name: workspaceNameForWallet(walletAddress),
+          name: DEFAULT_WORKSPACE_NAME,
           slug: workspaceSlugForWallet(walletAddress),
           safe_address: walletAddress,
           created_by: profileId,
@@ -1412,9 +1528,12 @@ function requiredStringField(row: SupabaseRow | undefined, keys: string[], label
   return value;
 }
 
-function workspaceNameForWallet(walletAddress: string) {
-  return "Arcanum Workspace";
-}
+/**
+ * Every auto-provisioned workspace starts under the same placeholder. Keeping
+ * it in one exported constant is what lets the product recognise a workspace
+ * nobody has named yet and ask its owner for a real one.
+ */
+export const DEFAULT_WORKSPACE_NAME = "Arcanum Workspace";
 
 function workspaceSlugForWallet(walletAddress: string) {
   return `arcanum-${walletAddress.slice(2, 10)}`;
