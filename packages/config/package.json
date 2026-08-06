@@ -1,6 +1,7 @@
 {
   "name": "@arcanum/config",
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "description": "Shared TypeScript and tooling configuration presets",
   "private": true,
   "type": "module",
   "exports": {

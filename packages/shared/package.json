@@ -1,6 +1,7 @@
 {
   "name": "@arcanum/shared",
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "description": "Shared chain config, contract addresses, and types",
   "private": true,
   "type": "module",
   "exports": {

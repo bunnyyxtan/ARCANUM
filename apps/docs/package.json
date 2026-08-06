@@ -1,6 +1,7 @@
 {
   "name": "@arcanum/docs",
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "description": "Documentation site for the Arcanum protocol and SDKs",
   "private": true,
   "type": "module",
   "scripts": {
