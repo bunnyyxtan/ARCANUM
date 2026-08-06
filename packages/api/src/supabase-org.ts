@@ -104,7 +104,14 @@ export async function readSupabaseOrganization(
     limit: 1,
   });
 
-  return row ? organizationFrom(row, anchor) : null;
+  if (!row) {
+    // The caller owns a governed wallet whose organisation has gone missing.
+    // That is a broken read model, not an account waiting to be set up, and
+    // dressing it up as a fresh workspace would hide real data loss.
+    throw new Error(`Organization ${anchor.orgId} is missing from the read model.`);
+  }
+
+  return organizationFrom(row, anchor);
 }
 
 export async function readSupabaseOrgMembers(ctx: ApiContext): Promise<OrganizationMember[]> {

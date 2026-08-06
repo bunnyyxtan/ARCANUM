@@ -161,6 +161,9 @@ export type SupabaseServiceRoleClient = {
     patch: SupabaseRow,
     filters: Record<string, string | number | boolean>,
   ) => Promise<SupabaseRow[]>;
+  // Postgres functions are how a write that must not tear -- a state change and
+  // its audit event -- stays atomic: the REST tables have no transactions.
+  callFunction: (fn: string, args: Record<string, unknown>) => Promise<unknown>;
 };
 
 const warningLabels = new Set<string>();
@@ -232,11 +235,33 @@ export function createSupabaseServiceRoleClient(): SupabaseServiceRoleClient | n
     return (await response.json()) as SupabaseRow[];
   }
 
+  async function callFunction(fn: string, args: Record<string, unknown>) {
+    const response = await fetch(`${baseUrl}/rest/v1/rpc/${fn}`, {
+      method: "POST",
+      headers: {
+        apikey: adminKey,
+        Authorization: `Bearer ${adminKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(args),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      throw new Error(`rpc ${fn} failed with ${response.status}: ${safeSupabaseError(body)}`);
+    }
+
+    const body = await response.text();
+    return body ? (JSON.parse(body) as unknown) : null;
+  }
+
   return {
     configured: true,
     selectRows: (table, options) => request("GET", table, options),
     upsertRows: (table, rows, onConflict) => request("POST", table, { body: rows, onConflict }),
     patchRows: (table, patch, filters) => request("PATCH", table, { body: patch, filters }),
+    callFunction,
   };
 }
 

@@ -24,7 +24,9 @@ export default function SettingsPage() {
   const [inviteEmail, setInviteEmail] = useState("");
 
   const members = liveMembers.data;
-  const orgName = org.data?.name ?? (org.isLoading ? "Loading…" : "Live Workspace");
+  // Before the wallet signs in there is no organisation query to answer this,
+  // so the header says what is actually true rather than naming a workspace.
+  const orgName = org.data?.name ?? (org.isLoading ? "Loading…" : "Connect Wallet");
   const memberCaption =
     members.length > 0 ? "LIVE MEMBERS INDEXED" : "INVITE APPROVERS AFTER WALLET SETUP";
 

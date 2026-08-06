@@ -146,19 +146,6 @@ async function writeOrgId(ctx: ApiContext): Promise<string | null> {
   return orgId ?? null;
 }
 
-async function activeFlagRow(
-  ctx: ApiContext,
-  orgId: string,
-  vendorAddress: string,
-): Promise<Row | null> {
-  const client = registerClient(ctx);
-  const [row] = await client.selectRows(FLAGS_TABLE, {
-    filters: { organization_id: orgId, vendor_address: vendorAddress },
-    limit: 1,
-  });
-  return row ?? null;
-}
-
 export async function listVendorFlags(ctx: ApiContext): Promise<VendorFlag[]> {
   const client = registerClient(ctx);
   const orgIds = await callerOrgIds(ctx);
@@ -202,152 +189,113 @@ export async function listVendorFlagHistory(
     .slice(0, HISTORY_LIMIT);
 }
 
-async function recordEvent(
+type FlagAction = "flag" | "note" | "unflag";
+
+/**
+ * Apply a review change and record its audit event as one indivisible step.
+ *
+ * The REST tables have no transactions, so a state write followed by an event
+ * write can tear: a vendor left flagged with nothing in the trail to say who
+ * did it, which is exactly the kind of gap a review register exists to prevent.
+ * The database function does both inside one transaction and takes a row lock,
+ * so concurrent reviewers queue instead of racing.
+ *
+ * Returns the resulting flag row, or null when there was nothing active to edit
+ * or clear -- in that case nothing is written and no event is invented.
+ */
+async function applyFlagChange(
   ctx: ApiContext,
   orgId: string,
+  action: FlagAction,
   input: {
     tenantId: string;
     vendorAddress: string;
-    eventType: VendorFlagEventType;
     actor: string;
-    note: string | null;
+    note?: string | null;
   },
-): Promise<void> {
+): Promise<Row | null> {
   const client = registerClient(ctx);
-  await client.upsertRows(EVENTS_TABLE, [
-    {
-      organization_id: orgId,
-      tenant_id: input.tenantId,
-      vendor_address: input.vendorAddress,
-      event_type: input.eventType,
-      actor: input.actor,
-      note: input.note,
-    },
-  ]);
+  const result = await client.callFunction("vendor_flag_apply", {
+    p_org: orgId,
+    p_tenant: input.tenantId,
+    p_vendor: input.vendorAddress,
+    p_action: action,
+    p_actor: input.actor,
+    p_note: input.note ?? null,
+  });
+
+  if (result === null || result === undefined) {
+    return null;
+  }
+
+  if (typeof result !== "object" || Array.isArray(result)) {
+    throw new Error(`vendor_flag_apply returned an unexpected result for ${action}.`);
+  }
+
+  return result as Row;
 }
 
 export async function flagVendor(
   ctx: ApiContext,
   input: VendorFlagWrite,
 ): Promise<VendorFlag | null> {
-  const client = registerClient(ctx);
   const orgId = await writeOrgId(ctx);
   if (!orgId) {
     return null;
   }
 
-  const note = input.note ? input.note : null;
   // Re-flagging is a fresh flag: the flagger owns the note again, so any
   // previous "last edited by" trail is cleared and a prior unflag is
   // superseded. The cycle that came before stays in the event trail.
-  const [row] = await client.upsertRows(
-    FLAGS_TABLE,
-    [
-      {
-        organization_id: orgId,
-        tenant_id: input.tenantId,
-        vendor_address: input.vendorAddress,
-        flagged_by: input.actor,
-        note,
-        note_updated_by: null,
-        note_updated_at: null,
-        removed_by: null,
-        removed_at: null,
-        created_at: new Date().toISOString(),
-      },
-    ],
-    "organization_id,vendor_address",
-  );
-
-  if (!row) {
-    return null;
-  }
-
-  await recordEvent(ctx, orgId, {
+  const row = await applyFlagChange(ctx, orgId, "flag", {
     tenantId: input.tenantId,
     vendorAddress: input.vendorAddress,
-    eventType: "flagged",
     actor: input.actor,
-    note,
+    note: input.note ? input.note : null,
   });
 
-  return flagFromRow(row);
+  return row ? flagFromRow(row) : null;
 }
 
 export async function updateVendorFlagNote(
   ctx: ApiContext,
   input: VendorFlagWrite,
 ): Promise<VendorFlag | null> {
-  const client = registerClient(ctx);
   const orgId = await writeOrgId(ctx);
   if (!orgId) {
     return null;
   }
 
-  const existing = await activeFlagRow(ctx, orgId, input.vendorAddress);
-  if (!existing || existing.removed_at) {
-    return null;
-  }
-
-  const note = input.note ? input.note : null;
   // Only the note moves: who flagged the vendor and when stays intact, and the
-  // editor is stamped so an approver can see who last touched it.
-  const [row] = await client.patchRows(
-    FLAGS_TABLE,
-    {
-      note,
-      note_updated_by: input.actor,
-      note_updated_at: new Date().toISOString(),
-    },
-    { organization_id: orgId, vendor_address: input.vendorAddress },
-  );
-
-  if (!row) {
-    return null;
-  }
-
-  await recordEvent(ctx, orgId, {
+  // editor is stamped so an approver can see who last touched it. A vendor that
+  // is not currently flagged has no note to edit, and comes back null.
+  const row = await applyFlagChange(ctx, orgId, "note", {
     tenantId: input.tenantId,
     vendorAddress: input.vendorAddress,
-    eventType: "note_updated",
     actor: input.actor,
-    note,
+    note: input.note ? input.note : null,
   });
 
-  return flagFromRow(row);
+  return row ? flagFromRow(row) : null;
 }
 
 export async function unflagVendor(
   ctx: ApiContext,
   input: Omit<VendorFlagWrite, "note">,
 ): Promise<{ cleared: boolean }> {
-  const client = registerClient(ctx);
   const orgId = await writeOrgId(ctx);
   if (!orgId) {
     return { cleared: false };
   }
 
-  const existing = await activeFlagRow(ctx, orgId, input.vendorAddress);
   // Already unflagged (or never flagged) is a legitimate idempotent success,
   // and logging an event for it would invent review activity that never
   // happened.
-  if (!existing || existing.removed_at) {
-    return { cleared: false };
-  }
-
-  await client.patchRows(
-    FLAGS_TABLE,
-    { removed_by: input.actor, removed_at: new Date().toISOString() },
-    { organization_id: orgId, vendor_address: input.vendorAddress },
-  );
-
-  await recordEvent(ctx, orgId, {
+  const row = await applyFlagChange(ctx, orgId, "unflag", {
     tenantId: input.tenantId,
     vendorAddress: input.vendorAddress,
-    eventType: "unflagged",
     actor: input.actor,
-    note: null,
   });
 
-  return { cleared: true };
+  return { cleared: Boolean(row) };
 }

@@ -119,6 +119,80 @@ function createReadModel(options: FakeOptions = {}) {
       }
       return hits.map((row) => ({ ...row }));
     },
+
+    // Stands in for the vendor_flag_apply database function: it applies the
+    // state change and appends the matching audit event as one step, the same
+    // contract the real function keeps inside a transaction.
+    callFunction: async (fn: string, args: Record<string, unknown>) => {
+      if (fn !== "vendor_flag_apply") {
+        throw new Error(`the review register called an unexpected function: ${fn}`);
+      }
+      if (options.failFlagWrites) {
+        throw new Error("vendor_flag_apply rejected");
+      }
+
+      const org = args.p_org as string;
+      const tenant = args.p_tenant as string;
+      const vendor = args.p_vendor as string;
+      const action = args.p_action as string;
+      const actor = args.p_actor as string;
+      const note = (args.p_note as string | null) ?? null;
+
+      const flags = tableOf("vendor_flags");
+      const events = tableOf("vendor_flag_events");
+      const existing = flags.find(
+        (row) => row.organization_id === org && row.vendor_address === vendor,
+      );
+
+      let row: Row;
+      if (action === "flag") {
+        const fresh = {
+          tenant_id: tenant,
+          flagged_by: actor,
+          note,
+          note_updated_by: null,
+          note_updated_at: null,
+          removed_by: null,
+          removed_at: null,
+          created_at: stamp(),
+        };
+        if (existing) {
+          Object.assign(existing, fresh);
+          row = existing;
+        } else {
+          row = {
+            id: `vendor_flags-${flags.length + 1}`,
+            organization_id: org,
+            vendor_address: vendor,
+            ...fresh,
+          };
+          flags.push(row);
+        }
+      } else if (!existing || existing.removed_at) {
+        // Nothing active to edit or clear: no write, no event.
+        return null;
+      } else if (action === "note") {
+        Object.assign(existing, { note, note_updated_by: actor, note_updated_at: stamp() });
+        row = existing;
+      } else {
+        Object.assign(existing, { removed_by: actor, removed_at: stamp() });
+        row = existing;
+      }
+
+      events.push({
+        id: `vendor_flag_events-${events.length + 1}`,
+        organization_id: org,
+        tenant_id: tenant,
+        vendor_address: vendor,
+        event_type:
+          action === "flag" ? "flagged" : action === "note" ? "note_updated" : "unflagged",
+        actor,
+        note: action === "unflag" ? null : note,
+        created_at: stamp(),
+      });
+
+      return { ...row };
+    },
   };
 
   return { client, tables };

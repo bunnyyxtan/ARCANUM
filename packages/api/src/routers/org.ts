@@ -79,11 +79,14 @@ function listMembersFor(ctx: OrgContext) {
   return failClosed("org.listMembers", () => readSupabaseOrgMembers(ctx));
 }
 
+// A signed-in wallet that governs nothing yet has no organisation to name, and
+// saying so is honest. Inventing a plausible workspace name here would make an
+// unprovisioned account -- or a wiped one -- look like a healthy one.
 function orgForSession(ctx: { session: { walletAddress: string } | null }) {
   const wallet = ctx.session?.walletAddress ?? "0x0000000000000000000000000000000000000000";
   return {
     ...baseOrg,
-    name: ctx.session ? "Live Workspace" : "Connect Wallet",
+    name: ctx.session ? "No Workspace Yet" : "Connect Wallet",
     ownerWallet: wallet,
     multisigAddress: wallet,
   };
