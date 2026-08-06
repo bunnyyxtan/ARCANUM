@@ -9,9 +9,6 @@ export const dynamic = "force-dynamic";
 
 type GlobalStats = {
   capitalGovernedUsdc: number;
-  movements: number;
-  governedWallets: number;
-  workspaces: number;
 };
 
 let cached: { at: number; stats: GlobalStats } | null = null;
@@ -38,9 +35,6 @@ export async function GET() {
     > | null;
     const stats: GlobalStats = {
       capitalGovernedUsdc: Number(raw?.capitalGovernedUsdc ?? 0),
-      movements: Number(raw?.movements ?? 0),
-      governedWallets: Number(raw?.governedWallets ?? 0),
-      workspaces: Number(raw?.workspaces ?? 0),
     };
     if (!Number.isFinite(stats.capitalGovernedUsdc)) {
       stats.capitalGovernedUsdc = 0;

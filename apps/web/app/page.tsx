@@ -20,9 +20,6 @@ const GITHUB_URL = "https://github.com/bunnyyxtan/ARCANUM";
 
 type GlobalStats = {
   capitalGovernedUsdc: number;
-  movements: number;
-  governedWallets: number;
-  workspaces: number;
 };
 
 function formatUsd(value: number): string {
@@ -273,11 +270,6 @@ export default function LandingPage() {
                 <span className="block font-mono text-[8px] uppercase tracking-[.12em] text-[var(--wl-secondary)]">
                   capital governed
                 </span>
-                {globalStats && (
-                  <span className="mt-1 block font-mono text-[8px] uppercase tracking-[.12em] text-[var(--wl-muted)]">
-                    {globalStats.governedWallets} wallets · {globalStats.movements} decisions
-                  </span>
-                )}
               </div>
             </div>
           </div>
