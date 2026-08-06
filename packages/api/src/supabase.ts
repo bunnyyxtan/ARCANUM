@@ -707,6 +707,7 @@ function governanceEventFromRow(row: SupabaseRow, wallets: Wallet[]): Governance
       category: stringField(row, ["category", "vendor_category"], "other"),
       counterparty: stringField(row, ["counterparty_name"], null),
       reason: stringField(row, ["decision_reason"], null),
+      amountUsdc: numberField(row, ["amount_usdc", "amount"], 0),
     },
     blockNumber: numberField(row, ["block_number"], 0),
     txHash,

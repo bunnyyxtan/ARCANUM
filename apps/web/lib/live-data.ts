@@ -442,14 +442,21 @@ export function useLiveEvents() {
     { enabled, retry: false, staleTime: 30_000 },
   );
   const events: GovernanceEvent[] = (enabled ? (query.data ?? []) : []).map((event) => {
-    const status = ledgerStatus(event.type.includes("ESCALATED") ? "ESCALATE" : "ALLOW");
+    const status = ledgerStatus(
+      event.type.includes("ESCALATED")
+        ? "ESCALATE"
+        : event.type.includes("DENIED")
+          ? "DENY"
+          : "ALLOW",
+    );
+    const payloadAmount = Number((event.payload as { amountUsdc?: unknown }).amountUsdc ?? 0);
     return {
       id: event.id,
       label: event.type,
       actor: event.walletId ?? "Arc Testnet",
       counterparty: event.txHash,
       category: "other",
-      amount: 0,
+      amount: Number.isFinite(payloadAmount) ? payloadAmount : 0,
       status,
       timestamp: formatTimestampOrNA(event.timestamp),
       severity:

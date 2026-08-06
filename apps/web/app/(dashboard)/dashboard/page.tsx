@@ -98,10 +98,13 @@ function CountUp({
 }
 
 function StreamRow({ event, index }: { event: GovernanceEvent; index: number }) {
+  // Every row opens its full movement in the ledger: the compact stream hides
+  // detail, so the row itself is the way in.
   return (
-    <div
+    <Link
+      href={`/ledger?focus=${encodeURIComponent(event.counterparty)}`}
       style={{ "--i": index } as CSSProperties}
-      className="stream-row grid gap-2 px-3 py-4 md:grid-cols-[.8fr_1.15fr_1.25fr_1fr_.8fr_.85fr] md:items-center"
+      className="stream-row grid gap-2 px-3 py-4 transition-colors hover:bg-[var(--wl-bg-soft)] md:grid-cols-[.8fr_1.15fr_1.25fr_1fr_.8fr_.85fr] md:items-center"
     >
       <div className="flex justify-between md:block">
         <span className="font-mono text-[10px] tabular-nums text-[var(--wl-secondary)]">
@@ -122,7 +125,7 @@ function StreamRow({ event, index }: { event: GovernanceEvent; index: number }) 
       <span className="hidden md:block">
         <StatusPill status={event.status} />
       </span>
-    </div>
+    </Link>
   );
 }
 

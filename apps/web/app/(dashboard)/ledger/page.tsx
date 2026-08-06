@@ -102,6 +102,23 @@ export default function LedgerPage() {
     return baseRows.find((row) => row.id === selectedId) ?? null;
   }, [baseRows, selectedId]);
 
+  // Deep link from the dashboard event stream: /ledger?focus=<tx hash or id>
+  // arrives with that movement already selected, detail panel open.
+  const [focusHandled, setFocusHandled] = useState(false);
+  useEffect(() => {
+    if (focusHandled || baseRows.length === 0) {
+      return;
+    }
+    const focus = new URLSearchParams(window.location.search).get("focus");
+    if (focus) {
+      const match = baseRows.find((row) => row.hash === focus || row.id === focus);
+      if (match) {
+        setSelectedId(match.id);
+      }
+    }
+    setFocusHandled(true);
+  }, [focusHandled, baseRows]);
+
   const totals = useMemo(() => {
     return {
       value: baseRows.reduce((sum, row) => sum + row.amount, 0),
