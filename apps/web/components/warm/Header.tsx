@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { type ReactNode, useEffect, useState } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { useAccount, useDisconnect } from "wagmi";
 
+import { formatUsdCompact } from "@/lib/format";
 import { useLiveAnomalies, useLiveEscalations } from "@/lib/live-data";
 
 import { CommandPalette } from "./CommandPalette";
@@ -43,12 +45,14 @@ export function Header({ children }: HeaderProps) {
 
   const inboxItems = [
     ...pendingEscalations.slice(0, 3).map((item) => ({
+      key: `esc:${item.id}`,
       kind: "ESCALATION" as const,
-      text: `${item.id} is awaiting operator approval`,
+      text: `${item.agentName} · ${formatUsdCompact(item.amount)} awaiting your approval`,
       time: item.expiresIn ? `expires ${item.expiresIn}` : "pending",
       href: "/escalations",
     })),
     ...anomalies.slice(0, 3).map((item) => ({
+      key: `anom:${item.id}`,
       kind: "ANOMALY" as const,
       text: `${item.agentName} crossed the ${item.score.toFixed(1)}σ threshold`,
       time: item.timestamp,
@@ -56,6 +60,32 @@ export function Header({ children }: HeaderProps) {
     })),
   ].slice(0, 4);
   const inboxCount = inboxItems.length;
+
+  // Read state is per-operator and survives reloads: seen notices stay listed
+  // but stop counting, so the bell only demands attention for new governance.
+  const readStorageKey = `arcanum-inbox-read:${address?.toLowerCase() ?? "guest"}`;
+  const [readKeys, setReadKeys] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(readStorageKey);
+      setReadKeys(new Set(raw ? (JSON.parse(raw) as string[]) : []));
+    } catch {
+      setReadKeys(new Set());
+    }
+  }, [readStorageKey]);
+  const persistReadKeys = (keys: Set<string>) => {
+    setReadKeys(new Set(keys));
+    try {
+      window.localStorage.setItem(readStorageKey, JSON.stringify([...keys].slice(-100)));
+    } catch {
+      // Private browsing: read state lives for this visit only.
+    }
+  };
+  const unreadCount = inboxItems.filter((item) => !readKeys.has(item.key)).length;
+  const markAllRead = () => {
+    persistReadKeys(new Set([...readKeys, ...inboxItems.map((item) => item.key)]));
+    toast.success("INBOX CLEAR /", { description: "All governance notices marked read." });
+  };
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -138,7 +168,7 @@ export function Header({ children }: HeaderProps) {
             >
               <path d="M4.5 8.5a5.5 5.5 0 0 1 11 0c0 5 2 5 2 6H2.5c0-1 2-1 2-6ZM8 17h4" />
             </svg>
-            {inboxCount > 0 && (
+            {unreadCount > 0 && (
               <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-[var(--wl-signal)]" />
             )}
           </button>
@@ -146,15 +176,27 @@ export function Header({ children }: HeaderProps) {
             <div
               role="dialog"
               aria-label="Recent governance events"
+              style={{ animation: "warmIn 260ms cubic-bezier(0.16,1,0.3,1) both" }}
               className="absolute right-0 top-[calc(100%+10px)] z-30 w-[300px] border border-[var(--wl-line-bold)] bg-[var(--wl-bg-raised)] p-4 shadow-[12px_14px_0_var(--wl-line-faint)]"
             >
               <div className="flex items-center justify-between border-b border-[var(--wl-line)] pb-3">
                 <p className="font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-signal)]">
                   INBOX / GOVERNANCE
                 </p>
-                <span className="font-mono text-[9px] text-[var(--wl-mute)]">
-                  {String(inboxCount).padStart(2, "0")} NEW
-                </span>
+                <div className="flex items-center gap-3">
+                  <span className="font-mono text-[9px] text-[var(--wl-mute)]">
+                    {String(unreadCount).padStart(2, "0")} NEW
+                  </span>
+                  {unreadCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={markAllRead}
+                      className="font-mono text-[8.5px] uppercase tracking-[.12em] text-[var(--wl-signal)] transition-colors hover:text-[var(--wl-signal-deep)]"
+                    >
+                      MARK ALL READ
+                    </button>
+                  )}
+                </div>
               </div>
               {inboxCount === 0 ? (
                 <p className="py-8 text-center font-mono text-[9px] uppercase tracking-[.14em] text-[var(--wl-mute)]">
@@ -162,27 +204,46 @@ export function Header({ children }: HeaderProps) {
                 </p>
               ) : (
                 <div className="divide-y divide-[var(--wl-line-soft)]">
-                  {inboxItems.map((item, index) => (
-                    <button
-                      type="button"
-                      key={`${item.kind}-${index}`}
-                      onClick={() => {
-                        setNotifications(false);
-                        router.push(item.href);
-                      }}
-                      className="block w-full py-3 text-left transition-colors hover:text-[var(--wl-signal)]"
-                    >
-                      <span className="font-mono text-[9px] tracking-[.13em] text-[var(--wl-signal)]">
-                        {item.kind}
-                      </span>
-                      <span className="mt-1 block text-[12px] leading-[1.35] text-[var(--wl-ink)]">
-                        {item.text}
-                      </span>
-                      <span className="mt-1 block font-mono text-[9px] text-[var(--wl-mute)]">
-                        {item.time}
-                      </span>
-                    </button>
-                  ))}
+                  {inboxItems.map((item, index) => {
+                    const isRead = readKeys.has(item.key);
+                    return (
+                      <button
+                        type="button"
+                        key={item.key}
+                        style={
+                          {
+                            animation: `warmIn 320ms cubic-bezier(0.16,1,0.3,1) ${index * 70}ms both`,
+                          } as CSSProperties
+                        }
+                        onClick={() => {
+                          persistReadKeys(new Set([...readKeys, item.key]));
+                          setNotifications(false);
+                          router.push(item.href);
+                        }}
+                        className={`block w-full py-3 text-left transition-all duration-[220ms] hover:translate-x-0.5 hover:opacity-100 ${
+                          isRead ? "opacity-55" : ""
+                        }`}
+                      >
+                        <span
+                          className={`flex items-center gap-1.5 font-mono text-[9px] tracking-[.13em] ${
+                            isRead ? "text-[var(--wl-mute)]" : "text-[var(--wl-signal)]"
+                          }`}
+                        >
+                          {!isRead && (
+                            <span className="h-1 w-1 rounded-full bg-[var(--wl-signal)]" />
+                          )}
+                          {item.kind}
+                          {isRead && <span>· READ</span>}
+                        </span>
+                        <span className="mt-1 block text-[12px] leading-[1.35] text-[var(--wl-ink)]">
+                          {item.text}
+                        </span>
+                        <span className="mt-1 block font-mono text-[9px] text-[var(--wl-mute)]">
+                          {item.time}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
