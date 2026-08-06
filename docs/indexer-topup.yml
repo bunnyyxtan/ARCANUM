@@ -61,8 +61,11 @@ jobs:
           # it and run once more.
           if grep -q "previously used by a different Ponder app" /tmp/indexer.log; then
             echo "new indexer build detected -- resetting the bookkeeping schema"
-            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
-              -c "drop schema if exists ponder_app cascade;"
+            if ! psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+              -c "drop schema if exists ponder_app cascade;"; then
+              echo "schema reset failed -- refusing to retry against a stale schema"
+              exit 1
+            fi
             run_indexer; code=$?
           fi
           # 124 = the timeout stopped it (expected), 130 = clean SIGINT exit.
