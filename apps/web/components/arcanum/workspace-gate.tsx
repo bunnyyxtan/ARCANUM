@@ -1,6 +1,7 @@
 "use client";
 
 import { type FormEvent, type ReactNode, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { useAccount } from "wagmi";
 
 import { useWorkspaceMode } from "@/lib/auth-session";
@@ -33,6 +34,11 @@ export function WorkspaceGate({ children }: Readonly<{ children: ReactNode }>) {
   const org = trpc.org.getCurrent.useQuery(undefined, { retry: false, staleTime: 30_000 });
   const [name, setName] = useState("");
   const [dismissedOrgId, setDismissedOrgId] = useState<string | null>(null);
+  // Renames close the panel the moment the owner hits save: the new name goes
+  // into the cache right away and the server write settles in the background,
+  // so the app feels instant. If the write fails, the panel comes back with
+  // the error and a toast says the name did not stick.
+  const [savedOptimistically, setSavedOptimistically] = useState(false);
 
   const data = org.data;
   const orgId = data?.hasWorkspace ? data.id : null;
@@ -64,7 +70,16 @@ export function WorkspaceGate({ children }: Readonly<{ children: ReactNode }>) {
     },
   });
 
-  const renameWorkspace = trpc.org.update.useMutation({ onSuccess: () => refreshOrg() });
+  const renameWorkspace = trpc.org.update.useMutation({
+    onSuccess: () => refreshOrg(),
+    onError: (mutationError) => {
+      // Roll the optimistic close back to the truth: refetch, reopen the
+      // panel, and say plainly that the save did not go through.
+      setSavedOptimistically(false);
+      void refreshOrg();
+      toast.error(`NAME NOT SAVED / ${mutationError.message}`);
+    },
+  });
 
   const needsWorkspace = data?.isSignedIn === true && data.hasWorkspace === false;
   const needsName =
@@ -76,7 +91,7 @@ export function WorkspaceGate({ children }: Readonly<{ children: ReactNode }>) {
   // First-run setup is for the signed-in owner only. A read-only visitor (or
   // a stale session after the wallet disconnected) browses straight through;
   // asking them to name a workspace they cannot own is the wrong first step.
-  if (!isAuthenticated || (!needsWorkspace && !needsName)) {
+  if (!isAuthenticated || savedOptimistically || (!needsWorkspace && !needsName)) {
     return <>{children}</>;
   }
 
@@ -92,10 +107,19 @@ export function WorkspaceGate({ children }: Readonly<{ children: ReactNode }>) {
     }
 
     if (needsWorkspace) {
+      // Creating a workspace genuinely needs the server (it mints the id and
+      // membership), so this path keeps its honest "Saving…" state.
       createWorkspace.mutate({ name: trimmed });
       return;
     }
 
+    // Optimistic rename: update the cached workspace immediately so the panel
+    // closes and the dashboard adopts the new name in the same frame.
+    setSavedOptimistically(true);
+    utils.org.getCurrent.setData(undefined, (current) =>
+      current?.hasWorkspace ? { ...current, name: trimmed, hasCustomName: true } : current,
+    );
+    toast.success(`Workspace named "${trimmed}".`);
     renameWorkspace.mutate({ name: trimmed });
   };
 
