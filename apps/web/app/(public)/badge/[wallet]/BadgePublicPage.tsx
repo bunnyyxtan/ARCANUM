@@ -3,6 +3,7 @@
 import { EmberMark } from "@/components/warm/EmberMark";
 import Link from "next/link";
 
+import { PublicBackLink } from "@/components/warm/PublicBackLink";
 import { ThemeToggle } from "@/components/warm/ThemeToggle";
 import { useMemo, useState } from "react";
 import { isAddress } from "viem";
@@ -68,11 +69,12 @@ export function BadgePublicPage({ wallet }: Readonly<{ wallet: string }>) {
           ARCANUM
         </Link>
         <div className="flex items-center gap-4">
+          <PublicBackLink />
           <Link
             href={explorerPath}
             className="font-mono text-[9px] uppercase tracking-[.15em] text-[var(--wl-body)] transition hover:text-[var(--wl-signal)]"
           >
-            ← Explorer
+            Explorer ↗
           </Link>
           <ThemeToggle />
         </div>

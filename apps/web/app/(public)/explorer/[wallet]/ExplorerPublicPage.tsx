@@ -3,6 +3,7 @@
 import { EmberMark } from "@/components/warm/EmberMark";
 import Link from "next/link";
 
+import { PublicBackLink } from "@/components/warm/PublicBackLink";
 import { ThemeToggle } from "@/components/warm/ThemeToggle";
 import { useState } from "react";
 import { isAddress } from "viem";
@@ -79,6 +80,7 @@ export function ExplorerPublicPage({ wallet }: Readonly<{ wallet: string }>) {
           ARCANUM
         </Link>
         <div className="flex items-center gap-4">
+          <PublicBackLink />
           <span className="hidden font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)] sm:inline">
             PUBLIC EXPLORER
           </span>
