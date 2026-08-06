@@ -1,10 +1,13 @@
 import { FALLBACK_TENANT_ID } from "@arcanum/db";
-import { organizations, users } from "@arcanum/db/schema";
 import { orgUpdateInputSchema } from "@arcanum/shared";
 import { TRPCError } from "@trpc/server";
-import { desc, eq } from "drizzle-orm";
 
 import { fallbackOrgId } from "../mock-fallback";
+import {
+  readSupabaseOrgMembers,
+  readSupabaseOrganization,
+  renameSupabaseOrganization,
+} from "../supabase-org";
 import { protectedProcedure, publicProcedure, requireRole, router } from "../trpc";
 import { failClosed, tenantIdFor } from "./helpers";
 
@@ -19,15 +22,20 @@ const baseOrg = {
   chainId: 5042002,
 };
 
-async function currentOrgFor(ctx: Parameters<typeof tenantIdFor>[0]) {
-  const tenantId = tenantIdFor(ctx);
-  const stored = await failClosed("org.getCurrent", () =>
-    ctx.db.query.organizations.findFirst({
-      where: eq(organizations.tenantId, tenantId),
-    }),
-  );
+type OrgContext = Parameters<typeof tenantIdFor>[0] & {
+  session: { walletAddress: string } | null;
+};
 
-  return stored ?? orgForSession(ctx);
+async function currentOrgFor(ctx: OrgContext) {
+  // Signed out there is no organisation to look up, and the header says so
+  // rather than reporting an outage.
+  if (!ctx.session) {
+    return orgForSession(ctx);
+  }
+
+  const stored = await failClosed("org.getCurrent", () => readSupabaseOrganization(ctx));
+
+  return stored ? { ...baseOrg, ...stored, tenantId: tenantIdFor(ctx) } : orgForSession(ctx);
 }
 
 export const orgRouter = router({
@@ -40,14 +48,9 @@ export const orgRouter = router({
   listMembers: publicProcedure.query(({ ctx }) => listMembersFor(ctx)),
 
   update: protectedProcedure.input(orgUpdateInputSchema).mutation(async ({ ctx, input }) => {
-    const tenantId = tenantIdFor(ctx);
     requireRole(ctx.session.role, ["owner"]);
-    const [updated] = await failClosed("org.update", () =>
-      ctx.db
-        .update(organizations)
-        .set({ name: input.name })
-        .where(eq(organizations.tenantId, tenantId))
-        .returning(),
+    const updated = await failClosed("org.update", () =>
+      renameSupabaseOrganization(ctx, input.name),
     );
 
     if (!updated) {
@@ -58,23 +61,22 @@ export const orgRouter = router({
     }
 
     return {
-      organization: updated,
+      organization: { ...baseOrg, ...updated, tenantId: tenantIdFor(ctx) },
       defaultPolicyTemplate: input.defaultPolicyTemplate,
       notifications: input.notifications,
     };
   }),
 });
 
-// Team membership fails closed: a database outage must not render an empty
-// member list that looks like everyone lost access.
-function listMembersFor(ctx: Parameters<typeof tenantIdFor>[0]) {
-  const tenantId = tenantIdFor(ctx);
-  return failClosed("org.listMembers", () =>
-    ctx.db.query.users.findMany({
-      where: eq(users.tenantId, tenantId),
-      orderBy: desc(users.createdAt),
-    }),
-  );
+// Team membership fails closed: a read-model outage must not render an empty
+// member list that looks like everyone lost access. Signed out is different --
+// there is no team to show, and an empty list is the truthful answer.
+function listMembersFor(ctx: OrgContext) {
+  if (!ctx.session) {
+    return Promise.resolve([]);
+  }
+
+  return failClosed("org.listMembers", () => readSupabaseOrgMembers(ctx));
 }
 
 function orgForSession(ctx: { session: { walletAddress: string } | null }) {

@@ -1,123 +1,193 @@
-import { randomUUID } from "node:crypto";
-
-import { vendorFlagEvents, vendorFlags } from "@arcanum/db/schema";
-import * as schema from "@arcanum/db/schema";
-import { and, asc, eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import type { ApiContext } from "../context";
 import { vendorFlagsRouter } from "./vendor-flags";
 
-// Integration tests against the real development database: the append-only
-// review trail guarantees (transactional event writes, idempotent unflag,
-// rollback on failure) only mean anything against actual Postgres semantics.
+// The review trail's guarantees -- append-only history, idempotent unflag, a
+// re-flag that resets the live row, and strict organisation isolation -- are
+// properties of the router, so they are exercised against a stand-in read model
+// rather than a live database. Production storage is shared, and a test that
+// writes real review records into it would corrupt an audit trail.
 
-const databaseUrl = process.env.DATABASE_URL;
-if (!databaseUrl) {
-  throw new Error("DATABASE_URL must be set to run vendor-flags integration tests.");
-}
+// The read model resolves an owner fallback from the environment while mapping
+// wallet rows; without it the mapper reaches for a demo fixture that does not
+// exist in a unit test run.
+process.env.ARCANUM_DEMO_OWNER_WALLET = "0x1111111111111111111111111111111111111111";
 
-const sql = postgres(databaseUrl, { prepare: false, max: 1 });
-const db = drizzle(sql, { schema });
-
-// Each run works inside its own throwaway tenant so tests never touch (or
-// depend on) real review data, and parallel runs cannot collide.
-const tenantId = randomUUID();
+const ORG = "11111111-1111-4111-8111-111111111111";
+const OTHER_ORG = "22222222-2222-4222-8222-222222222222";
+const TENANT = "00000000-0000-0000-0000-000000000001";
 
 const FLAGGER = "0x1111111111111111111111111111111111111111";
 const EDITOR = "0x2222222222222222222222222222222222222222";
 const CLEARER = "0x3333333333333333333333333333333333333333";
+const OUTSIDER = "0x4444444444444444444444444444444444444444";
 
-function callerAs(actor: string, sessionTenantId: string = tenantId) {
+type Row = Record<string, unknown>;
+
+type FakeOptions = { failFlagWrites?: boolean };
+
+function createReadModel(options: FakeOptions = {}) {
+  // Timestamps advance by a fixed step so ordering assertions never depend on
+  // wall-clock ties.
+  let tick = 0;
+  const stamp = () => new Date(Date.UTC(2026, 0, 1) + tick++ * 1000).toISOString();
+
+  const walletFor = (owner: string, organizationId: string): Row => ({
+    id: `wallet-${owner.slice(2, 6)}`,
+    organization_id: organizationId,
+    wallet_address: `0xaaaa${owner.slice(6)}`,
+    owner_address: owner,
+    label: "Test wallet",
+    status: "active",
+    created_at: stamp(),
+  });
+
+  const tables = {
+    governed_wallets: [
+      walletFor(FLAGGER, ORG),
+      walletFor(EDITOR, ORG),
+      walletFor(CLEARER, ORG),
+      walletFor(OUTSIDER, OTHER_ORG),
+    ],
+    vendor_flags: [] as Row[],
+    vendor_flag_events: [] as Row[],
+  };
+
+  const tableOf = (name: string): Row[] => {
+    const rows = (tables as Record<string, Row[]>)[name];
+    if (!rows) {
+      throw new Error(`the review register touched an unexpected table: ${name}`);
+    }
+    return rows;
+  };
+
+  const matches = (row: Row, filters?: Record<string, unknown>) =>
+    Object.entries(filters ?? {}).every(([key, value]) => row[key] === value);
+
+  const client = {
+    selectRows: async (table: string, opts: Record<string, never> | undefined = undefined) => {
+      const options = (opts ?? {}) as {
+        filters?: Record<string, unknown>;
+        order?: string;
+        limit?: number;
+      };
+      let rows = tableOf(table).filter((row) => matches(row, options.filters));
+      if (options.order) {
+        const [column = "created_at", direction = "asc"] = options.order.split(".");
+        rows = [...rows].sort((a, b) => {
+          const left = String(a[column] ?? "");
+          const right = String(b[column] ?? "");
+          return direction === "desc" ? right.localeCompare(left) : left.localeCompare(right);
+        });
+      }
+      if (options.limit) {
+        rows = rows.slice(0, options.limit);
+      }
+      return rows.map((row) => ({ ...row }));
+    },
+
+    upsertRows: async (table: string, rows: Row[], onConflict?: string) => {
+      if (table === "vendor_flags" && options.failFlagWrites) {
+        throw new Error("vendor_flags write rejected");
+      }
+      const keys = onConflict?.split(",") ?? [];
+      const stored = tableOf(table);
+      return rows.map((row) => {
+        const existing = keys.length
+          ? stored.find((candidate) => keys.every((key) => candidate[key] === row[key]))
+          : undefined;
+        if (existing) {
+          Object.assign(existing, row);
+          return { ...existing };
+        }
+        const inserted: Row = {
+          id: `${table}-${stored.length + 1}`,
+          created_at: stamp(),
+          ...row,
+        };
+        stored.push(inserted);
+        return { ...inserted };
+      });
+    },
+
+    patchRows: async (table: string, patch: Row, filters: Record<string, unknown>) => {
+      const stored = tableOf(table);
+      const hits = stored.filter((row) => matches(row, filters));
+      for (const row of hits) {
+        Object.assign(row, patch);
+      }
+      return hits.map((row) => ({ ...row }));
+    },
+  };
+
+  return { client, tables };
+}
+
+function callerAs(actor: string, readModel: ReturnType<typeof createReadModel>) {
   const ctx = {
-    db,
+    db: null as never,
     session: {
       walletAddress: actor,
-      tenantId: sessionTenantId,
+      tenantId: TENANT,
       role: "owner",
       expiresAt: Date.now() + 60_000,
     },
     publicClient: null as never,
-    supabase: null,
+    supabase: readModel.client as unknown as ApiContext["supabase"],
     requestFingerprint: null,
     env: { authConfigured: true, allowDevAuth: false },
-  } satisfies ApiContext;
+  } as unknown as ApiContext;
   return vendorFlagsRouter.createCaller(ctx);
 }
 
-function randomVendorAddress() {
-  return `0x${(randomUUID() + randomUUID()).replaceAll("-", "").slice(0, 40)}`;
-}
-
-// created_at defaults to now() with millisecond ties possible; a short pause
-// between mutations keeps the chronological ordering assertions unambiguous.
-const pause = () => new Promise((resolve) => setTimeout(resolve, 15));
-
-async function eventsFor(vendorAddress: string) {
-  return db
-    .select()
-    .from(vendorFlagEvents)
-    .where(
-      and(
-        eq(vendorFlagEvents.tenantId, tenantId),
-        eq(vendorFlagEvents.vendorAddress, vendorAddress),
-      ),
-    )
-    .orderBy(asc(vendorFlagEvents.createdAt));
-}
-
-beforeAll(async () => {
-  // Sanity check connectivity up front so failures read as "db unreachable"
-  // rather than a confusing assertion error later.
-  await sql`select 1`;
-});
-
-afterAll(async () => {
-  await db.delete(vendorFlagEvents).where(eq(vendorFlagEvents.tenantId, tenantId));
-  await db.delete(vendorFlags).where(eq(vendorFlags.tenantId, tenantId));
-  await sql.end();
-});
+const VENDOR = "0xf45c70f2b08397419b11751041c0d9547ccedead";
+const OTHER_VENDOR = "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd";
 
 describe("vendor flag review trail", () => {
-  it("keeps every event across flag → edit → unflag → re-flag", async () => {
-    const vendorAddress = randomVendorAddress();
+  it("keeps every event across flag -> edit -> unflag -> re-flag", async () => {
+    const readModel = createReadModel();
 
-    await callerAs(FLAGGER).flag({ vendorAddress, note: "Suspicious invoice pattern" });
-    await pause();
-    await callerAs(EDITOR).updateNote({ vendorAddress, note: "Confirmed duplicate invoices" });
-    await pause();
-    await callerAs(CLEARER).unflag({ vendorAddress });
-    await pause();
-    const reflag = await callerAs(FLAGGER).flag({ vendorAddress, note: "Flagging again" });
+    await callerAs(FLAGGER, readModel).flag({
+      vendorAddress: VENDOR,
+      note: "Suspicious invoice pattern",
+    });
+    await callerAs(EDITOR, readModel).updateNote({
+      vendorAddress: VENDOR,
+      note: "Confirmed duplicate invoices",
+    });
+    await callerAs(CLEARER, readModel).unflag({ vendorAddress: VENDOR });
+    const reflag = await callerAs(FLAGGER, readModel).flag({
+      vendorAddress: VENDOR,
+      note: "Flagging again",
+    });
 
-    const events = await eventsFor(vendorAddress);
-    expect(events.map((e) => e.eventType)).toEqual([
+    const events = readModel.tables.vendor_flag_events;
+    expect(events.map((event) => event.event_type)).toEqual([
       "flagged",
       "note_updated",
       "unflagged",
       "flagged",
     ]);
-    expect(events.map((e) => e.actor)).toEqual([FLAGGER, EDITOR, CLEARER, FLAGGER]);
-    expect(events.map((e) => e.note)).toEqual([
+    expect(events.map((event) => event.actor)).toEqual([FLAGGER, EDITOR, CLEARER, FLAGGER]);
+    expect(events.map((event) => event.note)).toEqual([
       "Suspicious invoice pattern",
       "Confirmed duplicate invoices",
       null,
       "Flagging again",
     ]);
 
-    // The re-flag also resets the live flag row itself: active again, owned
-    // by the new flagger, with the previous edit/unflag stamps cleared.
+    // The re-flag also resets the live flag row: active again, owned by the new
+    // flagger, with the previous edit and unflag stamps cleared.
     expect(reflag.flag.removedAt).toBeNull();
     expect(reflag.flag.removedBy).toBeNull();
     expect(reflag.flag.noteUpdatedBy).toBeNull();
     expect(reflag.flag.flaggedBy).toBe(FLAGGER);
     expect(reflag.flag.note).toBe("Flagging again");
 
-    // history endpoint surfaces the same trail (newest first).
-    const history = await callerAs(FLAGGER).history({ vendorAddress });
-    expect(history.map((e) => e.eventType)).toEqual([
+    // The history endpoint surfaces the same trail, newest first.
+    const history = await callerAs(FLAGGER, readModel).history({ vendorAddress: VENDOR });
+    expect(history.map((entry) => entry.eventType)).toEqual([
       "flagged",
       "unflagged",
       "note_updated",
@@ -126,44 +196,49 @@ describe("vendor flag review trail", () => {
   });
 
   it("records no extra event when unflagging an already-unflagged vendor", async () => {
-    const vendorAddress = randomVendorAddress();
+    const readModel = createReadModel();
 
-    await callerAs(FLAGGER).flag({ vendorAddress, note: "check" });
-    await pause();
-    await callerAs(CLEARER).unflag({ vendorAddress });
-    await pause();
-    const second = await callerAs(EDITOR).unflag({ vendorAddress });
+    await callerAs(FLAGGER, readModel).flag({ vendorAddress: VENDOR, note: "check" });
+    await callerAs(CLEARER, readModel).unflag({ vendorAddress: VENDOR });
+    const second = await callerAs(EDITOR, readModel).unflag({ vendorAddress: VENDOR });
 
     expect(second).toEqual({ flagged: false });
-    const events = await eventsFor(vendorAddress);
-    expect(events.map((e) => e.eventType)).toEqual(["flagged", "unflagged"]);
+    expect(readModel.tables.vendor_flag_events.map((event) => event.event_type)).toEqual([
+      "flagged",
+      "unflagged",
+    ]);
 
-    // Never-flagged vendors behave the same: idempotent success, no event.
-    const untouched = randomVendorAddress();
-    await callerAs(CLEARER).unflag({ vendorAddress: untouched });
-    expect(await eventsFor(untouched)).toEqual([]);
+    // A never-flagged vendor behaves the same: idempotent success, no event.
+    await callerAs(CLEARER, readModel).unflag({ vendorAddress: OTHER_VENDOR });
+    expect(
+      readModel.tables.vendor_flag_events.filter((event) => event.vendor_address === OTHER_VENDOR),
+    ).toEqual([]);
   });
 
-  it("leaves no orphan event when the flag upsert fails", async () => {
-    const vendorAddress = randomVendorAddress();
+  it("leaves no orphan event when the flag write fails", async () => {
+    const readModel = createReadModel({ failFlagWrites: true });
 
-    // A malformed tenant id makes the vendor_flags upsert fail inside the
-    // transaction; the surrounding transaction must roll back so no
-    // vendor_flag_events row survives for this vendor.
     await expect(
-      callerAs(FLAGGER, "not-a-valid-uuid").flag({ vendorAddress, note: "should not persist" }),
+      callerAs(FLAGGER, readModel).flag({ vendorAddress: VENDOR, note: "should not persist" }),
     ).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
 
-    const orphanEvents = await db
-      .select()
-      .from(vendorFlagEvents)
-      .where(eq(vendorFlagEvents.vendorAddress, vendorAddress));
-    expect(orphanEvents).toEqual([]);
+    expect(readModel.tables.vendor_flag_events).toEqual([]);
+    expect(readModel.tables.vendor_flags).toEqual([]);
+  });
 
-    const orphanFlags = await db
-      .select()
-      .from(vendorFlags)
-      .where(eq(vendorFlags.vendorAddress, vendorAddress));
-    expect(orphanFlags).toEqual([]);
+  it("never shows one organisation's review register to another", async () => {
+    const readModel = createReadModel();
+
+    await callerAs(FLAGGER, readModel).flag({ vendorAddress: VENDOR, note: "internal review" });
+
+    // The outsider owns a wallet in a different organisation.
+    expect(await callerAs(OUTSIDER, readModel).list()).toEqual([]);
+    expect(await callerAs(OUTSIDER, readModel).history({ vendorAddress: VENDOR })).toEqual([]);
+
+    // Their own flag lands in their own organisation and stays invisible here.
+    await callerAs(OUTSIDER, readModel).flag({ vendorAddress: VENDOR, note: "separate register" });
+    const insiderFlags = await callerAs(FLAGGER, readModel).list();
+    expect(insiderFlags).toHaveLength(1);
+    expect(insiderFlags[0]?.note).toBe("internal review");
   });
 });
