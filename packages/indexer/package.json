@@ -6,6 +6,7 @@
   "scripts": {
     "build": "ponder codegen",
     "dev": "ponder dev",
+    "start": "ponder start --schema ponder_app",
     "lint": "biome check .",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
