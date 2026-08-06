@@ -293,7 +293,11 @@ export default function DashboardPage() {
                     needsAttention ? "text-[var(--wl-signal)]" : "text-[var(--wl-secondary)]"
                   }`}
                 >
-                  {attentionSettled ? (needsAttention ? "ACTION REQUIRED" : "ALL CLEAR") : "HUMAN CONTROL"}
+                  {attentionSettled
+                    ? needsAttention
+                      ? "ACTION REQUIRED"
+                      : "ALL CLEAR"
+                    : "HUMAN CONTROL"}
                 </p>
                 <h2 className="font-display mt-2 text-[22px] font-medium tracking-[-.015em]">
                   Restraint queue

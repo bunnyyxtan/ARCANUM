@@ -589,6 +589,7 @@ export default function AgentDetailPage() {
                     return (
                       <div
                         key={row.id}
+                        // biome-ignore lint/a11y/noNoninteractiveTabindex: focus reveals the bar's value tooltip for keyboard users
                         tabIndex={0}
                         aria-label={`${formatUsd(row.amount)} · ${row.status} · ${row.timestamp}`}
                         className="group relative flex h-full flex-1 flex-col items-center justify-end outline-none"

@@ -104,9 +104,7 @@ export async function POST(request: Request) {
       case "eth_sign": {
         // personal_sign passes [data, address]; eth_sign passes [address, data].
         const candidate = body.method === "personal_sign" ? params[0] : params[1];
-        const message = isHex(candidate)
-          ? { raw: candidate as Hex }
-          : String(candidate ?? "");
+        const message = isHex(candidate) ? { raw: candidate as Hex } : String(candidate ?? "");
         return NextResponse.json({ result: await account.signMessage({ message }) });
       }
 

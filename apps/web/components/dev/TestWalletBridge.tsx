@@ -174,7 +174,8 @@ function installTestWallet() {
     provider,
   });
 
-  const announce = () => window.dispatchEvent(new CustomEvent("eip6963:announceProvider", { detail }));
+  const announce = () =>
+    window.dispatchEvent(new CustomEvent("eip6963:announceProvider", { detail }));
   window.addEventListener("eip6963:requestProvider", announce);
   announce();
 }

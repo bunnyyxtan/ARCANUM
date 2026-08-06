@@ -59,12 +59,12 @@ export function buildLedgerCsv({ rows, formatCategory }: LedgerReportContext): s
       .map(csvCell)
       .join(","),
   );
-  return [header.map(csvCell).join(","), ...lines].join("\r\n") + "\r\n";
+  return `${[header.map(csvCell).join(","), ...lines].join("\r\n")}\r\n`;
 }
 
 export function downloadLedgerCsv(context: LedgerReportContext, now = new Date()): void {
   const stamp = now.toISOString().slice(0, 19).replace(/[T:]/g, "-");
-  const blob = new Blob(["\uFEFF" + buildLedgerCsv(context)], {
+  const blob = new Blob([`\uFEFF${buildLedgerCsv(context)}`], {
     type: "text/csv;charset=utf-8",
   });
   const url = URL.createObjectURL(blob);
@@ -91,7 +91,7 @@ function shortHash(hash: string): string {
 
 export function buildLedgerReportHtml(context: LedgerReportContext, now = new Date()): string {
   const { rows, filtersLabel, totals, formatAmount, formatCategory } = context;
-  const generated = now.toISOString().replace("T", " ").slice(0, 19) + " UTC";
+  const generated = `${now.toISOString().replace("T", " ").slice(0, 19)} UTC`;
 
   const bodyRows = rows
     .map(

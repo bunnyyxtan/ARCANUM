@@ -614,8 +614,8 @@ export default function EscalationsPage() {
                         : "EXPIRED"}
                   </span>
                   <span className="truncate text-[13px]">
-                    {formatUsd(item.amount)}{" "}
-                    <span className="text-[var(--wl-mute)]">→</span> {item.counterparty}
+                    {formatUsd(item.amount)} <span className="text-[var(--wl-mute)]">→</span>{" "}
+                    {item.counterparty}
                   </span>
                 </div>
                 <div className="flex items-baseline gap-5 pl-[102px] md:pl-0">
