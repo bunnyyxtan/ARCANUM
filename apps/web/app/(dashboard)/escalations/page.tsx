@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import type { Address, Hash } from "viem";
 import { useAccount, usePublicClient, useSwitchChain, useWriteContract } from "wagmi";
 
+import { ConnectCta } from "@/components/warm/ConnectCta";
 import { getArcscanTxUrl } from "@/lib/arcscan";
 import { useWorkspaceMode } from "@/lib/auth-session";
 import { escalationManagerAbi, escalationStatusLabels } from "@/lib/contracts";
@@ -328,7 +329,7 @@ function EscalationCard({
             <div className="flex min-h-[62px] flex-1 flex-col justify-between border border-dashed border-[var(--wl-signal)] p-3">
               <span className="font-mono text-[9px] text-[var(--wl-mute)]">AWAITING</span>
               <span className="text-[11px] text-[var(--wl-secondary2)]">operator signature</span>
-              <span className="font-mono text-[8px] text-[var(--wl-mute)]">—</span>
+              <span className="font-mono text-[8px] text-[var(--wl-mute)]">-</span>
             </div>
           </div>
           <div className="mt-5 flex items-baseline justify-between border-t border-[var(--wl-line)] pt-4">
@@ -409,7 +410,8 @@ function EscalationCard({
 }
 
 export default function EscalationsPage() {
-  useWorkspaceMode();
+  const { dataMode, isResolving } = useWorkspaceMode();
+  const readOnly = dataMode === "disconnected" && !isResolving;
   const liveEscalations = useLiveEscalations();
   const [resolvedIds, setResolvedIds] = useState<ReadonlySet<string>>(new Set());
   const [notice, setNotice] = useState("");
@@ -533,7 +535,9 @@ export default function EscalationsPage() {
       </section>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
-        {loading ? (
+        {readOnly ? (
+          <ConnectCta className="lg:col-span-2 border border-dashed border-[var(--wl-line)] p-12 text-center" />
+        ) : loading ? (
           [0, 1].map((card) => (
             <div
               key={card}

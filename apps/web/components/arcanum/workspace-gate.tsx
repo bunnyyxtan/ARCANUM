@@ -3,6 +3,7 @@
 import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { useAccount } from "wagmi";
 
+import { useWorkspaceMode } from "@/lib/auth-session";
 import { trpc } from "@/lib/trpc";
 
 const DISMISS_PREFIX = "arcanum-workspace-named:";
@@ -27,6 +28,7 @@ const DISMISS_PREFIX = "arcanum-workspace-named:";
  */
 export function WorkspaceGate({ children }: Readonly<{ children: ReactNode }>) {
   const { address } = useAccount();
+  const { isAuthenticated } = useWorkspaceMode();
   const utils = trpc.useUtils();
   const org = trpc.org.getCurrent.useQuery(undefined, { retry: false, staleTime: 30_000 });
   const [name, setName] = useState("");
@@ -71,7 +73,10 @@ export function WorkspaceGate({ children }: Readonly<{ children: ReactNode }>) {
     data.callerRole === "owner" &&
     dismissedOrgId !== data.id;
 
-  if (!needsWorkspace && !needsName) {
+  // First-run setup is for the signed-in owner only. A read-only visitor (or
+  // a stale session after the wallet disconnected) browses straight through;
+  // asking them to name a workspace they cannot own is the wrong first step.
+  if (!isAuthenticated || (!needsWorkspace && !needsName)) {
     return <>{children}</>;
   }
 
@@ -120,14 +125,14 @@ export function WorkspaceGate({ children }: Readonly<{ children: ReactNode }>) {
           {needsWorkspace ? (
             <>
               A workspace is the ledger your governed wallets, policies and reviewers live in. It
-              starts empty — this only gives it a name and puts{" "}
+              starts empty. This only gives it a name and puts{" "}
               <span className="font-mono text-[13px] text-[var(--wl-ink)]">{owner}</span> in charge
               of it.
             </>
           ) : (
             <>
               Yours is ready, but it is still called{" "}
-              <span className="text-[var(--wl-ink)]">{data?.name}</span> — the placeholder every new
+              <span className="text-[var(--wl-ink)]">{data?.name}</span>, the placeholder every new
               workspace starts with. Give it a name your teammates will recognise on invitations and
               in the ledger.
             </>

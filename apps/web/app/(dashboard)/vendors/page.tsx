@@ -22,6 +22,7 @@ import {
 } from "wagmi";
 
 import { AddVendorModal } from "@/components/warm/AddVendorModal";
+import { ConnectCta } from "@/components/warm/ConnectCta";
 import { useWorkspaceMode } from "@/lib/auth-session";
 import {
   type AddVendorFormState,
@@ -680,7 +681,9 @@ export default function VendorsPage() {
         </div>
 
         <div className="divide-y divide-[var(--wl-line-soft)] border-b border-[var(--wl-line)]">
-          {loading ? (
+          {workspace.dataMode === "disconnected" && !workspace.isResolving ? (
+            <ConnectCta className="px-4 py-12 text-center" />
+          ) : loading ? (
             [0, 1, 2].map((row) => (
               <div
                 key={row}
@@ -796,7 +799,7 @@ export default function VendorsPage() {
                   </span>
                   <span>
                     <span className="block text-[12px]">
-                      {vendor.approvedBy[0] ? shortAddress(vendor.approvedBy[0]) : "—"}
+                      {vendor.approvedBy[0] ? shortAddress(vendor.approvedBy[0]) : "-"}
                     </span>
                     <small className="mt-1 block font-mono text-[9px] text-[var(--wl-mute)]">
                       {vendor.createdAt ?? "N/A"}
@@ -1026,7 +1029,7 @@ export default function VendorsPage() {
                     onKeyDown={(event) => {
                       if (event.key === "Enter") void saveNoteEdit(selected);
                     }}
-                    placeholder="Review note — leave empty to clear it"
+                    placeholder="Review note (leave empty to clear it)"
                     className="w-full max-w-[360px] border-b border-[var(--wl-faint)] bg-transparent py-1.5 text-[11px] text-[var(--wl-ink)] outline-none placeholder:text-[var(--wl-mute)] focus:border-[var(--wl-signal)]"
                   />
                   <button
@@ -1051,7 +1054,7 @@ export default function VendorsPage() {
                     onKeyDown={(event) => {
                       if (event.key === "Enter") void toggleVendorFlag(selected);
                     }}
-                    placeholder="Optional note — why flag this vendor?"
+                    placeholder="Optional note: why flag this vendor?"
                     className="w-full max-w-[360px] border-b border-[var(--wl-faint)] bg-transparent py-1.5 text-[11px] text-[var(--wl-ink)] outline-none placeholder:text-[var(--wl-mute)] focus:border-[var(--wl-signal)]"
                   />
                   <button
@@ -1130,7 +1133,7 @@ export default function VendorsPage() {
               <div className="flex items-center justify-between gap-4 py-4">
                 <span className="text-[12px] text-[var(--wl-body)]">Approved by</span>
                 <span className="font-mono text-[11px]">
-                  {selected.approvedBy.map((by) => shortAddress(by)).join(", ") || "—"}
+                  {selected.approvedBy.map((by) => shortAddress(by)).join(", ") || "-"}
                 </span>
               </div>
               <div className="flex items-center justify-between gap-4 py-4">
@@ -1161,7 +1164,7 @@ export default function VendorsPage() {
                 </p>
               ) : flagHistory.isError ? (
                 <p className="py-4 font-mono text-[9px] tracking-[.1em] text-[var(--wl-signal)]">
-                  REVIEW TRAIL UNAVAILABLE — RETRY SHORTLY
+                  REVIEW TRAIL UNAVAILABLE · RETRY SHORTLY
                 </p>
               ) : flagHistory.entries.length === 0 ? (
                 <p className="py-4 font-mono text-[9px] tracking-[.1em] text-[var(--wl-mute)]">

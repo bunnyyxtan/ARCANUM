@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { type CSSProperties, type ReactNode, useEffect, useMemo, useState } from "react";
 
+import { ConnectCta } from "@/components/warm/ConnectCta";
+import { useWorkspaceMode } from "@/lib/auth-session";
 import { categoryLabel, formatUsdCompact } from "@/lib/format";
 import {
   useLiveAnomalies,
@@ -115,7 +117,7 @@ function StreamRow({ event, index }: { event: GovernanceEvent; index: number }) 
         {event.counterparty}
       </span>
       <span className="font-mono text-[12px] tabular-nums">
-        {event.amount > 0 ? formatUsdCompact(event.amount) : "—"}
+        {event.amount > 0 ? formatUsdCompact(event.amount) : "-"}
       </span>
       <span className="hidden md:block">
         <StatusPill status={event.status} />
@@ -125,6 +127,8 @@ function StreamRow({ event, index }: { event: GovernanceEvent; index: number }) 
 }
 
 export default function DashboardPage() {
+  const { dataMode, isResolving } = useWorkspaceMode();
+  const readOnly = dataMode === "disconnected" && !isResolving;
   const metrics = useLiveDashboardMetrics();
   const events = useLiveEvents();
   const escalations = useLiveEscalations("PENDING");
@@ -247,7 +251,9 @@ export default function DashboardPage() {
             <span>Status</span>
           </div>
           <div className="divide-y divide-[var(--wl-line-soft)]">
-            {events.isLoading ? (
+            {readOnly ? (
+              <ConnectCta />
+            ) : events.isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <div key={i} className="px-3 py-4">
                   <div className="h-4 w-full animate-pulse rounded bg-[var(--wl-bg-soft)]" />
@@ -314,7 +320,16 @@ export default function DashboardPage() {
               </span>
             </div>
 
-            {escalations.isLoading ? (
+            {readOnly ? (
+              <div className="border-b border-[var(--wl-line)] py-9">
+                <p className="font-mono text-[10px] uppercase tracking-[.15em] text-[var(--wl-secondary)]">
+                  READ-ONLY VIEW
+                </p>
+                <p className="mt-3 text-[13px] text-[var(--wl-secondary2)]">
+                  Connect a wallet to see your own restraint queue.
+                </p>
+              </div>
+            ) : escalations.isLoading ? (
               <div className="border-b border-[var(--wl-line)] py-6">
                 <div className="h-24 w-full animate-pulse rounded bg-[var(--wl-bg-deep)]" />
               </div>

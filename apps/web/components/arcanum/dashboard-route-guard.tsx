@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { useAccount } from "wagmi";
@@ -10,7 +9,6 @@ type DashboardRouteGuardProps = Readonly<{
 }>;
 
 export function DashboardRouteGuard({ children }: DashboardRouteGuardProps) {
-  const router = useRouter();
   const { isConnected, status } = useAccount();
   const [allowLocalPreview, setAllowLocalPreview] = useState(false);
   const [hasResolvedPreview, setHasResolvedPreview] = useState(false);
@@ -21,13 +19,13 @@ export function DashboardRouteGuard({ children }: DashboardRouteGuardProps) {
   useEffect(() => {
     // On a hard refresh wagmi restores the persisted connection asynchronously:
     // the very first client frames report "disconnected" before the reconnect
-    // kicks in. Redirecting on that transient state threw connected users back
-    // to the landing page on every refresh, so give the reconnect a short grace
-    // window before treating "disconnected" as real.
+    // kicks in. Treating that transient state as a real walletless visitor
+    // would flash the read-only view at connected users on every refresh, so
+    // give the reconnect a short grace window before settling on read-only.
     const timer = window.setTimeout(() => setReconnectGraceElapsed(true), 1500);
     // A wallet that never answers (locked extension, dismissed prompt) leaves
     // wagmi in "reconnecting" forever. Without a deadline the page would sit on
-    // "Checking access…" with no way out, so fall back to the landing page.
+    // "Checking access…" with no way out, so fall back to the read-only view.
     const deadline = window.setTimeout(() => setResolveDeadlineElapsed(true), 8000);
     return () => {
       window.clearTimeout(timer);
@@ -55,44 +53,26 @@ export function DashboardRouteGuard({ children }: DashboardRouteGuardProps) {
     setHasResolvedPreview(true);
   }, []);
 
-  useEffect(() => {
-    if (!hasResolvedPreview) {
-      return;
-    }
-
-    if (allowLocalPreview) {
-      return;
-    }
-
-    const settledDisconnected = reconnectGraceElapsed && !isResolvingConnection && !isConnected;
-    const stuckResolving = resolveDeadlineElapsed && !isConnected;
-
-    if (settledDisconnected || stuckResolving) {
-      router.replace("/");
-    }
-  }, [
-    allowLocalPreview,
-    hasResolvedPreview,
-    isConnected,
-    isResolvingConnection,
-    reconnectGraceElapsed,
-    resolveDeadlineElapsed,
-    router,
-  ]);
-
   if (!hasResolvedPreview) {
     return <GuardPending />;
   }
 
-  if (allowLocalPreview) {
+  if (allowLocalPreview || isConnected) {
     return children;
   }
 
-  if (isResolvingConnection || !isConnected) {
-    return <GuardPending />;
+  // Walletless visitors get the read-only dashboard: every page renders a
+  // connect-wallet call to action, and all write paths stay gated on a real
+  // wallet connection + signature. We only hold the render while wagmi may
+  // still be restoring a persisted connection.
+  const settledDisconnected = reconnectGraceElapsed && !isResolvingConnection;
+  const stuckResolving = resolveDeadlineElapsed;
+
+  if (settledDisconnected || stuckResolving) {
+    return children;
   }
 
-  return children;
+  return <GuardPending />;
 }
 
 function GuardPending() {

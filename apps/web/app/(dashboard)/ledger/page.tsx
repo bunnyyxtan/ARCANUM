@@ -3,6 +3,7 @@
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { useAccount } from "wagmi";
 
+import { ConnectCta } from "@/components/warm/ConnectCta";
 import { getArcscanTxUrl } from "@/lib/arcscan";
 import {
   type LedgerReportContext,
@@ -52,12 +53,13 @@ function timePart(timestamp: string) {
 }
 
 function datePart(timestamp: string) {
-  return timestamp.length >= 10 ? timestamp.slice(0, 10) : "—";
+  return timestamp.length >= 10 ? timestamp.slice(0, 10) : "-";
 }
 
 export default function LedgerPage() {
   const liveLedger = useLiveLedger();
-  const { isConnected } = useAccount();
+  const { isConnected, isConnecting, isReconnecting } = useAccount();
+  const readOnly = !isConnected && !isConnecting && !isReconnecting;
   const vendorFlags = useVendorFlags();
   const utils = trpc.useUtils();
   const flagMutation = trpc.vendorFlags.flag.useMutation();
@@ -174,7 +176,7 @@ export default function LedgerPage() {
       return;
     }
     downloadLedgerCsv(reportContext);
-    showNotice(`CSV exported — ${reportContext.rows.length} movements.`);
+    showNotice(`CSV exported: ${reportContext.rows.length} movements.`);
   };
 
   const exportPrintable = () => {
@@ -184,7 +186,7 @@ export default function LedgerPage() {
       return;
     }
     if (!openLedgerReport(reportContext)) {
-      showNotice("The report window was blocked — allow pop-ups and retry.");
+      showNotice("The report window was blocked. Allow pop-ups and retry.");
     }
   };
 
@@ -433,7 +435,9 @@ export default function LedgerPage() {
               <span>Status</span>
             </div>
             <div>
-              {liveLedger.isLoading ? (
+              {readOnly ? (
+                <ConnectCta />
+              ) : liveLedger.isLoading ? (
                 Array.from({ length: 6 }).map((_, i) => (
                   <div key={i} className="border-b border-[var(--wl-line-faint)] px-5 py-4">
                     <div className="h-4 w-full animate-pulse rounded bg-[var(--wl-bg-soft)]" />
@@ -652,7 +656,7 @@ export default function LedgerPage() {
                         onKeyDown={(event) => {
                           if (event.key === "Enter") void saveNoteEdit(selected);
                         }}
-                        placeholder="Review note — leave empty to clear it"
+                        placeholder="Review note (leave empty to clear it)"
                         className="w-full border-b border-[var(--wl-faint)] bg-transparent py-1.5 text-[11px] text-[var(--wl-ink)] outline-none placeholder:text-[var(--wl-mute)] focus:border-[var(--wl-signal)]"
                       />
                       <button
@@ -677,7 +681,7 @@ export default function LedgerPage() {
                         onKeyDown={(event) => {
                           if (event.key === "Enter") void toggleVendorFlag(selected);
                         }}
-                        placeholder="Optional note — why flag this vendor?"
+                        placeholder="Optional note: why flag this vendor?"
                         className="w-full border-b border-[var(--wl-faint)] bg-transparent py-1.5 text-[11px] text-[var(--wl-ink)] outline-none placeholder:text-[var(--wl-mute)] focus:border-[var(--wl-signal)]"
                       />
                       <button
@@ -715,7 +719,7 @@ export default function LedgerPage() {
                     </p>
                   ) : flagHistory.isError ? (
                     <p className="py-4 font-mono text-[9px] tracking-[.1em] text-[var(--wl-signal)]">
-                      REVIEW TRAIL UNAVAILABLE — RETRY SHORTLY
+                      REVIEW TRAIL UNAVAILABLE · RETRY SHORTLY
                     </p>
                   ) : flagHistory.entries.length === 0 ? (
                     <p className="py-4 font-mono text-[9px] tracking-[.1em] text-[var(--wl-mute)]">

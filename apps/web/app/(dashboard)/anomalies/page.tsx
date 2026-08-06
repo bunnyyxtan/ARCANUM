@@ -4,6 +4,7 @@ import { type CSSProperties, type MouseEvent as ReactMouseEvent, useMemo, useSta
 import { toast } from "sonner";
 import { useAccount } from "wagmi";
 
+import { ConnectCta } from "@/components/warm/ConnectCta";
 import { useWorkspaceMode } from "@/lib/auth-session";
 import { shortAddress } from "@/lib/format/address";
 import { useLiveAnomalies } from "@/lib/live-data";
@@ -277,7 +278,8 @@ function AnomalyRow({
 }
 
 export default function AnomaliesPage() {
-  useWorkspaceMode();
+  const { dataMode, isResolving } = useWorkspaceMode();
+  const readOnly = dataMode === "disconnected" && !isResolving;
   const liveAnomalies = useLiveAnomalies();
   const [notice, setNotice] = useState("MONITORING WINDOW / LAST 24 HOURS");
   const [investigated, setInvestigated] = useState<string | null>(null);
@@ -387,7 +389,7 @@ export default function AnomaliesPage() {
               RESOLVED / 30D
             </span>
             <strong className="font-display mt-9 block text-4xl font-semibold tracking-[-.015em]">
-              —
+              -
             </strong>
             <span className="mt-2 block font-mono text-[9px] text-[var(--wl-mute)]">CLOSED</span>
           </div>
@@ -418,7 +420,9 @@ export default function AnomaliesPage() {
           <span className="text-right">Action</span>
         </div>
         <div className="divide-y divide-[var(--wl-line-soft)] border-b border-[var(--wl-line)]">
-          {loading ? (
+          {readOnly ? (
+            <ConnectCta className="p-10 text-center" />
+          ) : loading ? (
             [0, 1, 2].map((row) => (
               <div
                 key={row}

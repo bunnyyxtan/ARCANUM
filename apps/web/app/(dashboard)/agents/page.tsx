@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { type CSSProperties, useMemo, useState } from "react";
 
+import { ConnectCta } from "@/components/warm/ConnectCta";
 import { DeployWalletModal } from "@/components/warm/DeployWalletModal";
+import { useWorkspaceMode } from "@/lib/auth-session";
 import { formatUsd } from "@/lib/format/money";
 import { useLiveAgents } from "@/lib/live-data";
 import type { Agent, AgentStatus } from "@/lib/types";
@@ -44,6 +46,8 @@ function StatusPill({ status }: { status: "ACTIVE" | "FROZEN" | "IDLE" }) {
 }
 
 export default function AgentsPage() {
+  const { dataMode, isResolving } = useWorkspaceMode();
+  const readOnly = dataMode === "disconnected" && !isResolving;
   const agentsQuery = useLiveAgents();
   const agents = agentsQuery.data;
   const [filter, setFilter] = useState<FilterStatus>("ALL");
@@ -175,7 +179,9 @@ export default function AgentsPage() {
               <span>Doctrine</span>
             </div>
 
-            {agentsQuery.isLoading ? (
+            {readOnly ? (
+              <ConnectCta className="border-b border-[var(--wl-line)] px-6 py-16 text-center" />
+            ) : agentsQuery.isLoading ? (
               <div className="divide-y divide-[var(--wl-line-soft)]">
                 {[0, 1, 2, 3].map((index) => (
                   <div
@@ -274,7 +280,7 @@ export default function AgentsPage() {
                               </span>
                             ))
                           ) : (
-                            <span className="font-mono text-[9px] text-[var(--wl-mute)]">—</span>
+                            <span className="font-mono text-[9px] text-[var(--wl-mute)]">-</span>
                           )}
                         </div>
                         <div>
@@ -342,7 +348,7 @@ export default function AgentsPage() {
                     DOCTRINE SNAPSHOT
                   </p>
                   <p className="mt-3 text-[13px] leading-[1.5] text-[var(--wl-body)]">
-                    {selectedAgent.mandate} — {selectedAgent.owner}
+                    {selectedAgent.mandate} · {selectedAgent.owner}
                   </p>
                   <p className="mt-4 font-mono text-[9px] text-[var(--wl-mute)]">
                     {selectedAgent.wallet} · USDC

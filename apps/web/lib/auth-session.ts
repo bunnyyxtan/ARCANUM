@@ -84,7 +84,7 @@ export function useAuthSession() {
 }
 
 export function useWorkspaceMode() {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, isConnecting, isReconnecting } = useAccount();
   const session = useAuthSession();
   const connectedAddress = address?.toLowerCase() ?? null;
   const signedAddress = session.user?.walletAddress.toLowerCase() ?? null;
@@ -105,6 +105,10 @@ export function useWorkspaceMode() {
     isAuthenticated: signedForConnectedWallet,
     isConnected,
     isDemo: false,
+    // True while wagmi is still restoring a persisted connection. Read-only
+    // UI should wait for this to settle before treating the visitor as
+    // walletless, or connected users see a connect prompt flash on load.
+    isResolving: isConnecting || isReconnecting,
     sessionStatus: session.status,
     signedAddress,
   };
