@@ -1,6 +1,6 @@
 {
   "name": "arcanum",
-  "version": "0.1.0",
+  "version": "2.0.0",
   "description": "Governed non-custodial wallets for AI agents on Arc Testnet: policy contracts, operator dashboard, indexer, and SDKs",
   "private": true,
   "type": "module",
