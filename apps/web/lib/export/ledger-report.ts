@@ -113,7 +113,7 @@ export function buildLedgerReportHtml(context: LedgerReportContext, now = new Da
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>ARCANUM — Governed Ledger Report</title>
+<title>ARCANUM · Governed Ledger Report</title>
 <style>
   :root { color-scheme: light; }
   * { box-sizing: border-box; }

@@ -366,7 +366,7 @@ export default function SettingsPage() {
                   {[
                     ["NETWORK", "Arc Testnet · chain 5042002"],
                     ["MEMBERS", `${members.length} with access`],
-                    ["YOUR ROLE", (org.data?.callerRole ?? "—").toUpperCase()],
+                    ["YOUR ROLE", (org.data?.callerRole ?? "-").toUpperCase()],
                   ].map(([label, value]) => (
                     <div
                       key={label}
@@ -443,7 +443,7 @@ export default function SettingsPage() {
                 placeholder="0x…"
               />
               <span className="mt-2 block font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-mute)]">
-                THEY SIGN IN WITH THIS WALLET — NO EMAIL, NO PASSWORD
+                THEY SIGN IN WITH THIS WALLET · NO EMAIL, NO PASSWORD
               </span>
             </label>
             <fieldset className="mt-7">

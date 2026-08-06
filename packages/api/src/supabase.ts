@@ -21,7 +21,7 @@ import { computePostureScore } from "./posture";
  * is an availability failure, never the same thing as "no activity yet".
  */
 export const READ_MODEL_UNAVAILABLE_MESSAGE =
-  "The live data service is unavailable, so recent activity cannot be shown right now. This is an outage, not an empty history — try again shortly.";
+  "The live data service is unavailable, so recent activity cannot be shown right now. This is an outage, not an empty history. Try again shortly.";
 
 /**
  * Read-model failures fail closed (mirrors the vendor-flags review register):

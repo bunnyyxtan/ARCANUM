@@ -16,7 +16,7 @@ export default function TermsPage() {
     <LegalPage
       kicker="REFERENCE / TERMS"
       title="The deal."
-      lede="Plain language, because terms you cannot read are not terms you agreed to. This describes how ARCANUM is offered while it runs on testnet — it is a statement of intent, not a contract drafted by lawyers."
+      lede="Plain language, because terms you cannot read are not terms you agreed to. This describes how ARCANUM is offered while it runs on testnet. It is a statement of intent, not a contract drafted by lawyers."
       updated="6 AUGUST 2026"
       sections={[
         {
@@ -75,7 +75,7 @@ export default function TermsPage() {
             <>
               <p>
                 Creating a workspace makes that wallet its owner. The owner decides who else gets
-                in, and what they can do — viewer, approver or admin — and is responsible for that
+                in, and what they can do (viewer, approver or admin), and is responsible for that
                 choice.
               </p>
               <p>
@@ -119,7 +119,7 @@ export default function TermsPage() {
               <p>
                 The software is provided as-is, without warranties of any kind. To the fullest
                 extent the law allows, no liability is accepted for loss arising from use of the
-                service — which, on testnet, means loss of tokens that carry no value.
+                service, which, on testnet, means loss of tokens that carry no value.
               </p>
             </>
           ),

@@ -318,7 +318,7 @@ function AgentSignerPanel({ governedWalletAddress }: { governedWalletAddress: Ad
           : txStatus === "synced"
             ? "SIGNER STATE SYNCED"
             : txStatus === "sync_failed"
-              ? "CONTRACT CONFIRMED — RECORD SYNC FAILED"
+              ? "CONTRACT CONFIRMED · RECORD SYNC FAILED"
               : null;
 
   return (
@@ -485,7 +485,7 @@ export default function AgentDetailPage() {
             </h1>
             <p className="mt-5 max-w-[510px] text-[14px] leading-[1.45] text-[var(--wl-secondary2)]">
               {agent?.mandate
-                ? `${agent.mandate} — observable limits, no unreviewed drift.`
+                ? `${agent.mandate}. Observable limits, no unreviewed drift.`
                 : "A governed wallet with observable limits and a legible policy trail."}
             </p>
           </div>
@@ -614,7 +614,7 @@ export default function AgentDetailPage() {
                   })}
                 </div>
                 <div className="flex justify-between pt-3 font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-mute)]">
-                  <span>{behaviorBars[0]?.timestamp ?? "—"}</span>
+                  <span>{behaviorBars[0]?.timestamp ?? "-"}</span>
                   <span className="hidden items-center gap-4 sm:flex">
                     <span className="flex items-center gap-1.5">
                       <span className="h-2 w-2 bg-[var(--wl-ink)]" />
@@ -625,7 +625,7 @@ export default function AgentDetailPage() {
                       restrained
                     </span>
                   </span>
-                  <span>{behaviorBars[behaviorBars.length - 1]?.timestamp ?? "—"}</span>
+                  <span>{behaviorBars[behaviorBars.length - 1]?.timestamp ?? "-"}</span>
                 </div>
               </>
             ) : (
@@ -740,9 +740,9 @@ export default function AgentDetailPage() {
                   ],
                   ["NETWORK", "ARC TESTNET"],
                   ["ASSET", "USDC"],
-                  ["POLICY", agent?.doctrineVersion ?? "—"],
-                  ["MANDATE", agent?.mandate ?? "—"],
-                  ["OWNER", agent?.owner ?? "—"],
+                  ["POLICY", agent?.doctrineVersion ?? "-"],
+                  ["MANDATE", agent?.mandate ?? "-"],
+                  ["OWNER", agent?.owner ?? "-"],
                 ] as const
               ).map(([label, value]) => (
                 <div key={label} className="grid grid-cols-[.9fr_1.1fr] gap-3 py-3">

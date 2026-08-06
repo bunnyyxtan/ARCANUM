@@ -445,7 +445,7 @@ export default function PolicyEditorPage() {
         ?.waitForTransactionReceipt({ hash, confirmations: 1, timeout: 120_000 })
         .catch(() => {
           throw new Error(
-            "The policy transaction was sent but its confirmation did not arrive within 2 minutes. It may still confirm — check the wallet's activity before retrying.",
+            "The policy transaction was sent but its confirmation did not arrive within 2 minutes. It may still confirm. Check the wallet's activity before retrying.",
           );
         });
       if (receipt?.status !== "success") {
@@ -868,9 +868,9 @@ export default function PolicyEditorPage() {
                     "WALLET",
                     selectedGovernedWalletAddress
                       ? shortAddress(selectedGovernedWalletAddress)
-                      : "—",
+                      : "-",
                   ],
-                  ["OWNER", policyWalletOwner ? shortAddress(policyWalletOwner) : "—"],
+                  ["OWNER", policyWalletOwner ? shortAddress(policyWalletOwner) : "-"],
                   ["CONNECTED", address ? shortAddress(address) : "not connected"],
                   ["NETWORK", "ARC TESTNET"],
                   ["UNSAVED", unsavedCount.toString()],

@@ -103,7 +103,7 @@ export default function StatusPage() {
     ? "…"
     : indexer?.lastIndexedBlock != null
       ? String(indexer.lastIndexedBlock)
-      : "—";
+      : "-";
   const indexerMetricLabel = health.isLoading
     ? "CHECKING"
     : indexer?.status === "stale"
@@ -119,7 +119,7 @@ export default function StatusPage() {
     ? "…"
     : supabase?.readModel.sampleRows != null
       ? String(supabase.readModel.sampleRows)
-      : "—";
+      : "-";
   const readModelMetricLabel = health.isLoading
     ? "CHECKING"
     : supabase?.serviceRole.status === "configured"
@@ -131,7 +131,7 @@ export default function StatusPage() {
     : rpc?.status === "available"
       ? "OPERATIONAL"
       : "DEGRADED";
-  const rpcMetric = health.isLoading ? "…" : (rpc?.latestBlock ?? "—");
+  const rpcMetric = health.isLoading ? "…" : (rpc?.latestBlock ?? "-");
   const rpcMetricLabel = health.isLoading
     ? "CHECKING"
     : rpc?.status === "available"
@@ -265,7 +265,7 @@ export default function StatusPage() {
             </p>
             <p className="mt-5 text-[16px] leading-[1.5] text-[var(--wl-body)]">
               Fresh wallets may show no indexed activity until their first transactions are picked
-              up. That is expected—not a missing policy decision.
+              up. That is expected, not a missing policy decision.
             </p>
           </div>
           <div className="flex flex-col justify-between border-l border-[var(--wl-line)] pl-6 max-md:border-l-0 max-md:border-t max-md:pl-0 max-md:pt-6">

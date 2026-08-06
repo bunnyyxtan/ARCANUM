@@ -31,7 +31,7 @@ export default function PrivacyPage() {
               <p>
                 The records you make while using the product: policies you deploy, vendors you
                 approve or flag, escalation decisions, and the timestamps attached to them. These
-                exist so a governed spend can be explained afterwards — that is the whole point of
+                exist so a governed spend can be explained afterwards. That is the whole point of
                 the ledger.
               </p>
               <p>
@@ -48,7 +48,7 @@ export default function PrivacyPage() {
             <>
               <p>
                 No email address. No password. No identity documents. No seed phrase, and no private
-                key — signing in is a signature you approve in your own wallet, and it gives ARCANUM
+                key. Signing in is a signature you approve in your own wallet, and it gives ARCANUM
                 no ability to move your funds.
               </p>
             </>
@@ -102,7 +102,7 @@ export default function PrivacyPage() {
               <p>
                 Wallet deployments, policies and transfers are written to Arc Testnet. That record
                 is public and permanent. Removing something from ARCANUM removes it from our read
-                model — it does not, and cannot, remove it from the chain.
+                model. It does not, and cannot, remove it from the chain.
               </p>
             </>
           ),

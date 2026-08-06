@@ -123,7 +123,7 @@ export function BadgePublicPage({ wallet }: Readonly<{ wallet: string }>) {
 
         <section className="mt-14 grid grid-cols-2 gap-px overflow-hidden border border-[var(--wl-line)] bg-[var(--wl-line)] text-left sm:grid-cols-4">
           <BadgeMetric label="STATE" value={status} accent={hasProfile && score < 50} />
-          <BadgeMetric label="POSTURE" value={hasProfile ? String(score) : "—"} />
+          <BadgeMetric label="POSTURE" value={hasProfile ? String(score) : "-"} />
           <BadgeMetric
             label="THREATS BLOCKED"
             value={

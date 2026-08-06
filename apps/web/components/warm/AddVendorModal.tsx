@@ -145,7 +145,7 @@ export function AddVendorModal({
               className={`${fieldClass} font-mono`}
             />
             <span className="mt-1.5 block font-mono text-[10px] leading-[1.5] tracking-[.08em] text-[var(--wl-mute)]">
-              Needs a 0x destination address — put domains in notes.
+              Needs a 0x destination address. Put domains in notes.
             </span>
           </label>
 
