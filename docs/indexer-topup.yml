@@ -44,6 +44,9 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           ARC_TESTNET_RPC: https://arc-testnet.drpc.org
+          # The legacy drizzle Postgres mirror only exists in the Replit dev
+          # database; here the handlers stop after their Supabase sync.
+          ARCANUM_DISABLE_PG_MIRROR: "1"
         run: |
           set +e
           timeout --signal=SIGINT --kill-after=30 600 \

@@ -32,6 +32,20 @@ const ARC_TESTNET_CHAIN_ID = 5_042_002;
 const DEFAULT_ESCALATION_EXPIRY_SECONDS = 3_600n;
 const DEFAULT_ESCALATION_THRESHOLD = 1;
 
+/**
+ * The drizzle Postgres tables are the legacy dev read model; production reads
+ * Supabase only. The GitHub Actions top-up runs where that Postgres does not
+ * exist, so it sets this flag and every handler stops after its Supabase sync.
+ * Announced loudly at startup so a run that skips the mirror never looks like
+ * a run that wrote it.
+ */
+const pgMirrorDisabled = process.env.ARCANUM_DISABLE_PG_MIRROR === "1";
+if (pgMirrorDisabled) {
+  console.warn(
+    "[indexer] ARCANUM_DISABLE_PG_MIRROR=1 — the legacy Postgres mirror is off; Supabase is the only write target for this run.",
+  );
+}
+
 const chainClient = createPublicClient({
   transport: fallback(
     [
@@ -100,12 +114,18 @@ function blockDate(timestamp: bigint) {
 }
 
 async function findWallet(walletAddress: string, tenantId: string) {
+  if (pgMirrorDisabled) {
+    return undefined;
+  }
   return db.query.wallets.findFirst({
     where: and(eq(wallets.tenantId, tenantId), eq(wallets.address, walletAddress.toLowerCase())),
   });
 }
 
 async function ensureOrganization(ownerAddress: string, tenantId: string) {
+  if (pgMirrorDisabled) {
+    return undefined;
+  }
   const owner = ownerAddress.toLowerCase();
   const existing = await db.query.organizations.findFirst({
     where: and(eq(organizations.tenantId, tenantId), eq(organizations.ownerWallet, owner)),
@@ -139,6 +159,9 @@ async function insertEvent(input: {
   txHash: string;
   timestamp: Date;
 }) {
+  if (pgMirrorDisabled) {
+    return undefined;
+  }
   const existing = await db.query.events.findFirst({
     where: and(
       eq(events.tenantId, input.tenantId),
@@ -556,6 +579,9 @@ ponder.on("GuardedWallet:ModuleRotated", async ({ event }) => {
 ponder.on("EscalationManager:EscalationApproved", async ({ event }) => {
   await syncEscalationApproval(asString(event.args.escalationId), asNumber(event.args.count));
   await syncCheckpoint(Number(event.block.number));
+  if (pgMirrorDisabled) {
+    return;
+  }
 
   const tenantId = defaultTenantId();
   const escalationId = asString(event.args.escalationId);
@@ -606,6 +632,9 @@ ponder.on("EscalationManager:EscalationExpired", async ({ event }) => {
 ponder.on("EscalationManager:EscalationExecuted", async ({ event }) => {
   await syncEscalationStatus(asString(event.args.escalationId), "released", event.transaction.hash);
   await syncCheckpoint(Number(event.block.number));
+  if (pgMirrorDisabled) {
+    return;
+  }
 
   const tenantId = defaultTenantId();
   const escalationId = asString(event.args.escalationId);
@@ -748,6 +777,9 @@ async function updateEscalationStatus(
     block: { number: bigint; timestamp: bigint };
   },
 ) {
+  if (pgMirrorDisabled) {
+    return;
+  }
   const tenantId = defaultTenantId();
   const updated = await db
     .update(escalations)
