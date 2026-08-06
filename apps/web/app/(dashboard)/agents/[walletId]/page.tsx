@@ -12,7 +12,7 @@ import { useAccount, usePublicClient, useSwitchChain, useWriteContract } from "w
 import { getArcscanTxUrl } from "@/lib/arcscan";
 import { guardedWalletControlAbi } from "@/lib/contracts";
 import { isEvmAddress, isSameAddress, isZeroAddress, shortAddress } from "@/lib/format/address";
-import { formatUsd } from "@/lib/format/money";
+import { formatUsd, formatUsdCompact } from "@/lib/format/money";
 import { useLiveAgents, useLiveLedgerByWallet } from "@/lib/live-data";
 import { trpc } from "@/lib/trpc";
 import type { LedgerEntry, LedgerStatus } from "@/lib/types";
@@ -589,10 +589,26 @@ export default function AgentDetailPage() {
                       row.status === "escalated" ||
                       row.status === "frozen";
                     return (
-                      <div key={row.id} className="group flex h-full flex-1 items-end">
+                      <div
+                        key={row.id}
+                        tabIndex={0}
+                        aria-label={`${formatUsd(row.amount)} · ${row.status} · ${row.timestamp}`}
+                        className="group relative flex h-full flex-1 flex-col items-center justify-end outline-none"
+                      >
+                        <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 -translate-x-1/2 whitespace-nowrap border border-[var(--wl-line)] bg-[var(--wl-bg-raised)] px-2.5 py-1.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100">
+                          <p className="font-mono text-[11px] tabular-nums text-[var(--wl-ink)]">
+                            {formatUsd(row.amount)}
+                          </p>
+                          <p className="mt-0.5 font-mono text-[8px] uppercase tracking-[.1em] text-[var(--wl-mute)]">
+                            {row.status} · {row.timestamp}
+                          </p>
+                        </div>
+                        <span className="mb-1.5 hidden font-mono text-[8px] tabular-nums text-[var(--wl-mute)] transition-colors group-hover:text-[var(--wl-ink)] sm:block">
+                          {formatUsdCompact(row.amount)}
+                        </span>
                         <span
-                          className={`behavior-bar w-full origin-bottom transition-transform duration-[420ms] group-hover:scale-y-110 ${restrained ? "bg-[var(--wl-signal)]" : "bg-[var(--wl-ink)]"}`}
-                          style={{ height: `${Math.max(4, ratio * 100)}%` }}
+                          className={`behavior-bar w-full origin-bottom transition-transform duration-[420ms] group-hover:scale-y-105 ${restrained ? "bg-[var(--wl-signal)]" : "bg-[var(--wl-ink)]"}`}
+                          style={{ height: `${Math.max(4, ratio * 82)}%` }}
                         />
                       </div>
                     );
@@ -600,6 +616,16 @@ export default function AgentDetailPage() {
                 </div>
                 <div className="flex justify-between pt-3 font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-mute)]">
                   <span>{behaviorBars[0]?.timestamp ?? "—"}</span>
+                  <span className="hidden items-center gap-4 sm:flex">
+                    <span className="flex items-center gap-1.5">
+                      <span className="h-2 w-2 bg-[var(--wl-ink)]" />
+                      settled
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="h-2 w-2 bg-[var(--wl-signal)]" />
+                      restrained
+                    </span>
+                  </span>
                   <span>{behaviorBars[behaviorBars.length - 1]?.timestamp ?? "—"}</span>
                 </div>
               </>
