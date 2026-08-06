@@ -1,7 +1,7 @@
 # Free indexer top-up (GitHub Actions)
 
-The indexer is a long-running worker, and the Replit workspace only runs it
-while the workspace is open. Instead of paying for an always-on host, a GitHub
+The indexer is a long-running worker, and the development workspace only runs
+it while the workspace is open. Instead of paying for an always-on host, a GitHub
 Actions cron job catches the read model up every 3 hours. On a private
 repository this fits inside GitHub's 2000 free minutes per month, so the total
 cost is zero. The tradeoff is honesty about freshness: with the workspace
@@ -15,13 +15,13 @@ made and the next one continues.
 
 ## One-time setup (~10 minutes, all in the GitHub web UI)
 
-Replit's GitHub connection is not allowed to push files under
-`.github/workflows/`, so this one file has to be placed by hand.
+The development environment's GitHub connection is not allowed to push files
+under `.github/workflows/`, so this one file has to be placed by hand.
 
 1. **Add the three secrets.** GitHub → the ARCANUM repository → Settings →
    Secrets and variables → Actions → "New repository secret":
 
-   | Secret name | Value (copy from the Replit Secrets pane) |
+   | Secret name | Value (copy from the development environment secrets) |
    | --- | --- |
    | `INDEXER_DATABASE_URL` | the value of `SUPABASE_DB_URL` |
    | `SUPABASE_URL` | the value of `NEXT_PUBLIC_SUPABASE_URL` |
@@ -44,7 +44,7 @@ Replit's GitHub connection is not allowed to push files under
 
 ## Living with it
 
-- The Replit workspace indexer keeps running as before; the two use separate
+- The development workspace indexer keeps running as before; the two use separate
   checkpoints and their writes to the read model are the same rows, so they
   never fight.
 - The free dRPC endpoint rate-limits occasionally (HTTP 429). Ponder retries

@@ -9,7 +9,7 @@ cd "$(dirname "$0")/.."
 if [ -z "${DATABASE_URL:-}" ]; then
   echo "ERROR: DATABASE_URL is not set." >&2
   echo "The vendor-flags integration tests need the dev Postgres database." >&2
-  echo "Run this from the Replit workspace shell where DATABASE_URL is provided." >&2
+  echo "Run this from the development workspace shell where DATABASE_URL is provided." >&2
   exit 1
 fi
 
