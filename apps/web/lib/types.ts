@@ -61,6 +61,7 @@ export type Escalation = {
   counterparty: string;
   category: Category;
   reason: string;
+  status: "PENDING" | "EXECUTED" | "REJECTED" | "EXPIRED";
   quorumCurrent: number;
   quorumRequired: number;
   deviation: number;

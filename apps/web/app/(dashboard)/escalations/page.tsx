@@ -410,7 +410,7 @@ function EscalationCard({
 
 export default function EscalationsPage() {
   useWorkspaceMode();
-  const liveEscalations = useLiveEscalations("PENDING");
+  const liveEscalations = useLiveEscalations();
   const [resolvedIds, setResolvedIds] = useState<ReadonlySet<string>>(new Set());
   const [notice, setNotice] = useState("");
   const noticeTimer = useRef<number | null>(null);
@@ -425,12 +425,29 @@ export default function EscalationsPage() {
     };
   }, []);
 
-  const queue = liveEscalations.data;
+  const allEscalations = liveEscalations.data;
+  const queue = useMemo(
+    () => allEscalations.filter((item) => item.status === "PENDING"),
+    [allEscalations],
+  );
+  const resolvedHistory = useMemo(() => {
+    const decidedTime = (item: Escalation) => {
+      const created = item.createdAt ? Date.parse(item.createdAt) : Number.NaN;
+      if (!Number.isNaN(created)) return created;
+      const expires = item.expiresAt ? Date.parse(item.expiresAt) : Number.NaN;
+      return Number.isNaN(expires) ? 0 : expires;
+    };
+    return allEscalations
+      .filter((item) => item.status !== "PENDING")
+      .sort((a, b) => decidedTime(b) - decidedTime(a) || a.id.localeCompare(b.id));
+  }, [allEscalations]);
   const pending = useMemo(
     () => queue.filter((item) => !resolvedIds.has(item.id)),
     [queue, resolvedIds],
   );
   const pendingCount = pending.length;
+  const resolvedCount =
+    resolvedHistory.length + queue.filter((item) => resolvedIds.has(item.id)).length;
 
   const reviewNext = () => {
     const next = pending[0];
@@ -510,7 +527,7 @@ export default function EscalationsPage() {
         <div className="border-l border-[var(--wl-line)] py-6 pl-5 md:pl-7">
           <p className="font-mono text-[9px] tracking-[.15em] text-[var(--wl-mute)]">RESOLVED</p>
           <p className="font-display mt-3 text-[34px] font-medium tracking-[-.015em]">
-            {resolvedIds.size}
+            {resolvedCount}
           </p>
         </div>
       </section>
@@ -563,6 +580,57 @@ export default function EscalationsPage() {
           ))
         )}
       </div>
+
+      {resolvedHistory.length > 0 && (
+        <section className="mt-12">
+          <div className="flex items-baseline justify-between border-b border-[var(--wl-line)] pb-4">
+            <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-mute)]">
+              RESOLVED / THE FINAL WORD
+            </p>
+            <p className="font-mono text-[10px] tracking-[.12em] text-[var(--wl-mute)]">
+              {resolvedHistory.length} DECIDED
+            </p>
+          </div>
+          <ul>
+            {resolvedHistory.map((item) => (
+              <li
+                key={item.id}
+                className="flex flex-col gap-2 border-b border-[var(--wl-line-soft)] py-4 md:flex-row md:items-center md:justify-between"
+              >
+                <div className="flex min-w-0 items-center gap-4">
+                  <span
+                    className={`inline-block w-[86px] shrink-0 border px-2 py-1 text-center font-mono text-[9px] tracking-[.12em] ${
+                      item.status === "EXECUTED"
+                        ? "border-[var(--wl-green)] text-[var(--wl-green)]"
+                        : item.status === "REJECTED"
+                          ? "border-[var(--wl-signal)] text-[var(--wl-signal)]"
+                          : "border-[var(--wl-line-bold)] text-[var(--wl-mute)]"
+                    }`}
+                  >
+                    {item.status === "EXECUTED"
+                      ? "APPROVED"
+                      : item.status === "REJECTED"
+                        ? "REJECTED"
+                        : "EXPIRED"}
+                  </span>
+                  <span className="truncate text-[13px]">
+                    {formatUsd(item.amount)}{" "}
+                    <span className="text-[var(--wl-mute)]">→</span> {item.counterparty}
+                  </span>
+                </div>
+                <div className="flex items-baseline gap-5 pl-[102px] md:pl-0">
+                  <span className="line-clamp-2 max-w-[360px] text-[11px] leading-[1.4] text-[var(--wl-secondary2)] lg:truncate">
+                    {item.reason}
+                  </span>
+                  <span className="shrink-0 font-mono text-[9px] tracking-[.12em] text-[var(--wl-mute)]">
+                    {formatFooterTimestamp(item.createdAt)}
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }

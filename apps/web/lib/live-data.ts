@@ -238,6 +238,7 @@ export function useLiveEscalations(status?: "PENDING" | "EXECUTED" | "REJECTED" 
     counterparty: vendorName(item.toAddress),
     category: "compute",
     reason: item.reason,
+    status: item.status,
     quorumCurrent: item.signaturesCount,
     quorumRequired: item.threshold,
     deviation: 0,
