@@ -278,7 +278,16 @@ export default function LedgerPage() {
         .arc-row:hover{transform:translate3d(3px,-1px,0);background:var(--wl-bg-raised);box-shadow:inset 2px 0 0 var(--wl-signal)}.arc-row-selected{background:var(--wl-bg-soft);box-shadow:inset 2px 0 0 var(--wl-signal)}
         @keyframes arcRowIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
         .arc-drawer{animation:drawerIn 420ms cubic-bezier(.16,1,.3,1) both}@keyframes drawerIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
-        @media (prefers-reduced-motion:reduce){.arc-pill,.arc-row,.arc-drawer{animation:none!important;transition:none!important}.arc-row:hover,.arc-pill:hover{transform:none}}
+        .arc-filter{position:relative;isolation:isolate;overflow:hidden;-webkit-tap-highlight-color:transparent;transition:transform 200ms cubic-bezier(.16,1,.3,1),color 200ms ease,border-color 200ms ease,box-shadow 240ms ease}
+        .arc-filter:before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;background:var(--wl-bg-soft);opacity:0;transform:scale(.55);transition:transform 240ms cubic-bezier(.16,1,.3,1),opacity 180ms ease}
+        .arc-filter:hover{transform:translateY(-1px)}.arc-filter:hover:before{opacity:1;transform:scale(1)}
+        .arc-filter:active{transform:translateY(0) scale(.94);transition-duration:90ms}
+        .arc-filter:focus-visible{outline:1px solid var(--wl-signal);outline-offset:2px}
+        .arc-filter-on{animation:filterPop 300ms cubic-bezier(.34,1.56,.64,1)}.arc-filter-on:before{display:none}
+        .arc-filter-on:hover{box-shadow:0 8px 20px -8px rgba(var(--wl-ink-rgb),.4)}
+        .arc-filter-flag.arc-filter-on:hover{box-shadow:0 8px 20px -8px rgba(var(--wl-signal-rgb),.5)}
+        @keyframes filterPop{0%{transform:scale(.9)}55%{transform:scale(1.05)}100%{transform:scale(1)}}
+        @media (prefers-reduced-motion:reduce){.arc-pill,.arc-row,.arc-drawer,.arc-filter,.arc-filter-on{animation:none!important;transition:none!important}.arc-row:hover,.arc-pill:hover,.arc-filter:hover,.arc-filter:active{transform:none}}
       `}</style>
 
       <main className="mx-auto max-w-[1400px] px-5 py-8 md:px-8 md:py-10">
@@ -378,9 +387,10 @@ export default function LedgerPage() {
                 key={item}
                 type="button"
                 onClick={() => setStatusFilter(item)}
-                className={`rounded-full border px-3.5 py-2 font-mono text-[9px] uppercase tracking-[.14em] transition-all duration-[220ms] ${
+                aria-pressed={statusFilter === item}
+                className={`arc-filter rounded-full border px-3.5 py-2 font-mono text-[9px] uppercase tracking-[.14em] ${
                   statusFilter === item
-                    ? "border-[var(--wl-ink)] bg-[var(--wl-ink)] text-[var(--wl-bg)]"
+                    ? "arc-filter-on border-[var(--wl-ink)] bg-[var(--wl-ink)] text-[var(--wl-bg)]"
                     : "border-[var(--wl-line)] text-[var(--wl-secondary2)] hover:border-[var(--wl-ink)] hover:text-[var(--wl-ink)]"
                 }`}
               >
@@ -392,9 +402,9 @@ export default function LedgerPage() {
               onClick={() => setFlaggedOnly((value) => !value)}
               aria-pressed={flaggedOnly}
               title="Only show payments to counterparties currently flagged for review"
-              className={`rounded-full border px-3.5 py-2 font-mono text-[9px] uppercase tracking-[.14em] transition-all duration-[220ms] ${
+              className={`arc-filter arc-filter-flag rounded-full border px-3.5 py-2 font-mono text-[9px] uppercase tracking-[.14em] ${
                 flaggedOnly
-                  ? "border-[var(--wl-signal)] bg-[var(--wl-signal)] text-[var(--wl-bg)]"
+                  ? "arc-filter-on border-[var(--wl-signal)] bg-[var(--wl-signal)] text-[var(--wl-bg)]"
                   : "border-[var(--wl-line)] text-[var(--wl-secondary2)] hover:border-[var(--wl-signal)] hover:text-[var(--wl-signal)]"
               }`}
             >
