@@ -407,7 +407,7 @@ export default function VendorsPage() {
       );
       toast.success("VENDOR WRITE CONFIRMED", {
         description:
-          "On-chain write confirmed. Event indexer may lag before the read model updates.",
+          "On-chain write confirmed. The record may take a moment to update.",
       });
     } catch (caught) {
       const message = errorMessage(caught);
@@ -712,7 +712,7 @@ export default function VendorsPage() {
             </div>
           ) : visible.length === 0 ? (
             <div className="px-4 py-12 text-center font-mono text-[10px] tracking-[.14em] text-[var(--wl-secondary)]">
-              NO VENDORS INDEXED · ADD A COUNTERPARTY TO THE ALLOWLIST
+              NO VENDORS YET · ADD A COUNTERPARTY TO THE ALLOWLIST
             </div>
           ) : (
             visible.map((vendor, index) => {

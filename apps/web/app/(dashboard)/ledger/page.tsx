@@ -265,7 +265,7 @@ export default function LedgerPage() {
     if (url) {
       window.open(url, "_blank", "noopener,noreferrer");
     } else {
-      showNotice("Transaction hash is not yet indexed on Arcscan.");
+      showNotice("Transaction hash is not yet available on Arcscan.");
     }
   };
 
@@ -446,7 +446,7 @@ export default function LedgerPage() {
               ) : liveLedger.isError ? (
                 <div className="px-6 py-16 text-center">
                   <p className="font-mono text-[10px] uppercase tracking-[.14em] text-[var(--wl-signal)]">
-                    READ MODEL UNAVAILABLE
+                    RECORD UNAVAILABLE
                   </p>
                   <p className="mt-3 text-[13px] text-[var(--wl-secondary2)]">
                     The governed ledger could not be loaded.
@@ -506,7 +506,7 @@ export default function LedgerPage() {
             </div>
             <div className="flex justify-between border-t border-[var(--wl-line)] px-5 py-3 font-mono text-[9px] uppercase tracking-[.1em] text-[var(--wl-mute)]">
               <span>{visibleRows.length} visible records</span>
-              <span>live read model · ARC / USDC</span>
+              <span>live record · ARC / USDC</span>
             </div>
           </section>
 

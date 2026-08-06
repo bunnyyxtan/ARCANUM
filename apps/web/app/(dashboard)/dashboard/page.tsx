@@ -144,12 +144,12 @@ export default function DashboardPage() {
     {
       label: "VALUE GOVERNED",
       value: <CountUp target={metrics.valueGoverned} prefix="$" decimals={2} />,
-      note: "indexed read model",
+      note: "on-chain record",
     },
     {
       label: "ACTIVE AGENTS",
       value: String(metrics.activeAgents).padStart(2, "0"),
-      note: "live indexed",
+      note: "live",
     },
     {
       label: "THREATS BLOCKED",
@@ -217,7 +217,7 @@ export default function DashboardPage() {
                 )}
               </p>
               <p className="mt-2 font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-mute)]">
-                {metrics.isError ? "read model unavailable" : kpi.note}
+                {metrics.isError ? "record unavailable" : kpi.note}
               </p>
             </div>
           </Reveal>
@@ -239,7 +239,7 @@ export default function DashboardPage() {
               </h2>
             </div>
             <span className="font-mono text-[9px] uppercase tracking-[.13em] text-[var(--wl-mute)]">
-              UTC · live read model
+              UTC · live record
             </span>
           </div>
           <div className="hidden grid-cols-[.8fr_1.15fr_1.25fr_1fr_.8fr_.85fr] gap-3 border-b border-[var(--wl-line)] px-3 py-3 font-mono text-[9px] uppercase tracking-[.13em] text-[var(--wl-mute)] md:grid">
@@ -262,7 +262,7 @@ export default function DashboardPage() {
             ) : events.isError ? (
               <div className="px-6 py-16 text-center">
                 <p className="font-mono text-[10px] uppercase tracking-[.14em] text-[var(--wl-signal)]">
-                  READ MODEL UNAVAILABLE
+                  RECORD UNAVAILABLE
                 </p>
                 <p className="mt-3 text-[13px] text-[var(--wl-secondary2)]">
                   The governed event stream could not be loaded.
@@ -450,7 +450,7 @@ export default function DashboardPage() {
         className="mt-14 flex flex-col justify-between gap-5 border-t border-[var(--wl-line)] pt-5 text-[11px] text-[var(--wl-secondary)] sm:flex-row"
       >
         <span className="font-mono uppercase tracking-[.14em]">Arc testnet · USDC</span>
-        <span>Live read model · governed spend indexed on-chain</span>
+        <span>Live record · governed spend settled on-chain</span>
       </section>
     </div>
   );

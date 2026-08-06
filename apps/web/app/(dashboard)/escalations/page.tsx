@@ -102,7 +102,7 @@ function EscalationCard({
     txStage === "confirming";
 
   const disabledReason = !escalationId
-    ? "Indexed escalation id is missing."
+    ? "Escalation id is missing."
     : !escalationManagerAddress
       ? "EscalationManager address is not configured."
       : !publicClient
@@ -115,7 +115,7 @@ function EscalationCard({
   const statusLine =
     actionError ??
     (txStage === "pending_indexer"
-      ? "Contract confirmed. Waiting for indexer sync."
+      ? "Contract confirmed. Updating the record."
       : txStage === "checking"
         ? "Checking approver permission on Arc Testnet."
         : disabledReason);

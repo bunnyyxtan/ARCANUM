@@ -72,16 +72,16 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
       : "NO DATA";
   const counterparty = escalation?.toAddress
     ? shortAddress(escalation.toAddress)
-    : "NO INDEXED ESCALATION";
+    : "ESCALATION NOT FOUND";
   const walletLabel = escalation?.walletId ?? "UNKNOWN";
-  const reason = escalation?.reason ?? "No indexed escalation was found for this id.";
+  const reason = escalation?.reason ?? "No escalation was found for this id.";
   const quorum = escalation ? `${escalation.signaturesCount} / ${escalation.threshold}` : "N/A";
   const escalationStatus = escalation?.status ?? null;
   const stateLine = escalation
     ? `ESC / ${escalationStatus}`
     : approvalQuery.isLoading
       ? "ESC / LOADING"
-      : "ESC / NOT INDEXED";
+      : "ESC / NOT FOUND";
   const createdLabel = escalation?.createdAt
     ? `${new Date(escalation.createdAt).toISOString().replace("T", " · ").slice(0, 22)} UTC`
     : "N/A";
@@ -102,7 +102,7 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
       : !publicClient
         ? "Arc Testnet RPC is unavailable."
         : !escalation
-          ? "No indexed escalation found for this id."
+          ? "No escalation found for this id."
           : countdown.isExpired
             ? "Escalation is expired. Expired requests cannot be signed."
             : escalationStatus && escalationStatus !== "PENDING"
@@ -115,7 +115,7 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
   const statusLine =
     actionError ??
     (stage === "pending_indexer"
-      ? "Contract confirmed. Waiting for indexer sync."
+      ? "Contract confirmed. Updating the record."
       : stage === "checking"
         ? "Checking approver permission on Arc Testnet."
         : disabledReason);
@@ -226,13 +226,13 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
           {
             description:
               nextCount >= preflight.threshold
-                ? `Release for ${amount} to ${counterparty} executed. Pending indexer sync.`
-                : `Vote for ${amount} to ${counterparty} confirmed on-chain. Pending indexer sync.`,
+                ? `Release for ${amount} to ${counterparty} executed. The record will update shortly.`
+                : `Vote for ${amount} to ${counterparty} confirmed on-chain. The record will update shortly.`,
           },
         );
       } else {
         toast.success("ESCALATION REJECTED", {
-          description: `Rejection for ${amount} to ${counterparty} confirmed on-chain. Pending indexer sync.`,
+          description: `Rejection for ${amount} to ${counterparty} confirmed on-chain. The record will update shortly.`,
         });
       }
     } catch (caught) {

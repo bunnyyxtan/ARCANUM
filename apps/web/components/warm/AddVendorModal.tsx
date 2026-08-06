@@ -97,7 +97,7 @@ export function AddVendorModal({
                   </option>
                 ))
               ) : (
-                <option value="">No governed wallet indexed</option>
+                <option value="">No governed wallet available</option>
               )}
             </select>
           </label>

@@ -107,8 +107,8 @@ export default function StatusPage() {
   const indexerMetricLabel = health.isLoading
     ? "CHECKING"
     : indexer?.status === "stale"
-      ? "STALE / INDEXING LAG"
-      : (indexer?.error ?? "LAST INDEXED BLOCK");
+      ? "STALE / SYNC LAG"
+      : (indexer?.error ?? "LAST SYNCED BLOCK");
 
   const readModelState: HealthState = health.isLoading
     ? "CHECKING"
@@ -152,7 +152,7 @@ export default function StatusPage() {
         <div className="flex items-end justify-between gap-8 max-md:flex-col max-md:items-start">
           <div className="warm-reveal is-visible">
             <p className="font-mono text-[10px] uppercase tracking-[.2em] text-[var(--wl-signal)]">
-              SYSTEMS / READ MODEL
+              SYSTEMS / PLATFORM
             </p>
             <h1 className="font-display mt-5 text-[clamp(3rem,6vw,5.8rem)] font-semibold leading-[.85] tracking-[-.015em]">
               Status
@@ -179,16 +179,16 @@ export default function StatusPage() {
           <div className="grid grid-cols-3 max-lg:grid-cols-1">
             <HealthCard
               index={1}
-              label="EVENT INDEXER"
-              detail="On-chain history is being indexed for governed wallets and may lag behind the latest Arc block."
+              label="EVENT SYNC"
+              detail="On-chain history is synced for governed wallets and may lag behind the latest Arc block."
               metric={indexerMetric}
               metricLabel={indexerMetricLabel}
               state={indexerState}
             />
             <HealthCard
               index={2}
-              label="READ MODEL"
-              detail="The read model stores wallet-creation writes so the dashboard can answer quickly."
+              label="RECORDS"
+              detail="Workspace records are stored off-chain so the dashboard can answer quickly."
               metric={readModelMetric}
               metricLabel={readModelMetricLabel}
               state={readModelState}
@@ -257,14 +257,14 @@ export default function StatusPage() {
         >
           <div className="max-w-[700px]">
             <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
-              READ MODEL / HOW TO READ THIS
+              STATUS / HOW TO READ THIS
             </p>
             <p className="mt-8 text-[16px] leading-[1.5] text-[var(--wl-body)]">
-              The read model stores wallet-creation writes so the dashboard can answer quickly. The
-              indexer tracks on-chain history and may lag behind the latest Arc block.
+              Workspace records are stored off-chain so the dashboard can answer quickly. On-chain
+              history syncs continuously and may lag behind the latest Arc block.
             </p>
             <p className="mt-5 text-[16px] leading-[1.5] text-[var(--wl-body)]">
-              Fresh wallets may show no indexed activity until their first transactions are picked
+              Fresh wallets may show no recorded activity until their first transactions are picked
               up. That is expected, not a missing policy decision.
             </p>
           </div>

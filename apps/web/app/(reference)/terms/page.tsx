@@ -104,7 +104,7 @@ export default function TermsPage() {
           body: (
             <>
               <p>
-                Best effort, with no uptime promise. Indexing can lag behind the chain, features can
+                Best effort, with no uptime promise. Data can lag behind the chain, features can
                 change, and parts of the product can be withdrawn while it is still being built. The
                 chain remains the source of truth when the two disagree.
               </p>

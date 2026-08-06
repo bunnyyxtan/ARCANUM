@@ -35,7 +35,7 @@ export default function PrivacyPage() {
                 the ledger.
               </p>
               <p>
-                Events read from Arc Testnet by our indexer. That data is public chain data; we copy
+                Events read from Arc Testnet by our systems. That data is public chain data; we copy
                 it so pages load quickly.
               </p>
             </>

@@ -582,7 +582,7 @@ export default function PolicyEditorPage() {
               {policyReadStatus === "checking"
                 ? "READING ON-CHAIN POLICY"
                 : policyPendingIndexer
-                  ? "PENDING INDEXER SYNC"
+                  ? "FINALIZING"
                   : "ARC TESTNET POLICY"}
             </span>
             <button
@@ -910,8 +910,8 @@ export default function PolicyEditorPage() {
                 EFFECT OF SIGNATURE
               </p>
               <p className="mt-3 text-[13px] leading-[1.5] text-[var(--wl-body)]">
-                The new limits become authoritative on-chain for the next governed event. The event
-                indexer may lag before the read model refreshes.
+                The new limits become authoritative on-chain for the next governed event. The
+                dashboard may take a moment to reflect them.
               </p>
             </div>
             <div className="border-t border-[var(--wl-line)] pt-5">
@@ -932,7 +932,7 @@ export default function PolicyEditorPage() {
           <span>Draft changes · no capital movement until signed</span>
           <span>
             {policyPendingIndexer
-              ? "Revision deployed · pending indexer sync"
+              ? "Revision deployed · record updating"
               : "Arc Testnet policy"}
           </span>
         </footer>

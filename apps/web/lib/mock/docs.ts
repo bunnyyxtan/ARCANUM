@@ -15,7 +15,7 @@ export const mockDocs: DocEntry[] = [
   {
     id: "doc-2",
     title: "Self-Hosting",
-    description: "Guide to running the ARCANUM indexer and API on your own infrastructure.",
+    description: "Guide to running the ARCANUM services on your own infrastructure.",
     href: "/docs/self-host",
   },
   {

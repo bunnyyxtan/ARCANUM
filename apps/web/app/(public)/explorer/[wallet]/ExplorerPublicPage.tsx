@@ -153,7 +153,7 @@ export function ExplorerPublicPage({ wallet }: Readonly<{ wallet: string }>) {
               )}
             </div>
             <p className="mt-4 font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-secondary)]">
-              ARC TESTNET · USDC · READ MODEL: {dataSource}
+              ARC TESTNET · USDC · SOURCE: {dataSource}
             </p>
           </div>
           <div className="border-t border-[var(--wl-line)] py-8 md:border-l md:border-t-0 md:pl-7">
@@ -221,7 +221,7 @@ export function ExplorerPublicPage({ wallet }: Readonly<{ wallet: string }>) {
             </div>
           ) : records.length === 0 ? (
             <p className="px-3 py-10 font-mono text-[11px] uppercase tracking-[.13em] text-[var(--wl-mute)]">
-              No public governed spend indexed for this wallet yet.
+              No public governed spend recorded for this wallet yet.
             </p>
           ) : (
             <div className="divide-y divide-[var(--wl-line-soft)]">
@@ -266,7 +266,7 @@ export function ExplorerPublicPage({ wallet }: Readonly<{ wallet: string }>) {
         </section>
 
         <footer className="mt-14 flex flex-wrap justify-between gap-4 border-t border-[var(--wl-line)] pt-5 font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-mute)]">
-          <span>ARCANUM · PUBLIC READ MODEL</span>
+          <span>ARCANUM · PUBLIC RECORD</span>
           <span>{walletLabel} · ARC TESTNET</span>
         </footer>
       </div>

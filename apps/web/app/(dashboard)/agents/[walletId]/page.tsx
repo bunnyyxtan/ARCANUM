@@ -492,7 +492,7 @@ export default function AgentDetailPage() {
           <div className="flex flex-wrap items-center gap-2">
             {frozen ? (
               <span
-                title="This wallet is frozen on-chain. Restraint changes are submitted on-chain by the governed wallet owner; this console reflects indexed state."
+                title="This wallet is frozen on-chain. Restraint changes are submitted on-chain by the governed wallet owner; this console reflects the on-chain record."
                 className="cursor-help rounded-full bg-[var(--wl-ink)] px-4 py-2.5 font-mono text-[10px] uppercase tracking-[.1em] text-[var(--wl-bg)]"
               >
                 FROZEN · ON-CHAIN RESTRAINT
@@ -550,7 +550,7 @@ export default function AgentDetailPage() {
             <div className="flex items-end justify-between border-b border-[var(--wl-line)] pb-4">
               <div>
                 <p className="font-mono text-[10px] uppercase tracking-[.17em] text-[var(--wl-signal)]">
-                  BEHAVIOR / INDEXED
+                  BEHAVIOR / ON RECORD
                 </p>
                 <h2 className="font-display mt-2 text-[22px] font-medium tracking-[-.015em]">
                   Spending behavior
@@ -563,7 +563,7 @@ export default function AgentDetailPage() {
             <div className="grid grid-cols-2 border-b border-[var(--wl-line)] py-6 sm:grid-cols-4">
               {(
                 [
-                  ["INDEXED TOTAL", formatUsd(behaviorTotal)],
+                  ["RECORDED TOTAL", formatUsd(behaviorTotal)],
                   ["AVG. TX", formatUsd(behaviorAvg)],
                   ["PEAK TX", formatUsd(behaviorPeak)],
                   ["RESTRAINTS", restraints.toString().padStart(2, "0")],
@@ -631,7 +631,7 @@ export default function AgentDetailPage() {
             ) : (
               <div className="border-b border-[var(--wl-line)] py-10 text-center">
                 <p className="font-mono text-[10px] uppercase tracking-[.14em] text-[var(--wl-secondary)]">
-                  No spend indexed yet
+                  No spend recorded yet
                 </p>
                 <p className="mx-auto mt-3 max-w-[360px] text-[12px] leading-[1.5] text-[var(--wl-body)]">
                   Behavior charts populate once this governed wallet settles payments on Arc
@@ -689,7 +689,7 @@ export default function AgentDetailPage() {
             ) : decisions.length === 0 ? (
               <div className="border-b border-[var(--wl-line)] py-14 text-center">
                 <p className="font-mono text-[10px] uppercase tracking-[.14em] text-[var(--wl-secondary)]">
-                  No indexed activity yet
+                  No activity recorded yet
                 </p>
                 <p className="mx-auto mt-3 max-w-[360px] text-[12px] leading-[1.5] text-[var(--wl-body)]">
                   Payment intents, policy decisions, and transfers will appear here after this
@@ -783,7 +783,7 @@ export default function AgentDetailPage() {
                 </div>
               ) : (
                 <p className="mt-3 font-mono text-[9px] text-[var(--wl-mute)]">
-                  No settled counterparties indexed yet.
+                  No settled counterparties recorded yet.
                 </p>
               )}
             </div>

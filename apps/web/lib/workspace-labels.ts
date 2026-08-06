@@ -72,7 +72,7 @@ export function getWorkspaceNotificationItems(mode: ArcanumWorkspaceMode) {
     return [["SIGNATURE", "Sign in to load your live workspace."]] as const;
   }
 
-  return [["WORKSPACE", "No live notifications yet. Indexed events will appear here."]] as const;
+  return [["WORKSPACE", "No live notifications yet. New activity will appear here."]] as const;
 }
 
 export function getWorkspaceEmptyCopy(mode: ArcanumWorkspaceMode, entity: WorkspaceEmptyEntity) {
@@ -99,7 +99,7 @@ export function getSettingsWorkspaceSummary(mode: ArcanumWorkspaceMode, isAuthen
   }
 
   if (isAuthenticated) {
-    return { caption: "ON-CHAIN READ MODEL", label: "LIVE WORKSPACE" };
+    return { caption: "ON-CHAIN RECORD", label: "LIVE WORKSPACE" };
   }
 
   return { caption: "SIGNED SESSION NEEDED", label: "SIGN IN REQUIRED" };

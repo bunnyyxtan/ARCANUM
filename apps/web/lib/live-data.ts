@@ -99,7 +99,7 @@ function ledgerEntryFromTransfer(entry: LiveTransferRow): LedgerEntry {
     timestamp: formatTimestampOrNA(entry.timestamp),
     hash: entry.txHash,
     block: entry.blockNumber,
-    gasUsed: "INDEXED",
+    gasUsed: "-",
     calldata: "0x",
   };
 }

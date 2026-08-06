@@ -228,7 +228,7 @@ export default function GlossaryPage() {
             </div>
             <div className="flex justify-between pt-4 font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-mute)]">
               <span>HELIX-DAO · ARC TESTNET</span>
-              <span>INDEXED / V4.18</span>
+              <span>ON RECORD / V4.18</span>
             </div>
           </section>
 

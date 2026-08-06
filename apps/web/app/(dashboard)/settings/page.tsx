@@ -45,7 +45,7 @@ export default function SettingsPage() {
   // Before the wallet signs in there is no organisation query to answer this,
   // so the header says what is actually true rather than naming a workspace.
   const orgName = org.data?.name ?? (org.isLoading ? "Loading…" : "Connect Wallet");
-  const memberCaption = members.length > 0 ? "LIVE MEMBERS INDEXED" : "ADD YOUR FIRST REVIEWER";
+  const memberCaption = members.length > 0 ? "LIVE MEMBERS" : "ADD YOUR FIRST REVIEWER";
 
   const [notice, setNotice] = useState("");
   const noticeTimer = useRef<number | null>(null);

@@ -159,7 +159,7 @@ export function buildLedgerReportHtml(context: LedgerReportContext, now = new Da
     <h1>Decision Record Report</h1>
     <div class="meta">
       <span>Generated <b>${escapeHtml(generated)}</b></span>
-      <span>Window <b>Live read model · ${rows.length} most recent movement${rows.length === 1 ? "" : "s"}</b></span>
+      <span>Window <b>Live record · ${rows.length} most recent movement${rows.length === 1 ? "" : "s"}</b></span>
       <span>Filters <b>${escapeHtml(filtersLabel)}</b></span>
     </div>
   </header>

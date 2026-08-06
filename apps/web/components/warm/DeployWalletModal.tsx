@@ -501,12 +501,12 @@ export function DeployWalletModal({
                 </div>
                 <div className="mt-1 font-mono text-[11px] uppercase tracking-[.08em] text-[var(--wl-secondary)]">
                   {persistenceState === "supabase"
-                    ? "PENDING INDEXER SYNC - RECORD SAVED"
+                    ? "FINALIZING - RECORD SAVED"
                     : persistenceState === "saving"
-                      ? "PENDING INDEXER SYNC - SAVING READ MODEL"
+                      ? "FINALIZING - SAVING RECORD"
                       : persistenceFailed
                         ? "ON-CHAIN DEPLOYED - RECORD SYNC FAILED"
-                        : "PENDING INDEXER SYNC"}
+                        : "FINALIZING ON ARC"}
                 </div>
               </div>
               {persistenceFailed ? (
@@ -699,7 +699,7 @@ export function DeployWalletModal({
                   ) : null}
                   {status === "success" ? (
                     <div className="pt-1 text-[var(--wl-green)]">
-                      CREATED ON ARC TESTNET / INDEXER OR READ MODEL STATE MAY LAG
+                      CREATED ON ARC TESTNET / RECORD MAY TAKE A MOMENT TO UPDATE
                     </div>
                   ) : null}
                 </div>

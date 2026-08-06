@@ -55,7 +55,7 @@ export const systemCopy = {
     },
     defaultEmpty: "SURFACE QUIET. No matching records inside the selected surveillance window.",
     error: "ARC-TESTNET DEGRADED. Last verified state: 02:47:18Z. Retrying in {seconds}s.",
-    loading: "STATE RECONCILIATION IN PROGRESS. Awaiting indexed Arc blocks.",
+    loading: "STATE RECONCILIATION IN PROGRESS. Awaiting new Arc blocks.",
   },
   optimistic: {
     releaseReverted: "Release reverted: signature failed. Retry?",
