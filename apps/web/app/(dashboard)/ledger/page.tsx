@@ -4,6 +4,11 @@ import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react"
 import { useAccount } from "wagmi";
 
 import { getArcscanTxUrl } from "@/lib/arcscan";
+import {
+  downloadLedgerCsv,
+  type LedgerReportContext,
+  openLedgerReport,
+} from "@/lib/export/ledger-report";
 import { categoryLabel, formatUsd, formatUsdCompact } from "@/lib/format";
 import {
   useLiveLedger,
@@ -126,6 +131,63 @@ export default function LedgerPage() {
     };
   }, []);
 
+  const [exportOpen, setExportOpen] = useState(false);
+  const exportTriggerRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (!exportOpen) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setExportOpen(false);
+        exportTriggerRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [exportOpen]);
+
+  const reportContext = useMemo<LedgerReportContext>(() => {
+    const filterParts = [
+      statusFilter === "ALL" ? "All statuses" : `Status ${statusFilter.toUpperCase()}`,
+    ];
+    if (flaggedOnly) filterParts.push("Flagged only");
+    const query = normalizeSearch(search);
+    if (query) filterParts.push(`Search "${query}"`);
+    return {
+      rows: visibleRows,
+      filtersLabel: filterParts.join(" · "),
+      totals: {
+        valueLabel: formatUsd(visibleRows.reduce((sum, row) => sum + row.amount, 0)),
+        approved: visibleRows.filter((row) => row.status === "approved").length,
+        rejected: visibleRows.filter((row) => row.status === "rejected").length,
+        escalated: visibleRows.filter((row) => row.status === "escalated").length,
+      },
+      formatAmount: formatUsd,
+      formatCategory: categoryLabel,
+    };
+  }, [visibleRows, statusFilter, flaggedOnly, search]);
+
+  const exportCsv = () => {
+    setExportOpen(false);
+    if (reportContext.rows.length === 0) {
+      showNotice("Nothing to export for the current filters.");
+      return;
+    }
+    downloadLedgerCsv(reportContext);
+    showNotice(`CSV exported — ${reportContext.rows.length} movements.`);
+  };
+
+  const exportPrintable = () => {
+    setExportOpen(false);
+    if (reportContext.rows.length === 0) {
+      showNotice("Nothing to export for the current filters.");
+      return;
+    }
+    if (!openLedgerReport(reportContext)) {
+      showNotice("The report window was blocked — allow pop-ups and retry.");
+    }
+  };
+
   const toggleVendorFlag = async (entry: LedgerEntry) => {
     if (!isConnected || flagPending) return;
     const vendorAddress = entry.counterpartyAddress.toLowerCase();
@@ -232,18 +294,52 @@ export default function LedgerPage() {
               A complete decision record for every governed movement across your fleet.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() =>
-              showNotice("Ledger window / live read model is limited to the visible 24h set.")
-            }
-            className="arc-pill group w-fit rounded-full bg-[var(--wl-signal)] px-5 py-3 text-[11px] font-semibold text-[var(--wl-bg)]"
-          >
-            Export report{" "}
-            <span className="ml-2 transition-transform duration-[220ms] group-hover:translate-x-1">
-              ↗
-            </span>
-          </button>
+          <div className="relative w-fit">
+            <button
+              type="button"
+              ref={exportTriggerRef}
+              aria-expanded={exportOpen}
+              onClick={() => setExportOpen((open) => !open)}
+              className="arc-pill group w-fit rounded-full bg-[var(--wl-signal)] px-5 py-3 text-[11px] font-semibold text-[var(--wl-bg)]"
+            >
+              Export report{" "}
+              <span className="ml-2 transition-transform duration-[220ms] group-hover:translate-x-1">
+                ↗
+              </span>
+            </button>
+            {exportOpen && (
+              <>
+                <button
+                  type="button"
+                  aria-label="Close export menu"
+                  className="fixed inset-0 z-10 cursor-default"
+                  onClick={() => setExportOpen(false)}
+                />
+                <div className="absolute right-0 top-[calc(100%+8px)] z-20 w-[240px] border border-[var(--wl-line-bold)] bg-[var(--wl-bg-raised)] shadow-[0_16px_36px_rgba(var(--wl-ink-rgb),.16)]">
+                  <button
+                    type="button"
+                    onClick={exportCsv}
+                    className="block w-full px-4 py-3 text-left text-[12px] hover:bg-[var(--wl-bg-soft)]"
+                  >
+                    Download CSV
+                    <span className="mt-0.5 block font-mono text-[9px] tracking-[.12em] text-[var(--wl-mute)]">
+                      SPREADSHEET · {visibleRows.length} ROWS
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={exportPrintable}
+                    className="block w-full border-t border-[var(--wl-line-soft)] px-4 py-3 text-left text-[12px] hover:bg-[var(--wl-bg-soft)]"
+                  >
+                    Print / save as PDF
+                    <span className="mt-0.5 block font-mono text-[9px] tracking-[.12em] text-[var(--wl-mute)]">
+                      FORMATTED DECISION REPORT
+                    </span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
         <section className="grid grid-cols-2 border-b border-[var(--wl-line)] md:grid-cols-4">
