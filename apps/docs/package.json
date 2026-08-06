@@ -12,8 +12,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@arcanum/sdk": "0.0.0",
-    "@arcanum/shared": "0.0.0",
+    "@arcanum/sdk": "0.1.0",
+    "@arcanum/shared": "0.1.0",
     "@sentry/nextjs": "^8.55.0",
     "nextra": "^3.3.0",
     "nextra-theme-docs": "^3.3.0",
@@ -23,7 +23,7 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "@arcanum/config": "0.0.0",
+    "@arcanum/config": "0.1.0",
     "@types/node": "^22.15.30",
     "@types/react": "^19.1.6",
     "@types/react-dom": "^19.1.6",
