@@ -36,14 +36,10 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next, path, type
   });
 });
 
-export function requireRole(
-  role: "owner" | "council" | "signer" | "viewer",
-  allowed: Array<"owner" | "council" | "signer" | "viewer">,
-) {
-  if (!allowed.includes(role)) {
-    throw new TRPCError({ code: "FORBIDDEN", message: "Insufficient tenant role" });
-  }
-}
+// Authorisation deliberately does not read the session's role field. It is set
+// from a user table production cannot reach, so it degrades to "viewer" for
+// everyone; anything gated on it would refuse the people who actually hold
+// access. Ownership is checked against the read model at the call site instead.
 
 function createLocalDevSession(allowDevAuth: boolean): ArcanumSession | null {
   if (!allowDevAuth) {

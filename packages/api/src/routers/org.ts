@@ -8,7 +8,7 @@ import {
   readSupabaseOrganization,
   renameSupabaseOrganization,
 } from "../supabase-org";
-import { protectedProcedure, publicProcedure, requireRole, router } from "../trpc";
+import { protectedProcedure, publicProcedure, router } from "../trpc";
 import { failClosed, tenantIdFor } from "./helpers";
 
 const baseOrg = {
@@ -48,7 +48,7 @@ export const orgRouter = router({
   listMembers: publicProcedure.query(({ ctx }) => listMembersFor(ctx)),
 
   update: protectedProcedure.input(orgUpdateInputSchema).mutation(async ({ ctx, input }) => {
-    requireRole(ctx.session.role, ["owner"]);
+    await requireWorkspaceOwner(ctx);
     const updated = await failClosed("org.update", () =>
       renameSupabaseOrganization(ctx, input.name),
     );
@@ -77,6 +77,26 @@ function listMembersFor(ctx: OrgContext) {
   }
 
   return failClosed("org.listMembers", () => readSupabaseOrgMembers(ctx));
+}
+
+// Renaming the workspace is the owner's call, and the read model is the only
+// place that still knows who the owner is. The SIWE session carries a role from
+// the user table production cannot reach, so every caller -- the real owner
+// included -- signs in as a viewer; trusting that field locked the owner out of
+// their own workspace. Membership is read fresh on each write, so revoking
+// someone's ownership takes effect immediately instead of waiting out their
+// week-long session cookie.
+async function requireWorkspaceOwner(ctx: OrgContext & { session: { walletAddress: string } }) {
+  const members = await failClosed("org.update.membership", () => readSupabaseOrgMembers(ctx));
+  const caller = ctx.session.walletAddress.toLowerCase();
+  const membership = members.find((member) => member.walletAddress.toLowerCase() === caller);
+
+  if (membership?.role !== "owner") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Only the workspace owner can change these settings.",
+    });
+  }
 }
 
 // A signed-in wallet that governs nothing yet has no organisation to name, and
