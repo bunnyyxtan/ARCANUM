@@ -411,11 +411,12 @@ export default function DashboardPage() {
                   </p>
                 ) : (
                   anomalies.data.slice(0, 4).map((anomaly) => (
-                    <div
+                    <Link
                       key={anomaly.id}
-                      className="flex w-full items-center justify-between border-b border-[var(--wl-line-soft)] py-3 text-left text-[12px]"
+                      href="/anomalies"
+                      className="group/anomaly flex w-full items-center justify-between border-b border-[var(--wl-line-soft)] py-3 text-left text-[12px] transition-colors hover:border-[var(--wl-signal)]"
                     >
-                      <span className="min-w-0 truncate pr-3 text-[var(--wl-ink)]">
+                      <span className="min-w-0 truncate pr-3 text-[var(--wl-ink)] transition-colors group-hover/anomaly:text-[var(--wl-signal)]">
                         {anomaly.agentName}
                       </span>
                       <span
@@ -427,10 +428,18 @@ export default function DashboardPage() {
                       >
                         {anomaly.suggestedAction === "freeze" ? "freeze" : "observe"}
                       </span>
-                    </div>
+                    </Link>
                   ))
                 )}
               </div>
+              {!readOnly && anomalies.data.length > 0 && (
+                <Link
+                  href="/anomalies"
+                  className="group mt-5 inline-flex font-mono text-[10px] uppercase tracking-[.14em] text-[var(--wl-body)] hover:text-[var(--wl-signal)]"
+                >
+                  Review anomalies <Arrow />
+                </Link>
+              )}
             </div>
           </aside>
         </Reveal>
