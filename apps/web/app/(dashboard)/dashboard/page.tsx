@@ -131,6 +131,10 @@ export default function DashboardPage() {
   const anomalies = useLiveAnomalies();
 
   const pendingItem = escalations.data[0] ?? null;
+  const attentionSettled =
+    !escalations.isLoading && !escalations.isError && !anomalies.isLoading && !anomalies.isError;
+  const needsAttention =
+    attentionSettled && (escalations.data.length > 0 || anomalies.data.length > 0);
 
   const kpis = [
     {
@@ -294,14 +298,24 @@ export default function DashboardPage() {
           <aside className="bg-[var(--wl-bg-soft)] p-6 md:p-7">
             <div className="flex items-start justify-between border-b border-[var(--wl-line)] pb-5">
               <div>
-                <p className="font-mono text-[10px] uppercase tracking-[.17em] text-[var(--wl-signal)]">
-                  ACTION REQUIRED
+                <p
+                  className={`font-mono text-[10px] uppercase tracking-[.17em] ${
+                    needsAttention ? "text-[var(--wl-signal)]" : "text-[var(--wl-secondary)]"
+                  }`}
+                >
+                  {attentionSettled ? (needsAttention ? "ACTION REQUIRED" : "ALL CLEAR") : "HUMAN CONTROL"}
                 </p>
                 <h2 className="font-display mt-2 text-[22px] font-medium tracking-[-.015em]">
                   Restraint queue
                 </h2>
               </div>
-              <span className="rounded-full bg-[var(--wl-signal)] px-2 py-1 font-mono text-[9px] text-white">
+              <span
+                className={`rounded-full px-2 py-1 font-mono text-[9px] ${
+                  escalations.data.length > 0
+                    ? "bg-[var(--wl-signal)] text-white"
+                    : "border border-[var(--wl-line)] text-[var(--wl-mute)]"
+                }`}
+              >
                 {String(escalations.data.length).padStart(2, "0")}
               </span>
             </div>
