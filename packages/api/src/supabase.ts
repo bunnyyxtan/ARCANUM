@@ -11,7 +11,30 @@ import type {
   Wallet,
 } from "@arcanum/db/schema";
 
+import { TRPCError } from "@trpc/server";
+
 import type { ApiContext } from "./context";
+
+/**
+ * User-facing message for a read-model outage. Deliberately explicit that this
+ * is an availability failure, never the same thing as "no activity yet".
+ */
+export const READ_MODEL_UNAVAILABLE_MESSAGE =
+  "The live data service is unavailable, so recent activity cannot be shown right now. This is an outage, not an empty history — try again shortly.";
+
+/**
+ * Read-model failures fail closed (mirrors the vendor-flags review register):
+ * a Supabase problem must surface as an error the UI can distinguish from an
+ * empty result, never as a believable empty array.
+ */
+export function readModelUnavailable(label: string, error: unknown): TRPCError {
+  warnSupabase(label, error);
+  return new TRPCError({
+    code: "INTERNAL_SERVER_ERROR",
+    message: READ_MODEL_UNAVAILABLE_MESSAGE,
+    cause: error,
+  });
+}
 
 /**
  * An agent enriched with the doctrine it spends under, so the dashboard can
@@ -43,11 +66,7 @@ export function agentWithoutDoctrine(agent: Agent): AgentWithDoctrine {
     postureScore: null,
   };
 }
-import {
-  fallbackAgents,
-  fallbackOrgId,
-  fallbackWallets,
-} from "./mock-fallback";
+import { fallbackOrgId, fallbackWallets } from "./mock-fallback";
 
 type SupabaseRow = Record<string, unknown>;
 
@@ -1164,14 +1183,19 @@ async function selectRows(
 ) {
   const client = ctx.supabase;
   if (!client) {
-    return [];
+    // A missing configuration must never look like "no rows": for a product
+    // whose promise is showing what an agent spent, a calm empty dashboard on
+    // top of a broken read model is worse than an error.
+    throw readModelUnavailable(
+      `${table}.read`,
+      new Error("Supabase read model is not configured (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).")
+    );
   }
 
   try {
     return await client.selectRows(table, options);
   } catch (error) {
-    warnSupabase(`${table}.read`, error);
-    return [];
+    throw readModelUnavailable(`${table}.read`, error);
   }
 }
 

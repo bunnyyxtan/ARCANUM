@@ -4,127 +4,50 @@ import { orgUpdateInputSchema } from "@arcanum/shared";
 import { TRPCError } from "@trpc/server";
 import { desc, eq } from "drizzle-orm";
 
-import { fallbackMembers, fallbackOrgId } from "../mock-fallback";
+import { fallbackOrgId } from "../mock-fallback";
 import { protectedProcedure, publicProcedure, requireRole, router } from "../trpc";
-import { canUseDemoFallback, readDbOrFallback, tenantIdFor, writeDbOrFallback } from "./helpers";
+import { failClosed, tenantIdFor } from "./helpers";
 
-const fallbackOrg = {
+const baseOrg = {
   id: fallbackOrgId,
   tenantId: FALLBACK_TENANT_ID,
-  name: "Demo Workspace",
+  name: "Live Workspace",
   type: "DAO" as const,
   createdAt: new Date("2026-06-08T02:00:00.000Z"),
-  ownerWallet:
-    process.env.ARCANUM_DEMO_OWNER_WALLET ?? "0x70b474010e1bf0c4a087a3eadeb157ea515872f6",
-  multisigAddress: "0x1111000000000000000000000000000000000da0",
+  ownerWallet: "0x0000000000000000000000000000000000000000",
+  multisigAddress: "0x0000000000000000000000000000000000000000",
   chainId: 5042002,
 };
 
+async function currentOrgFor(ctx: Parameters<typeof tenantIdFor>[0]) {
+  const tenantId = tenantIdFor(ctx);
+  const stored = await failClosed("org.getCurrent", () =>
+    ctx.db.query.organizations.findFirst({
+      where: eq(organizations.tenantId, tenantId),
+    }),
+  );
+
+  return stored ?? orgForSession(ctx);
+}
+
 export const orgRouter = router({
-  currentOrg: publicProcedure.query(async ({ ctx }) => {
-    if (canUseDemoFallback(ctx)) {
-      return fallbackOrg;
-    }
+  currentOrg: publicProcedure.query(({ ctx }) => currentOrgFor(ctx)),
 
-    const tenantId = tenantIdFor(ctx);
-    const emptyOrg = orgForSession(ctx);
-    if (!canUseDemoFallback(ctx)) {
-      return emptyOrg;
-    }
+  getCurrent: publicProcedure.query(({ ctx }) => currentOrgFor(ctx)),
 
-    return (
-      (await readDbOrFallback(
-        "org.currentOrg",
-        () =>
-          ctx.db.query.organizations.findFirst({
-            where: eq(organizations.tenantId, tenantId),
-          }),
-        undefined,
-      )) ?? (canUseDemoFallback(ctx) ? fallbackOrg : emptyOrg)
-    );
-  }),
+  members: publicProcedure.query(({ ctx }) => listMembersFor(ctx)),
 
-  getCurrent: publicProcedure.query(async ({ ctx }) => {
-    if (canUseDemoFallback(ctx)) {
-      return fallbackOrg;
-    }
-
-    const tenantId = tenantIdFor(ctx);
-    const emptyOrg = orgForSession(ctx);
-    if (!canUseDemoFallback(ctx)) {
-      return emptyOrg;
-    }
-
-    return (
-      (await readDbOrFallback(
-        "org.getCurrent",
-        () =>
-          ctx.db.query.organizations.findFirst({
-            where: eq(organizations.tenantId, tenantId),
-          }),
-        undefined,
-      )) ?? (canUseDemoFallback(ctx) ? fallbackOrg : emptyOrg)
-    );
-  }),
-
-  members: publicProcedure.query(async ({ ctx }) => {
-    if (canUseDemoFallback(ctx)) {
-      return fallbackMembers;
-    }
-
-    const tenantId = tenantIdFor(ctx);
-    if (!canUseDemoFallback(ctx)) {
-      return [];
-    }
-
-    const rows = await readDbOrFallback(
-      "org.members",
-      () =>
-        ctx.db.query.users.findMany({
-          where: eq(users.tenantId, tenantId),
-          orderBy: desc(users.createdAt),
-        }),
-      [],
-    );
-
-    return rows.length > 0 ? rows : canUseDemoFallback(ctx) ? fallbackMembers : [];
-  }),
-
-  listMembers: publicProcedure.query(async ({ ctx }) => {
-    if (canUseDemoFallback(ctx)) {
-      return fallbackMembers;
-    }
-
-    const tenantId = tenantIdFor(ctx);
-    if (!canUseDemoFallback(ctx)) {
-      return [];
-    }
-
-    const rows = await readDbOrFallback(
-      "org.listMembers",
-      () =>
-        ctx.db.query.users.findMany({
-          where: eq(users.tenantId, tenantId),
-          orderBy: desc(users.createdAt),
-        }),
-      [],
-    );
-
-    return rows.length > 0 ? rows : canUseDemoFallback(ctx) ? fallbackMembers : [];
-  }),
+  listMembers: publicProcedure.query(({ ctx }) => listMembersFor(ctx)),
 
   update: protectedProcedure.input(orgUpdateInputSchema).mutation(async ({ ctx, input }) => {
     const tenantId = tenantIdFor(ctx);
     requireRole(ctx.session.role, ["owner"]);
-    const [updated] = await writeDbOrFallback(
-      "org.update",
-      () =>
-        ctx.db
-          .update(organizations)
-          .set({ name: input.name })
-          .where(eq(organizations.tenantId, tenantId))
-          .returning(),
-      [],
+    const [updated] = await failClosed("org.update", () =>
+      ctx.db
+        .update(organizations)
+        .set({ name: input.name })
+        .where(eq(organizations.tenantId, tenantId))
+        .returning(),
     );
 
     if (!updated) {
@@ -142,10 +65,22 @@ export const orgRouter = router({
   }),
 });
 
+// Team membership fails closed: a database outage must not render an empty
+// member list that looks like everyone lost access.
+function listMembersFor(ctx: Parameters<typeof tenantIdFor>[0]) {
+  const tenantId = tenantIdFor(ctx);
+  return failClosed("org.listMembers", () =>
+    ctx.db.query.users.findMany({
+      where: eq(users.tenantId, tenantId),
+      orderBy: desc(users.createdAt),
+    }),
+  );
+}
+
 function orgForSession(ctx: { session: { walletAddress: string } | null }) {
   const wallet = ctx.session?.walletAddress ?? "0x0000000000000000000000000000000000000000";
   return {
-    ...fallbackOrg,
+    ...baseOrg,
     name: ctx.session ? "Live Workspace" : "Connect Wallet",
     ownerWallet: wallet,
     multisigAddress: wallet,

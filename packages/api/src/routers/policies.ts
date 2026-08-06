@@ -1,29 +1,23 @@
-import { policies } from "@arcanum/db/schema";
 import {
   agentByWalletInputSchema,
   arcTestnet,
   policyUpdateInputSchema,
 } from "@arcanum/shared";
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, sql } from "drizzle-orm";
 import { createPublicClient, http, isAddress } from "viem";
 import { z } from "zod";
 
 import { readWalletPolicyChainState } from "../chain";
-import { fallbackPolicies } from "../mock-fallback";
 import {
   categoryNamesFromMask,
+  readSupabasePolicies,
   readSupabasePolicy,
   readSupabaseWalletByLooseId,
+  readSupabaseWallets,
   recordSupabaseDeployedPolicy,
 } from "../supabase";
 import { protectedProcedure, publicProcedure, router } from "../trpc";
-import {
-  canUseDemoFallback,
-  findWalletByLooseId,
-  readDbOrFallback,
-  tenantIdFor,
-} from "./helpers";
+import { findWalletByLooseId } from "./helpers";
 
 function onChainPolicyWriteOnly(): never {
   throw new TRPCError({
@@ -138,47 +132,13 @@ export const policiesRouter = router({
       }
     }),
 
+  // The doctrine is what the dashboard claims the wallet enforces, so it reads
+  // the Supabase read model, which fails closed on outage.
   get: publicProcedure
     .input(agentByWalletInputSchema)
     .query(async ({ ctx, input }) => {
-      if (canUseDemoFallback(ctx)) {
-        const wallet = await findWalletByLooseId(ctx, input.walletId);
-        return (
-          fallbackPolicies.find((policy) => policy.walletId === wallet?.id) ??
-          null
-        );
-      }
-
-      const tenantId = tenantIdFor(ctx);
       const wallet = await findWalletByLooseId(ctx, input.walletId);
-      const supabasePolicy = await readSupabasePolicy(ctx, wallet);
-
-      if (supabasePolicy) {
-        return supabasePolicy;
-      }
-
-      if (!canUseDemoFallback(ctx)) {
-        return null;
-      }
-
-      const row = await readDbOrFallback(
-        "policies.get",
-        () =>
-          ctx.db.query.policies.findFirst({
-            where: and(
-              eq(policies.tenantId, tenantId),
-              eq(policies.walletId, wallet?.id ?? input.walletId)
-            ),
-            orderBy: desc(policies.version),
-          }),
-        undefined
-      );
-
-      return (
-        row ??
-        fallbackPolicies.find((policy) => policy.walletId === wallet?.id) ??
-        null
-      );
+      return readSupabasePolicy(ctx, wallet);
     }),
 
   update: protectedProcedure
@@ -262,26 +222,12 @@ export const policiesRouter = router({
     }),
 
   count: publicProcedure.query(async ({ ctx }) => {
-    if (canUseDemoFallback(ctx)) {
-      return fallbackPolicies.length;
-    }
-
-    const tenantId = tenantIdFor(ctx);
-
-    if (!canUseDemoFallback(ctx)) {
-      return 0;
-    }
-
-    const [row] = await readDbOrFallback(
-      "policies.count",
-      () =>
-        ctx.db
-          .select({ count: sql<number>`count(*)::int` })
-          .from(policies)
-          .where(eq(policies.tenantId, tenantId)),
-      []
+    // Count the doctrines of every governed wallet the caller owns from the
+    // read model; a read-model outage fails closed rather than reporting zero.
+    const wallets = await readSupabaseWallets(ctx);
+    const policiesPerWallet = await Promise.all(
+      wallets.map((wallet) => readSupabasePolicies(ctx, wallet)),
     );
-
-    return row?.count ?? fallbackPolicies.length;
+    return policiesPerWallet.reduce((sum, rows) => sum + rows.length, 0);
   }),
 });

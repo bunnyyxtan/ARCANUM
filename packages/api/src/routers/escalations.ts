@@ -1,16 +1,13 @@
-import { escalations } from "@arcanum/db/schema";
 import {
   escalationByTxHashInputSchema,
   escalationDecisionInputSchema,
   escalationListInputSchema,
 } from "@arcanum/shared";
 import { TRPCError } from "@trpc/server";
-import { and, asc, eq, gte } from "drizzle-orm";
 
 import { z } from "zod";
 
 import { isEscalationSigner, readEscalationChainState } from "../chain";
-import { fallbackEscalations } from "../mock-fallback";
 import {
   readSupabaseEscalationByTxHash,
   readSupabaseEscalations,
@@ -18,7 +15,6 @@ import {
   recordSupabaseEscalationDecision,
 } from "../supabase";
 import { protectedProcedure, publicProcedure, router } from "../trpc";
-import { canUseDemoFallback, readDbOrFallback, tenantIdFor } from "./helpers";
 
 function onChainEscalationWriteOnly(): never {
   throw new TRPCError({
@@ -28,100 +24,16 @@ function onChainEscalationWriteOnly(): never {
   });
 }
 
+// Escalations are governance-critical: reads go to the Supabase read model,
+// which fails closed so an outage can never look like "nothing needs review".
 export const escalationsRouter = router({
   list: publicProcedure
     .input(escalationListInputSchema)
-    .query(async ({ ctx, input }) => {
-      if (canUseDemoFallback(ctx)) {
-        return input?.status
-          ? fallbackEscalations.filter(
-              (escalation) => escalation.status === input.status
-            )
-          : fallbackEscalations;
-      }
-
-      const tenantId = tenantIdFor(ctx);
-      const status = input?.status;
-      const supabaseRows = await readSupabaseEscalations(ctx, status);
-
-      if (supabaseRows.length > 0) {
-        return supabaseRows;
-      }
-
-      if (!canUseDemoFallback(ctx)) {
-        return [];
-      }
-
-      const rows = await readDbOrFallback(
-        "escalations.list",
-        () =>
-          ctx.db.query.escalations.findMany({
-            where: status
-              ? and(
-                  eq(escalations.tenantId, tenantId),
-                  eq(escalations.status, status),
-                  status === "PENDING"
-                    ? gte(escalations.expiresAt, new Date())
-                    : undefined
-                )
-              : eq(escalations.tenantId, tenantId),
-            orderBy: asc(escalations.expiresAt),
-          }),
-        []
-      );
-
-      if (rows.length > 0) {
-        return rows;
-      }
-
-      return status
-        ? fallbackEscalations.filter(
-            (escalation) => escalation.status === status
-          )
-        : fallbackEscalations;
-    }),
+    .query(({ ctx, input }) => readSupabaseEscalations(ctx, input?.status)),
 
   byTxHash: publicProcedure
     .input(escalationByTxHashInputSchema)
-    .query(async ({ ctx, input }) => {
-      if (canUseDemoFallback(ctx)) {
-        return (
-          fallbackEscalations.find(
-            (escalation) => escalation.id === input.txHash
-          ) ?? null
-        );
-      }
-
-      const tenantId = tenantIdFor(ctx);
-      const supabaseRow = await readSupabaseEscalationByTxHash(
-        ctx,
-        input.txHash
-      );
-
-      if (supabaseRow) {
-        return supabaseRow;
-      }
-
-      return (
-        (await readDbOrFallback(
-          "escalations.byTxHash",
-          () =>
-            ctx.db.query.escalations.findFirst({
-              where: and(
-                eq(escalations.tenantId, tenantId),
-                eq(escalations.id, input.txHash)
-              ),
-            }),
-          undefined
-        )) ??
-        (canUseDemoFallback(ctx)
-          ? fallbackEscalations.find(
-              (escalation) => escalation.id === input.txHash
-            )
-          : null) ??
-        null
-      );
-    }),
+    .query(({ ctx, input }) => readSupabaseEscalationByTxHash(ctx, input.txHash)),
 
   /**
    * Mirror an approve/reject that already settled on-chain into the read model.

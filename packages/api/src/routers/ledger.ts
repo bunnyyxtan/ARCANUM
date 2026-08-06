@@ -1,62 +1,28 @@
-import { transfers } from "@arcanum/db/schema";
 import {
   ledgerByCounterpartyInputSchema,
   ledgerByTimeRangeInputSchema,
   ledgerByWalletInputSchema,
   ledgerListInputSchema,
 } from "@arcanum/shared";
-import { and, desc, eq, or } from "drizzle-orm";
 
-import { fallbackTransfers } from "../mock-fallback";
 import { readSupabasePublicLedger, readSupabaseTransfers } from "../supabase";
 import { publicProcedure, router } from "../trpc";
-import {
-  canUseDemoFallback,
-  findWalletByLooseId,
-  readDbOrFallback,
-  tenantIdFor,
-} from "./helpers";
+import { findWalletByLooseId } from "./helpers";
 
 const defaultPage = { page: 0, pageSize: 50 };
 
+// Every procedure here reads the Supabase read model, which fails closed: a
+// storage outage surfaces as an explicit "data unavailable" error instead of a
+// believable empty ledger.
 export const ledgerRouter = router({
   list: publicProcedure
     .input(ledgerListInputSchema)
     .query(async ({ ctx, input }) => {
       const page = input?.page ?? defaultPage.page;
       const pageSize = input?.pageSize ?? defaultPage.pageSize;
+      const rows = await readSupabaseTransfers(ctx);
 
-      if (canUseDemoFallback(ctx)) {
-        return fallbackTransfers.slice(
-          page * pageSize,
-          page * pageSize + pageSize
-        );
-      }
-
-      const tenantId = tenantIdFor(ctx);
-      const supabaseRows = await readSupabaseTransfers(ctx);
-
-      if (supabaseRows.length > 0) {
-        return supabaseRows.slice(page * pageSize, page * pageSize + pageSize);
-      }
-
-      if (!canUseDemoFallback(ctx)) {
-        return [];
-      }
-
-      const rows = await readDbOrFallback(
-        "ledger.list",
-        () =>
-          ctx.db.query.transfers.findMany({
-            where: eq(transfers.tenantId, tenantId),
-            orderBy: desc(transfers.blockNumber),
-            limit: pageSize,
-            offset: page * pageSize,
-          }),
-        []
-      );
-
-      return rows.length > 0 ? rows : fallbackTransfers;
+      return rows.slice(page * pageSize, page * pageSize + pageSize);
     }),
 
   byWallet: publicProcedure
@@ -66,69 +32,24 @@ export const ledgerRouter = router({
       const page = input.page ?? defaultPage.page;
       const pageSize = input.pageSize ?? defaultPage.pageSize;
 
-      if (canUseDemoFallback(ctx)) {
-        return fallbackTransfers
-          .filter(
-            (transfer) =>
-              transfer.walletId === wallet?.id ||
-              transfer.toAddress === input.wallet
-          )
-          .slice(page * pageSize, page * pageSize + pageSize);
-      }
-
-      const tenantId = tenantIdFor(ctx);
-      const supabaseRows = wallet
+      const scopedRows = wallet
         ? (await readSupabaseTransfers(ctx)).filter(
             (transfer) => transfer.walletId === wallet.id
           )
         : [];
 
-      if (supabaseRows.length > 0) {
-        return supabaseRows.slice(page * pageSize, page * pageSize + pageSize);
+      if (scopedRows.length > 0) {
+        return scopedRows.slice(page * pageSize, page * pageSize + pageSize);
       }
 
       // The public explorer and badge pages have no session, so fall back to the
       // unscoped public ledger for the requested wallet address.
       if (input.wallet.startsWith("0x")) {
         const publicRows = await readSupabasePublicLedger(ctx, input.wallet);
-        if (publicRows.length > 0) {
-          return publicRows.slice(page * pageSize, page * pageSize + pageSize);
-        }
+        return publicRows.slice(page * pageSize, page * pageSize + pageSize);
       }
 
-      if (!canUseDemoFallback(ctx)) {
-        return [];
-      }
-
-      const rows = await readDbOrFallback(
-        "ledger.byWallet",
-        () =>
-          ctx.db.query.transfers.findMany({
-            where: and(
-              eq(transfers.tenantId, tenantId),
-              or(
-                eq(transfers.walletId, wallet?.id ?? input.wallet),
-                eq(transfers.toAddress, input.wallet)
-              )
-            ),
-            orderBy: desc(transfers.blockNumber),
-            limit: pageSize,
-            offset: page * pageSize,
-          }),
-        []
-      );
-
-      if (rows.length > 0) {
-        return rows;
-      }
-
-      return canUseDemoFallback(ctx)
-        ? fallbackTransfers.filter(
-            (transfer) =>
-              transfer.walletId === wallet?.id ||
-              transfer.toAddress === input.wallet
-          )
-        : [];
+      return [];
     }),
 
   byCounterparty: publicProcedure
@@ -136,14 +57,12 @@ export const ledgerRouter = router({
     .query(async ({ ctx, input }) => {
       const page = input.page ?? defaultPage.page;
       const pageSize = input.pageSize ?? defaultPage.pageSize;
+      const counterparty = input.counterparty.toLowerCase();
+      const rows = (await readSupabaseTransfers(ctx)).filter(
+        (transfer) => transfer.toAddress.toLowerCase() === counterparty
+      );
 
-      if (canUseDemoFallback(ctx)) {
-        return fallbackTransfers
-          .filter((transfer) => transfer.toAddress === input.counterparty)
-          .slice(page * pageSize, page * pageSize + pageSize);
-      }
-
-      return [];
+      return rows.slice(page * pageSize, page * pageSize + pageSize);
     }),
 
   byTimeRange: publicProcedure
@@ -151,17 +70,11 @@ export const ledgerRouter = router({
     .query(async ({ ctx, input }) => {
       const page = input.page ?? defaultPage.page;
       const pageSize = input.pageSize ?? defaultPage.pageSize;
+      const rows = (await readSupabaseTransfers(ctx)).filter(
+        (transfer) =>
+          transfer.timestamp >= input.since && transfer.timestamp <= input.until
+      );
 
-      if (canUseDemoFallback(ctx)) {
-        return fallbackTransfers
-          .filter(
-            (transfer) =>
-              transfer.timestamp >= input.since &&
-              transfer.timestamp <= input.until
-          )
-          .slice(page * pageSize, page * pageSize + pageSize);
-      }
-
-      return [];
+      return rows.slice(page * pageSize, page * pageSize + pageSize);
     }),
 });
