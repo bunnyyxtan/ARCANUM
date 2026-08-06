@@ -56,3 +56,15 @@ __pycache__/
 
 # typescript cache
 *.tsbuildinfo
+
+# workspace tooling (kept local, not part of the product repo)
+.replit
+replit.md
+replit.nix
+.agents/
+.local/
+.config/
+.cache/
+.upm/
+attached_assets/
+artifacts/
