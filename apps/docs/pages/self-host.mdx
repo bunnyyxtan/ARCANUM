@@ -41,17 +41,3 @@ If you operate a separate self-hosted public deployment, replace
 `NEXT_PUBLIC_APP_URL` with that HTTPS origin. The canonical public Arcanum app
 uses `https://thearcanum.in`.
 
-## Optional Helm chart
-
-The Helm chart is optional infrastructure for operators that already run
-Kubernetes. It is not required for local development or Vercel web deploys.
-
-```bash
-helm upgrade --install arcanum ./charts/arcanum \
-  --set env.ARCANUM_TENANT_ID=default \
-  --set ingress.host=arcanum.example.org
-```
-
-The chart supports ingress, cert-manager hooks, and external database/cache
-configuration through values. Add `SIWE_SECRET` and other private values only in
-your hosting provider's secret manager.
