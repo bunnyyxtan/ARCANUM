@@ -165,7 +165,7 @@ export default function StatusPage() {
             type="button"
             onClick={runCheck}
             disabled={health.isFetching}
-            className="warm-pill group rounded-full bg-[var(--wl-signal)] px-5 py-3 text-[12px] font-semibold text-white disabled:opacity-70"
+            className="warm-pill group min-h-11 md:min-h-0 rounded-full bg-[var(--wl-signal)] px-5 py-3 text-[12px] font-semibold text-white disabled:opacity-70"
           >
             {health.isFetching ? "Checking systems" : "Run health check"}
             <Arrow />
@@ -220,7 +220,7 @@ export default function StatusPage() {
               return (
                 <div
                   key={contract.label}
-                  className="grid grid-cols-[1fr_auto] items-center gap-4 py-4"
+                  className="grid grid-cols-[1fr_auto] items-center gap-4 py-4 max-sm:grid-cols-1 max-sm:gap-1"
                 >
                   <span className="font-mono text-[11px] uppercase tracking-[.12em] text-[var(--wl-body)]">
                     {contract.label}

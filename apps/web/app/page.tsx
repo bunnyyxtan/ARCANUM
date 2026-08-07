@@ -152,7 +152,7 @@ export default function LandingPage() {
           <button
             type="button"
             onClick={openConnect}
-            className="warm-pill warm-interaction group rounded-full bg-[var(--wl-signal)] px-5 py-2.5 text-[11px] font-semibold text-white"
+            className="warm-pill warm-interaction group flex min-h-11 md:min-h-0 items-center rounded-full bg-[var(--wl-signal)] px-5 py-2.5 text-[11px] font-semibold text-white"
           >
             Launch Dashboard
             <Arrow />
@@ -342,7 +342,7 @@ export default function LandingPage() {
             </Reveal>
             <Reveal className="delay-1">
               <div className="warm-policy-doc relative mt-24 max-w-[930px] border border-[var(--wl-line-bold)] bg-[var(--wl-bg-raised)] p-7 shadow-[14px_18px_0_var(--wl-bg-deep2)] lg:ml-[12%] lg:p-12">
-                <div className="flex justify-between border-b border-[var(--wl-line)] pb-5 font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)]">
+                <div className="flex flex-col gap-2 border-b border-[var(--wl-line)] pb-5 font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)] md:flex-row md:justify-between">
                   <span>POLICY / PROCUREMENT-BOT</span>
                   <span>v4.18 · ACTIVE</span>
                 </div>
@@ -367,7 +367,7 @@ export default function LandingPage() {
                     <span className="text-[var(--wl-signal)]">ESCALATE</span> · ask human operator
                   </div>
                 </div>
-                <div className="mt-10 flex justify-between border-t border-[var(--wl-line)] pt-5 text-[10px] text-[var(--wl-secondary)]">
+                <div className="mt-10 flex flex-col gap-2 border-t border-[var(--wl-line)] pt-5 text-[10px] text-[var(--wl-secondary)] md:flex-row md:justify-between">
                   <span>daily cap $5,000 · USDC only</span>
                   <span className="text-[var(--wl-green-bright)]">✓ signed by operator</span>
                 </div>
@@ -458,7 +458,7 @@ export default function LandingPage() {
             <EmberMark size={18} />
             ARCANUM
           </span>
-          <div className="flex gap-7">
+          <div className="flex flex-wrap gap-x-7 gap-y-4">
             <MagneticAnchor
               href="/docs"
               className="warm-link inline-flex items-center gap-1.5 hover:text-[var(--wl-signal)]"

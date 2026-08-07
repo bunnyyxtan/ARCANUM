@@ -486,11 +486,63 @@ export default function LedgerPage() {
                     key={row.id}
                     onClick={() => setSelectedId(row.id)}
                     style={{ "--row-i": index } as CSSProperties}
-                    className={`arc-row grid w-full grid-cols-[1fr_auto] items-center gap-3 border-b border-[var(--wl-line-faint)] px-5 py-4 text-left last:border-b-0 md:grid-cols-[1.05fr_1.2fr_1fr_1fr_.9fr_90px] md:gap-4 ${
+                    className={`arc-row grid w-full grid-cols-[1fr_auto] items-center gap-3 border-b border-[var(--wl-line-faint)] px-4 py-4 text-left last:border-b-0 md:grid-cols-[1.05fr_1.2fr_1fr_1fr_.9fr_90px] md:gap-4 md:px-5 ${
                       selectedId === row.id ? "arc-row-selected" : ""
                     }`}
                   >
-                    <div>
+                    <div className="md:hidden">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-mute)]">
+                          Time
+                        </span>
+                        <span className="font-mono text-[10px] tabular-nums text-[var(--wl-body)]">
+                          {timePart(row.timestamp)} UTC
+                        </span>
+                      </div>
+                      <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2">
+                        <span className="min-w-0">
+                          <span className="block font-mono text-[8px] uppercase tracking-[.12em] text-[var(--wl-mute)]">
+                            Agent
+                          </span>
+                          <span className="mt-1 block truncate text-[12px] font-medium">
+                            {row.agentName}
+                          </span>
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block font-mono text-[8px] uppercase tracking-[.12em] text-[var(--wl-mute)]">
+                            Counterparty
+                          </span>
+                          <span className="mt-1 block truncate text-[12px] text-[var(--wl-body)]">
+                            {flaggedAddresses.has(row.counterpartyAddress.toLowerCase()) && (
+                              <span
+                                title="Counterparty flagged for review"
+                                className="mr-1.5 text-[var(--wl-signal)]"
+                              >
+                                ⚑
+                              </span>
+                            )}
+                            {row.counterparty}
+                          </span>
+                        </span>
+                        <span>
+                          <span className="block font-mono text-[8px] uppercase tracking-[.12em] text-[var(--wl-mute)]">
+                            Category
+                          </span>
+                          <span className="mt-1 block font-mono text-[10px] uppercase tracking-[.08em] text-[var(--wl-secondary2)]">
+                            {categoryLabel(row.category)}
+                          </span>
+                        </span>
+                        <span>
+                          <span className="block font-mono text-[8px] uppercase tracking-[.12em] text-[var(--wl-mute)]">
+                            Amount
+                          </span>
+                          <span className="mt-1 block font-mono text-[12px] tabular-nums">
+                            {formatUsdCompact(row.amount)}
+                          </span>
+                        </span>
+                      </div>
+                    </div>
+                    <div className="hidden md:block">
                       <span className="font-mono text-[10px] tabular-nums text-[var(--wl-body)]">
                         {timePart(row.timestamp)}
                       </span>
@@ -498,7 +550,7 @@ export default function LedgerPage() {
                         UTC
                       </span>
                     </div>
-                    <span className="text-[12px] font-medium">{row.agentName}</span>
+                    <span className="hidden text-[12px] font-medium md:block">{row.agentName}</span>
                     <span className="hidden truncate text-[12px] text-[var(--wl-body)] md:block">
                       {flaggedAddresses.has(row.counterpartyAddress.toLowerCase()) && (
                         <span
@@ -513,10 +565,15 @@ export default function LedgerPage() {
                     <span className="hidden font-mono text-[10px] uppercase tracking-[.08em] text-[var(--wl-secondary2)] md:block">
                       {categoryLabel(row.category)}
                     </span>
-                    <span className="font-mono text-[12px] tabular-nums">
+                    <span className="hidden font-mono text-[12px] tabular-nums md:block">
                       {formatUsdCompact(row.amount)}
                     </span>
-                    <StatusPill status={row.status} />
+                    <span className="flex flex-col items-end gap-1 md:block">
+                      <span className="font-mono text-[8px] uppercase tracking-[.12em] text-[var(--wl-mute)] md:hidden">
+                        Status
+                      </span>
+                      <StatusPill status={row.status} />
+                    </span>
                   </button>
                 ))
               )}
@@ -529,7 +586,7 @@ export default function LedgerPage() {
 
           {selected && (
             <aside className="arc-drawer w-full shrink-0 border border-[var(--wl-line-bold)] bg-[var(--wl-bg-soft)] xl:w-[360px]">
-              <div className="flex items-start justify-between border-b border-[var(--wl-line)] px-5 py-5">
+              <div className="flex items-start justify-between gap-3 border-b border-[var(--wl-line)] px-4 py-5 md:px-5">
                 <div>
                   <p className="font-mono text-[9px] tracking-[.16em] text-[var(--wl-signal)]">
                     DECISION RECORD
@@ -588,13 +645,13 @@ export default function LedgerPage() {
                   <button
                     type="button"
                     onClick={() => setSelectedId(null)}
-                    className="font-mono text-[10px] uppercase tracking-[.12em] text-[var(--wl-secondary)] hover:text-[var(--wl-ink)]"
+                    className="min-h-11 md:min-h-0 min-w-11 md:min-w-0 px-2 font-mono text-[10px] uppercase tracking-[.12em] text-[var(--wl-secondary)] hover:text-[var(--wl-ink)]"
                   >
                     Close
                   </button>
                 </div>
               </div>
-              <div className="px-5">
+              <div className="px-4 md:px-5">
                 <div className="border-b border-[var(--wl-line)] py-4">
                   <p className="text-[13px] leading-[1.45] text-[var(--wl-body)]">
                     {selected.reason || "No decision narrative recorded."}
@@ -789,7 +846,7 @@ export default function LedgerPage() {
         {notice && (
           <div
             role="status"
-            className="fixed bottom-5 left-1/2 z-20 -translate-x-1/2 border border-[var(--wl-ink)] bg-[var(--wl-ink)] px-4 py-3 font-mono text-[10px] text-[var(--wl-bg)] shadow-[0_12px_28px_rgba(var(--wl-ink-rgb),.18)]"
+            className="fixed bottom-[calc(20px+env(safe-area-inset-bottom))] left-1/2 z-20 max-w-[calc(100vw-32px)] -translate-x-1/2 border border-[var(--wl-ink)] bg-[var(--wl-ink)] px-4 py-3 font-mono text-[10px] text-[var(--wl-bg)] shadow-[0_12px_28px_rgba(var(--wl-ink-rgb),.18)] md:bottom-5"
           >
             {notice}
           </div>

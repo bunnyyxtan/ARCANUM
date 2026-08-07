@@ -577,7 +577,7 @@ export default function PolicyEditorPage() {
               deploys them on Arc Testnet.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 max-md:w-full">
             <span className="font-mono text-[9px] uppercase tracking-[.13em] text-[var(--wl-secondary)]">
               {policyReadStatus === "checking"
                 ? "READING ON-CHAIN POLICY"
@@ -589,7 +589,7 @@ export default function PolicyEditorPage() {
               type="button"
               onClick={resetDraft}
               disabled={unsavedCount === 0 || policyBusy}
-              className="warm-pill warm-pill-ghost rounded-full border border-[var(--wl-line)] px-4 py-2.5 text-[11px] font-semibold disabled:opacity-40"
+              className="warm-pill warm-pill-ghost min-h-11 md:min-h-0 rounded-full border border-[var(--wl-line)] px-4 py-2.5 text-[11px] font-semibold disabled:opacity-40"
             >
               Reset draft
             </button>
@@ -598,7 +598,7 @@ export default function PolicyEditorPage() {
               onClick={savePolicyOnChain}
               disabled={Boolean(policyWriteDisabledReason) || policyBusy}
               title={policyWriteDisabledReason ?? "Sign and deploy this policy revision."}
-              className="warm-pill rounded-full bg-[var(--wl-signal)] px-5 py-3 text-[11px] font-semibold text-white disabled:opacity-40"
+              className="warm-pill min-h-11 md:min-h-0 rounded-full bg-[var(--wl-signal)] px-5 py-3 text-[11px] font-semibold text-white disabled:opacity-40"
             >
               {policyBusy
                 ? policyTxHash
@@ -747,7 +747,7 @@ export default function PolicyEditorPage() {
                           type="button"
                           key={category.value}
                           onClick={() => toggleCategory(category.value)}
-                          className={`rounded-full border px-3.5 py-2 font-mono text-[9px] uppercase tracking-[.1em] transition-colors ${
+                          className={`min-h-11 md:min-h-0 rounded-full border px-3.5 py-2 font-mono text-[9px] uppercase tracking-[.1em] transition-colors ${
                             enabled
                               ? "border-[var(--wl-ink)] bg-[var(--wl-ink)] text-[var(--wl-bg)]"
                               : "border-[var(--wl-line)] text-[var(--wl-secondary)] hover:border-[var(--wl-ink)]"
@@ -821,7 +821,7 @@ export default function PolicyEditorPage() {
                   type="button"
                   onClick={resetDraft}
                   disabled={unsavedCount === 0}
-                  className="rounded-full px-3 py-2 font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-secondary)] hover:text-[var(--wl-ink)] disabled:opacity-40"
+                  className="min-h-11 md:min-h-0 rounded-full px-3 py-2 font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-secondary)] hover:text-[var(--wl-ink)] disabled:opacity-40"
                 >
                   Reset
                 </button>

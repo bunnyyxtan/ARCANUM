@@ -354,7 +354,7 @@ function EscalationCard({
               type="button"
               disabled={actionsDisabled}
               onClick={(event) => void submitResolution("approve", event)}
-              className="arc-pill rounded-full bg-[var(--wl-signal)] px-4 py-2.5 text-[10px] font-semibold text-[var(--wl-bg)] disabled:cursor-not-allowed disabled:opacity-55"
+              className="arc-pill min-h-11 md:min-h-0 rounded-full bg-[var(--wl-signal)] px-5 py-3 text-[10px] font-semibold text-[var(--wl-bg)] disabled:cursor-not-allowed disabled:opacity-55"
             >
               Approve
             </button>
@@ -362,7 +362,7 @@ function EscalationCard({
               type="button"
               disabled={actionsDisabled}
               onClick={(event) => void submitResolution("reject", event)}
-              className="arc-pill arc-ghost rounded-full border border-[var(--wl-line)] px-4 py-2.5 text-[10px] font-semibold disabled:cursor-not-allowed disabled:opacity-55"
+              className="arc-pill arc-ghost min-h-11 md:min-h-0 rounded-full border border-[var(--wl-line)] px-5 py-3 text-[10px] font-semibold disabled:cursor-not-allowed disabled:opacity-55"
             >
               Reject
             </button>
@@ -375,7 +375,7 @@ function EscalationCard({
         <button
           type="button"
           onClick={copyPortal}
-          className="ml-auto rounded-full border border-[var(--wl-line)] px-4 py-2.5 font-mono text-[9px] tracking-[.08em] text-[var(--wl-secondary2)] transition-colors duration-[220ms] hover:border-[var(--wl-ink)] hover:text-[var(--wl-ink)]"
+          className="ml-auto min-h-11 md:min-h-0 rounded-full border border-[var(--wl-line)] px-4 py-3 font-mono text-[9px] tracking-[.08em] text-[var(--wl-secondary2)] transition-colors duration-[220ms] hover:border-[var(--wl-ink)] hover:text-[var(--wl-ink)]"
         >
           Copy approver portal link
         </button>
@@ -507,7 +507,7 @@ export default function EscalationsPage() {
 
       <div role="status" aria-live="polite">
         {notice && (
-          <div className="fixed bottom-5 left-1/2 z-20 -translate-x-1/2 border border-[var(--wl-ink)] bg-[var(--wl-ink)] px-4 py-3 font-mono text-[10px] text-[var(--wl-bg)] shadow-[0_12px_28px_rgba(var(--wl-ink-rgb),.18)]">
+          <div className="fixed bottom-[calc(20px+env(safe-area-inset-bottom))] left-1/2 z-20 max-w-[calc(100vw-32px)] -translate-x-1/2 border border-[var(--wl-ink)] bg-[var(--wl-ink)] px-4 py-3 font-mono text-[10px] text-[var(--wl-bg)] shadow-[0_12px_28px_rgba(var(--wl-ink-rgb),.18)] md:bottom-5">
             {notice}
           </div>
         )}

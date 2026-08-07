@@ -71,7 +71,7 @@ export function ExplorerPublicPage({ wallet }: Readonly<{ wallet: string }>) {
           "@keyframes enter{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}.enter{animation:enter 440ms cubic-bezier(.16,1,.3,1) both}@media(prefers-reduced-motion:reduce){.enter{animation:none}}"
         }
       </style>
-      <nav className="flex items-center justify-between border-b border-[var(--wl-line)] px-5 py-5 md:px-9">
+      <nav className="flex items-center justify-between border-b border-[var(--wl-line)] px-5 py-4 md:px-9 md:py-5">
         <Link
           href="/"
           className="font-display flex items-center gap-2 text-[18px] font-bold tracking-[-.015em]"
@@ -79,21 +79,23 @@ export function ExplorerPublicPage({ wallet }: Readonly<{ wallet: string }>) {
           <EmberMark size={24} />
           ARCANUM
         </Link>
-        <div className="flex items-center gap-4">
-          <PublicBackLink />
+        <div className="flex items-center gap-2 md:gap-4">
+          <span className="hidden sm:inline">
+            <PublicBackLink />
+          </span>
           <span className="hidden font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)] sm:inline">
             PUBLIC EXPLORER
           </span>
           <Link
             href={badgeHref}
-            className="rounded-full border border-[var(--wl-line)] px-4 py-2 font-mono text-[9px] tracking-[.12em] transition hover:border-[var(--wl-ink)]"
+            className="min-h-11 md:min-h-0 rounded-full border border-[var(--wl-line)] px-3 py-2 font-mono text-[9px] tracking-[.12em] transition hover:border-[var(--wl-ink)] md:px-4"
           >
             GET BADGE ↗
           </Link>
           <ThemeToggle />
         </div>
       </nav>
-      <div className="mx-auto max-w-[1120px] px-5 py-10 md:px-9 md:py-16">
+      <div className="mx-auto max-w-[1120px] px-5 py-7 md:px-9 md:py-16">
         <header className="enter border-b border-[var(--wl-line)] pb-10">
           <p className="font-mono text-[10px] uppercase tracking-[.2em] text-[var(--wl-signal)]">
             ARC / PUBLIC VERIFICATION
@@ -179,8 +181,8 @@ export function ExplorerPublicPage({ wallet }: Readonly<{ wallet: string }>) {
           </div>
         </section>
 
-        <section className="enter pt-10" style={{ animationDelay: "180ms" }}>
-          <div className="flex items-end justify-between border-b border-[var(--wl-line)] pb-4">
+        <section className="enter pt-8 md:pt-10" style={{ animationDelay: "180ms" }}>
+          <div className="flex flex-col items-start gap-3 border-b border-[var(--wl-line)] pb-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
                 PUBLIC LEDGER / {String(records.length).padStart(2, "0")} RECORDS
@@ -208,7 +210,7 @@ export function ExplorerPublicPage({ wallet }: Readonly<{ wallet: string }>) {
               {[0, 1, 2, 3].map((i) => (
                 <div
                   key={i}
-                  className="grid gap-2 px-3 py-4 md:grid-cols-[1fr_1.3fr_1fr_1fr_1.2fr] md:items-center"
+                  className="grid gap-3 border-b border-[var(--wl-line-soft)] px-3 py-4 md:grid-cols-[1fr_1.3fr_1fr_1fr_1.2fr] md:items-center"
                 >
                   {[0, 1, 2, 3, 4].map((c) => (
                     <span
@@ -230,19 +232,34 @@ export function ExplorerPublicPage({ wallet }: Readonly<{ wallet: string }>) {
                 return (
                   <div
                     key={r.id}
-                    className="grid gap-2 px-3 py-4 transition hover:translate-x-1 hover:bg-[var(--wl-bg-soft)] md:grid-cols-[1fr_1.3fr_1fr_1fr_1.2fr] md:items-center"
+                    className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-3 px-3 py-4 transition hover:translate-x-1 hover:bg-[var(--wl-bg-soft)] md:grid-cols-[1fr_1.3fr_1fr_1fr_1.2fr] md:items-center"
                   >
+                    <span className="font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-mute)] md:hidden">
+                      Time
+                    </span>
                     <span className="font-mono text-[10px] text-[var(--wl-secondary)]">
                       {r.timestamp}
                     </span>
+                    <span className="font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-mute)] md:hidden">
+                      Vendor
+                    </span>
                     <span className="text-[12px] font-medium">{r.counterparty}</span>
+                    <span className="font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-mute)] md:hidden">
+                      Amount
+                    </span>
                     <span className="font-mono text-[12px] tabular-nums">
                       {formatUsd(r.amount)}
+                    </span>
+                    <span className="font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-mute)] md:hidden">
+                      Verdict
                     </span>
                     <span
                       className={`w-fit rounded-full px-2.5 py-1 font-mono text-[9px] tracking-[.12em] ${verdictClass(r.status)}`}
                     >
                       {verdictLabel[r.status]}
+                    </span>
+                    <span className="font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-mute)] md:hidden">
+                      Transaction
                     </span>
                     {txUrl ? (
                       <a

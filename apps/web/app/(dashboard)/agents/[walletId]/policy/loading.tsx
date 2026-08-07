@@ -8,7 +8,7 @@ export default function PolicyEditorLoading() {
           <div className="h-4 w-96 max-w-full rounded bg-[var(--wl-line-soft)]" />
         </div>
         <div className="grid gap-10 pt-10 xl:grid-cols-[minmax(0,1.55fr)_360px]">
-          <div className="animate-pulse border border-[var(--wl-line-bold)] bg-[var(--wl-bg-raised)] p-9">
+          <div className="animate-pulse border border-[var(--wl-line-bold)] bg-[var(--wl-bg-raised)] p-6 md:p-9">
             <div className="h-8 w-56 rounded bg-[var(--wl-line-soft)]" />
             <div className="mt-8 space-y-5">
               {[0, 1, 2, 3].map((index) => (

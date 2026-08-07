@@ -200,7 +200,7 @@ export function LedgerRows({ dark = false }: { dark?: boolean }) {
         <span className={`font-mono text-[10px] ${quiet}`}>ARC / USDC</span>
       </div>
       <div
-        className={`grid grid-cols-[1.3fr_1fr_.9fr_1fr_140px] gap-3 border-b px-5 py-3 font-mono text-[9px] uppercase tracking-[.13em] ${line} ${quiet}`}
+        className={`hidden grid-cols-[1.3fr_1fr_.9fr_1fr_140px] gap-3 border-b px-5 py-3 font-mono text-[9px] uppercase tracking-[.13em] md:grid ${line} ${quiet}`}
       >
         <span>Agent</span>
         <span>Vendor</span>
@@ -215,9 +215,9 @@ export function LedgerRows({ dark = false }: { dark?: boolean }) {
           <div
             key={r.time}
             style={{ "--row-i": i } as CSSProperties}
-            className={`warm-ledger-row grid grid-cols-[1.3fr_1fr_.9fr_1fr_140px] items-center gap-3 px-5 py-4 ${i < visible ? "is-live" : "is-quiet"}`}
+            className={`warm-ledger-row grid gap-3 px-4 py-4 md:grid-cols-[1.3fr_1fr_.9fr_1fr_140px] md:items-center md:px-5 ${i < visible ? "is-live" : "is-quiet"}`}
           >
-            <div>
+            <div className="flex items-baseline justify-between gap-3 md:block">
               <div
                 className={`text-[12px] font-medium ${dark ? "text-[var(--wl-bg-tint)]" : "text-[var(--wl-ink)]"}`}
               >
@@ -225,20 +225,42 @@ export function LedgerRows({ dark = false }: { dark?: boolean }) {
               </div>
               <div className={`mt-1 font-mono text-[9px] ${quiet}`}>{r.time} UTC</div>
             </div>
-            <span
-              className={`text-[12px] ${dark ? "text-[var(--wl-line-bolder)]" : "text-[var(--wl-strong)]"}`}
-            >
-              {r.vendor}
-            </span>
-            <span
-              className={`text-right font-mono text-[12px] tabular-nums ${dark ? "text-[var(--wl-bg-tint)]" : "text-[var(--wl-ink)]"}`}
-            >
-              {r.amount}
-            </span>
-            <span className={`font-mono text-[10px] ${quiet}`}>{r.detail}</span>
-            <span className="flex justify-end">
-              <StatusPill status={r.status} />
-            </span>
+            <div className="grid grid-cols-[auto_1fr] items-baseline gap-x-3 gap-y-2 md:contents">
+              <span
+                className={`font-mono text-[9px] uppercase tracking-[.12em] md:hidden ${quiet}`}
+              >
+                Vendor
+              </span>
+              <span
+                className={`text-[12px] ${dark ? "text-[var(--wl-line-bolder)]" : "text-[var(--wl-strong)]"}`}
+              >
+                {r.vendor}
+              </span>
+              <span
+                className={`font-mono text-[9px] uppercase tracking-[.12em] md:hidden ${quiet}`}
+              >
+                Amount
+              </span>
+              <span
+                className={`font-mono text-[12px] tabular-nums md:text-right ${dark ? "text-[var(--wl-bg-tint)]" : "text-[var(--wl-ink)]"}`}
+              >
+                {r.amount}
+              </span>
+              <span
+                className={`font-mono text-[9px] uppercase tracking-[.12em] md:hidden ${quiet}`}
+              >
+                Wallet
+              </span>
+              <span className={`font-mono text-[10px] ${quiet}`}>{r.detail}</span>
+              <span
+                className={`font-mono text-[9px] uppercase tracking-[.12em] md:hidden ${quiet}`}
+              >
+                Verdict
+              </span>
+              <span className="flex justify-start md:justify-end">
+                <StatusPill status={r.status} />
+              </span>
+            </div>
           </div>
         ))}
       </div>

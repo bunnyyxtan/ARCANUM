@@ -1,7 +1,7 @@
 import "@rainbow-me/rainbowkit/styles.css";
 import "./globals.css";
 
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Fraunces, IBM_Plex_Mono, Schibsted_Grotesk } from "next/font/google";
 import Script from "next/script";
 import type { ReactNode } from "react";
@@ -33,6 +33,12 @@ const plexMono = IBM_Plex_Mono({
 const publicOrigin = configuredPublicOrigin();
 const publicDescription =
   "Open, non-custodial governance for autonomous agent wallets on Arc. Spending limits, vendor rules, signer control, approval flows, and risk checks before funds move.";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://thearcanum.in"),

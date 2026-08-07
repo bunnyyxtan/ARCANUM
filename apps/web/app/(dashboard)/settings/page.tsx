@@ -160,7 +160,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div className="settings-grid mt-16 grid grid-cols-[210px_1fr] gap-12">
+        <div className="settings-grid mt-16 grid grid-cols-[210px_1fr] gap-12 max-md:mt-10 max-md:gap-8">
           <aside className="border-t border-[var(--wl-line)]">
             {tabs.map((tab) => (
               <button
@@ -195,7 +195,7 @@ export default function SettingsPage() {
                   ].map(([label, value], index) => (
                     <div
                       key={label}
-                      className="warm-reveal is-visible border-r border-[var(--wl-line)] px-6 py-6 first:pl-0 last:border-r-0 max-md:border-b max-md:border-r-0 max-md:px-0"
+                      className="warm-reveal is-visible border-r border-[var(--wl-line)] px-6 py-6 first:pl-0 last:border-r-0 max-md:border-b max-md:border-r-0 max-md:px-0 max-md:py-5"
                       style={{ "--i": index + 1 } as CSSProperties}
                     >
                       <p className="font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)]">
@@ -256,7 +256,7 @@ export default function SettingsPage() {
                       members.map((member, index) => (
                         <div
                           key={member.id}
-                          className="member-row warm-reveal is-visible grid grid-cols-[1.8fr_.8fr_.8fr_auto] items-center gap-4 border-b border-[var(--wl-line-soft)] px-4 py-4 max-md:grid-cols-[1fr_.7fr] max-md:gap-2"
+                          className="member-row warm-reveal is-visible grid grid-cols-[1.8fr_.8fr_.8fr_auto] items-center gap-4 border-b border-[var(--wl-line-soft)] px-4 py-4 max-md:grid-cols-[minmax(0,1fr)_auto] max-md:gap-3 max-md:px-0"
                           style={{ "--i": index + 2 } as CSSProperties}
                         >
                           <div className="flex min-w-0 items-center gap-3">
@@ -370,7 +370,7 @@ export default function SettingsPage() {
                   ].map(([label, value]) => (
                     <div
                       key={label}
-                      className="grid grid-cols-[140px_1fr] gap-6 border-b border-[var(--wl-line-soft)] py-4"
+                      className="grid grid-cols-[140px_1fr] gap-6 border-b border-[var(--wl-line-soft)] py-4 max-md:grid-cols-1 max-md:gap-1"
                     >
                       <dt className="font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)]">
                         {label}
@@ -509,7 +509,7 @@ export default function SettingsPage() {
       {notice && (
         <div
           role="status"
-          className="fixed bottom-6 right-6 border border-[var(--wl-line)] bg-[var(--wl-bg-soft)] px-5 py-4 text-[12px] text-[var(--wl-ink)] shadow-[0_10px_30px_-20px_rgba(var(--wl-ink-rgb),.7)]"
+          className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-5 right-5 border border-[var(--wl-line)] bg-[var(--wl-bg-soft)] px-5 py-4 text-[12px] text-[var(--wl-ink)] shadow-[0_10px_30px_-20px_rgba(var(--wl-ink-rgb),.7)] md:bottom-6 md:left-auto md:right-6"
         >
           {notice}
         </div>

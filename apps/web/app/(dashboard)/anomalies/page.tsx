@@ -157,36 +157,53 @@ function AnomalyRow({
   return (
     <div
       style={{ "--row": index } as CSSProperties}
-      className={`anomaly-row grid gap-3 px-4 py-5 md:grid-cols-[1.08fr_1fr_.72fr_.55fr_1.4fr_.75fr_1.55fr] md:items-center ${
+      className={`anomaly-row grid gap-4 px-4 py-5 md:grid-cols-[1.08fr_1fr_.72fr_.55fr_1.4fr_.75fr_1.55fr] md:items-center ${
         acknowledge.isPending || dismiss.isPending ? "opacity-60" : ""
       }`}
     >
       <div>
+        <span className="mb-1 block font-mono text-[8px] uppercase tracking-[.12em] text-[var(--wl-mute)] md:hidden">
+          Agent
+        </span>
         <div className="text-[13px] font-medium">{item.agentName}</div>
         <div className="mt-1 font-mono text-[9px] text-[var(--wl-mute)]">
           agent wallet · {shortAddress(item.agentId)}
         </div>
       </div>
       <span className="font-mono text-[10px] tabular-nums text-[var(--wl-body)]">
+        <span className="mr-2 md:hidden">Observed</span>
         {item.timestamp}
       </span>
       <div>
+        <span className="mb-1 block font-mono text-[8px] uppercase tracking-[.12em] text-[var(--wl-mute)] md:hidden">
+          Status
+        </span>
         <StatusPill frozen={frozen} />
         <span className="ml-2 font-mono text-[9px] tracking-[.1em] text-[var(--wl-secondary)] md:hidden">
           {severity}
         </span>
       </div>
       <span className="font-mono text-[14px] tabular-nums text-[var(--wl-signal)]">
+        <span className="mr-2 md:hidden">Score</span>
         {item.score.toFixed(1)}
       </span>
-      <span className="text-[12px] text-[var(--wl-body)]">{item.narrative}</span>
+      <span className="text-[12px] text-[var(--wl-body)]">
+        <span className="mr-2 md:hidden">Deviation</span>
+        {item.narrative}
+      </span>
       <div className="flex items-center justify-between gap-3">
+        <span className="font-mono text-[8px] uppercase tracking-[.12em] text-[var(--wl-mute)] md:hidden">
+          Trend
+        </span>
         <Sparkline points={item.points} />
         <span className="hidden font-mono text-[9px] tracking-[.12em] text-[var(--wl-secondary)] lg:inline">
           {severity}
         </span>
       </div>
       <div className="flex flex-col items-start gap-1.5 md:items-end">
+        <span className="font-mono text-[8px] uppercase tracking-[.12em] text-[var(--wl-mute)] md:hidden">
+          Action
+        </span>
         <div className="flex items-center justify-start gap-3 md:justify-end">
           {frozen ? (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--wl-ink)] px-3 py-1.5 font-mono text-[9px] tracking-[.1em] text-[var(--wl-bg)]">
@@ -199,7 +216,7 @@ function AnomalyRow({
               disabled={acknowledge.isPending || !isConnected}
               title={!isConnected ? "Connect wallet first." : undefined}
               onClick={(event) => void settle("restrained", event)}
-              className="rounded-full border border-[var(--wl-signal)] px-3 py-1.5 font-mono text-[9px] tracking-[.1em] text-[var(--wl-signal)] transition-all duration-[220ms] hover:-translate-y-0.5 hover:bg-[var(--wl-signal)] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+              className="min-h-11 md:min-h-0 rounded-full border border-[var(--wl-signal)] px-4 py-2 font-mono text-[9px] tracking-[.1em] text-[var(--wl-signal)] transition-all duration-[220ms] hover:-translate-y-0.5 hover:bg-[var(--wl-signal)] hover:text-[var(--wl-bg)] disabled:cursor-not-allowed disabled:opacity-50"
             >
               Restrain
             </button>
@@ -207,7 +224,7 @@ function AnomalyRow({
           <button
             type="button"
             onClick={onInvestigate}
-            className="warm-pill warm-pill-ghost rounded-full border border-[var(--wl-line)] px-3 py-1.5 font-mono text-[9px] tracking-[.1em]"
+            className="warm-pill warm-pill-ghost min-h-11 md:min-h-0 rounded-full border border-[var(--wl-line)] px-4 py-2 font-mono text-[9px] tracking-[.1em]"
           >
             {investigated ? "Close trace" : "Investigate"}
           </button>
@@ -216,7 +233,7 @@ function AnomalyRow({
             disabled={dismiss.isPending || !isConnected}
             title={!isConnected ? "Connect wallet first." : undefined}
             onClick={(event) => void settle("dismissed", event)}
-            className="font-mono text-[9px] tracking-[.1em] text-[var(--wl-secondary)] transition-colors hover:text-[var(--wl-ink)] disabled:cursor-not-allowed disabled:opacity-50"
+            className="min-h-11 md:min-h-0 px-2 font-mono text-[9px] tracking-[.1em] text-[var(--wl-secondary)] transition-colors hover:text-[var(--wl-ink)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             Dismiss
           </button>

@@ -22,7 +22,10 @@ export default function AnomaliesLoading() {
       </div>
       <div className="mt-14 divide-y divide-[var(--wl-line-soft)] border-y border-[var(--wl-line)]">
         {[0, 1, 2].map((row) => (
-          <div key={row} className="flex items-center gap-4 px-4 py-5">
+          <div
+            key={row}
+            className="flex min-h-40 flex-col items-start gap-4 px-4 py-5 md:min-h-0 md:flex-row md:items-center"
+          >
             <div className="h-4 w-28 animate-pulse rounded bg-[var(--wl-line-soft)]" />
             <div className="h-4 flex-1 animate-pulse rounded bg-[var(--wl-line-soft)]" />
             <div className="h-4 w-24 animate-pulse rounded bg-[var(--wl-line-soft)]" />

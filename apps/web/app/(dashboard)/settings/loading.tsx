@@ -9,7 +9,7 @@ export default function SettingsLoading() {
             <div key={i} className="h-10 w-full animate-pulse rounded bg-[var(--wl-bg-soft)]" />
           ))}
         </div>
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <div className="h-24 w-full animate-pulse rounded bg-[var(--wl-bg-soft)]" />
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="h-12 w-full animate-pulse rounded bg-[var(--wl-bg-soft)]" />

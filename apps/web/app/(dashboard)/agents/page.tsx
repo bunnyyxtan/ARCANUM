@@ -143,14 +143,14 @@ export default function AgentsPage() {
               </button>
             ))}
           </div>
-          <label className="flex items-center gap-2 rounded-full border border-[var(--wl-line)] px-4 py-2.5 text-[var(--wl-secondary)] focus-within:border-[var(--wl-ink)]">
+          <label className="flex w-full items-center gap-2 rounded-full border border-[var(--wl-line)] px-4 py-2.5 text-[var(--wl-secondary)] focus-within:border-[var(--wl-ink)] sm:w-auto">
             <span className="font-mono text-[10px]">⌕</span>
             <input
               aria-label="Search agents"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search agents"
-              className="w-[170px] bg-transparent text-[12px] outline-none placeholder:text-[var(--wl-mute)]"
+              className="min-w-0 flex-1 bg-transparent text-[12px] outline-none placeholder:text-[var(--wl-mute)] sm:w-[170px] sm:flex-none"
             />
           </label>
         </section>
@@ -224,16 +224,19 @@ export default function AgentsPage() {
                         key={agent.id}
                         onClick={() => setSelectedId(agent.id)}
                         style={{ "--i": i + 3 } as CSSProperties}
-                        className={`agent-row agents-reveal grid w-full gap-3 px-3 py-5 text-left md:grid-cols-[.9fr_1.35fr_1fr_1fr_1.1fr_1.3fr] md:items-center ${
+                        className={`agent-row agents-reveal grid w-full gap-4 px-3 py-5 text-left max-md:block md:grid-cols-[.9fr_1.35fr_1fr_1fr_1.1fr_1.3fr] md:items-center ${
                           selectedAgent?.id === agent.id
                             ? "bg-[var(--wl-bg-soft)] shadow-[inset_2px_0_0_var(--wl-signal)]"
                             : ""
                         }`}
                       >
-                        <div>
+                        <div className="max-md:mb-4">
                           <StatusPill status={status} />
                         </div>
-                        <div>
+                        <div className="max-md:mb-4">
+                          <span className="mb-1 block font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-mute)] md:hidden">
+                            Agent
+                          </span>
                           <p className="text-[13px] font-medium">
                             <Link
                               href={`/agents/${agent.wallet}`}
@@ -249,7 +252,10 @@ export default function AgentsPage() {
                               : agent.wallet}
                           </p>
                         </div>
-                        <div>
+                        <div className="max-md:mb-4">
+                          <span className="mb-1 block font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-mute)] md:hidden">
+                            Posture
+                          </span>
                           <div className="flex items-center justify-between font-mono text-[10px] tabular-nums">
                             <span>{agent.posture}/100</span>
                             <span className="text-[var(--wl-mute)]">posture</span>
@@ -258,7 +264,10 @@ export default function AgentsPage() {
                             <span style={{ transform: `scaleX(${postureWidth})` }} />
                           </div>
                         </div>
-                        <div>
+                        <div className="max-md:mb-4">
+                          <span className="mb-1 block font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-mute)] md:hidden">
+                            Daily spend
+                          </span>
                           <span className="font-mono text-[11px] tabular-nums">
                             {formatUsd(agent.dailySpend)}
                           </span>
@@ -269,21 +278,29 @@ export default function AgentsPage() {
                             <span style={{ transform: `scaleX(${capWidth})` }} />
                           </div>
                         </div>
-                        <div className="flex flex-wrap gap-1">
-                          {agent.categories.length > 0 ? (
-                            agent.categories.map((category) => (
-                              <span
-                                key={category}
-                                className="rounded-full border border-[var(--wl-line)] px-2 py-1 font-mono text-[8px] uppercase tracking-[.1em] text-[var(--wl-secondary)]"
-                              >
-                                {category}
-                              </span>
-                            ))
-                          ) : (
-                            <span className="font-mono text-[9px] text-[var(--wl-mute)]">-</span>
-                          )}
+                        <div className="max-md:mb-4">
+                          <span className="mb-1 block font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-mute)] md:hidden">
+                            Categories
+                          </span>
+                          <div className="flex flex-wrap gap-1">
+                            {agent.categories.length > 0 ? (
+                              agent.categories.map((category) => (
+                                <span
+                                  key={category}
+                                  className="rounded-full border border-[var(--wl-line)] px-2 py-1 font-mono text-[8px] uppercase tracking-[.1em] text-[var(--wl-secondary)]"
+                                >
+                                  {category}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="font-mono text-[9px] text-[var(--wl-mute)]">-</span>
+                            )}
+                          </div>
                         </div>
                         <div>
+                          <span className="mb-1 block font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-mute)] md:hidden">
+                            Doctrine
+                          </span>
                           <p className="text-[11px] text-[var(--wl-body)]">{agent.mandate}</p>
                           <p className="mt-1 font-mono text-[9px] text-[var(--wl-mute)]">
                             {agent.doctrineVersion}

@@ -1,6 +1,6 @@
 export default function Loading() {
   return (
-    <main className="mx-auto max-w-[1120px] px-5 py-10 md:px-9 md:py-16">
+    <main className="mx-auto max-w-[1120px] px-5 py-7 md:px-9 md:py-16">
       <p className="font-mono text-[10px] uppercase tracking-[.2em] text-[var(--wl-signal)]">
         ARC / LOADING PUBLIC EXPLORER
       </p>

@@ -18,7 +18,7 @@ export default function EscalationsLoading() {
         {[0, 1].map((card) => (
           <div
             key={card}
-            className="border border-[var(--wl-line-bold)] bg-[var(--wl-bg-raised)] p-5 md:p-7"
+            className="min-h-64 border border-[var(--wl-line-bold)] bg-[var(--wl-bg-raised)] p-5 md:min-h-0 md:p-7"
           >
             <div className="h-3 w-40 animate-pulse rounded bg-[var(--wl-line-soft)]" />
             <div className="mt-6 h-8 w-3/4 animate-pulse rounded bg-[var(--wl-line-soft)]" />

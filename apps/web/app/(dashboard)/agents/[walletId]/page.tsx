@@ -594,7 +594,7 @@ export default function AgentDetailPage() {
                         aria-label={`${formatUsd(row.amount)} · ${row.status} · ${row.timestamp}`}
                         className="group relative flex h-full flex-1 flex-col items-center justify-end outline-none"
                       >
-                        <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 -translate-x-1/2 whitespace-nowrap border border-[var(--wl-line)] bg-[var(--wl-bg-raised)] px-2.5 py-1.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100">
+                        <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 -translate-x-1/2 whitespace-nowrap border border-[var(--wl-line)] bg-[var(--wl-bg-raised)] px-2.5 py-1.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 max-md:opacity-100 max-sm:left-auto max-sm:right-0 max-sm:translate-x-0">
                           <p className="font-mono text-[11px] tabular-nums text-[var(--wl-ink)]">
                             {formatUsd(row.amount)}
                           </p>
@@ -701,14 +701,32 @@ export default function AgentDetailPage() {
                 {decisions.map((row) => (
                   <div
                     key={row.id}
-                    className="decision-row grid gap-2 border-b border-[var(--wl-line-soft)] px-3 py-4 md:grid-cols-[.8fr_1.2fr_1.1fr_.8fr_90px] md:items-center"
+                    className="decision-row grid gap-2 border-b border-[var(--wl-line-soft)] px-3 py-4 max-md:grid-cols-1 md:grid-cols-[.8fr_1.2fr_1.1fr_.8fr_90px] md:items-center"
                   >
                     <span className="font-mono text-[10px] text-[var(--wl-secondary)]">
+                      <span className="mr-2 text-[9px] uppercase tracking-[.12em] text-[var(--wl-mute)] md:hidden">
+                        Time
+                      </span>
                       {row.timestamp}
                     </span>
-                    <span className="text-[12px] font-medium">{row.action}</span>
-                    <span className="text-[12px] text-[var(--wl-body)]">{row.counterparty}</span>
-                    <span className="font-mono text-[11px]">{formatUsd(row.amount)}</span>
+                    <span className="text-[12px] font-medium">
+                      <span className="mr-2 font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-mute)] md:hidden">
+                        Action
+                      </span>
+                      {row.action}
+                    </span>
+                    <span className="text-[12px] text-[var(--wl-body)]">
+                      <span className="mr-2 font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-mute)] md:hidden">
+                        Counterparty
+                      </span>
+                      {row.counterparty}
+                    </span>
+                    <span className="font-mono text-[11px]">
+                      <span className="mr-2 text-[9px] uppercase tracking-[.12em] text-[var(--wl-mute)] md:hidden">
+                        Amount
+                      </span>
+                      {formatUsd(row.amount)}
+                    </span>
                     <StatusPill status={ledgerStatusLabel(row.status)} />
                   </div>
                 ))}
@@ -745,9 +763,15 @@ export default function AgentDetailPage() {
                   ["OWNER", agent?.owner ?? "-"],
                 ] as const
               ).map(([label, value]) => (
-                <div key={label} className="grid grid-cols-[.9fr_1.1fr] gap-3 py-3">
+                <div
+                  key={label}
+                  className="grid grid-cols-[.9fr_1.1fr] gap-3 py-3 max-sm:grid-cols-1 max-sm:gap-1"
+                >
                   <dt className="text-[var(--wl-mute)]">{label}</dt>
-                  <dd className="truncate text-right text-[var(--wl-body)]" title={value}>
+                  <dd
+                    className="break-words text-right text-[var(--wl-body)] max-sm:text-left"
+                    title={value}
+                  >
                     {value}
                   </dd>
                 </div>
@@ -807,7 +831,7 @@ export default function AgentDetailPage() {
           </aside>
         </section>
 
-        <footer className="mt-14 flex justify-between border-t border-[var(--wl-line)] pt-5 font-mono text-[9px] uppercase tracking-[.13em] text-[var(--wl-mute)]">
+        <footer className="mt-14 flex flex-col justify-between gap-2 border-t border-[var(--wl-line)] pt-5 font-mono text-[9px] uppercase tracking-[.13em] text-[var(--wl-mute)] sm:flex-row">
           <span>
             {agent?.doctrineVersion ?? "arc testnet"} · caps {formatUsd(dailyLimit)} / day
           </span>

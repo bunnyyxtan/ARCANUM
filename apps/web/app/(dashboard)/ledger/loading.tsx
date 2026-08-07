@@ -18,7 +18,10 @@ export default function LedgerLoading() {
       </div>
       <div className="mt-7 space-y-2 border border-[var(--wl-line)] bg-[var(--wl-bg-raised)] p-5">
         {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="h-10 w-full animate-pulse rounded bg-[var(--wl-bg-soft)]" />
+          <div
+            key={i}
+            className="h-24 w-full animate-pulse rounded bg-[var(--wl-bg-soft)] md:h-10"
+          />
         ))}
       </div>
     </main>

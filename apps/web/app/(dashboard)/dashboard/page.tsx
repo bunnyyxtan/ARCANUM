@@ -105,7 +105,7 @@ function StreamRow({ event, index }: { event: GovernanceEvent; index: number }) 
     <Link
       href={`/ledger?focus=${encodeURIComponent(event.counterparty)}`}
       style={{ "--i": index } as CSSProperties}
-      className="stream-row grid gap-2 px-3 py-4 transition-colors hover:bg-[var(--wl-bg-soft)] md:grid-cols-[.8fr_1.15fr_1.25fr_1fr_.8fr_.85fr] md:items-center"
+      className="stream-row grid min-w-0 gap-3 border-b border-[var(--wl-line-soft)] px-3 py-4 transition-colors hover:bg-[var(--wl-bg-soft)] md:grid-cols-[.8fr_1.15fr_1.25fr_1fr_.8fr_.85fr] md:items-center"
     >
       <div className="flex justify-between md:block">
         <span className="font-mono text-[10px] tabular-nums text-[var(--wl-secondary)]">
@@ -247,7 +247,7 @@ export default function DashboardPage() {
 
       <section
         id="stream"
-        className="grid gap-10 pt-10 xl:grid-cols-[minmax(0,1.65fr)_minmax(350px,.75fr)]"
+        className="grid min-w-0 gap-10 pt-10 xl:grid-cols-[minmax(0,1.65fr)_minmax(350px,.75fr)]"
       >
         <Reveal index={2}>
           <div className="flex items-end justify-between border-b border-[var(--wl-line)] pb-4">
@@ -365,7 +365,7 @@ export default function DashboardPage() {
               </div>
             ) : pendingItem ? (
               <div className="border-b border-[var(--wl-line)] py-6">
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex min-w-0 flex-wrap items-start justify-between gap-4">
                   <div>
                     <p className="font-medium">{pendingItem.agentName}</p>
                     <p className="mt-1 text-[13px] text-[var(--wl-body)]">

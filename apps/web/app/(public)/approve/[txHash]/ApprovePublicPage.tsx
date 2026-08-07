@@ -258,7 +258,7 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
           "@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}.rise{animation:rise 500ms cubic-bezier(.16,1,.3,1) both}@media(prefers-reduced-motion:reduce){.rise{animation:none}.pa-action,.pa-action *{transition:none!important;transform:none!important;box-shadow:none!important}}"
         }
       </style>
-      <nav className="flex items-center justify-between border-b border-[var(--wl-line)] px-5 py-5 md:px-9">
+      <nav className="flex items-center justify-between border-b border-[var(--wl-line)] px-5 py-4 md:px-9 md:py-5">
         <Link
           href="/"
           className="font-display flex items-center gap-2 text-[18px] font-bold tracking-[-.015em]"
@@ -266,17 +266,17 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
           <EmberMark size={24} />
           ARCANUM
         </Link>
-        <div className="flex items-center gap-5">
+        <div className="flex items-center gap-3 md:gap-5">
           <span className="hidden font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)] sm:inline">
             PUBLIC APPROVER PORTAL
           </span>
-          <span className="rounded-full border border-[var(--wl-line)] px-3 py-1.5 font-mono text-[9px] tracking-[.12em] text-[var(--wl-body)]">
+          <span className="rounded-full border border-[var(--wl-line)] px-3 py-2 font-mono text-[9px] tracking-[.12em] text-[var(--wl-body)]">
             ARC TESTNET
           </span>
           <ThemeToggle />
         </div>
       </nav>
-      <div className="mx-auto max-w-[1080px] px-5 py-10 md:px-9 md:py-16">
+      <div className="mx-auto max-w-[1080px] px-5 py-6 md:px-9 md:py-16">
         <header className="rise border-b border-[var(--wl-line)] pb-10">
           <p className="font-mono text-[10px] uppercase tracking-[.2em] text-[var(--wl-signal)]">
             QUORUM / HUMAN SIGNATURE
@@ -300,10 +300,10 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
         </header>
 
         <section
-          className="rise mt-10 grid border border-[var(--wl-line-bold)] bg-[var(--wl-bg-raised)] shadow-[12px_14px_0_var(--wl-bg-deep2)] md:grid-cols-[1.15fr_.85fr]"
+          className="rise mt-6 grid border border-[var(--wl-line-bold)] bg-[var(--wl-bg-raised)] shadow-[12px_14px_0_var(--wl-bg-deep2)] md:mt-10 md:grid-cols-[1.15fr_.85fr]"
           style={{ animationDelay: "100ms" }}
         >
-          <div className="p-6 md:p-10">
+          <div className="order-2 p-5 md:order-1 md:p-10">
             <div className="flex items-start justify-between border-b border-[var(--wl-line)] pb-6">
               <div>
                 <p className="font-mono text-[9px] tracking-[.16em] text-[var(--wl-mute)]">
@@ -359,7 +359,7 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
             </div>
           </div>
 
-          <aside className="border-t border-[var(--wl-line)] bg-[var(--wl-bg-soft)] p-6 md:border-l md:border-t-0 md:p-8">
+          <aside className="order-1 border-t border-[var(--wl-line)] bg-[var(--wl-bg-soft)] p-5 md:order-2 md:border-l md:border-t-0 md:p-8">
             <p className="font-mono text-[9px] uppercase tracking-[.17em] text-[var(--wl-mute)]">
               YOUR SIGNATURE
             </p>
@@ -375,12 +375,12 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
                   Your decision is signed on-chain and becomes part of the immutable decision
                   record. There is no silent approval.
                 </p>
-                <div className="mt-9 flex flex-wrap gap-2">
+                <div className="mt-7 grid grid-cols-1 gap-3 sm:grid-cols-2 md:flex">
                   <button
                     type="button"
                     onClick={() => void submit("approve")}
                     disabled={actionsDisabled}
-                    className="pa-action group relative overflow-hidden rounded-full bg-[var(--wl-signal)] px-5 py-3 text-[11px] font-semibold text-[var(--wl-bg)] transition duration-[220ms] hover:-translate-y-0.5 hover:shadow-[0_10px_26px_-9px_rgba(var(--wl-signal-rgb),.5)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-none"
+                    className="pa-action group relative min-h-12 md:min-h-0 overflow-hidden rounded-full bg-[var(--wl-signal)] px-5 py-3 text-[11px] font-semibold text-[var(--wl-bg)] transition duration-[220ms] hover:-translate-y-0.5 hover:shadow-[0_10px_26px_-9px_rgba(var(--wl-signal-rgb),.5)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-none"
                   >
                     <span className="relative z-10">
                       {!isConnected ? "Connect to approve" : "Approve transaction"}{" "}
@@ -393,7 +393,7 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
                     type="button"
                     onClick={() => void submit("reject")}
                     disabled={actionsDisabled}
-                    className="pa-action group relative overflow-hidden rounded-full border border-[var(--wl-line)] px-5 py-3 text-[11px] font-semibold text-[var(--wl-ink)] transition duration-[220ms] hover:-translate-y-0.5 hover:border-[var(--wl-ink)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
+                    className="pa-action group relative min-h-12 md:min-h-0 overflow-hidden rounded-full border border-[var(--wl-line)] px-5 py-3 text-[11px] font-semibold text-[var(--wl-ink)] transition duration-[220ms] hover:-translate-y-0.5 hover:border-[var(--wl-ink)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
                   >
                     <span className="relative z-10">
                       Reject{" "}

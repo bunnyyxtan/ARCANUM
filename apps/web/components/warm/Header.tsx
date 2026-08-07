@@ -42,6 +42,7 @@ export function Header({ children }: HeaderProps) {
   const [shortcuts, setShortcuts] = useState(false);
   const [copiedAddress, setCopiedAddress] = useState(false);
   const [connectOpen, setConnectOpen] = useState(false);
+  const [mobileNav, setMobileNav] = useState(false);
 
   const inboxItems = [
     ...pendingEscalations.slice(0, 3).map((item) => ({
@@ -103,6 +104,7 @@ export function Header({ children }: HeaderProps) {
       if (event.key === "Escape") {
         setNotifications(false);
         setOpen(false);
+        setMobileNav(false);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -110,6 +112,7 @@ export function Header({ children }: HeaderProps) {
       const target = event.target as HTMLElement;
       if (!target.closest("[data-notifications]")) setNotifications(false);
       if (!target.closest("[data-account-menu]")) setOpen(false);
+      if (!target.closest("[data-mobile-nav]")) setMobileNav(false);
     };
     document.addEventListener("pointerdown", onPointer);
     return () => {
@@ -117,6 +120,12 @@ export function Header({ children }: HeaderProps) {
       document.removeEventListener("pointerdown", onPointer);
     };
   }, []);
+
+  // Route changes retire the mobile sheet so navigation feels immediate.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: pathname intentionally re-runs this effect on navigation.
+  useEffect(() => {
+    setMobileNav(false);
+  }, [pathname]);
 
   const shortAddress = address ? truncateAddress(address) : null;
 
@@ -130,7 +139,7 @@ export function Header({ children }: HeaderProps) {
           <EmberMark size={24} />
           ARCANUM
         </Link>
-        <nav className="flex min-w-0 gap-5 overflow-x-auto pb-0.5">
+        <nav className="hidden min-w-0 gap-5 overflow-x-auto pb-0.5 md:flex">
           {links.map(({ label, href }) => {
             const active = pathname === href || pathname.startsWith(`${href}/`);
             return (
@@ -351,7 +360,55 @@ export function Header({ children }: HeaderProps) {
             </div>
           )}
         </div>
+        <button
+          type="button"
+          aria-label="Open navigation"
+          aria-expanded={mobileNav}
+          data-mobile-nav
+          onClick={() => setMobileNav((value) => !value)}
+          className="-mr-1 flex h-11 w-11 items-center justify-center text-[var(--wl-ink)] md:hidden"
+        >
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 20 20"
+            className="h-5 w-5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          >
+            {mobileNav ? <path d="M5 5l10 10M15 5L5 15" /> : <path d="M3 6h14M3 10h14M3 14h14" />}
+          </svg>
+        </button>
       </div>
+      {mobileNav && (
+        <div
+          data-mobile-nav
+          style={{ animation: "warmIn 260ms cubic-bezier(0.16,1,0.3,1) both" }}
+          className="absolute inset-x-0 top-full z-30 border-b border-[var(--wl-line-bold)] bg-[var(--wl-bg-raised)] px-5 pb-5 pt-1 shadow-[0_22px_34px_-22px_rgba(var(--wl-ink-rgb),0.3)] md:hidden"
+        >
+          <nav aria-label="Governance">
+            {links.map(({ label, href }) => {
+              const active = pathname === href || pathname.startsWith(`${href}/`);
+              return (
+                <Link
+                  key={label}
+                  href={href}
+                  onClick={() => setMobileNav(false)}
+                  className={`flex min-h-[48px] items-center justify-between border-b border-[var(--wl-line-soft)] text-[13px] font-medium tracking-[-.01em] ${
+                    active ? "text-[var(--wl-signal)]" : "text-[var(--wl-ink)]"
+                  }`}
+                >
+                  {label}
+                  {active && <span className="h-1.5 w-1.5 rounded-full bg-[var(--wl-signal)]" />}
+                </Link>
+              );
+            })}
+          </nav>
+          <p className="pt-4 font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)]">
+            ARC TESTNET
+          </p>
+        </div>
+      )}
       <ShortcutsDialog open={shortcuts} onClose={() => setShortcuts(false)} />
       <ConnectModal open={connectOpen} onClose={() => setConnectOpen(false)} />
       {children}

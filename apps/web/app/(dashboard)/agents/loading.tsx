@@ -12,7 +12,7 @@ export default function AgentsLoading() {
             {[0, 1, 2, 3, 4].map((index) => (
               <div
                 key={index}
-                className="grid animate-pulse gap-3 border-b border-[var(--wl-line-soft)] px-3 py-5 md:grid-cols-6 md:items-center"
+                className="grid animate-pulse gap-4 border-b border-[var(--wl-line-soft)] px-3 py-5 max-md:grid-cols-1 md:grid-cols-6 md:items-center"
               >
                 <div className="h-4 w-16 rounded-full bg-[var(--wl-line-soft)]" />
                 <div className="h-4 w-32 rounded bg-[var(--wl-line-soft)]" />

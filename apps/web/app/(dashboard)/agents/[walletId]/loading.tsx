@@ -20,7 +20,7 @@ export default function AgentDetailLoading() {
             {[0, 1, 2, 3].map((index) => (
               <div
                 key={index}
-                className="h-12 animate-pulse rounded border-b border-[var(--wl-line-soft)] bg-[var(--wl-line-soft)]"
+                className="h-24 animate-pulse rounded border-b border-[var(--wl-line-soft)] bg-[var(--wl-line-soft)] md:h-12"
               />
             ))}
           </div>

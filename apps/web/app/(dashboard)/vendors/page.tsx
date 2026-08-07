@@ -585,43 +585,43 @@ export default function VendorsPage() {
         <button
           type="button"
           onClick={openAddVendor}
-          className="warm-pill w-fit rounded-full bg-[var(--wl-signal)] px-5 py-3 text-[11px] font-semibold text-[var(--wl-bg)]"
+          className="warm-pill min-h-11 md:min-h-0 w-fit rounded-full bg-[var(--wl-signal)] px-5 py-3 text-[11px] font-semibold text-[var(--wl-bg)]"
         >
           Add vendor <span className="ml-2 text-base leading-none">+</span>
         </button>
       </section>
 
-      <section className="mt-8 grid grid-cols-3 divide-x divide-[var(--wl-line)] border border-[var(--wl-line)] bg-[var(--wl-bg-soft)]">
-        <div className="p-5 sm:p-7">
+      <section className="mt-8 grid grid-cols-3 divide-x divide-[var(--wl-line)] border border-[var(--wl-line)] bg-[var(--wl-bg-soft)] max-md:grid-cols-1 max-md:divide-x-0 max-md:divide-y">
+        <div className="p-5 sm:p-7 max-md:flex max-md:items-center max-md:justify-between">
           <span className="font-mono text-[9px] tracking-[.15em] text-[var(--wl-secondary)]">
             APPROVED
           </span>
-          <strong className="font-display mt-6 block text-4xl font-semibold tracking-[-.015em]">
+          <strong className="font-display mt-6 block text-4xl font-semibold tracking-[-.015em] max-md:mt-0">
             {approvedCount}
           </strong>
-          <span className="mt-2 block font-mono text-[9px] text-[var(--wl-mute)]">
+          <span className="mt-2 block font-mono text-[9px] text-[var(--wl-mute)] max-md:hidden">
             COUNTERPARTIES
           </span>
         </div>
-        <div className="p-5 sm:p-7">
+        <div className="p-5 sm:p-7 max-md:flex max-md:items-center max-md:justify-between">
           <span className="font-mono text-[9px] tracking-[.15em] text-[var(--wl-secondary)]">
             CATEGORIES
           </span>
-          <strong className="font-display mt-6 block text-4xl font-semibold tracking-[-.015em]">
+          <strong className="font-display mt-6 block text-4xl font-semibold tracking-[-.015em] max-md:mt-0">
             {categoryCount}
           </strong>
-          <span className="mt-2 block font-mono text-[9px] text-[var(--wl-mute)]">
+          <span className="mt-2 block font-mono text-[9px] text-[var(--wl-mute)] max-md:hidden">
             ACTIVE GROUPS
           </span>
         </div>
-        <div className="p-5 sm:p-7">
+        <div className="p-5 sm:p-7 max-md:flex max-md:items-center max-md:justify-between">
           <span className="font-mono text-[9px] tracking-[.15em] text-[var(--wl-secondary)]">
             BLOCKED
           </span>
-          <strong className="font-display mt-6 block text-4xl font-semibold tracking-[-.015em] text-[var(--wl-signal)]">
+          <strong className="font-display mt-6 block text-4xl font-semibold tracking-[-.015em] text-[var(--wl-signal)] max-md:mt-0">
             {blockedCount}
           </strong>
-          <span className="mt-2 block font-mono text-[9px] text-[var(--wl-mute)]">
+          <span className="mt-2 block font-mono text-[9px] text-[var(--wl-mute)] max-md:hidden">
             COUNTERPARTIES
           </span>
         </div>
@@ -649,7 +649,7 @@ export default function VendorsPage() {
                 key={item}
                 type="button"
                 onClick={() => setCategory(item)}
-                className={`rounded-full px-3 py-1.5 font-mono text-[9px] tracking-[.13em] transition-colors duration-[220ms] ${
+                className={`min-h-11 md:min-h-0 rounded-full px-3 py-1.5 font-mono text-[9px] tracking-[.13em] transition-colors duration-[220ms] ${
                   category === item
                     ? "bg-[var(--wl-ink)] text-[var(--wl-bg)]"
                     : "border border-[var(--wl-line)] text-[var(--wl-secondary2)] hover:border-[var(--wl-ink)] hover:text-[var(--wl-ink)]"
@@ -665,7 +665,7 @@ export default function VendorsPage() {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search vendors"
-              className="w-[170px] bg-transparent text-[12px] outline-none placeholder:text-[var(--wl-mute)]"
+              className="h-11 w-[170px] bg-transparent text-[12px] outline-none placeholder:text-[var(--wl-mute)] max-md:w-full"
             />
           </label>
         </div>
@@ -686,7 +686,7 @@ export default function VendorsPage() {
             [0, 1, 2].map((row) => (
               <div
                 key={row}
-                className="grid gap-3 px-4 py-5 lg:grid-cols-[1.1fr_.7fr_1fr_1.2fr_.8fr_.65fr]"
+                className="grid gap-3 px-4 py-5 max-md:gap-4 lg:grid-cols-[1.1fr_.7fr_1fr_1.2fr_.8fr_.65fr]"
               >
                 <div className="h-4 w-32 animate-pulse rounded bg-[var(--wl-line-soft)]" />
                 <div className="h-4 w-16 animate-pulse rounded bg-[var(--wl-line-soft)]" />
@@ -727,7 +727,7 @@ export default function VendorsPage() {
                   role="button"
                   tabIndex={0}
                   style={{ "--row": index } as CSSProperties}
-                  className={`vendor-row relative grid w-full gap-3 px-4 py-5 text-left lg:grid-cols-[1.1fr_.7fr_1fr_1.2fr_.8fr_.65fr] lg:items-center ${
+                  className={`vendor-row relative grid w-full gap-3 px-4 py-5 text-left max-md:gap-4 lg:grid-cols-[1.1fr_.7fr_1fr_1.2fr_.8fr_.65fr] lg:items-center ${
                     selected?.id === vendor.id ? "bg-[var(--wl-bg-soft)]" : ""
                   }`}
                 >
@@ -791,12 +791,21 @@ export default function VendorsPage() {
                     )}
                   </span>
                   <span className="w-fit rounded-full border border-[var(--wl-line)] px-2.5 py-1 font-mono text-[9px] tracking-[.1em] text-[var(--wl-body)]">
+                    <small className="mr-2 text-[8px] text-[var(--wl-mute)] md:hidden">
+                      CATEGORY
+                    </small>
                     {categoryLabel(vendor.category)}
                   </span>
                   <span className="font-mono text-[11px] tabular-nums text-[var(--wl-body)]">
+                    <small className="mr-2 text-[8px] tracking-[.12em] text-[var(--wl-mute)] md:hidden">
+                      CAP
+                    </small>
                     {vendor.confidential ? "capped" : "no cap"}
                   </span>
                   <span>
+                    <small className="mr-2 font-mono text-[8px] tracking-[.12em] text-[var(--wl-mute)] md:hidden">
+                      APPROVED BY
+                    </small>
                     <span className="block text-[12px]">
                       {vendor.approvedBy[0] ? shortAddress(vendor.approvedBy[0]) : "-"}
                     </span>
@@ -805,6 +814,9 @@ export default function VendorsPage() {
                     </small>
                   </span>
                   <span className="font-mono text-[11px] uppercase tracking-[.1em]">
+                    <small className="mr-2 text-[8px] tracking-[.12em] text-[var(--wl-mute)] md:hidden">
+                      TRUST
+                    </small>
                     {vendor.trust}
                   </span>
                   <span className="flex items-center justify-between gap-3">
@@ -819,7 +831,7 @@ export default function VendorsPage() {
                         aria-label={`Actions for ${vendor.name}`}
                         aria-expanded={menu === vendor.id}
                         onClick={() => setMenu(menu === vendor.id ? null : vendor.id)}
-                        className="flex h-7 w-7 items-center justify-center font-mono text-[16px] text-[var(--wl-secondary)] transition-colors hover:text-[var(--wl-signal)]"
+                        className="flex h-11 w-11 items-center justify-center font-mono text-[16px] text-[var(--wl-secondary)] transition-colors hover:text-[var(--wl-signal)]"
                       >
                         ⋯
                       </button>
@@ -873,7 +885,7 @@ export default function VendorsPage() {
           <button
             type="button"
             onClick={openAddVendor}
-            className="flex w-full items-center gap-3 border border-dashed border-[var(--wl-line)] px-4 py-5 text-left text-[var(--wl-secondary)] transition-colors duration-[220ms] hover:border-[var(--wl-signal)] hover:text-[var(--wl-signal)]"
+            className="flex min-h-14 w-full items-center gap-3 border border-dashed border-[var(--wl-line)] px-4 py-5 text-left text-[var(--wl-secondary)] transition-colors duration-[220ms] hover:border-[var(--wl-signal)] hover:text-[var(--wl-signal)]"
           >
             <span className="font-mono text-[13px]">+</span>
             <span className="font-mono text-[10px] uppercase tracking-[.14em]">

@@ -16,7 +16,7 @@ export default function DashboardLoading() {
           </div>
         ))}
       </div>
-      <div className="grid gap-10 pt-10 xl:grid-cols-[minmax(0,1.65fr)_minmax(350px,.75fr)]">
+      <div className="grid min-w-0 gap-10 pt-10 xl:grid-cols-[minmax(0,1.65fr)_minmax(350px,.75fr)]">
         <div className="space-y-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="h-10 w-full animate-pulse rounded bg-[var(--wl-bg-soft)]" />

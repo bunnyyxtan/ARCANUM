@@ -575,6 +575,63 @@ html.wl-dark .wl-icon-moon {
   color: var(--wl-signal);
 }
 
+/* ------------------------------------------------------------------ */
+/* Mobile / touch ergonomics: the app must feel native under a thumb.  */
+/* ------------------------------------------------------------------ */
+
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+[role="button"],
+a,
+select,
+label {
+  touch-action: manipulation;
+}
+
+@media (hover: none) {
+  /* Press feedback: every control visibly responds to touch. */
+  button:active,
+  [role="button"]:active {
+    transform: scale(0.97);
+    transition-duration: 90ms;
+  }
+  .warm-pill:active::before,
+  .warm-button:active::before {
+    transform: translateY(0);
+  }
+  .warm-pill:active,
+  .warm-button:active {
+    box-shadow: 0 6px 16px -8px rgba(var(--wl-signal-rgb), 0.4);
+  }
+  .warm-ghost:active,
+  .warm-pill-ghost:active {
+    color: var(--wl-bg);
+    border-color: var(--wl-ink);
+  }
+  /* Hover-only affordances must be visible without a cursor. */
+  .warm-wallet-arrow {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  .warm-ledger-row:hover {
+    transform: none;
+    box-shadow: none;
+  }
+  .warm-ledger-row:active {
+    box-shadow: inset 2px 0 0 var(--wl-signal);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button:active,
+  [role="button"]:active {
+    transform: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .warm-modal-backdrop,
   .warm-modal-panel,

@@ -33,8 +33,8 @@ export function ReferenceHeader() {
   const connected = mounted && isConnected;
 
   return (
-    <header className="relative z-20 flex h-[68px] items-center justify-between border-b border-[var(--wl-line)] bg-[var(--wl-bg)] px-5 md:px-8">
-      <div className="flex min-w-0 items-center gap-7">
+    <header className="relative z-20 flex flex-wrap items-center justify-between border-b border-[var(--wl-line)] bg-[var(--wl-bg)] px-5 md:h-[68px] md:flex-nowrap md:px-8">
+      <div className="flex h-[68px] min-w-0 items-center gap-7">
         <Link
           href="/"
           className="flex shrink-0 items-center gap-2 font-display text-[18px] font-bold tracking-[-.015em] transition-transform duration-[220ms] hover:-translate-y-0.5"
@@ -42,7 +42,7 @@ export function ReferenceHeader() {
           <EmberMark size={24} />
           ARCANUM
         </Link>
-        <nav className="flex min-w-0 gap-5 overflow-x-auto pb-0.5" aria-label="Reference">
+        <nav className="hidden min-w-0 gap-5 overflow-x-auto pb-0.5 md:flex" aria-label="Reference">
           {links.map(({ label, href }) => {
             const active = pathname === href || pathname.startsWith(`${href}/`);
             return (
@@ -61,7 +61,31 @@ export function ReferenceHeader() {
           })}
         </nav>
       </div>
-      <div className="flex shrink-0 items-center gap-3">
+      {/* Small screens get the reference nav as its own row: two links do not
+          justify a menu, but they cannot fight the logo for header space. It
+          sits in normal flow so content below is pushed down, not covered. */}
+      <nav
+        aria-label="Reference"
+        className="-mx-5 order-last flex basis-full border-t border-[var(--wl-line)] bg-[var(--wl-bg)] md:hidden"
+      >
+        {links.map(({ label, href }) => {
+          const active = pathname === href || pathname.startsWith(`${href}/`);
+          return (
+            <Link
+              key={label}
+              href={href}
+              className={`flex min-h-[44px] flex-1 items-center justify-center text-[12px] font-medium tracking-[-.01em] ${
+                active
+                  ? "border-b-2 border-[var(--wl-signal)] text-[var(--wl-ink)]"
+                  : "border-b-2 border-transparent text-[var(--wl-body)]"
+              }`}
+            >
+              {label}
+            </Link>
+          );
+        })}
+      </nav>
+      <div className="flex h-[68px] shrink-0 items-center gap-3">
         <span className="hidden font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)] sm:inline">
           ARC TESTNET
         </span>

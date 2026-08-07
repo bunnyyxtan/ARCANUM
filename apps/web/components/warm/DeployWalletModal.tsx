@@ -158,7 +158,7 @@ function ResultLine({
   };
 
   return (
-    <div className="grid grid-cols-[130px_minmax(0,1fr)_auto] items-center gap-2">
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 sm:grid-cols-[130px_minmax(0,1fr)_auto]">
       <span className="text-[var(--wl-mute)]">{label}</span>
       {href ? (
         <a
@@ -178,7 +178,7 @@ function ResultLine({
       <button
         type="button"
         onClick={() => void copyValue()}
-        className="flex h-6 w-6 items-center justify-center border border-[var(--wl-line)] font-mono text-[10px] text-[var(--wl-secondary)] hover:text-[var(--wl-ink)]"
+        className="flex h-11 w-11 items-center justify-center border border-[var(--wl-line)] font-mono text-[10px] text-[var(--wl-secondary)] hover:text-[var(--wl-ink)] sm:h-6 sm:w-6"
         aria-label={`Copy ${label.toLowerCase()}`}
       >
         ⧉
@@ -458,7 +458,7 @@ export function DeployWalletModal({
 
   return (
     <div
-      className="warm-modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-[rgba(var(--wl-ink-rgb),.28)] p-4"
+      className="warm-modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-[rgba(var(--wl-ink-rgb),.28)] p-2 sm:p-4"
       role="dialog"
       aria-modal="true"
     >
@@ -468,8 +468,8 @@ export function DeployWalletModal({
         className="fixed inset-0 -z-10 cursor-default"
         onClick={onClose}
       />
-      <section className="warm-modal-panel flex max-h-[calc(100dvh-40px)] w-full max-w-[480px] flex-col border border-[var(--wl-line-bold)] bg-[var(--wl-bg)] shadow-[0_28px_70px_-18px_rgba(var(--wl-ink-rgb),.45)]">
-        <div className="flex shrink-0 items-start justify-between border-b border-[var(--wl-line)] p-6 pb-4">
+      <section className="warm-modal-panel flex max-h-[calc(100dvh-16px)] w-full max-w-[480px] flex-col border border-[var(--wl-line-bold)] bg-[var(--wl-bg)] shadow-[0_28px_70px_-18px_rgba(var(--wl-ink-rgb),.45)] sm:max-h-[calc(100dvh-40px)]">
+        <div className="flex shrink-0 items-start justify-between border-b border-[var(--wl-line)] p-4 pb-3 sm:p-6 sm:pb-4">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
               FLEET / NEW WALLET
@@ -482,12 +482,12 @@ export function DeployWalletModal({
             type="button"
             aria-label="Close deploy dialog"
             onClick={onClose}
-            className="font-mono text-[10px] text-[var(--wl-secondary)] hover:text-[var(--wl-ink)]"
+            className="min-h-11 md:min-h-0 min-w-11 md:min-w-0 px-2 font-mono text-[10px] text-[var(--wl-secondary)] hover:text-[var(--wl-ink)]"
           >
             CLOSE
           </button>
         </div>
-        <div className="min-h-0 space-y-4 overflow-y-auto overscroll-contain p-5 text-[12px] leading-relaxed text-[var(--wl-secondary)]">
+        <div className="min-h-0 space-y-4 overflow-y-auto overscroll-contain p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] text-[12px] leading-relaxed text-[var(--wl-secondary)] sm:p-5">
           {hasSuccess ? (
             <div
               className={`space-y-4 border bg-[var(--wl-green-tint)] p-4 ${persistenceFailed ? "border-[var(--wl-amber)]" : "border-[var(--wl-green)]"}`}

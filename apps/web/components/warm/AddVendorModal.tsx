@@ -49,7 +49,7 @@ export function AddVendorModal({
   }, [onClose]);
 
   const fieldClass =
-    "mt-2 h-9 w-full border border-[var(--wl-line)] bg-[var(--wl-bg-raised)] px-3 text-[12px] text-[var(--wl-ink)] outline-none placeholder:text-[var(--wl-mute)] focus:border-[var(--wl-signal)]";
+    "mt-2 h-11 w-full border border-[var(--wl-line)] bg-[var(--wl-bg-raised)] px-3 text-[12px] text-[var(--wl-ink)] outline-none placeholder:text-[var(--wl-mute)] focus:border-[var(--wl-signal)]";
 
   return (
     <div
@@ -64,8 +64,8 @@ export function AddVendorModal({
         className="warm-modal-backdrop absolute inset-0 bg-[rgba(var(--wl-ink-rgb),.35)]"
         onClick={onClose}
       />
-      <section className="warm-modal-panel relative flex max-h-[calc(100dvh-40px)] w-full max-w-[520px] flex-col border border-[var(--wl-line)] bg-[var(--wl-bg)] shadow-[0_28px_70px_-18px_rgba(var(--wl-ink-rgb),.45)]">
-        <div className="flex h-[52px] items-center justify-between border-b border-[var(--wl-line)] bg-[var(--wl-bg-soft)] px-5">
+      <section className="warm-modal-panel relative flex max-h-[calc(100dvh-24px)] w-full max-w-[520px] flex-col border border-[var(--wl-line)] bg-[var(--wl-bg)] shadow-[0_28px_70px_-18px_rgba(var(--wl-ink-rgb),.45)] sm:max-h-[calc(100dvh-40px)]">
+        <div className="flex min-h-[60px] items-center justify-between border-b border-[var(--wl-line)] bg-[var(--wl-bg-soft)] px-5">
           <span className="font-mono text-[11px] uppercase tracking-[.18em] text-[var(--wl-ink)]">
             ADD VENDOR
           </span>
@@ -74,12 +74,12 @@ export function AddVendorModal({
             aria-label="Close add vendor dialog"
             onClick={onClose}
             disabled={saving}
-            className="flex h-7 w-7 items-center justify-center border border-[var(--wl-line)] font-mono text-[13px] text-[var(--wl-secondary)] transition-colors hover:border-[var(--wl-ink)] hover:text-[var(--wl-ink)] disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-11 w-11 items-center justify-center border border-[var(--wl-line)] font-mono text-[13px] text-[var(--wl-secondary)] transition-colors hover:border-[var(--wl-ink)] hover:text-[var(--wl-ink)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             ✕
           </button>
         </div>
-        <div className="min-h-0 space-y-4 overflow-y-auto overscroll-contain p-5 text-[12px] text-[var(--wl-secondary)]">
+        <div className="min-h-0 space-y-5 overflow-y-auto overscroll-contain p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] text-[12px] text-[var(--wl-secondary)]">
           <label className="block">
             <span className="block font-mono text-[10px] uppercase tracking-[.14em] text-[var(--wl-secondary)]">
               GOVERNED WALLET
@@ -111,7 +111,7 @@ export function AddVendorModal({
                 value={form.name}
                 onChange={(event) => onChange({ name: event.target.value })}
                 placeholder="Qdrant Cloud"
-                className="mt-2 h-9 w-full border-b border-[var(--wl-ink)] bg-transparent px-0 text-[15px] leading-[1.5] text-[var(--wl-ink)] outline-none placeholder:text-[var(--wl-mute)] focus:border-[var(--wl-signal)]"
+                className="mt-2 h-11 w-full border-b border-[var(--wl-ink)] bg-transparent px-0 text-[15px] leading-[1.5] text-[var(--wl-ink)] outline-none placeholder:text-[var(--wl-mute)] focus:border-[var(--wl-signal)]"
               />
             </label>
             <label className="block">
@@ -213,7 +213,7 @@ export function AddVendorModal({
               type="button"
               onClick={onClose}
               disabled={saving}
-              className="warm-pill warm-pill-ghost flex h-9 items-center justify-center border border-[var(--wl-line)] font-mono text-[11px] tracking-[.12em] text-[var(--wl-secondary)] disabled:cursor-not-allowed disabled:opacity-50"
+              className="warm-pill warm-pill-ghost flex h-11 items-center justify-center border border-[var(--wl-line)] font-mono text-[11px] tracking-[.12em] text-[var(--wl-secondary)] disabled:cursor-not-allowed disabled:opacity-50"
             >
               CANCEL
             </button>
@@ -221,7 +221,7 @@ export function AddVendorModal({
               type="button"
               onClick={(event) => onAdd(event)}
               disabled={saving || Boolean(writeDisabledReason)}
-              className="warm-pill flex h-9 items-center justify-center rounded-full bg-[var(--wl-signal)] font-mono text-[11px] tracking-[.12em] text-[var(--wl-bg)] disabled:cursor-not-allowed disabled:opacity-55"
+              className="warm-pill flex h-11 items-center justify-center rounded-full bg-[var(--wl-signal)] font-mono text-[11px] tracking-[.12em] text-[var(--wl-bg)] disabled:cursor-not-allowed disabled:opacity-55"
             >
               {saving ? "CONFIRMING..." : "ADD / UPDATE VENDOR"}
             </button>
