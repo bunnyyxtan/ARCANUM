@@ -83,10 +83,24 @@ export class ArcanumClient {
     });
   }
 
+  private requireSigner() {
+    const account = this.walletClient.account;
+    if (!account) {
+      throw new ArcanumError({
+        code: "AGENT_SIGNER_REQUIRED",
+        message:
+          "This action needs an agent signer. Construct ArcanumClient with agentSigner to sign or execute payments.",
+        verdict: "DENY",
+        reason: "AGENT_SIGNER_REQUIRED",
+      });
+    }
+    return account;
+  }
+
   async signPaymentIntent(input: PaymentIntentInput): Promise<SignedPaymentIntentInput> {
     const intent = paymentIntentInputSchema.parse(input);
     const signature = await this.walletClient.signMessage({
-      account: this.walletClient.account,
+      account: this.requireSigner(),
       message: createPaymentIntentMessage(intent),
     });
 
@@ -108,7 +122,7 @@ export class ArcanumClient {
       });
     }
 
-    if (!sameAddress(intent.agentSignerAddress, this.walletClient.account.address)) {
+    if (!sameAddress(intent.agentSignerAddress, this.requireSigner().address)) {
       return paymentIntentResult(intent, {
         decision: "validation_error",
         reason: "Intent agent signer does not match this SDK signer.",
@@ -245,6 +259,7 @@ export class ArcanumClient {
     }
 
     const txHash = await this.walletClient.writeContract({
+      account: this.requireSigner(),
       address: this.walletAddress,
       abi: GuardedWalletAbi,
       functionName: "executeUSDC",
@@ -385,12 +400,13 @@ export class ArcanumClient {
   }
 
   private async assertSignerAndWalletOpen() {
+    const signer = this.requireSigner();
     const [isSigner, frozen] = await Promise.all([
       this.publicClient.readContract({
         address: this.walletAddress,
         abi: GuardedWalletAbi,
         functionName: "agentSigners",
-        args: [this.walletClient.account.address],
+        args: [signer.address],
       }),
       this.publicClient.readContract({
         address: this.walletAddress,
@@ -400,7 +416,7 @@ export class ArcanumClient {
     ]);
 
     if (!isSigner) {
-      throw new AgentNotAuthorizedError(this.walletClient.account.address);
+      throw new AgentNotAuthorizedError(signer.address);
     }
 
     if (frozen) {
@@ -514,7 +530,6 @@ function verdictToPaymentDecision(verdict: SimulationResult["verdict"]) {
       return "escalate";
     case "FREEZE":
       return "freeze";
-    case "DENY":
     default:
       return "deny";
   }

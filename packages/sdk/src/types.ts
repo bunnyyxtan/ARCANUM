@@ -33,7 +33,8 @@ export type VendorInfo = Readonly<{
 
 export type ArcanumClientConfig = Readonly<{
   walletAddress: Address;
-  agentSigner: Account;
+  /** Required for signing and executing payments; omit for read-only clients. */
+  agentSigner?: Account;
   chain: Chain;
   rpcUrl: string;
   dashboardUrl?: string;

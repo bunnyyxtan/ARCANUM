@@ -7,6 +7,7 @@ export type ArcanumErrorCode =
   | "ESCALATION_REQUIRED"
   | "WALLET_FROZEN"
   | "AGENT_NOT_AUTHORIZED"
+  | "AGENT_SIGNER_REQUIRED"
   | "INSUFFICIENT_USDC"
   | "RPC_ERROR";
 
