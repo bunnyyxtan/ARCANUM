@@ -4,19 +4,19 @@ Arcanum is built around four commitments that live in contract code and Foundry 
 
 ## 1. The protocol never touches your USDC
 
-No Arcanum-controlled address can call `GuardedWallet.executeUSDC`. Enforced by `invariant_NoProtocolAddressCanMoveFunds`. [view test](https://github.com/bunnyyxtan/ARCANUM)
+No Arcanum-controlled address can call `GuardedWallet.executeUSDC`. Enforced by `invariant_NoProtocolAddressCanMoveFunds`. [view test](https://github.com/bunnyyxtan/ARCANUM/blob/main/packages/contracts/test/Invariants.t.sol)
 
 ## 2. There is no upgrade key on your wallets
 
-Once deployed, your GuardedWallet bytecode is immutable. Modules are pluggable, but only you can plug them. Enforced by `invariant_NoUpgradeKeyOnWallets`. [view test](https://github.com/bunnyyxtan/ARCANUM)
+Once deployed, your GuardedWallet bytecode is immutable. Modules are pluggable, but only you can plug them. Enforced by `invariant_NoUpgradeKeyOnWallets`. [view test](https://github.com/bunnyyxtan/ARCANUM/blob/main/packages/contracts/test/Invariants.t.sol)
 
 ## 3. Policy enforcement is on-chain. Always.
 
-The dashboard is observability. The protocol enforces at the contract level on Arc, so policy checks continue as long as the chain and wallet bytecode exist. Enforced by `invariant_PolicyEnforcementIsOnChain`. [view test](https://github.com/bunnyyxtan/ARCANUM)
+The dashboard is observability. The protocol enforces at the contract level on Arc, so policy checks continue as long as the chain and wallet bytecode exist. Enforced by `invariant_PolicyEnforcementIsOnChain`. [view test](https://github.com/bunnyyxtan/ARCANUM/blob/main/packages/contracts/test/Invariants.t.sol)
 
 ## 4. Anyone can deploy. No gatekeeper.
 
-WalletFactory accepts any EOA, any geography, any time. Enforced by `invariant_AnyoneCanDeploy`. [view test](https://github.com/bunnyyxtan/ARCANUM)
+WalletFactory accepts any EOA, any geography, any time. Enforced by `invariant_AnyoneCanDeploy`. [view test](https://github.com/bunnyyxtan/ARCANUM/blob/main/packages/contracts/test/Invariants.t.sol)
 
 ## Contract and read-model flow
 

@@ -23,10 +23,6 @@ import {
 import { isEvmAddress, isSameAddress, shortAddress } from "@/lib/format/address";
 import { trpc } from "@/lib/trpc";
 
-/* ------------------------------------------------------------------ */
-/* Policy math + validation preserved from the old PolicyEditor          */
-/* ------------------------------------------------------------------ */
-
 function errorMessage(error: unknown) {
   if (typeof error === "object" && error !== null && "shortMessage" in error) {
     return String((error as { shortMessage?: unknown }).shortMessage);
@@ -216,8 +212,6 @@ function policyDiffRows(active: PolicyDraftState, draft: PolicyDraftState) {
 
   return rows;
 }
-
-/* ------------------------------------------------------------------ */
 
 const policyInputClass =
   "mt-1 w-full border-b border-[var(--wl-faint)] bg-transparent py-2.5 font-mono text-[13px] outline-none transition-colors focus:border-[var(--wl-signal)]";

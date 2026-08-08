@@ -28,7 +28,7 @@ const terms: Term[] = [
     term: "Arc testnet",
     letter: "A",
     definition:
-      "The rehearsal network where HELIX-DAO validates wallet behavior before production capital is at risk.",
+      "The rehearsal network where operators validate wallet behavior before production capital is at risk.",
     detail:
       "The signing flow, policy trace, and ledger shape should be practiced here first. Testnet USDC is a safe way to inspect the complete control loop.",
     related: ["Governed wallet", "Ledger"],
@@ -92,7 +92,7 @@ const terms: Term[] = [
     definition:
       "Sign-In with Ethereum: a wallet-signed message that establishes an operator session without sharing a private key.",
     detail:
-      "The message binds the operator to HELIX-DAO, Arc testnet, a nonce, and an expiry. Re-check the domain and chain before signing.",
+      "The message binds the operator to the workspace domain, Arc testnet, a nonce, and an expiry. Re-check the domain and chain before signing.",
     related: ["Operator", "Governed wallet"],
   },
 ];
@@ -147,7 +147,7 @@ export default function GlossaryPage() {
             </h1>
             <p className="mt-7 max-w-[540px] text-[15px] leading-[1.5] text-[var(--wl-body)]">
               Terms for operators who need the same word to mean the same control. Browse the
-              language behind HELIX-DAO's governed wallets.
+              language behind ARCANUM's governed wallets.
             </p>
           </div>
           <div className="max-w-[250px] border-l border-[var(--wl-signal)] pl-4">
@@ -228,7 +228,7 @@ export default function GlossaryPage() {
               )}
             </div>
             <div className="flex justify-between pt-4 font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-mute)]">
-              <span>HELIX-DAO · {ARC_NETWORK_BADGE}</span>
+              <span>ARCANUM · {ARC_NETWORK_BADGE}</span>
               <span>ON RECORD / V4.18</span>
             </div>
           </section>

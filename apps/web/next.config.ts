@@ -35,7 +35,7 @@ const configureWebpack: NonNullable<NextConfig["webpack"]> = (config, context) =
 
 const nextConfig: NextConfig = {
   devIndicators: false,
-  transpilePackages: ["@arcanum/shared", "@arcanum/ui"],
+  transpilePackages: ["@arcanum/shared"],
   async headers() {
     // The CSP must allow direct browser connections to the active Arc RPC.
     // Testnet origins stay listed always (harmless); mainnet origins come

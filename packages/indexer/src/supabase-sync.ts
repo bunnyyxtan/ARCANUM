@@ -196,10 +196,6 @@ async function upsertLedgerEvent(input: {
   return created ?? null;
 }
 
-/* ------------------------------------------------------------------ */
-/* Public entry points called from the Ponder handlers                */
-/* ------------------------------------------------------------------ */
-
 export async function syncWalletCreated(walletAddress: string, timestamp: Date) {
   if (!configured()) return;
   const wallet = await findGovernedWallet(walletAddress);

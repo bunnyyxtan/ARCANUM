@@ -8,7 +8,6 @@ import {
 } from "@arcanum/shared";
 import { TRPCError } from "@trpc/server";
 
-import { fallbackOrgId } from "../mock-fallback";
 import { DEFAULT_WORKSPACE_NAME, readCallerMembership, readModelUnavailable } from "../supabase";
 import {
   addWorkspaceMember,
@@ -22,7 +21,7 @@ import { protectedProcedure, publicProcedure, router } from "../trpc";
 import { failClosed, tenantIdFor } from "./helpers";
 
 const baseOrg = {
-  id: fallbackOrgId,
+  id: "",
   tenantId: FALLBACK_TENANT_ID,
   name: "Live Workspace",
   type: "DAO" as const,

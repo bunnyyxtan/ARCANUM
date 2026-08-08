@@ -139,7 +139,7 @@ async function ensureOrganization(ownerAddress: string, tenantId: string) {
     .insert(organizations)
     .values({
       tenantId,
-      name: "Helix DAO",
+      name: "Arcanum Workspace",
       type: "DAO",
       ownerWallet: owner,
       multisigAddress: owner,

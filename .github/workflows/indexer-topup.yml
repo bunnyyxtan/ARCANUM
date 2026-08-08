@@ -5,9 +5,7 @@ name: Indexer top-up
 
 on:
   schedule:
-    # Every 3 hours keeps a month comfortably inside GitHub's 2000 free
-    # minutes for private repositories. The odd minute avoids the herd of
-    # jobs the whole world schedules at :00.
+    # Off-peak minute; eight short runs a day stay inside the Actions quota.
     - cron: "23 */3 * * *"
   workflow_dispatch:
 

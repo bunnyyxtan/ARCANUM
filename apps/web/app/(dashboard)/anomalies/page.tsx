@@ -12,7 +12,6 @@ import { trpc } from "@/lib/trpc";
 import type { Anomaly } from "@/lib/types";
 
 const ORANGE = "var(--wl-signal)";
-const fallbackAnomalyId = "70000000-0000-4000-8000-000000000001";
 
 function allowTrustedMutation(action: string, event: ReactMouseEvent<HTMLElement>) {
   if (event.nativeEvent.isTrusted) {
@@ -124,10 +123,14 @@ function AnomalyRow({
     if (!isConnected) {
       return;
     }
+    if (!item.id) {
+      toast.error("ANOMALY ID MISSING / REFRESH AND RETRY");
+      return;
+    }
 
     setState(next);
     try {
-      const anomalyId = item.id ?? fallbackAnomalyId;
+      const anomalyId = item.id;
       if (next === "dismissed") {
         await dismiss.mutateAsync({ anomalyId });
       } else {

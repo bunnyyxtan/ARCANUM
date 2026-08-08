@@ -11,9 +11,8 @@ permissions:
 
 jobs:
   foundry:
-    # Dependency restore is pinned to exact release tags (verified: forge build
-    # + all 80 tests pass against them), so the job is deterministic and safe
-    # to run on every push instead of manual-only.
+    # Dependency restore is pinned to exact release tags, so the job is
+    # deterministic and safe to run on every push.
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -52,7 +51,10 @@ jobs:
           git clone --depth 1 --branch v5.0.2 https://github.com/OpenZeppelin/openzeppelin-contracts lib/openzeppelin-contracts
           git clone --depth 1 --branch v5.0.2 https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable lib/openzeppelin-contracts-upgradeable
           git clone --depth 1 --branch v0.1.22 https://github.com/Vectorized/solady lib/solady
+      # Analyzer findings are triaged manually; they do not gate merges.
       - run: pipx install slither-analyzer
-      - run: slither . || true
+      - run: slither .
+        continue-on-error: true
       - run: pipx install mythril
-      - run: myth analyze src/GuardedWallet.sol || true
+      - run: myth analyze src/GuardedWallet.sol
+        continue-on-error: true

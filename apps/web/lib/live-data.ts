@@ -41,10 +41,6 @@ function categoryLabel(category: Category) {
   return category.toUpperCase();
 }
 
-function agentName(agentId: string | null | undefined, fallback = "Agent") {
-  return fallback;
-}
-
 function vendorName(address: string | null | undefined) {
   return address ? shortAddress(address) : "Counterparty";
 }
@@ -88,7 +84,7 @@ function ledgerEntryFromTransfer(entry: LiveTransferRow): LedgerEntry {
   return {
     id: entry.id,
     agentId: entry.agentId ?? entry.walletId,
-    agentName: agentName(entry.agentId, "Wallet"),
+    agentName: "Wallet",
     counterparty: vendorName(entry.toAddress),
     counterpartyAddress: entry.toAddress,
     category: normalizeCategory(entry.vendorCategory),
@@ -232,7 +228,7 @@ export function useLiveEscalations(status?: "PENDING" | "EXECUTED" | "REJECTED" 
   const escalations: Escalation[] = (enabled ? (query.data ?? []) : []).map((item) => ({
     id: item.id,
     agentId: item.walletId,
-    agentName: agentName(item.transferId, "Governed Wallet"),
+    agentName: "Governed Wallet",
     wallet: item.walletId,
     amount: usdcNumber(item.amount),
     counterparty: vendorName(item.toAddress),
@@ -261,7 +257,7 @@ export function useLiveAnomalies() {
   const anomalies: Anomaly[] = (enabled ? (query.data ?? []) : []).map((item, index) => ({
     id: item.id,
     agentId: item.agentId ?? item.walletId,
-    agentName: agentName(item.agentId, "Agent"),
+    agentName: "Agent",
     score: Number(item.sigma),
     narrative: item.reason,
     suggestedAction: item.severity === "danger" ? "freeze" : "investigate",
@@ -479,8 +475,7 @@ export function useLiveMembers() {
     id: user.id,
     name: user.displayName,
     initials: user.displayName.slice(0, 2).toUpperCase(),
-    // A workspace knows wallets, not mailboxes. The invented address that used
-    // to sit here read as a real contact detail on a live page.
+    // Workspaces are wallet-keyed, so the wallet address is the contact handle.
     email: user.walletAddress,
     role: user.role === "owner" ? "admin" : user.role === "viewer" ? "viewer" : "approver",
     rawRole: user.role,

@@ -67,7 +67,6 @@ export function agentWithoutDoctrine(agent: Agent): AgentWithDoctrine {
     postureScore: null,
   };
 }
-import { fallbackOrgId, fallbackWallets } from "./mock-fallback";
 
 type SupabaseRow = Record<string, unknown>;
 
@@ -115,7 +114,7 @@ export type SupabasePublicWalletProfile = {
   spend: string | null;
   threatsBlocked: number | null;
   governedDays: number | null;
-  dataSource: "supabase" | "demo_seed" | "local_fallback" | "none";
+  dataSource: "supabase" | "none";
 };
 
 export type SupabaseCreatedWalletInput = {
@@ -1548,7 +1547,7 @@ function walletFromGovernedWalletRow(row: SupabaseRow): Wallet {
   return {
     id: stringField(row, ["id"], stableUuid(`wallet:${walletAddress}`)),
     tenantId: defaultTenantId(),
-    orgId: stringField(row, ["organization_id", "org_id"], fallbackOrgId),
+    orgId: stringField(row, ["organization_id", "org_id"], ""),
     address: walletAddress.toLowerCase(),
     label,
     ownerAddress: stringField(row, ["owner_address"], ownerScopeFromEnv()),
@@ -1644,7 +1643,7 @@ function vendorFromRow(
   walletAddress: string;
 } {
   const vendorAddress = stringField(row, ["vendor_address"], zeroWallet());
-  const walletAddress = wallet?.address ?? primaryFallbackWallet().address;
+  const walletAddress = requireWalletAddress(wallet);
   const walletId = wallet?.id ?? stableUuid(`wallet:${walletAddress}`);
 
   return {
@@ -1666,7 +1665,7 @@ function vendorFromRow(
 
 function transferFromRow(row: SupabaseRow, wallets: Wallet[]): Transfer {
   const wallet = walletForRow(row, wallets);
-  const walletAddress = wallet?.address ?? primaryFallbackWallet().address;
+  const walletAddress = requireWalletAddress(wallet);
   const txHash = stringField(
     row,
     ["tx_hash", "hash"],
@@ -1692,7 +1691,7 @@ function transferFromRow(row: SupabaseRow, wallets: Wallet[]): Transfer {
 
 function escalationFromRow(row: SupabaseRow, wallets: Wallet[]): Escalation {
   const wallet = walletForRow(row, wallets);
-  const walletAddress = wallet?.address ?? primaryFallbackWallet().address;
+  const walletAddress = requireWalletAddress(wallet);
   // The dashboard and the public approver portal both call the escalation
   // manager with this id, so it must be the on-chain escalation key. Falling
   // back to the Supabase UUID leaves approve/reject permanently disabled.
@@ -1722,7 +1721,7 @@ function escalationFromRow(row: SupabaseRow, wallets: Wallet[]): Escalation {
 
 function anomalyFromRow(row: SupabaseRow, wallets: Wallet[]): Anomaly {
   const wallet = walletForRow(row, wallets);
-  const walletAddress = wallet?.address ?? primaryFallbackWallet().address;
+  const walletAddress = requireWalletAddress(wallet);
 
   return {
     id: stringField(row, ["id"], stableUuid(`anomaly:${JSON.stringify(row)}`)),
@@ -2008,19 +2007,21 @@ function zeroWallet() {
   return "0x0000000000000000000000000000000000000000";
 }
 
-function primaryFallbackWallet() {
-  const wallet = fallbackWallets[0];
+function requireWalletAddress(wallet: Wallet | null | undefined) {
   if (!wallet) {
-    throw new Error("Missing primary fallback wallet fixture");
+    throw new Error("Read-model row references a wallet outside the workspace read model");
   }
 
-  return wallet;
+  return wallet.address;
 }
 
 function ownerScopeFromEnv() {
-  return (
-    process.env.ARCANUM_DEMO_OWNER_WALLET?.toLowerCase() ?? primaryFallbackWallet().ownerAddress
-  );
+  const owner = process.env.ARCANUM_DEMO_OWNER_WALLET?.toLowerCase();
+  if (!owner) {
+    throw new Error("ARCANUM_DEMO_OWNER_WALLET is not set");
+  }
+
+  return owner;
 }
 
 function shortAddress(value: string) {

@@ -173,7 +173,7 @@ export function WorkspaceGate({ children }: Readonly<{ children: ReactNode }>) {
               onChange={(event) => setName(event.target.value)}
               maxLength={120}
               autoFocus
-              placeholder="Helix Research Collective"
+              placeholder="Acme Research Collective"
               className="mt-3 w-full border-b border-[var(--wl-line)] bg-transparent py-3 text-[18px] outline-none transition-colors placeholder:text-[var(--wl-mute)] focus:border-[var(--wl-signal)]"
             />
           </label>

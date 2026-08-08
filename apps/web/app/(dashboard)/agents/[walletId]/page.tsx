@@ -91,10 +91,6 @@ function Arrow() {
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Agent signer panel: addSigner / removeSigner with on-chain readback  */
-/* ------------------------------------------------------------------ */
-
 function AgentSignerPanel({ governedWalletAddress }: { governedWalletAddress: Address | null }) {
   const { address, chainId, isConnected } = useAccount();
   const publicClient = usePublicClient({ chainId: arcChain.id });
@@ -406,8 +402,6 @@ function AgentSignerPanel({ governedWalletAddress }: { governedWalletAddress: Ad
     </div>
   );
 }
-
-/* ------------------------------------------------------------------ */
 
 export default function AgentDetailPage() {
   const params = useParams();

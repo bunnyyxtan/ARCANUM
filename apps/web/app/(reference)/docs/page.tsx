@@ -90,7 +90,7 @@ export default function DocsPage() {
                 READING TIME / 08 MIN
               </p>
               <p className="mt-3 text-[12px] leading-[1.5] text-[var(--wl-secondary2)]">
-                For operators at HELIX-DAO. Assumes an Arc testnet wallet and a signed SIWE session.
+                For workspace operators. Assumes an Arc testnet wallet and a signed SIWE session.
               </p>
             </div>
           </div>
@@ -170,15 +170,15 @@ export default function DocsPage() {
                   Start with a wallet that cannot improvise.
                 </h2>
                 <p className="mt-5 text-[15px] leading-[1.55] text-[var(--wl-body)]">
-                  Create the wallet from the HELIX-DAO operator console, then bind the first
-                  doctrine before funding it. Use Arc testnet for the complete rehearsal: the same
-                  signing ceremony, a safe balance.
+                  Create the wallet from the operator console, then bind the first doctrine before
+                  funding it. Use Arc testnet for the complete rehearsal: the same signing ceremony,
+                  a safe balance.
                 </p>
                 <ol className="mt-9 space-y-7">
                   {[
                     [
                       "Connect the operator",
-                      "Open the console with your EOA and complete Sign-In with Ethereum (SIWE). The message includes HELIX-DAO, Arc testnet, a nonce, and an expiry. Never paste a private key into an agent runtime.",
+                      "Open the console with your EOA and complete Sign-In with Ethereum (SIWE). The message includes your workspace domain, Arc testnet, a nonce, and an expiry. Never paste a private key into an agent runtime.",
                     ],
                     [
                       "Name the boundary",
@@ -550,7 +550,7 @@ console.log("Deployed:", txHash);`}</CodeBlock>
             <div className="mt-12 border-t border-[var(--wl-line)] pt-4 font-mono text-[9px] uppercase leading-[1.7] tracking-[.1em] text-[var(--wl-mute)]">
               {ARC_NETWORK_BADGE}
               <br />
-              HELIX-DAO
+              ARCANUM
               <br />
               POLICY / V4.18
             </div>
