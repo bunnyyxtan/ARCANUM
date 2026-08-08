@@ -22,4 +22,4 @@ jobs:
       - run: npm run snippets --workspace @arcanum/docs
       - run: npm run typecheck --workspace @arcanum/docs
       # The public /docs route is built by @arcanum/web in the main CI job.
-      # apps/docs is the legacy Nextra docs app and is not part of launch-blocking CI yet.
+      # Build-only check for the docs app.

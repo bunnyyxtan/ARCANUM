@@ -1,7 +1,7 @@
 # Contributing
 
 Thank you for helping build Arcanum. Keep changes small, reviewable, and honest
-about what is testnet, demo-only, or still pending.
+about what is testnet-only or still pending.
 
 Public app and docs: [https://thearcanum.in](https://thearcanum.in)
 
@@ -40,8 +40,8 @@ where available.
 
 - Keep custody, auth, and data-isolation boundaries explicit.
 - Do not mix broad refactors with feature work.
-- Do not weaken SIWE/session checks, demo gating, service-role boundaries, or
-  transaction confirmation handling.
+- Do not weaken SIWE/session checks, service-role boundaries, or transaction
+  confirmation handling.
 - Add or update tests for contract, SDK, API, and security-sensitive changes.
 - Keep docs builder-focused and clear about Arc Testnet status.
 - Avoid adding hosted-service assumptions to self-hosted paths.

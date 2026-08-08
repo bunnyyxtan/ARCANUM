@@ -29,5 +29,5 @@ export {
   IS_ARC_MAINNET,
   arcChain,
 } from "./chains/network";
-export * from "./demo";
+export * from "./workspace";
 export * from "./schemas";
