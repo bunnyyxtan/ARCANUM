@@ -8,7 +8,7 @@ import { NextResponse } from "next/server";
  * aggressively, so any page that read the chain from client code could blank
  * out for real users. The wagmi transport now points every browser read here;
  * this route forwards to the RPC from the server, where neither problem
- * exists. Writes are untouched — they go through the user's wallet.
+ * exists. Writes are untouched - they go through the user's wallet.
  *
  * Only read methods pass through: this endpoint is public, and it must never
  * become a relay for transactions or arbitrary RPC traffic.
@@ -30,7 +30,7 @@ const READ_METHODS = new Set([
 ]);
 
 /**
- * Ordered upstreams: env override first, then a free mirror (testnet only —
+ * Ordered upstreams: env override first, then a free mirror (testnet only -
  * mainnet mirrors are unknown until launch), then the official endpoint for
  * the active network.
  */
@@ -50,7 +50,7 @@ const MAX_RESPONSE_BYTES = 1_000_000;
 const UPSTREAM_TIMEOUT_MS = 15_000;
 
 // Best-effort per-IP rate limit. Serverless instances each keep their own
-// window, so this is a dampener, not a hard guarantee — but it stops a single
+// window, so this is a dampener, not a hard guarantee - but it stops a single
 // client from turning this proxy into an amplification relay. Legit pages do
 // well under 80 reads per 10s even while polling for a receipt.
 const RATE_LIMIT_WINDOW_MS = 10_000;

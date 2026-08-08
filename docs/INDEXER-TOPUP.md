@@ -10,7 +10,7 @@ closed, on-chain activity can take up to ~3 hours to appear on the site.
 Ponder's checkpoint for these runs lives in the `ponder_app` schema of the
 Supabase database, so every run resumes exactly where the last one stopped.
 The very first run backfills from the deployment start block and may hit its
-timeout before reaching the tip — that is fine; each run keeps the progress it
+timeout before reaching the tip - that is fine; each run keeps the progress it
 made and the next one continues.
 
 ## One-time setup (~5 minutes, all in the GitHub web UI)

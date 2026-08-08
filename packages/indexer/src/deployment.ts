@@ -31,7 +31,7 @@ const DEPLOYMENT_RELATIVE_PATH = `packages/contracts/deployments/arc-${ARC_NETWO
  * Resolving against `process.cwd()` alone silently returns zero addresses and
  * `startBlock: 0` whenever the indexer is started from its own package
  * directory, which makes Ponder scan the chain from genesis for contracts that
- * do not exist — the read model then never receives a single event.
+ * do not exist - the read model then never receives a single event.
  */
 function findDeploymentFile() {
   const startDirs = [process.cwd(), dirname(fileURLToPath(import.meta.url))];
@@ -62,7 +62,7 @@ export function loadDeployment() {
 
   if (!path) {
     console.error(
-      `[indexer] ${DEPLOYMENT_RELATIVE_PATH} not found from ${process.cwd()} — refusing to index zero addresses from genesis.`,
+      `[indexer] ${DEPLOYMENT_RELATIVE_PATH} not found from ${process.cwd()} - refusing to index zero addresses from genesis.`,
     );
   }
 

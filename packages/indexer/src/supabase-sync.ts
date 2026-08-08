@@ -34,7 +34,7 @@ function configured() {
   if (!warnedUnconfigured) {
     warnedUnconfigured = true;
     console.error(
-      "[supabase-sync] SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are not configured — on-chain activity will NOT reach the dashboard read model.",
+      "[supabase-sync] SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are not configured - on-chain activity will NOT reach the dashboard read model.",
     );
   }
   return false;

@@ -12,7 +12,7 @@ import { useEffect } from "react";
  * the dev-only /api/dev/test-wallet route, which signs server side. Read calls
  * go straight to the Arc Testnet RPC.
  *
- * Switch personas with ?testWallet=agent|operator|vendorA|vendorB — the choice
+ * Switch personas with ?testWallet=agent|operator|vendorA|vendorB - the choice
  * is remembered in localStorage so navigation keeps the same identity.
  */
 

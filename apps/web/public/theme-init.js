@@ -5,6 +5,6 @@
       document.documentElement.classList.add("wl-dark");
     }
   } catch (_error) {
-    /* storage unavailable — stay light */
+    /* storage unavailable - stay light */
   }
 })();

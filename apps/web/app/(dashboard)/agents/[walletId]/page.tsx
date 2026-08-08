@@ -440,7 +440,7 @@ export default function AgentDetailPage() {
   const dailyLimit = agent?.dailyLimit ?? 0;
   const capWidth = dailyLimit > 0 ? Math.min(1, dailySpend / dailyLimit) : 0;
 
-  // Derived behavior stats — computed from the live indexed decision record.
+  // Derived behavior stats - computed from the live indexed decision record.
   const behaviorTotal = decisions.reduce((sum, d) => sum + d.amount, 0);
   const behaviorAvg = decisions.length > 0 ? behaviorTotal / decisions.length : 0;
   const behaviorPeak = decisions.reduce((max, d) => Math.max(max, d.amount), 0);

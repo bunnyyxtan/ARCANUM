@@ -407,7 +407,7 @@ export function vendorFlagEventLabel(eventType: VendorFlagHistoryEntry["eventTyp
   return flagEventLabels[eventType];
 }
 
-// Append-only review trail for one vendor — every flag / note edit / unflag,
+// Append-only review trail for one vendor - every flag / note edit / unflag,
 // newest first, preserved across re-flag cycles.
 export function useVendorFlagHistory(vendorAddress: string | null) {
   const enabled = useLiveQueriesEnabled();

@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
 /*
- * ARCANUM — Warm Ledger design system.
+ * ARCANUM - Warm Ledger design system.
  * Light (default): warm paper. Dark (html.wl-dark): the original foundry
- * black-grid — #121419 base, 38px grid of 1px white lines @ 1.8% opacity,
+ * black-grid - #121419 base, 38px grid of 1px white lines @ 1.8% opacity,
  * hazard orange accents. All UI must use --wl-* tokens; never raw hexes.
  */
 
@@ -69,7 +69,7 @@
 
 html.wl-dark {
   color-scheme: dark;
-  /* backgrounds — foundry scale */
+  /* backgrounds - foundry scale */
   --wl-bg: #121419;
   --wl-bg-raised: #16181d;
   --wl-bg-soft: #181b21;
@@ -106,7 +106,7 @@ html.wl-dark {
   --wl-muted: #6f7681;
   --wl-muted2: #5b626c;
   --wl-faint: #5b626c;
-  /* accents — hazard orange */
+  /* accents - hazard orange */
   --wl-signal: #ff5a1f;
   --wl-signal-deep: #e04a12;
   --wl-green: #6e9e7c;
@@ -153,7 +153,7 @@ html.wl-dark [class*="bg-[var(--wl-surface)]"] {
   background-image: none;
 }
 
-/* Overlay panels (modals, command palette) sit flat too — repainting the
+/* Overlay panels (modals, command palette) sit flat too - repainting the
    grid gradient while their content scrolls causes jank. */
 html.wl-dark .warm-modal-panel,
 html.wl-dark .cmd-panel {

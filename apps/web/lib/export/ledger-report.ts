@@ -1,5 +1,5 @@
 /**
- * Ledger export — CSV download and a print-ready report window.
+ * Ledger export - CSV download and a print-ready report window.
  *
  * Both exports operate on the rows the user currently sees (filters applied),
  * so the report always matches the on-screen record.

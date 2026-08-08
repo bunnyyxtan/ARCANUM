@@ -50,12 +50,12 @@ if (IS_ARC_MAINNET) {
     throw new Error(
       `Arc network is set to mainnet but these values are not configured: ${missing.join(
         ", ",
-      )}. Circle publishes them at mainnet launch — fill them in before switching.`,
+      )}. Circle publishes them at mainnet launch - fill them in before switching.`,
     );
   }
 }
 
-/** The active viem chain — use this instead of arcTestnet/arcMainnet directly. */
+/** The active viem chain - use this instead of arcTestnet/arcMainnet directly. */
 export const arcChain = IS_ARC_MAINNET ? arcMainnet : arcTestnet;
 
 export const ARC_CHAIN_ID = IS_ARC_MAINNET ? ARC_MAINNET_CHAIN_ID : ARC_TESTNET_CHAIN_ID;

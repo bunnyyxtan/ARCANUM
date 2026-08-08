@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
  *
  * Shows "← BACK" only when the browser actually has somewhere to go back
  * to (in-app navigation or an external referrer). Visitors who open the
- * page directly — fresh tab, shared link, embed click-through — never see
+ * page directly - fresh tab, shared link, embed click-through - never see
  * a dead button.
  */
 export function PublicBackLink() {

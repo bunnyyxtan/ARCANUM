@@ -47,7 +47,7 @@ export function DashboardRouteGuard({ children }: DashboardRouteGuardProps) {
       }
       granted = fromQuery || window.sessionStorage.getItem("arcanum-preview") === "1";
     } catch {
-      // sessionStorage unavailable (privacy mode) — fall back to the query param.
+      // sessionStorage unavailable (privacy mode) - fall back to the query param.
     }
     setAllowLocalPreview(granted);
     setHasResolvedPreview(true);

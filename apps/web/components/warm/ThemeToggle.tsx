@@ -11,7 +11,7 @@ export function ThemeToggle({ className }: { className?: string }) {
     try {
       localStorage.setItem("arcanum-theme", dark ? "dark" : "light");
     } catch {
-      /* storage unavailable — theme just won't persist */
+      /* storage unavailable - theme just won't persist */
     }
   };
 

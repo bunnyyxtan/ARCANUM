@@ -15,8 +15,10 @@ import {
 } from "./src/schema";
 import { FALLBACK_TENANT_ID } from "./src/tenant";
 
-const databaseUrl =
-  process.env.DATABASE_URL ?? "postgresql://arcanum:arcanum@localhost:5432/arcanum";
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+  throw new Error("DATABASE_URL is not set");
+}
 const client = postgres(databaseUrl, { prepare: false });
 const db = drizzle(client);
 

@@ -11,7 +11,7 @@ import { walletsRouter } from "./wallets";
 
 // The whole promise of the product is showing what an AI agent spent. A
 // read-model outage must therefore surface as an explicit error the UI can
-// render as "data unavailable" — never as a calm, believable, empty dashboard.
+// render as "data unavailable" - never as a calm, believable, empty dashboard.
 
 const OWNER = "0x1111111111111111111111111111111111111111";
 

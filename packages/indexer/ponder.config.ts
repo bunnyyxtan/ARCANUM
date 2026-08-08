@@ -56,6 +56,11 @@ const contracts = {
   },
 } as const;
 
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+  throw new Error("DATABASE_URL is not set");
+}
+
 export default createConfig({
   // Run this app with `ponder start --schema ponder_app` (the `start` script /
   // the "ARCANUM Indexer" workflow), NOT `ponder dev`. `ponder dev` drops the
@@ -65,8 +70,7 @@ export default createConfig({
   // `ponder_app` schema, returning to live indexing in under a minute.
   database: {
     kind: "postgres",
-    connectionString:
-      process.env.DATABASE_URL ?? "postgresql://arcanum:arcanum@localhost:5432/arcanum",
+    connectionString: databaseUrl,
   },
   chains: {
     [chainKey]: {

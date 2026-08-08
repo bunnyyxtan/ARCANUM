@@ -49,7 +49,7 @@ export const vendorFlagsRouter = router({
   }),
 
   // Full append-only review trail for one vendor: every flag, note edit and
-  // unflag ever recorded, newest first — survives re-flagging cycles.
+  // unflag ever recorded, newest first - survives re-flagging cycles.
   history: protectedProcedure.input(vendorFlagInputSchema).query(async ({ ctx, input }) => {
     try {
       return await listVendorFlagHistory(ctx, input.vendorAddress.toLowerCase());

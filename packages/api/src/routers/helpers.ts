@@ -31,7 +31,7 @@ export function fromUsdcBaseUnits(amount: string | number | null | undefined) {
 
 /**
  * Run a local-database operation that must fail closed. A storage problem is
- * surfaced as an explicit "data unavailable" error — never swallowed into an
+ * surfaced as an explicit "data unavailable" error - never swallowed into an
  * empty result that looks like a legitimate "no activity yet".
  */
 export async function failClosed<T>(label: string, operation: () => Promise<T>): Promise<T> {

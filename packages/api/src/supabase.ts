@@ -461,7 +461,7 @@ export async function readSupabaseAgentByLooseId(ctx: ApiContext, looseWalletId:
 }
 
 /**
- * Agents are the authorized signers recorded on each wallet's doctrine — never
+ * Agents are the authorized signers recorded on each wallet's doctrine - never
  * the wallet itself. A governed wallet with no authorized signer has no agent,
  * and we say so rather than inventing one from the wallet address.
  */
@@ -664,7 +664,7 @@ export async function readSupabaseTransfers(ctx: ApiContext) {
 /** Governance event derived from an indexed ledger row. The field shape
  * matches what the dashboard event stream historically received from the local
  * `events` table. Categories are narrower by design: the indexed read model
- * currently only carries transfer outcomes (allowed / escalated / denied) —
+ * currently only carries transfer outcomes (allowed / escalated / denied) -
  * freeze, policy, and signer changes are not indexed into Supabase yet, and
  * the retired local-Postgres indexer that once produced them no longer runs
  * anywhere. */
@@ -718,7 +718,7 @@ function governanceEventFromRow(row: SupabaseRow, wallets: Wallet[]): Governance
 /**
  * Owner-scoped governance event stream, read from the indexed Supabase ledger.
  * The dashboard's "Governed event stream" used to read the local Postgres
- * `events` table, which only exists in the development workspace — in a
+ * `events` table, which only exists in the development workspace - in a
  * deployed environment that read failed closed and the stream was permanently
  * "unavailable". The indexed read model is the real source of chain history,
  * so the stream now derives from it like every other read.

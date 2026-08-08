@@ -1,8 +1,8 @@
 /**
  * Deterministic governance-posture score (0-100).
  *
- * Posture is derived from the wallet's live doctrine — the controls that
- * actually restrain the agent — instead of a number invented at creation
+ * Posture is derived from the wallet's live doctrine - the controls that
+ * actually restrain the agent - instead of a number invented at creation
  * time. Same doctrine, same score, on every surface (registry, agent
  * detail, public explorer, badge). A stricter doctrine scores higher; a
  * frozen wallet is docked because it is under emergency restraint.

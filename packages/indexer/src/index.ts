@@ -41,7 +41,7 @@ const DEFAULT_ESCALATION_THRESHOLD = 1;
 const pgMirrorDisabled = process.env.ARCANUM_DISABLE_PG_MIRROR === "1";
 if (pgMirrorDisabled) {
   console.warn(
-    "[indexer] ARCANUM_DISABLE_PG_MIRROR=1 — the legacy Postgres mirror is off; Supabase is the only write target for this run.",
+    "[indexer] ARCANUM_DISABLE_PG_MIRROR=1 - the legacy Postgres mirror is off; Supabase is the only write target for this run.",
   );
 }
 

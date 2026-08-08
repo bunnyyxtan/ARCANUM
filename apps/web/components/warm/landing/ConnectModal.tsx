@@ -173,7 +173,7 @@ export function ConnectModal({ open, onClose }: { open: boolean; onClose: () => 
         error instanceof ConnectorAlreadyConnectedError ||
         (error instanceof Error && error.name === "ConnectorAlreadyConnectedError")
       ) {
-        // Not a failure — the connector reconnected underneath us.
+        // Not a failure - the connector reconnected underneath us.
         onClose();
         router.push("/dashboard");
         return;
