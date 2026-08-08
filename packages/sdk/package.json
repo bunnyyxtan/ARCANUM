@@ -31,7 +31,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
     "size": "size-limit",
-    "build:publish": "tsup --config tsup.publish.config.ts"
+    "build:publish": "tsup --config tsup.publish.config.ts && tsup --config tsup.publish.dts.config.ts && node scripts/rewrite-dts.mjs"
   },
   "peerDependencies": {
     "viem": "^2.21.0"

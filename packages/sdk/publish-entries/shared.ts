@@ -1,0 +1,41 @@
+// Publish-only barrel: the exact @arcanum/shared surface the public SDK
+// re-exports, excluding internal schemas so the bundled declarations stay
+// free of non-peer imports. Used by tsup.publish.dts.config.ts only.
+export {
+  ARC_CHAIN_ID,
+  ARC_EXPLORER_URL,
+  ARC_MAINNET_CHAIN_ID,
+  ARC_MAINNET_EXPLORER_URL,
+  ARC_MAINNET_RPC_URL,
+  ARC_MAINNET_USDC_ADDRESS,
+  ARC_MAINNET_WS_URL,
+  ARC_NETWORK,
+  ARC_NETWORK_BADGE,
+  ARC_NETWORK_NAME,
+  ARC_RPC_URL,
+  ARC_TESTNET_CHAIN_ID,
+  ARC_TESTNET_EXPLORER_URL,
+  ARC_TESTNET_RPC_URL,
+  ARC_TESTNET_USDC_ADDRESS,
+  ARC_TESTNET_WS_URL,
+  ARC_USDC_ADDRESS,
+  ARC_WS_URL,
+  IS_ARC_MAINNET,
+  arcChain,
+  arcMainnet,
+  arcTestnet,
+  createPaymentIntentMessage,
+  usdcErc20,
+  usdcGas,
+} from "../../shared/src/index";
+export type {
+  Erc20USDC,
+  GasUSDC,
+  NormalizedPaymentIntentInput,
+  NormalizedSignedPaymentIntentInput,
+  PaymentIntentDecision,
+  PaymentIntentInput,
+  PaymentIntentResult,
+  SignedPaymentIntentInput,
+  SupportedPaymentToken,
+} from "../../shared/src/index";
