@@ -362,7 +362,7 @@ export default function DocsPage() {
                   {[
                     [
                       "Install the SDK",
-                      "Add the Arcanum SDK to your project. It ships with typed GuardedWallet helpers and Arc Testnet chain config.",
+                      "Add the Arcanum SDK to your project. It ships with the ArcanumClient, typed contract ABIs, and every verdict type.",
                     ],
                     [
                       "Configure the signer",
@@ -395,8 +395,63 @@ export default function DocsPage() {
                   ))}
                 </ol>
                 <CodeBlock label="TERMINAL / bash">npm install arcanum-sdk viem</CodeBlock>
-                <CodeBlock label="deploy.ts / typescript">{`import { WalletFactoryAbi } from "arcanum-sdk";
-import { parseUnits } from "viem";
+                <p className="mt-6 text-[13px] leading-[1.5] text-[var(--wl-secondary2)]">
+                  Snippets are files, not terminal commands. Save the block below as test.mjs, then
+                  run node test.mjs. It reads a live GuardedWallet on Arc Testnet: real policy, real
+                  verdicts, no keys required.
+                </p>
+                <CodeBlock label="test.mjs / run: node test.mjs">{`import { ArcanumClient } from "arcanum-sdk";
+import { defineChain, formatUnits, parseUnits } from "viem";
+
+const arcTestnet = defineChain({
+  id: 5042002,
+  name: "Arc Testnet",
+  nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 6 },
+  rpcUrls: { default: { http: ["https://arc-testnet.drpc.org"] } },
+});
+
+// A live GuardedWallet on Arc Testnet. Swap in your own after you deploy it.
+const client = new ArcanumClient({
+  walletAddress: "0x34Ce73E82d48bF377597D8A3c80f9a6DF2085EFa",
+  chain: arcTestnet,
+  rpcUrl: "https://arc-testnet.drpc.org",
+});
+
+const policy = await client.getPolicy();
+console.log("Per-tx cap:", formatUnits(policy.perTxCap, 6), "USDC");
+
+const allowed = await client.simulate({
+  to: "0xF45C70f2b08397419b11751041c0D9547CcEDEaD", // allowlisted vendor
+  amount: parseUnits("1", 6),
+});
+console.log("Allowlisted vendor:", allowed.verdict);
+
+const denied = await client.simulate({
+  to: "0xB1a111A87A454977F5fB2c02F547D0f346e23Ca8", // unknown vendor
+  amount: parseUnits("1", 6),
+});
+console.log("Unknown vendor:", denied.verdict, denied.reason ?? "");`}</CodeBlock>
+                <p className="mt-6 text-[13px] leading-[1.5] text-[var(--wl-secondary2)]">
+                  Ready to deploy your own? Save this as deploy.mjs, set OPERATOR_KEY to a funded
+                  Arc Testnet key, and run it.
+                </p>
+                <CodeBlock label="deploy.mjs / run: node deploy.mjs">{`import { WalletFactoryAbi } from "arcanum-sdk";
+import { createWalletClient, defineChain, http, parseUnits } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+
+const arcTestnet = defineChain({
+  id: 5042002,
+  name: "Arc Testnet",
+  nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 6 },
+  rpcUrls: { default: { http: ["https://arc-testnet.drpc.org"] } },
+});
+
+// The operator account that owns the Doctrine. Gas on Arc is paid in USDC.
+const account = privateKeyToAccount(process.env.OPERATOR_KEY);
+const walletClient = createWalletClient({ account, chain: arcTestnet, transport: http() });
+
+// WalletFactory on Arc Testnet
+const WALLET_FACTORY = "0x1Da7E51b537F9E6CF5bB308b3B2d6fdc5D9E4750";
 
 const policy = {
   perTxCap: parseUnits("50", 6),
@@ -407,12 +462,16 @@ const policy = {
   requireAllowlist: true,
 };
 
+const agentSigner = "0xYourAgentSignerAddress"; // your AI agent's signing address
+const council = [account.address]; // escalation approvers
+
 const txHash = await walletClient.writeContract({
-  address: process.env.NEXT_PUBLIC_WALLET_FACTORY as \`0x\${string}\`,
+  address: WALLET_FACTORY,
   abi: WalletFactoryAbi,
   functionName: "createWallet",
-  args: [ownerAddress, "ResearchAgent", policy, [agentSigner], council, 2],
-});`}</CodeBlock>
+  args: [account.address, "ResearchAgent", policy, [agentSigner], council, 1],
+});
+console.log("Deployed:", txHash);`}</CodeBlock>
                 <div className="mt-8 space-y-3">
                   <div className="flex gap-3 border-l-2 border-[var(--wl-signal)] bg-[rgba(var(--wl-signal-rgb),.06)] px-4 py-3">
                     <div>
@@ -442,8 +501,8 @@ const txHash = await walletClient.writeContract({
                         INFO
                       </div>
                       <p className="mt-1 text-[12.5px] leading-[1.5] text-[var(--wl-body)]">
-                        USDC token amounts are expressed in 6-decimal base units. The SDK exposes
-                        usdcErc20() helpers.
+                        USDC token amounts are expressed in 6-decimal base units. One dollar is
+                        parseUnits("1", 6).
                       </p>
                     </div>
                   </div>
