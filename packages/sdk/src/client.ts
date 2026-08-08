@@ -5,8 +5,8 @@ import {
   VendorRegistryAbi,
 } from "@arcanum/contracts";
 import {
-  ARC_TESTNET_CHAIN_ID,
-  ARC_TESTNET_USDC_ADDRESS,
+  ARC_CHAIN_ID,
+  ARC_USDC_ADDRESS,
   createPaymentIntentMessage,
   createPaymentIntentResult,
   paymentIntentInputSchema,
@@ -116,7 +116,7 @@ export class ArcanumClient {
       });
     }
 
-    if (intent.chainId !== ARC_TESTNET_CHAIN_ID) {
+    if (intent.chainId !== ARC_CHAIN_ID) {
       return paymentIntentResult(intent, {
         decision: "unsupported",
         reason: "Only Arc Testnet payment intents are supported.",
@@ -124,7 +124,7 @@ export class ArcanumClient {
       });
     }
 
-    if (!sameAddress(intent.tokenAddress, ARC_TESTNET_USDC_ADDRESS)) {
+    if (!sameAddress(intent.tokenAddress, ARC_USDC_ADDRESS)) {
       return paymentIntentResult(intent, {
         decision: "unsupported",
         reason: "Only Arc Testnet USDC payment intents are supported.",
@@ -159,7 +159,7 @@ export class ArcanumClient {
       }),
     ]);
 
-    if (!sameAddress(walletToken, ARC_TESTNET_USDC_ADDRESS)) {
+    if (!sameAddress(walletToken, ARC_USDC_ADDRESS)) {
       return paymentIntentResult(intent, {
         amount,
         decision: "unsupported",
@@ -410,7 +410,7 @@ export class ArcanumClient {
 
   private async assertSufficientBalance(amount: bigint) {
     const balance = await this.publicClient.readContract({
-      address: ARC_TESTNET_USDC_ADDRESS,
+      address: ARC_USDC_ADDRESS,
       abi: erc20Abi,
       functionName: "balanceOf",
       args: [this.walletAddress],
