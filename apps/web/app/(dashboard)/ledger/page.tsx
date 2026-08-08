@@ -677,7 +677,9 @@ export default function LedgerPage() {
                   ].map(([label, value]) => (
                     <div key={label} className="grid grid-cols-[1fr_1.2fr] gap-3 py-3">
                       <dt className="text-[var(--wl-mute)]">{label}</dt>
-                      <dd className="break-words text-right text-[var(--wl-body)]">{value}</dd>
+                      <dd className="min-w-0 break-all text-right text-[var(--wl-body)]">
+                        {value}
+                      </dd>
                     </div>
                   ))}
                 </dl>

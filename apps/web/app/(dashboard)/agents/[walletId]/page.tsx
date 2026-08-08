@@ -775,7 +775,7 @@ export default function AgentDetailPage() {
                 >
                   <dt className="text-[var(--wl-mute)]">{label}</dt>
                   <dd
-                    className="break-words text-right text-[var(--wl-body)] max-sm:text-left"
+                    className="min-w-0 break-all text-right text-[var(--wl-body)] max-sm:text-left"
                     title={value}
                   >
                     {value}
