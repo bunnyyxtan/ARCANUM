@@ -1,3 +1,11 @@
+export {
+  AnomalyOracleAbi,
+  EscalationManagerAbi,
+  GuardedWalletAbi,
+  PolicyEngineAbi,
+  VendorRegistryAbi,
+  WalletFactoryAbi,
+} from "@arcanum/contracts";
 export { createPaymentIntentMessage } from "@arcanum/shared";
 export { ArcanumClient, encodeExecuteUSDC } from "./client";
 export {
