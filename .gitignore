@@ -1,42 +1,19 @@
-# secrets
+# dependencies
+node_modules/
+
+# builds
+.next/
+.turbo/
+dist/
+build/
+out/
+coverage/
+*.tsbuildinfo
+
+# environment
 .env
 .env.local
 .env.*.local
-apps/web/.env.local
-packages/contracts/.env
-
-# logs/temp
-*.log
-*.err.log
-*.out.log
-dev-*.log
-fix_lint*.js
-screenshot.js
-
-# generated
-out/
-output/
-.playwright-cli/
-playwright-report/
-test-results/
-logs/
-screenshots/
-*.webm
-*.mp4
-arcanum-rendered-qa/
-.next/
-.turbo/
-node_modules/
-dist/
-build/
-coverage/
-*.tmp
-*.bak
-*.old
-*.trace
-trace.zip
-.DS_Store
-Thumbs.db
 
 # foundry
 packages/contracts/out/
@@ -45,30 +22,13 @@ packages/contracts/broadcast/
 packages/contracts/lib/
 packages/contracts/lcov.info
 
-# old planning exports
-*.pdf
-Direction B*.html
-# python/cache
-__pycache__/
-.pytest_cache/
-.ruff_cache/
-*.pyc
+# testing
+playwright-report/
+test-results/
 
-# typescript cache
-*.tsbuildinfo
+# logs
+*.log
 
-# workspace tooling (kept local, not part of the product repo)
-.replit
-replit.md
-replit.nix
-.agents/
-.local/
-.config/
-.cache/
-.upm/
-attached_assets/
-artifacts/
-generated/
-charts/
-docs/assets/readme/raw/
-dist-publish/
+# os
+.DS_Store
+Thumbs.db
