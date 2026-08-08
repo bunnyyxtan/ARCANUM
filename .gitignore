@@ -71,3 +71,4 @@ artifacts/
 generated/
 charts/
 docs/assets/readme/raw/
+dist-publish/
