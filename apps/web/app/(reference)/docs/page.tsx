@@ -1,5 +1,6 @@
 "use client";
 
+import { ARC_NETWORK_BADGE } from "@arcanum/shared";
 import Link from "next/link";
 import { type ReactNode, useState } from "react";
 
@@ -488,7 +489,7 @@ const txHash = await walletClient.writeContract({
               </p>
             </div>
             <div className="mt-12 border-t border-[var(--wl-line)] pt-4 font-mono text-[9px] uppercase leading-[1.7] tracking-[.1em] text-[var(--wl-mute)]">
-              ARC TESTNET
+              {ARC_NETWORK_BADGE}
               <br />
               HELIX-DAO
               <br />

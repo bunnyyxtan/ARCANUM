@@ -11,7 +11,9 @@
  * escalation_key) so re-indexing after a restart never duplicates rows.
  */
 
-const CHAIN_ID = 5_042_002;
+import { ARC_CHAIN_ID } from "@arcanum/shared";
+
+const CHAIN_ID = ARC_CHAIN_ID;
 const CHECKPOINT_CONTRACT = "arcanum-indexer";
 
 type Row = Record<string, unknown>;

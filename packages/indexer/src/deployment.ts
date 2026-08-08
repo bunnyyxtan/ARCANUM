@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { ARC_NETWORK } from "@arcanum/shared";
 import { z } from "zod";
 
 const addressSchema = z.custom<`0x${string}`>(
@@ -18,7 +19,9 @@ const deploymentSchema = z.object({
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
 
-const DEPLOYMENT_RELATIVE_PATH = "packages/contracts/deployments/arc-testnet.json";
+// One manifest per network: arc-testnet.json today, arc-mainnet.json once the
+// mainnet contracts are deployed. The active network picks which one is read.
+const DEPLOYMENT_RELATIVE_PATH = `packages/contracts/deployments/arc-${ARC_NETWORK}.json`;
 
 /**
  * Walks up from the working directory (and from this file, for the case where

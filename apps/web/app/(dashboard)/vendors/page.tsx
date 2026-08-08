@@ -1,6 +1,6 @@
 "use client";
 
-import { arcTestnet } from "@arcanum/shared";
+import { ARC_NETWORK_NAME, arcChain } from "@arcanum/shared";
 import {
   type CSSProperties,
   type MouseEvent as ReactMouseEvent,
@@ -93,7 +93,7 @@ function StatePill({ blocked }: { blocked: boolean }) {
 export default function VendorsPage() {
   const workspace = useWorkspaceMode();
   const { address, chainId, isConnected } = useAccount();
-  const publicClient = usePublicClient({ chainId: arcTestnet.id });
+  const publicClient = usePublicClient({ chainId: arcChain.id });
   const { switchChainAsync, isPending: switchPending } = useSwitchChain();
   const { writeContractAsync, isPending: writePending } = useWriteContract();
   const utils = trpc.useUtils();
@@ -185,7 +185,7 @@ export default function VendorsPage() {
     abi: guardedWalletControlAbi,
     address: selectedGovernedWalletAddress ?? undefined,
     functionName: "owner",
-    chainId: arcTestnet.id,
+    chainId: arcChain.id,
     query: { enabled: Boolean(selectedGovernedWalletAddress) },
   });
   const governedWalletOwner =
@@ -202,14 +202,14 @@ export default function VendorsPage() {
         : governedWalletOwnerQuery.isLoading
           ? "Verifying governed wallet owner."
           : !governedWalletOwner
-            ? "Could not verify governed wallet owner on Arc Testnet."
+            ? `Could not verify governed wallet owner on ${ARC_NETWORK_NAME}.`
             : !address || !isSameAddress(governedWalletOwner, address)
               ? `Only the governed wallet owner (${shortAddress(governedWalletOwner)}) can manage its VendorRegistry.`
               : null;
 
   const vendorNetworkNotice =
-    isConnected && chainId !== arcTestnet.id
-      ? "Wallet will be asked to switch to Arc Testnet."
+    isConnected && chainId !== arcChain.id
+      ? `Wallet will be asked to switch to ${ARC_NETWORK_NAME}.`
       : null;
 
   useEffect(() => {
@@ -314,10 +314,10 @@ export default function VendorsPage() {
       throw new Error(vendorWriteDisabledReason);
     }
     if (!selectedGovernedWalletAddress || !publicClient) {
-      throw new Error("Arc Testnet RPC is unavailable.");
+      throw new Error(`${ARC_NETWORK_NAME} RPC is unavailable.`);
     }
-    if (chainId !== arcTestnet.id) {
-      await switchChainAsync({ chainId: arcTestnet.id });
+    if (chainId !== arcChain.id) {
+      await switchChainAsync({ chainId: arcChain.id });
     }
     return selectedGovernedWalletAddress;
   };
@@ -380,7 +380,7 @@ export default function VendorsPage() {
         abi: guardedWalletControlAbi,
         functionName: "addVendor",
         args: [vendorAddress, categoryIndex, perVendorCap, metadataHash],
-        chainId: arcTestnet.id,
+        chainId: arcChain.id,
       });
       setVendorTxHash(hash);
 
@@ -452,7 +452,7 @@ export default function VendorsPage() {
         abi: guardedWalletControlAbi,
         functionName,
         args: [vendor.address as Address],
-        chainId: arcTestnet.id,
+        chainId: arcChain.id,
       });
 
       const receipt = await publicClient?.waitForTransactionReceipt({ hash, confirmations: 1 });
@@ -523,7 +523,7 @@ export default function VendorsPage() {
           abi: guardedWalletControlAbi,
           functionName: "addVendor",
           args: [selected.address as Address, categoryIndex, perVendorCap, metadataHash],
-          chainId: arcTestnet.id,
+          chainId: arcChain.id,
         });
         const receipt = await publicClient?.waitForTransactionReceipt({ hash, confirmations: 1 });
         if (receipt?.status !== "success") {

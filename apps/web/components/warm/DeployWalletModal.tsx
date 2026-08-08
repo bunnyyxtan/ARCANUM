@@ -1,6 +1,6 @@
 "use client";
 
-import { arcTestnet } from "@arcanum/shared";
+import { ARC_NETWORK_BADGE, ARC_NETWORK_NAME, arcChain } from "@arcanum/shared";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
@@ -197,7 +197,7 @@ export function DeployWalletModal({
   onWalletCreated,
 }: Readonly<{ onClose: () => void; onWalletCreated?: (result: CreatedWalletResult) => void }>) {
   const { address, chainId, isConnected } = useAccount();
-  const publicClient = usePublicClient({ chainId: arcTestnet.id });
+  const publicClient = usePublicClient({ chainId: arcChain.id });
   const { switchChainAsync, isPending: switchPending } = useSwitchChain();
   const { writeContractAsync, isPending: writePending } = useWriteContract();
   const recordCreatedWallet = trpc.agents.recordCreatedWallet.useMutation();
@@ -217,13 +217,13 @@ export function DeployWalletModal({
   const [advancedGovernanceOpen, setAdvancedGovernanceOpen] = useState(false);
   const submittingRef = useRef(false);
   const readyForTransaction =
-    deployment.ready && walletFactoryAddress !== null && isConnected && chainId === arcTestnet.id;
+    deployment.ready && walletFactoryAddress !== null && isConnected && chainId === arcChain.id;
   const isBusy = writePending || switchPending || status === "confirming" || submittingRef.current;
   const primaryDisabled =
     isBusy ||
     !deployment.ready ||
     !isConnected ||
-    (chainId === arcTestnet.id && !readyForTransaction);
+    (chainId === arcChain.id && !readyForTransaction);
 
   useEffect(() => {
     if (!address) {
@@ -298,11 +298,11 @@ export function DeployWalletModal({
       setStatus("error");
       return;
     }
-    if (chainId !== arcTestnet.id) {
+    if (chainId !== arcChain.id) {
       setError(null);
       setStatus("idle");
       try {
-        await switchChainAsync({ chainId: arcTestnet.id });
+        await switchChainAsync({ chainId: arcChain.id });
       } catch (caught) {
         setStatus("error");
         setError(errorMessage(caught));
@@ -315,7 +315,7 @@ export function DeployWalletModal({
       return;
     }
     if (!publicClient) {
-      setError("Arc Testnet client is not ready. Please retry.");
+      setError(`${ARC_NETWORK_NAME} client is not ready. Please retry.`);
       setStatus("error");
       return;
     }
@@ -369,7 +369,7 @@ export function DeployWalletModal({
         abi: walletFactoryAbi,
         functionName: "createWallet",
         args: [address, label, policy, signers, council, quorum],
-        chainId: arcTestnet.id,
+        chainId: arcChain.id,
       });
       setTxHash(hash);
 
@@ -393,7 +393,7 @@ export function DeployWalletModal({
         ownerAddress: address,
         label,
         deployTxHash: hash,
-        chainId: arcTestnet.id,
+        chainId: arcChain.id,
         perTxCap: Number(form.perTxCap),
         dailyCap: Number(form.dailyCap),
         monthlyCap: Number(form.monthlyCap),
@@ -427,10 +427,10 @@ export function DeployWalletModal({
     ? "DEPLOYMENT CONFIG REQUIRED"
     : !isConnected
       ? "CONNECT WALLET FIRST"
-      : chainId !== arcTestnet.id
+      : chainId !== arcChain.id
         ? switchPending
           ? "SWITCHING NETWORK"
-          : "SWITCH TO ARC TESTNET"
+          : `SWITCH TO ${ARC_NETWORK_BADGE}`
         : status === "confirming" || writePending
           ? txHash
             ? "WAITING FOR RECEIPT"
@@ -576,7 +576,7 @@ export function DeployWalletModal({
             <>
               <div>
                 <div className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-mute)]">
-                  CREATE A GOVERNED WALLET ON ARC TESTNET
+                  CREATE A GOVERNED WALLET ON {ARC_NETWORK_BADGE}
                 </div>
                 <div className="mt-1 text-[12px] text-[var(--wl-ink)]">
                   Contracts ready. Choose a wallet name and simple spend limits.
@@ -699,7 +699,7 @@ export function DeployWalletModal({
                   ) : null}
                   {status === "success" ? (
                     <div className="pt-1 text-[var(--wl-green)]">
-                      CREATED ON ARC TESTNET / RECORD MAY TAKE A MOMENT TO UPDATE
+                      CREATED ON {ARC_NETWORK_BADGE} / RECORD MAY TAKE A MOMENT TO UPDATE
                     </div>
                   ) : null}
                 </div>
@@ -718,9 +718,9 @@ export function DeployWalletModal({
                     ? "Configure deployed contract addresses before deploying a governed wallet."
                     : !isConnected
                       ? "Connect wallet first."
-                      : chainId !== arcTestnet.id
-                        ? "Switch wallet network to Arc Testnet."
-                        : "Create a GuardedWallet on Arc Testnet."
+                      : chainId !== arcChain.id
+                        ? `Switch wallet network to ${ARC_NETWORK_NAME}.`
+                        : `Create a GuardedWallet on ${ARC_NETWORK_NAME}.`
                 }
                 className={`flex h-9 w-full items-center justify-center border font-mono text-[11px] uppercase tracking-[.12em] ${
                   primaryDisabled

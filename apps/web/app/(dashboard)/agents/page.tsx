@@ -1,5 +1,6 @@
 "use client";
 
+import { ARC_NETWORK_BADGE, ARC_NETWORK_NAME } from "@arcanum/shared";
 import Link from "next/link";
 import { type CSSProperties, useMemo, useState } from "react";
 
@@ -167,7 +168,7 @@ export default function AgentsPage() {
                 </h2>
               </div>
               <span className="hidden font-mono text-[9px] uppercase tracking-[.13em] text-[var(--wl-mute)] md:inline">
-                arc testnet
+                {ARC_NETWORK_BADGE.toLowerCase()}
               </span>
             </div>
             <div className="hidden grid-cols-[.9fr_1.35fr_1fr_1fr_1.1fr_1.3fr] gap-3 border-b border-[var(--wl-line)] px-3 py-3 font-mono text-[9px] uppercase tracking-[.13em] text-[var(--wl-mute)] md:grid">
@@ -398,7 +399,7 @@ export default function AgentsPage() {
                     <p className="font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-secondary)]">
                       NETWORK
                     </p>
-                    <p className="mt-2 font-mono text-[13px]">ARC TESTNET</p>
+                    <p className="mt-2 font-mono text-[13px]">{ARC_NETWORK_BADGE}</p>
                   </div>
                 </div>
                 <div className="py-6">
@@ -442,7 +443,7 @@ export default function AgentsPage() {
           <span className="font-mono uppercase tracking-[.14em]">
             {totalCount} governed wallet{totalCount === 1 ? "" : "s"} · {activeCount} active now
           </span>
-          <span>Arc Testnet registry</span>
+          <span>{ARC_NETWORK_NAME} registry</span>
         </footer>
       </div>
 

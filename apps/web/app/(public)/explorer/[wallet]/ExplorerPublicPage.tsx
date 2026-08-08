@@ -1,6 +1,7 @@
 "use client";
 
 import { EmberMark } from "@/components/warm/EmberMark";
+import { ARC_NETWORK_BADGE } from "@arcanum/shared";
 import Link from "next/link";
 
 import { PublicBackLink } from "@/components/warm/PublicBackLink";
@@ -155,7 +156,7 @@ export function ExplorerPublicPage({ wallet }: Readonly<{ wallet: string }>) {
               )}
             </div>
             <p className="mt-4 font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-secondary)]">
-              ARC TESTNET · USDC · SOURCE: {dataSource}
+              {ARC_NETWORK_BADGE} · USDC · SOURCE: {dataSource}
             </p>
           </div>
           <div className="border-t border-[var(--wl-line)] py-8 md:border-l md:border-t-0 md:pl-7">
@@ -284,7 +285,9 @@ export function ExplorerPublicPage({ wallet }: Readonly<{ wallet: string }>) {
 
         <footer className="mt-14 flex flex-wrap justify-between gap-4 border-t border-[var(--wl-line)] pt-5 font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-mute)]">
           <span>ARCANUM · PUBLIC RECORD</span>
-          <span>{walletLabel} · ARC TESTNET</span>
+          <span>
+            {walletLabel} · {ARC_NETWORK_BADGE}
+          </span>
         </footer>
       </div>
     </main>

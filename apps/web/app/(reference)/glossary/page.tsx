@@ -1,5 +1,6 @@
 "use client";
 
+import { ARC_NETWORK_BADGE } from "@arcanum/shared";
 import Link from "next/link";
 import { type ReactNode, useMemo, useState } from "react";
 
@@ -227,7 +228,7 @@ export default function GlossaryPage() {
               )}
             </div>
             <div className="flex justify-between pt-4 font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-mute)]">
-              <span>HELIX-DAO · ARC TESTNET</span>
+              <span>HELIX-DAO · {ARC_NETWORK_BADGE}</span>
               <span>ON RECORD / V4.18</span>
             </div>
           </section>

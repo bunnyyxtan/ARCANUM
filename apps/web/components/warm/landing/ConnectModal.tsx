@@ -1,5 +1,6 @@
 "use client";
 
+import { ARC_NETWORK_BADGE } from "@arcanum/shared";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -228,7 +229,7 @@ export function ConnectModal({ open, onClose }: { open: boolean; onClose: () => 
               </span>
               <div>
                 <p className="font-mono text-[10px] uppercase tracking-[.14em] text-[var(--wl-signal)]">
-                  CONNECTING / ARC TESTNET
+                  CONNECTING / {ARC_NETWORK_BADGE}
                 </p>
                 <p className="mt-1 text-[15px] font-semibold tracking-[-.02em]">
                   {chosenWallet?.name ?? "Wallet"}
@@ -298,7 +299,7 @@ export function ConnectModal({ open, onClose }: { open: boolean; onClose: () => 
             </div>
             <div className="mt-5 flex items-center justify-between border-t border-[var(--wl-line-soft)] pt-4">
               <p className="font-mono text-[9px] tracking-[.12em] text-[var(--wl-muted)]">
-                SIWE · ARC TESTNET
+                SIWE · {ARC_NETWORK_BADGE}
               </p>
               <button
                 type="button"

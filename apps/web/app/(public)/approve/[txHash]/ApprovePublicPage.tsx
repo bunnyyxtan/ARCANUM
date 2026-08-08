@@ -1,7 +1,7 @@
 "use client";
 
 import { EmberMark } from "@/components/warm/EmberMark";
-import { ARC_TESTNET_EXPLORER_URL, arcTestnet } from "@arcanum/shared";
+import { ARC_EXPLORER_URL, ARC_NETWORK_BADGE, ARC_NETWORK_NAME, arcChain } from "@arcanum/shared";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Link from "next/link";
 
@@ -37,7 +37,7 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
 
   const { address, chainId, isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
-  const publicClient = usePublicClient({ chainId: arcTestnet.id });
+  const publicClient = usePublicClient({ chainId: arcChain.id });
   const { switchChainAsync, isPending: switchPending } = useSwitchChain();
   const { writeContractAsync, isPending: writePending } = useWriteContract();
   const utils = trpc.useUtils();
@@ -100,7 +100,7 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
     : !escalationManagerAddress
       ? "EscalationManager address is not configured."
       : !publicClient
-        ? "Arc Testnet RPC is unavailable."
+        ? `${ARC_NETWORK_NAME} RPC is unavailable.`
         : !escalation
           ? "No escalation found for this id."
           : countdown.isExpired
@@ -117,7 +117,7 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
     (stage === "pending_indexer"
       ? "Contract confirmed. Updating the record."
       : stage === "checking"
-        ? "Checking approver permission on Arc Testnet."
+        ? `Checking approver permission on ${ARC_NETWORK_NAME}.`
         : disabledReason);
 
   const readPreflight = async () => {
@@ -135,7 +135,7 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
     const status = escalationStatusLabels[Number(detail[8])] ?? "EXPIRED";
 
     if (isZeroAddress(wallet)) {
-      throw new Error("Escalation was not found on Arc Testnet.");
+      throw new Error(`Escalation was not found on ${ARC_NETWORK_NAME}.`);
     }
     if (status !== "PENDING") {
       throw new Error(`Escalation is already ${status.toLowerCase()}.`);
@@ -189,9 +189,9 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
     try {
       const preflight = await readPreflight();
 
-      if (chainId !== arcTestnet.id) {
+      if (chainId !== arcChain.id) {
         setStage("wallet");
-        await switchChainAsync({ chainId: arcTestnet.id });
+        await switchChainAsync({ chainId: arcChain.id });
       }
 
       setStage("wallet");
@@ -200,7 +200,7 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
         abi: escalationManagerAbi,
         functionName: action,
         args: [escalationId],
-        chainId: arcTestnet.id,
+        chainId: arcChain.id,
       });
       setContractTxHash(hash);
       setStage("confirming");
@@ -248,7 +248,7 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
 
   const decided = stage === "done";
   const contractTxUrl = contractTxHash
-    ? `${process.env.NEXT_PUBLIC_ARCSCAN_URL ?? ARC_TESTNET_EXPLORER_URL}/tx/${contractTxHash}`
+    ? `${process.env.NEXT_PUBLIC_ARCSCAN_URL ?? ARC_EXPLORER_URL}/tx/${contractTxHash}`
     : null;
 
   return (
@@ -271,7 +271,7 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
             PUBLIC APPROVER PORTAL
           </span>
           <span className="rounded-full border border-[var(--wl-line)] px-3 py-2 font-mono text-[9px] tracking-[.12em] text-[var(--wl-body)]">
-            ARC TESTNET
+            {ARC_NETWORK_BADGE}
           </span>
           <ThemeToggle />
         </div>

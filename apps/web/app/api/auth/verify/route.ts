@@ -5,6 +5,7 @@ import {
   verifyBodySchema,
   verifySiweLogin,
 } from "@arcanum/auth";
+import { ARC_CHAIN_ID } from "@arcanum/shared";
 import { getIronSession } from "iron-session";
 import { cookies, headers } from "next/headers";
 import { NextResponse } from "next/server";
@@ -30,6 +31,7 @@ export async function POST(request: Request) {
       signature: body.signature,
       expectedNonce: session.nonce,
       host: requestHeaders.get("host"),
+      expectedChainId: ARC_CHAIN_ID,
     });
 
     await syncSupabaseAuthSession(user);

@@ -1,4 +1,4 @@
-import { ARC_TESTNET_RPC_URL, arcTestnet } from "@arcanum/shared";
+import { ARC_RPC_URL, arcChain } from "@arcanum/shared";
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
 import { http, createConfig } from "wagmi";
 import { injected } from "wagmi/connectors";
@@ -11,16 +11,16 @@ const fallbackProjectId = "arcanum-local-walletconnect-project-id";
 // out pages for real users. Writes still go through the user's wallet. During
 // SSR there is no CORS or browser rate limit, so the direct URL is fine.
 const chainReadUrl =
-  typeof window === "undefined" ? ARC_TESTNET_RPC_URL : `${window.location.origin}/api/arc-rpc`;
+  typeof window === "undefined" ? ARC_RPC_URL : `${window.location.origin}/api/arc-rpc`;
 
 export const hasWalletConnectProjectId =
   walletConnectProjectId !== undefined && walletConnectProjectId.length > 0;
 
 export const injectedWagmiConfig = createConfig({
-  chains: [arcTestnet],
+  chains: [arcChain],
   connectors: [injected()],
   transports: {
-    [arcTestnet.id]: http(chainReadUrl),
+    [arcChain.id]: http(chainReadUrl),
   },
   ssr: true,
 });
@@ -29,9 +29,9 @@ export const wagmiConfig = hasWalletConnectProjectId
   ? getDefaultConfig({
       appName: "Arcanum",
       projectId: walletConnectProjectId ?? fallbackProjectId,
-      chains: [arcTestnet],
+      chains: [arcChain],
       transports: {
-        [arcTestnet.id]: http(chainReadUrl),
+        [arcChain.id]: http(chainReadUrl),
       },
       ssr: true,
     })

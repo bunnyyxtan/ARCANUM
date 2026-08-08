@@ -1,5 +1,6 @@
 import { FALLBACK_TENANT_ID } from "@arcanum/db";
 import {
+  ARC_CHAIN_ID,
   orgCreateInputSchema,
   orgMemberAddInputSchema,
   orgMemberRemoveInputSchema,
@@ -28,7 +29,7 @@ const baseOrg = {
   createdAt: new Date("2026-06-08T02:00:00.000Z"),
   ownerWallet: "0x0000000000000000000000000000000000000000",
   multisigAddress: "0x0000000000000000000000000000000000000000",
-  chainId: 5042002,
+  chainId: ARC_CHAIN_ID,
   // The client has to tell three states apart -- not signed in, signed in with
   // no workspace, and signed in with one -- to know whether to offer sign-in,
   // offer to create a workspace, or render the product. Matching on the

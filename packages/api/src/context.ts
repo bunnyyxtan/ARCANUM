@@ -1,6 +1,6 @@
 import type { ArcanumSession } from "@arcanum/auth";
 import { type ArcanumDb, db } from "@arcanum/db";
-import { arcTestnet } from "@arcanum/shared";
+import { arcChain } from "@arcanum/shared";
 import { http, type PublicClient, createPublicClient } from "viem";
 
 import { type SupabaseServiceRoleClient, createSupabaseServiceRoleClient } from "./supabase";
@@ -41,8 +41,12 @@ export function createContext(input?: {
     publicClient:
       input?.publicClient ??
       createPublicClient({
-        chain: arcTestnet,
-        transport: http(process.env.ARC_TESTNET_RPC ?? "https://rpc.testnet.arc.network"),
+        chain: arcChain,
+        transport: http(
+          process.env.ARC_RPC_URL ??
+            process.env.ARC_TESTNET_RPC ??
+            arcChain.rpcUrls.default.http[0],
+        ),
       }),
   };
 }

@@ -5,39 +5,45 @@ import {
   VendorRegistryAbi,
   WalletFactoryAbi,
 } from "@arcanum/contracts";
+import { ARC_CHAIN_ID, ARC_RPC_URL, IS_ARC_MAINNET } from "@arcanum/shared";
 import { createConfig } from "ponder";
 
 import { loadDeployment } from "./src/deployment";
 
 const deployment = loadDeployment();
 
+// On testnet the key stays "arcTestnet" to preserve the existing sync
+// checkpoint. Mainnet gets its own key so Ponder starts a fresh checkpoint
+// namespace instead of resuming testnet sync state against a different chain.
+const chainKey = IS_ARC_MAINNET ? "arcMainnet" : "arcTestnet";
+
 const contracts = {
   WalletFactory: {
-    chain: "arcTestnet",
+    chain: chainKey,
     abi: WalletFactoryAbi,
     address: deployment.walletFactory,
     startBlock: deployment.startBlock,
   },
   EscalationManager: {
-    chain: "arcTestnet",
+    chain: chainKey,
     abi: EscalationManagerAbi,
     address: deployment.escalationManager,
     startBlock: deployment.startBlock,
   },
   AnomalyOracle: {
-    chain: "arcTestnet",
+    chain: chainKey,
     abi: AnomalyOracleAbi,
     address: deployment.anomalyOracle,
     startBlock: deployment.startBlock,
   },
   VendorRegistry: {
-    chain: "arcTestnet",
+    chain: chainKey,
     abi: VendorRegistryAbi,
     address: deployment.vendorRegistry,
     startBlock: deployment.startBlock,
   },
   GuardedWallet: {
-    chain: "arcTestnet",
+    chain: chainKey,
     abi: GuardedWalletAbi,
     factory: {
       address: deployment.walletFactory,
@@ -63,15 +69,19 @@ export default createConfig({
       process.env.DATABASE_URL ?? "postgresql://arcanum:arcanum@localhost:5432/arcanum",
   },
   chains: {
-    arcTestnet: {
-      id: 5_042_002,
+    [chainKey]: {
+      id: ARC_CHAIN_ID,
       // The official public RPC (rpc.testnet.arc.network) rate-limits
       // eth_getLogs so aggressively that a backfill never progresses, so the
       // dRPC public endpoint goes first and the official one is the fallback.
+      // Mainnet mirrors are unknown until launch, so mainnet uses only the
+      // env override plus the configured official endpoint.
       rpc: [
-        process.env.ARC_TESTNET_RPC ?? process.env.PONDER_RPC_URL_5042002,
-        "https://arc-testnet.drpc.org",
-        "https://rpc.testnet.arc.network",
+        process.env.ARC_RPC_URL ??
+          process.env.ARC_TESTNET_RPC ??
+          process.env.PONDER_RPC_URL_5042002,
+        ...(IS_ARC_MAINNET ? [] : ["https://arc-testnet.drpc.org"]),
+        ARC_RPC_URL,
       ].filter((url): url is string => Boolean(url)),
       pollingInterval: 4_000,
       maxRequestsPerSecond: 10,

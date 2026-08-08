@@ -1,3 +1,4 @@
+import { ARC_NETWORK_BADGE } from "@arcanum/shared";
 import type { ReactNode } from "react";
 
 export type LegalSection = Readonly<{
@@ -36,7 +37,7 @@ export function LegalPage({
           </h1>
           <p className="mt-7 text-[16px] leading-[1.6] text-[var(--wl-secondary2)]">{lede}</p>
           <p className="mt-7 font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)]">
-            LAST UPDATED {updated} · ARC TESTNET DEPLOYMENT
+            LAST UPDATED {updated} · {ARC_NETWORK_BADGE} DEPLOYMENT
           </p>
         </header>
 

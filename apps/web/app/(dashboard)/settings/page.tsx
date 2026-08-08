@@ -1,5 +1,6 @@
 "use client";
 
+import { ARC_CHAIN_ID, ARC_NETWORK_BADGE, ARC_NETWORK_NAME } from "@arcanum/shared";
 import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { useAccount } from "wagmi";
 
@@ -190,7 +191,7 @@ export default function SettingsPage() {
                 <section className="grid border-y border-[var(--wl-line)] md:grid-cols-3">
                   {[
                     ["ORGANIZATION", orgName],
-                    ["DEPLOYMENT", "ARC TESTNET"],
+                    ["DEPLOYMENT", ARC_NETWORK_BADGE],
                     ["MEMBERS", String(members.length).padStart(2, "0")],
                   ].map(([label, value], index) => (
                     <div
@@ -364,7 +365,7 @@ export default function SettingsPage() {
 
                 <dl className="mt-14 border-t border-[var(--wl-line)]">
                   {[
-                    ["NETWORK", "Arc Testnet · chain 5042002"],
+                    ["NETWORK", `${ARC_NETWORK_NAME} · chain ${ARC_CHAIN_ID}`],
                     ["MEMBERS", `${members.length} with access`],
                     ["YOUR ROLE", (org.data?.callerRole ?? "-").toUpperCase()],
                   ].map(([label, value]) => (

@@ -1,8 +1,8 @@
-import { ARC_TESTNET_RPC_URL } from "@arcanum/shared";
+import { ARC_NETWORK_NAME, ARC_RPC_URL, IS_ARC_MAINNET } from "@arcanum/shared";
 import { NextResponse } from "next/server";
 
 /**
- * Server-side JSON-RPC proxy for Arc Testnet READS.
+ * Server-side JSON-RPC proxy for Arc chain READS.
  *
  * The public Arc RPC endpoints refuse CORS preflights and rate-limit browsers
  * aggressively, so any page that read the chain from client code could blank
@@ -29,12 +29,18 @@ const READ_METHODS = new Set([
   "eth_maxPriorityFeePerGas",
 ]);
 
-/** Ordered upstreams: env override first, then a free mirror, then official. */
+/**
+ * Ordered upstreams: env override first, then a free mirror (testnet only —
+ * mainnet mirrors are unknown until launch), then the official endpoint for
+ * the active network.
+ */
 const UPSTREAMS = [
   ...new Set(
-    [process.env.ARC_RPC_URL, "https://arc-testnet.drpc.org", ARC_TESTNET_RPC_URL].filter(
-      (url): url is string => Boolean(url),
-    ),
+    [
+      process.env.ARC_RPC_URL,
+      ...(IS_ARC_MAINNET ? [] : ["https://arc-testnet.drpc.org"]),
+      ARC_RPC_URL,
+    ].filter((url): url is string => Boolean(url)),
   ),
 ];
 
@@ -98,7 +104,7 @@ export async function POST(request: Request) {
       return rpcErrorResponse(
         403,
         -32601,
-        "Only Arc Testnet read methods are allowed through this proxy.",
+        `Only ${ARC_NETWORK_NAME} read methods are allowed through this proxy.`,
       );
     }
   }
@@ -132,5 +138,5 @@ export async function POST(request: Request) {
     }
   }
 
-  return rpcErrorResponse(502, -32603, `Arc Testnet RPC is unavailable: ${lastFailure}`);
+  return rpcErrorResponse(502, -32603, `${ARC_NETWORK_NAME} RPC is unavailable: ${lastFailure}`);
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { arcTestnet } from "@arcanum/shared";
+import { arcChain } from "@arcanum/shared";
 import { RainbowKitProvider, darkTheme } from "@rainbow-me/rainbowkit";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
@@ -42,7 +42,7 @@ export function Providers({ children }: ProvidersProps) {
       <QueryClientProvider client={queryClient}>
         <trpc.Provider client={trpcClient} queryClient={queryClient}>
           <RainbowKitProvider
-            initialChain={arcTestnet}
+            initialChain={arcChain}
             modalSize="compact"
             theme={darkTheme({
               accentColor: "var(--color-hazard)",

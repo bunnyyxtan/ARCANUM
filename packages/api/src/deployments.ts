@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
+import { ARC_CHAIN_ID, ARC_NETWORK } from "@arcanum/shared";
 import { z } from "zod";
 
 const addressSchema = z.custom<`0x${string}`>(
@@ -22,13 +23,18 @@ export type ArcDeployment = z.infer<typeof deploymentSchema>;
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
 
 export function loadArcDeployment(): Required<ArcDeployment> {
-  const deploymentPath = resolve(process.cwd(), "packages/contracts/deployments/arc-testnet.json");
+  // One manifest per network: arc-testnet.json today, arc-mainnet.json once
+  // the mainnet contracts are deployed.
+  const deploymentPath = resolve(
+    process.cwd(),
+    `packages/contracts/deployments/arc-${ARC_NETWORK}.json`,
+  );
   const parsed = existsSync(deploymentPath)
     ? deploymentSchema.parse(JSON.parse(readFileSync(deploymentPath, "utf8")))
     : {};
 
   return {
-    chainId: parsed.chainId ?? 5_042_002,
+    chainId: parsed.chainId ?? ARC_CHAIN_ID,
     policyEngine: parsed.policyEngine ?? ZERO_ADDRESS,
     escalationManager: parsed.escalationManager ?? ZERO_ADDRESS,
     anomalyOracle: parsed.anomalyOracle ?? ZERO_ADDRESS,

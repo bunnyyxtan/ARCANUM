@@ -37,11 +37,33 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   transpilePackages: ["@arcanum/shared", "@arcanum/ui"],
   async headers() {
+    // The CSP must allow direct browser connections to the active Arc RPC.
+    // Testnet origins stay listed always (harmless); mainnet origins come
+    // from env because Circle has not published them yet. next.config runs
+    // in Node at build time, so plain env reads are fine here.
+    const extraConnectOrigins = [
+      process.env.NEXT_PUBLIC_ARC_MAINNET_RPC_URL,
+      process.env.NEXT_PUBLIC_ARC_MAINNET_WS_URL,
+    ]
+      .filter((url): url is string => Boolean(url))
+      .map((url) => {
+        try {
+          return new URL(url).origin;
+        } catch {
+          return "";
+        }
+      })
+      .filter(Boolean)
+      .join(" ");
+
+    const connectSrc = `'self' https://rpc.testnet.arc.network wss://rpc.testnet.arc.network https://*.posthog.com https://*.ingest.sentry.io${
+      extraConnectOrigins ? ` ${extraConnectOrigins}` : ""
+    }`;
+
     const commonHeaders = [
       {
         key: "Content-Security-Policy",
-        value:
-          "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data: https:; connect-src 'self' https://rpc.testnet.arc.network https://*.posthog.com https://*.ingest.sentry.io wss://rpc.testnet.arc.network; frame-ancestors 'none';",
+        value: `default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data: https:; connect-src ${connectSrc}; frame-ancestors 'none';`,
       },
       { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
       { key: "X-Frame-Options", value: "DENY" },

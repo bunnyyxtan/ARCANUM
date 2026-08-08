@@ -68,6 +68,8 @@ export async function verifySiweLogin(input: {
   signature: string;
   expectedNonce: string;
   host?: string | null;
+  /** When set, the SIWE message must be signed for exactly this chain. */
+  expectedChainId?: number;
 }) {
   const siwe = new SiweMessage(input.message);
   const result = await siwe.verify({
@@ -77,6 +79,10 @@ export async function verifySiweLogin(input: {
 
   if (!result.success) {
     throw new Error("SIWE verification failed");
+  }
+
+  if (input.expectedChainId !== undefined && siwe.chainId !== input.expectedChainId) {
+    throw new Error("SIWE verification failed: message signed for the wrong chain");
   }
 
   const walletAddress = siwe.address.toLowerCase();

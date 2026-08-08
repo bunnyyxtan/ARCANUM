@@ -1,5 +1,6 @@
 "use client";
 
+import { ARC_NETWORK_BADGE } from "@arcanum/shared";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { type CSSProperties, type ReactNode, useEffect, useState } from "react";
@@ -156,7 +157,7 @@ export function Header({ children }: HeaderProps) {
       </div>
       <div className="flex shrink-0 items-center gap-3">
         <span className="hidden font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)] sm:inline">
-          ARC TESTNET
+          {ARC_NETWORK_BADGE}
         </span>
         <ThemeToggle />
         <div className="relative" data-notifications>
@@ -306,7 +307,7 @@ export function Header({ children }: HeaderProps) {
               )}
               <p className="mt-1.5 flex items-center gap-1.5 font-mono text-[9px] tracking-[.1em] text-[var(--wl-green)]">
                 <span className="h-1.5 w-1.5 rounded-full bg-[var(--wl-green)]" />
-                ARC TESTNET · {isConnected ? "CONNECTED" : "VIEWING"}
+                {ARC_NETWORK_BADGE} · {isConnected ? "CONNECTED" : "VIEWING"}
               </p>
               <div className="mt-4 border-t border-[var(--wl-line)] pt-2">
                 {address && (
@@ -405,7 +406,7 @@ export function Header({ children }: HeaderProps) {
             })}
           </nav>
           <p className="pt-4 font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)]">
-            ARC TESTNET
+            {ARC_NETWORK_BADGE}
           </p>
         </div>
       )}

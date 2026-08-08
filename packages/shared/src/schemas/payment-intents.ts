@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { ARC_TESTNET_CHAIN_ID } from "../chains/arc-testnet";
+import { ARC_CHAIN_ID } from "../chains/network";
 import { addressSchema } from "./common";
 
 const amountDecimalSchema = z
@@ -33,7 +33,7 @@ export const paymentIntentDecisionSchema = z.enum([
 ]);
 
 export const paymentIntentInputSchema = z.object({
-  chainId: z.number().int().positive().default(ARC_TESTNET_CHAIN_ID),
+  chainId: z.number().int().positive().default(ARC_CHAIN_ID),
   governedWalletAddress: addressSchema,
   agentSignerAddress: addressSchema,
   vendorAddress: addressSchema,

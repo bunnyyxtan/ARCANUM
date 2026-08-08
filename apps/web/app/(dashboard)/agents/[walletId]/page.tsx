@@ -1,6 +1,6 @@
 "use client";
 
-import { arcTestnet } from "@arcanum/shared";
+import { ARC_NETWORK_BADGE, ARC_NETWORK_NAME, arcChain } from "@arcanum/shared";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -97,7 +97,7 @@ function Arrow() {
 
 function AgentSignerPanel({ governedWalletAddress }: { governedWalletAddress: Address | null }) {
   const { address, chainId, isConnected } = useAccount();
-  const publicClient = usePublicClient({ chainId: arcTestnet.id });
+  const publicClient = usePublicClient({ chainId: arcChain.id });
   const { switchChainAsync, isPending: switchPending } = useSwitchChain();
   const { writeContractAsync, isPending: writePending } = useWriteContract();
   const utils = trpc.useUtils();
@@ -151,7 +151,7 @@ function AgentSignerPanel({ governedWalletAddress }: { governedWalletAddress: Ad
       if (!bytecode || bytecode === "0x") {
         setWalletOwner(null);
         setReadStatus("error");
-        setReadError("No contract found at this governed wallet address on Arc Testnet.");
+        setReadError(`No contract found at this governed wallet address on ${ARC_NETWORK_NAME}.`);
         return;
       }
       const owner = (await publicClient.readContract({
@@ -206,11 +206,11 @@ function AgentSignerPanel({ governedWalletAddress }: { governedWalletAddress: Ad
       : readStatus === "loading"
         ? "Checking governed wallet owner."
         : readStatus === "error"
-          ? (readError ?? "Unable to read governed wallet on Arc Testnet.")
+          ? (readError ?? `Unable to read governed wallet on ${ARC_NETWORK_NAME}.`)
           : !ownerMatchesConnectedWallet
             ? "Only the governed wallet owner can manage the agent signer."
-            : chainId !== arcTestnet.id
-              ? "Switch to Arc Testnet."
+            : chainId !== arcChain.id
+              ? `Switch to ${ARC_NETWORK_NAME}.`
               : null;
   const signerWriteDisabledReason = managementDisabledReason ?? signerValidation;
   const canAuthorize = !signerWriteDisabledReason && signerAuthorized === false && !isBusy;
@@ -242,8 +242,8 @@ function AgentSignerPanel({ governedWalletAddress }: { governedWalletAddress: Ad
     let contractConfirmed = false;
 
     try {
-      if (chainId !== arcTestnet.id) {
-        await switchChainAsync({ chainId: arcTestnet.id });
+      if (chainId !== arcChain.id) {
+        await switchChainAsync({ chainId: arcChain.id });
       }
 
       const hash = await writeContractAsync({
@@ -251,7 +251,7 @@ function AgentSignerPanel({ governedWalletAddress }: { governedWalletAddress: Ad
         abi: guardedWalletControlAbi,
         functionName: action === "authorize" ? "addSigner" : "removeSigner",
         args: [targetSigner],
-        chainId: arcTestnet.id,
+        chainId: arcChain.id,
       });
       setTxHash(hash);
       setTxStatus("confirming");
@@ -302,7 +302,7 @@ function AgentSignerPanel({ governedWalletAddress }: { governedWalletAddress: Ad
     }
     try {
       setTxError(null);
-      await switchChainAsync({ chainId: arcTestnet.id });
+      await switchChainAsync({ chainId: arcChain.id });
     } catch (caught) {
       setTxError(errorMessage(caught));
     }
@@ -374,13 +374,13 @@ function AgentSignerPanel({ governedWalletAddress }: { governedWalletAddress: Ad
         <p className="mt-2 font-mono text-[9px] leading-[1.5] text-[var(--wl-signal)]">{txError}</p>
       ) : null}
       <div className="mt-4 flex flex-wrap gap-2">
-        {isConnected && chainId !== arcTestnet.id ? (
+        {isConnected && chainId !== arcChain.id ? (
           <button
             type="button"
             onClick={switchToArcTestnet}
             className="warm-pill warm-pill-ghost rounded-full border border-[var(--wl-line)] px-3.5 py-2.5 text-[10px] font-semibold"
           >
-            Switch to Arc Testnet
+            Switch to {ARC_NETWORK_NAME}
           </button>
         ) : (
           <>
@@ -511,7 +511,11 @@ export default function AgentDetailPage() {
         <section className="grid border-b border-[var(--wl-line)] md:grid-cols-4">
           {(
             [
-              ["POSTURE", `${agent?.posture ?? 0} / 100`, agent ? "arc testnet" : "invalid route"],
+              [
+                "POSTURE",
+                `${agent?.posture ?? 0} / 100`,
+                agent ? ARC_NETWORK_BADGE.toLowerCase() : "invalid route",
+              ],
               ["TODAY'S SPEND", formatUsd(dailySpend), `of ${formatUsd(dailyLimit)} cap`],
               [
                 "DECISIONS",
@@ -521,7 +525,9 @@ export default function AgentDetailPage() {
               [
                 "GOVERNANCE",
                 frozen ? "FROZEN" : "ACTIVE",
-                frozen ? "operator restraint" : (agent?.doctrineVersion ?? "arc testnet"),
+                frozen
+                  ? "operator restraint"
+                  : (agent?.doctrineVersion ?? ARC_NETWORK_BADGE.toLowerCase()),
               ],
             ] as const
           ).map(([label, value, note], i) => (
@@ -756,7 +762,7 @@ export default function AgentDetailPage() {
                     "WALLET",
                     governedWalletAddress ? shortAddress(governedWalletAddress) : "invalid",
                   ],
-                  ["NETWORK", "ARC TESTNET"],
+                  ["NETWORK", ARC_NETWORK_BADGE],
                   ["ASSET", "USDC"],
                   ["POLICY", agent?.doctrineVersion ?? "-"],
                   ["MANDATE", agent?.mandate ?? "-"],
@@ -833,7 +839,8 @@ export default function AgentDetailPage() {
 
         <footer className="mt-14 flex flex-col justify-between gap-2 border-t border-[var(--wl-line)] pt-5 font-mono text-[9px] uppercase tracking-[.13em] text-[var(--wl-mute)] sm:flex-row">
           <span>
-            {agent?.doctrineVersion ?? "arc testnet"} · caps {formatUsd(dailyLimit)} / day
+            {agent?.doctrineVersion ?? ARC_NETWORK_BADGE.toLowerCase()} · caps{" "}
+            {formatUsd(dailyLimit)} / day
           </span>
           <span>{governedWalletAddress ? "SYNCED" : "INVALID ROUTE"}</span>
         </footer>

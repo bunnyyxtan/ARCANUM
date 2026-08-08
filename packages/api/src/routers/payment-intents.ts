@@ -1,7 +1,7 @@
 import { GuardedWalletAbi, PolicyEngineAbi } from "@arcanum/contracts";
 import {
-  ARC_TESTNET_CHAIN_ID,
-  ARC_TESTNET_USDC_ADDRESS,
+  ARC_CHAIN_ID,
+  ARC_USDC_ADDRESS,
   type NormalizedPaymentIntentInput,
   type NormalizedSignedPaymentIntentInput,
   type PaymentIntentDecision,
@@ -54,7 +54,7 @@ async function evaluatePaymentIntent(
 ): Promise<PaymentIntentResult> {
   const amount = parsePaymentIntentAmount(intent.amount);
 
-  if (intent.chainId !== ARC_TESTNET_CHAIN_ID) {
+  if (intent.chainId !== ARC_CHAIN_ID) {
     return intentResult(intent, {
       decision: "unsupported",
       reason: "Only Arc Testnet payment intents are supported.",
@@ -62,7 +62,7 @@ async function evaluatePaymentIntent(
     });
   }
 
-  if (!sameAddress(intent.tokenAddress, ARC_TESTNET_USDC_ADDRESS)) {
+  if (!sameAddress(intent.tokenAddress, ARC_USDC_ADDRESS)) {
     return intentResult(intent, {
       decision: "unsupported",
       reason: "Only Arc Testnet USDC payment intents are supported.",
@@ -119,7 +119,7 @@ async function evaluatePaymentIntent(
         }),
       ]);
 
-    if (!sameAddress(walletToken, ARC_TESTNET_USDC_ADDRESS)) {
+    if (!sameAddress(walletToken, ARC_USDC_ADDRESS)) {
       return intentResult(intent, {
         amount,
         decision: "unsupported",

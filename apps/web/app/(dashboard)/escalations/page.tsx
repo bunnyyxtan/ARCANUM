@@ -1,6 +1,6 @@
 "use client";
 
-import { arcTestnet } from "@arcanum/shared";
+import { ARC_NETWORK_NAME, arcChain } from "@arcanum/shared";
 import {
   type CSSProperties,
   type MouseEvent as ReactMouseEvent,
@@ -76,7 +76,7 @@ function EscalationCard({
   onResolved,
 }: Readonly<{ item: Escalation; index: number; cardId: string; onResolved: () => void }>) {
   const { address, chainId, isConnected } = useAccount();
-  const publicClient = usePublicClient({ chainId: arcTestnet.id });
+  const publicClient = usePublicClient({ chainId: arcChain.id });
   const { switchChainAsync, isPending: switchPending } = useSwitchChain();
   const { writeContractAsync, isPending: writePending } = useWriteContract();
   const utils = trpc.useUtils();
@@ -106,7 +106,7 @@ function EscalationCard({
     : !escalationManagerAddress
       ? "EscalationManager address is not configured."
       : !publicClient
-        ? "Arc Testnet RPC is unavailable."
+        ? `${ARC_NETWORK_NAME} RPC is unavailable.`
         : !isConnected || !address
           ? "Connect the approver wallet first."
           : null;
@@ -117,7 +117,7 @@ function EscalationCard({
     (txStage === "pending_indexer"
       ? "Contract confirmed. Updating the record."
       : txStage === "checking"
-        ? "Checking approver permission on Arc Testnet."
+        ? `Checking approver permission on ${ARC_NETWORK_NAME}.`
         : disabledReason);
 
   const amountLabel = formatUsd(item.amount);
@@ -139,7 +139,7 @@ function EscalationCard({
     const status = escalationStatusLabels[Number(detail[8])] ?? "EXPIRED";
 
     if (isZeroAddress(wallet)) {
-      throw new Error("Escalation was not found on Arc Testnet.");
+      throw new Error(`Escalation was not found on ${ARC_NETWORK_NAME}.`);
     }
     if (status !== "PENDING") {
       throw new Error(`Escalation is already ${status.toLowerCase()}.`);
@@ -195,9 +195,9 @@ function EscalationCard({
     try {
       const preflight = await readEscalationPreflight();
 
-      if (chainId !== arcTestnet.id) {
+      if (chainId !== arcChain.id) {
         setTxStage("wallet");
-        await switchChainAsync({ chainId: arcTestnet.id });
+        await switchChainAsync({ chainId: arcChain.id });
       }
 
       setTxStage("wallet");
@@ -206,7 +206,7 @@ function EscalationCard({
         abi: escalationManagerAbi,
         functionName: action,
         args: [escalationId],
-        chainId: arcTestnet.id,
+        chainId: arcChain.id,
       });
       setContractTxHash(hash);
       setTxStage("confirming");
@@ -231,7 +231,7 @@ function EscalationCard({
 
       if (syncFailed) {
         toast.warning("DECISION LIVE ON-CHAIN · QUEUE NOT SYNCED", {
-          description: `The decision is settled on Arc Testnet, but the queue could not be updated: ${syncFailed}`,
+          description: `The decision is settled on ${ARC_NETWORK_NAME}, but the queue could not be updated: ${syncFailed}`,
         });
       } else if (action === "approve") {
         const nextCount = preflight.signaturesCount + 1;

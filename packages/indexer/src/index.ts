@@ -11,6 +11,7 @@ import {
   vendors,
   wallets,
 } from "@arcanum/db/schema";
+import { ARC_CHAIN_ID, ARC_RPC_URL, IS_ARC_MAINNET } from "@arcanum/shared";
 import { and, eq } from "drizzle-orm";
 import { http, createPublicClient, fallback } from "viem";
 
@@ -25,8 +26,6 @@ import {
   syncWalletCreated,
   syncWalletFrozenState,
 } from "./supabase-sync";
-
-const ARC_TESTNET_CHAIN_ID = 5_042_002;
 
 /** Fallback expiry used only when the on-chain escalation cannot be read. */
 const DEFAULT_ESCALATION_EXPIRY_SECONDS = 3_600n;
@@ -49,10 +48,11 @@ if (pgMirrorDisabled) {
 const chainClient = createPublicClient({
   transport: fallback(
     [
+      process.env.ARC_RPC_URL,
       process.env.ARC_TESTNET_RPC,
       process.env.PONDER_RPC_URL_5042002,
-      "https://arc-testnet.drpc.org",
-      "https://rpc.testnet.arc.network",
+      ...(IS_ARC_MAINNET ? [] : ["https://arc-testnet.drpc.org"]),
+      ARC_RPC_URL,
     ]
       .filter((url): url is string => Boolean(url))
       .map((url) => http(url)),
@@ -143,7 +143,7 @@ async function ensureOrganization(ownerAddress: string, tenantId: string) {
       type: "DAO",
       ownerWallet: owner,
       multisigAddress: owner,
-      chainId: ARC_TESTNET_CHAIN_ID,
+      chainId: ARC_CHAIN_ID,
     })
     .returning();
   return created[0];

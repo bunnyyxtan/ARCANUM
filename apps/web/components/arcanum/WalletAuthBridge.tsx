@@ -1,5 +1,6 @@
 "use client";
 
+import { ARC_CHAIN_ID } from "@arcanum/shared";
 import { useCallback, useEffect, useRef } from "react";
 import { SiweMessage } from "siwe";
 import { toast } from "sonner";
@@ -13,7 +14,7 @@ type AuthErrorResponse = {
 };
 
 export function WalletAuthBridge() {
-  const { address, chainId, isConnected } = useAccount();
+  const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
   const { signMessageAsync } = useSignMessage();
   const utils = trpc.useUtils();
@@ -64,7 +65,10 @@ export function WalletAuthBridge() {
 
         const message = new SiweMessage({
           address,
-          chainId: chainId ?? Number(process.env.NEXT_PUBLIC_ARC_CHAIN_ID ?? 5042002),
+          // Always the active Arc chain, never whatever chain the wallet
+          // happens to be connected to: the server rejects sessions signed
+          // for any other chain.
+          chainId: ARC_CHAIN_ID,
           domain: window.location.host,
           nonce,
           statement: "Sign in to Arcanum Foundry Console.",
@@ -125,7 +129,7 @@ export function WalletAuthBridge() {
         signingRef.current = false;
       }
     },
-    [address, chainId, disconnect, isConnected, signMessageAsync, utils.org.getCurrent],
+    [address, disconnect, isConnected, signMessageAsync, utils.org.getCurrent],
   );
 
   useEffect(() => {

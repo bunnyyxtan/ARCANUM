@@ -1,9 +1,9 @@
-import { ARC_TESTNET_EXPLORER_URL } from "@arcanum/shared";
+import { ARC_EXPLORER_URL } from "@arcanum/shared";
 
 import { isEvmAddress } from "@/lib/format/address";
 
 export function getArcscanBaseUrl() {
-  return process.env.NEXT_PUBLIC_ARCSCAN_URL ?? ARC_TESTNET_EXPLORER_URL;
+  return process.env.NEXT_PUBLIC_ARCSCAN_URL ?? ARC_EXPLORER_URL;
 }
 
 export function isValidTxHash(value: string | null | undefined) {

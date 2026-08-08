@@ -1,22 +1,13 @@
-import {
-  EscalationManagerAbi,
-  GuardedWalletAbi,
-  VendorRegistryAbi,
-} from "@arcanum/contracts";
-import { arcTestnet } from "@arcanum/shared";
-import { createPublicClient, http, type Address, type Hex } from "viem";
+import { EscalationManagerAbi, GuardedWalletAbi, VendorRegistryAbi } from "@arcanum/contracts";
+import { arcChain } from "@arcanum/shared";
+import { http, type Address, type Hex, createPublicClient } from "viem";
 
 /**
  * Server-side chain reads. The read model must never take a client's word for
  * what happened on-chain, so decisions are verified here before they are
  * mirrored into Supabase.
  */
-const escalationStatusByIndex = [
-  "pending",
-  "released",
-  "denied",
-  "expired",
-] as const;
+const escalationStatusByIndex = ["pending", "released", "denied", "expired"] as const;
 
 export type EscalationChainStatus = (typeof escalationStatusByIndex)[number];
 
@@ -32,20 +23,18 @@ export type EscalationChainState = {
 
 function escalationManagerAddress(): Address | null {
   const address = process.env.NEXT_PUBLIC_ESCALATION_MANAGER;
-  return address && address.startsWith("0x") ? (address as Address) : null;
+  return address?.startsWith("0x") ? (address as Address) : null;
 }
 
 function publicClient() {
   return createPublicClient({
-    chain: arcTestnet,
-    transport: http(
-      process.env.ARC_RPC_URL ?? arcTestnet.rpcUrls.default.http[0]
-    ),
+    chain: arcChain,
+    transport: http(process.env.ARC_RPC_URL ?? arcChain.rpcUrls.default.http[0]),
   });
 }
 
 export async function readEscalationChainState(
-  escalationKey: Hex
+  escalationKey: Hex,
 ): Promise<EscalationChainState | null> {
   const manager = escalationManagerAddress();
   if (!manager) {
@@ -89,7 +78,7 @@ export type WalletPolicyChainState = {
  * record caps the client claims to have deployed, only what the wallet returns.
  */
 export async function readWalletPolicyChainState(
-  wallet: Address
+  wallet: Address,
 ): Promise<WalletPolicyChainState | null> {
   try {
     const policy = (await publicClient().readContract({
@@ -120,7 +109,7 @@ export type VendorChainState = {
 
 export async function readVendorChainState(
   wallet: Address,
-  vendor: Address
+  vendor: Address,
 ): Promise<VendorChainState | null> {
   const registry = process.env.NEXT_PUBLIC_VENDOR_REGISTRY;
   if (!registry || !registry.startsWith("0x")) {
@@ -147,10 +136,7 @@ export async function readVendorChainState(
   };
 }
 
-export async function isEscalationSigner(
-  wallet: Address,
-  signer: Address
-): Promise<boolean> {
+export async function isEscalationSigner(wallet: Address, signer: Address): Promise<boolean> {
   const manager = escalationManagerAddress();
   if (!manager) {
     return false;

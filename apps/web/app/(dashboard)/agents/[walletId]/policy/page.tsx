@@ -1,6 +1,6 @@
 "use client";
 
-import { arcTestnet } from "@arcanum/shared";
+import { ARC_NETWORK_BADGE, ARC_NETWORK_NAME, arcChain } from "@arcanum/shared";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
@@ -233,7 +233,7 @@ export default function PolicyEditorPage() {
         : "";
 
   const { address, chainId, isConnected } = useAccount();
-  const publicClient = usePublicClient({ chainId: arcTestnet.id });
+  const publicClient = usePublicClient({ chainId: arcChain.id });
   const { switchChainAsync, isPending: switchPending } = useSwitchChain();
   const { writeContractAsync, isPending: writePending } = useWriteContract();
   const utils = trpc.useUtils();
@@ -370,17 +370,17 @@ export default function PolicyEditorPage() {
       : !workspace.isAuthenticated
         ? "Sign in to manage policy."
         : policyReadStatus === "checking"
-          ? "Reading active policy from Arc Testnet."
+          ? `Reading active policy from ${ARC_NETWORK_NAME}.`
           : policyReadStatus === "error"
-            ? "Unable to read governed wallet policy on Arc Testnet."
+            ? `Unable to read governed wallet policy on ${ARC_NETWORK_NAME}.`
             : !ownerMatchesConnectedWallet
               ? "Only the governed wallet owner can update policy."
               : unsavedCount === 0
                 ? "No policy changes to submit."
                 : null;
   const policyNetworkNotice =
-    isConnected && chainId !== arcTestnet.id
-      ? "Wallet will be asked to switch to Arc Testnet."
+    isConnected && chainId !== arcChain.id
+      ? `Wallet will be asked to switch to ${ARC_NETWORK_NAME}.`
       : null;
 
   const toggleCategory = (category: DoctrineCategoryValue) => {
@@ -408,10 +408,10 @@ export default function PolicyEditorPage() {
       throw new Error(policyWriteDisabledReason);
     }
     if (!selectedGovernedWalletAddress || !publicClient) {
-      throw new Error("Arc Testnet RPC is unavailable.");
+      throw new Error(`${ARC_NETWORK_NAME} RPC is unavailable.`);
     }
-    if (chainId !== arcTestnet.id) {
-      await switchChainAsync({ chainId: arcTestnet.id });
+    if (chainId !== arcChain.id) {
+      await switchChainAsync({ chainId: arcChain.id });
     }
     return selectedGovernedWalletAddress;
   };
@@ -435,7 +435,7 @@ export default function PolicyEditorPage() {
         abi: guardedWalletControlAbi,
         functionName: "setPolicy",
         args: [nextPolicy],
-        chainId: arcTestnet.id,
+        chainId: arcChain.id,
       });
       setPolicyTxHash(hash);
 
@@ -574,7 +574,7 @@ export default function PolicyEditorPage() {
             </h1>
             <p className="mt-5 max-w-[520px] text-[14px] leading-[1.45] text-[var(--wl-secondary2)]">
               Revise the governing document. Changes remain inert until a wallet owner signs and
-              deploys them on Arc Testnet.
+              deploys them on {ARC_NETWORK_NAME}.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3 max-md:w-full">
@@ -583,7 +583,7 @@ export default function PolicyEditorPage() {
                 ? "READING ON-CHAIN POLICY"
                 : policyPendingIndexer
                   ? "FINALIZING"
-                  : "ARC TESTNET POLICY"}
+                  : `${ARC_NETWORK_BADGE} POLICY`}
             </span>
             <button
               type="button"
@@ -673,7 +673,7 @@ export default function PolicyEditorPage() {
                   Policy read failed
                 </p>
                 <p className="mx-auto mt-3 max-w-[420px] font-mono text-[11px] leading-[1.6] text-[var(--wl-body)]">
-                  {policyError ?? "Unable to read policy from Arc Testnet."}
+                  {policyError ?? `Unable to read policy from ${ARC_NETWORK_NAME}.`}
                 </p>
               </div>
             ) : !selectedGovernedWalletAddress ? (
@@ -872,7 +872,7 @@ export default function PolicyEditorPage() {
                   ],
                   ["OWNER", policyWalletOwner ? shortAddress(policyWalletOwner) : "-"],
                   ["CONNECTED", address ? shortAddress(address) : "not connected"],
-                  ["NETWORK", "ARC TESTNET"],
+                  ["NETWORK", ARC_NETWORK_BADGE],
                   ["UNSAVED", unsavedCount.toString()],
                 ] as const
               ).map(([label, value]) => (
@@ -931,7 +931,9 @@ export default function PolicyEditorPage() {
         <footer className="mt-14 flex flex-col justify-between gap-3 border-t border-[var(--wl-line)] pt-5 font-mono text-[9px] uppercase tracking-[.13em] text-[var(--wl-mute)] sm:flex-row">
           <span>Draft changes · no capital movement until signed</span>
           <span>
-            {policyPendingIndexer ? "Revision deployed · record updating" : "Arc Testnet policy"}
+            {policyPendingIndexer
+              ? "Revision deployed · record updating"
+              : `${ARC_NETWORK_NAME} policy`}
           </span>
         </footer>
       </div>

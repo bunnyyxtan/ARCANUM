@@ -1,5 +1,6 @@
 "use client";
 
+import { ARC_NETWORK_BADGE } from "@arcanum/shared";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -87,7 +88,7 @@ export function ReferenceHeader() {
       </nav>
       <div className="flex h-[68px] shrink-0 items-center gap-3">
         <span className="hidden font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)] sm:inline">
-          ARC TESTNET
+          {ARC_NETWORK_BADGE}
         </span>
         <ThemeToggle />
         <Link
