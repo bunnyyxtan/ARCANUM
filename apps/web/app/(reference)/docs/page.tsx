@@ -394,8 +394,8 @@ export default function DocsPage() {
                     </li>
                   ))}
                 </ol>
-                <CodeBlock label="TERMINAL / bash">npm install @arcanum/sdk</CodeBlock>
-                <CodeBlock label="deploy.ts / typescript">{`import { WalletFactoryAbi } from "@arcanum/contracts";
+                <CodeBlock label="TERMINAL / bash">npm install arcanum-sdk viem</CodeBlock>
+                <CodeBlock label="deploy.ts / typescript">{`import { WalletFactoryAbi } from "arcanum-sdk";
 import { parseUnits } from "viem";
 
 const policy = {
