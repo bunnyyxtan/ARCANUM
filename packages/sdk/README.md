@@ -1,4 +1,4 @@
-# @arcanum/sdk
+# arcanum-sdk
 
 TypeScript SDK for Arc Testnet GuardedWallet integrations.
 
@@ -9,19 +9,19 @@ for Arc Testnet and local development only.
 ## Install
 
 ```bash
-npm install @arcanum/sdk viem
+npm install arcanum-sdk viem
 ```
 
 ## Basic usage
 
 ```ts
-import { ArcanumClient } from "@arcanum/sdk";
+import { ArcanumClient } from "arcanum-sdk";
 import {
   ARC_TESTNET_RPC_URL,
   ARC_TESTNET_USDC_ADDRESS,
   arcTestnet,
   usdcErc20,
-} from "@arcanum/sdk/chains";
+} from "arcanum-sdk/chains";
 import { privateKeyToAccount } from "viem/accounts";
 
 const agentSigner = privateKeyToAccount(
@@ -117,5 +117,5 @@ testnet signer.
   `SimulationResult`
 - Payment intent types such as `PaymentIntentInput`, `SignedPaymentIntentInput`,
   and `PaymentIntentResult`
-- Arc Testnet helpers from `@arcanum/sdk/chains`, including `arcTestnet`,
+- Arc Testnet helpers from `arcanum-sdk/chains`, including `arcTestnet`,
   `ARC_TESTNET_RPC_URL`, `ARC_TESTNET_USDC_ADDRESS`, `usdcErc20`, and `usdcGas`
