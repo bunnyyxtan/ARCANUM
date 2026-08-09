@@ -17,7 +17,7 @@
 
 <p align="center">
   <a href="https://github.com/bunnyyxtan/ARCANUM/actions/workflows/ci.yml"><img src="https://github.com/bunnyyxtan/ARCANUM/actions/workflows/ci.yml/badge.svg" alt="CI status" /></a>
-  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-2f3542" alt="MIT license" /></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-source--available-2f3542" alt="Source available license" /></a>
   <a href="https://github.com/bunnyyxtan/ARCANUM/releases/tag/v2.0.0"><img src="https://img.shields.io/badge/release-v2.0.0-ff5a1f" alt="Latest release v2.0.0" /></a>
   <img src="https://img.shields.io/badge/network-Arc%20Testnet-6e9e7c" alt="Arc Testnet" />
 </p>
@@ -254,4 +254,6 @@ Do not report vulnerabilities through public issues. Follow the private process 
 
 ## License
 
-MIT. See [LICENSE](./LICENSE) for the full terms.
+Source available. The code is public for reading and review. Using, copying,
+modifying, or hosting it requires written permission. See
+[LICENSE](./LICENSE) for the full terms.

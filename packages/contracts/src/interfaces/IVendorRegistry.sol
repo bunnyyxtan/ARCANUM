@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.24;
 
 /// @notice Per-wallet vendor allowlist and blocklist registry.
