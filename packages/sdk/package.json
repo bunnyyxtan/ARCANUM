@@ -2,6 +2,7 @@
   "name": "@arcanum/sdk",
   "version": "2.0.0",
   "description": "TypeScript SDK for integrating Arcanum governed wallets",
+  "license": "SEE LICENSE IN LICENSE",
   "type": "module",
   "exports": {
     ".": {

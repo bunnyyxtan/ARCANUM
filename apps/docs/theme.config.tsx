@@ -12,7 +12,7 @@ const config: DocsThemeConfig = {
   },
   docsRepositoryBase: "https://github.com/bunnyyxtan/ARCANUM",
   footer: {
-    content: "Arcanum Protocol - MIT Licensed - Built on Arc",
+    content: "Arcanum Protocol - Built on Arc",
   },
 };
 
