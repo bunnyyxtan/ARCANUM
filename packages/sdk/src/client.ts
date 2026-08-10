@@ -56,6 +56,7 @@ const REASONS = [
   "ESCALATION_THRESHOLD",
   "BLOCKED_VENDOR",
   "CATEGORY_DISABLED",
+  "MONTHLY_CAP",
 ] as const;
 const ESCALATION_STATUSES = ["PENDING", "EXECUTED", "REJECTED", "EXPIRED"] as const;
 
@@ -314,10 +315,19 @@ export class ArcanumClient {
     });
   }
 
+  async getMonthlySpent(): Promise<bigint> {
+    return this.publicClient.readContract({
+      address: this.walletAddress,
+      abi: GuardedWalletAbi,
+      functionName: "monthlySpent",
+    });
+  }
+
   async simulate(input: SimulateInput): Promise<SimulationResult> {
-    const [policy, dailySpent, policyEngine, vendorRegistry] = await Promise.all([
+    const [policy, dailySpent, monthlySpent, policyEngine, vendorRegistry] = await Promise.all([
       this.getPolicy(),
       this.getDailySpent(),
+      this.getMonthlySpent(),
       this.policyEngine(),
       this.vendorRegistry(),
     ]);
@@ -326,7 +336,7 @@ export class ArcanumClient {
       address: policyEngine,
       abi: PolicyEngineAbi,
       functionName: "evaluate",
-      args: [policy, input.to, input.amount, dailySpent, vendorRegistry],
+      args: [policy, input.to, input.amount, dailySpent, monthlySpent, vendorRegistry],
     });
     const verdictIndex = Number(result[0]);
     const reasonIndex = Number(result[1]);

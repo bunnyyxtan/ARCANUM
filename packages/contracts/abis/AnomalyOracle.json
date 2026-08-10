@@ -44,6 +44,25 @@
   },
   {
     "type": "function",
+    "name": "scoreNonce",
+    "inputs": [
+      {
+        "name": "wallet",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "nonce",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "submitScore",
     "inputs": [
       {
@@ -53,6 +72,11 @@
       },
       {
         "name": "sigmaBps",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "deadline",
         "type": "uint256",
         "internalType": "uint256"
       },
@@ -138,6 +162,11 @@
   {
     "type": "error",
     "name": "OracleOptOut",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "SignatureExpired",
     "inputs": []
   },
   {

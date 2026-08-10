@@ -28,6 +28,7 @@ const REASONS = [
   "ESCALATION_THRESHOLD",
   "BLOCKED_VENDOR",
   "CATEGORY_DISABLED",
+  "MONTHLY_CAP",
 ] as const;
 
 export const paymentIntentsRouter = router({
@@ -79,45 +80,58 @@ async function evaluatePaymentIntent(
   }
 
   try {
-    const [walletToken, isSigner, frozen, policy, dailySpent, policyEngine, vendorRegistry] =
-      await Promise.all([
-        publicClient.readContract({
-          address: intent.governedWalletAddress,
-          abi: GuardedWalletAbi,
-          functionName: "usdc",
-        }),
-        publicClient.readContract({
-          address: intent.governedWalletAddress,
-          abi: GuardedWalletAbi,
-          functionName: "agentSigners",
-          args: [intent.agentSignerAddress],
-        }),
-        publicClient.readContract({
-          address: intent.governedWalletAddress,
-          abi: GuardedWalletAbi,
-          functionName: "frozen",
-        }),
-        publicClient.readContract({
-          address: intent.governedWalletAddress,
-          abi: GuardedWalletAbi,
-          functionName: "policy",
-        }),
-        publicClient.readContract({
-          address: intent.governedWalletAddress,
-          abi: GuardedWalletAbi,
-          functionName: "dailySpent",
-        }),
-        publicClient.readContract({
-          address: intent.governedWalletAddress,
-          abi: GuardedWalletAbi,
-          functionName: "policyEngine",
-        }),
-        publicClient.readContract({
-          address: intent.governedWalletAddress,
-          abi: GuardedWalletAbi,
-          functionName: "vendorRegistry",
-        }),
-      ]);
+    const [
+      walletToken,
+      isSigner,
+      frozen,
+      policy,
+      dailySpent,
+      monthlySpent,
+      policyEngine,
+      vendorRegistry,
+    ] = await Promise.all([
+      publicClient.readContract({
+        address: intent.governedWalletAddress,
+        abi: GuardedWalletAbi,
+        functionName: "usdc",
+      }),
+      publicClient.readContract({
+        address: intent.governedWalletAddress,
+        abi: GuardedWalletAbi,
+        functionName: "agentSigners",
+        args: [intent.agentSignerAddress],
+      }),
+      publicClient.readContract({
+        address: intent.governedWalletAddress,
+        abi: GuardedWalletAbi,
+        functionName: "frozen",
+      }),
+      publicClient.readContract({
+        address: intent.governedWalletAddress,
+        abi: GuardedWalletAbi,
+        functionName: "policy",
+      }),
+      publicClient.readContract({
+        address: intent.governedWalletAddress,
+        abi: GuardedWalletAbi,
+        functionName: "dailySpent",
+      }),
+      publicClient.readContract({
+        address: intent.governedWalletAddress,
+        abi: GuardedWalletAbi,
+        functionName: "monthlySpent",
+      }),
+      publicClient.readContract({
+        address: intent.governedWalletAddress,
+        abi: GuardedWalletAbi,
+        functionName: "policyEngine",
+      }),
+      publicClient.readContract({
+        address: intent.governedWalletAddress,
+        abi: GuardedWalletAbi,
+        functionName: "vendorRegistry",
+      }),
+    ]);
 
     if (!sameAddress(walletToken, ARC_USDC_ADDRESS)) {
       return intentResult(intent, {
@@ -160,7 +174,14 @@ async function evaluatePaymentIntent(
       address: policyEngine,
       abi: PolicyEngineAbi,
       functionName: "evaluate",
-      args: [policyEnvelope, intent.vendorAddress, amount, dailySpent, vendorRegistry],
+      args: [
+        policyEnvelope,
+        intent.vendorAddress,
+        amount,
+        dailySpent,
+        monthlySpent,
+        vendorRegistry,
+      ],
     });
 
     return intentResult(intent, {

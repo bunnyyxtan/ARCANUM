@@ -17,7 +17,7 @@ contract WalletFactory {
     IEscalationManager public immutable escalationManager;
     IAnomalyOracle public immutable anomalyOracle;
     IVendorRegistry public immutable vendorRegistry;
-    mapping(address owner => uint256 nonce) public nonces;
+    mapping(address deployer => uint256 nonce) public nonces;
 
     /// @notice Sets immutable shared module addresses for newly created wallets.
     constructor(
@@ -55,8 +55,8 @@ contract WalletFactory {
             revert ZeroAddress();
         }
 
-        uint256 nonce = nonces[owner]++;
-        bytes32 salt = keccak256(abi.encode(owner, label, nonce));
+        uint256 nonce = nonces[msg.sender]++;
+        bytes32 salt = keccak256(abi.encode(msg.sender, owner, label, nonce));
         wallet = address(
             new GuardedWallet{ salt: salt }(
                 owner,
@@ -77,6 +77,7 @@ contract WalletFactory {
 
     /// @notice Predicts a wallet address for the provided deployment inputs.
     function predictWallet(
+        address deployer,
         address owner,
         string calldata label,
         uint256 nonce,
@@ -85,7 +86,7 @@ contract WalletFactory {
         address[] calldata escalationCouncil,
         uint8 escalationThreshold
     ) external view returns (address predicted) {
-        bytes32 salt = keccak256(abi.encode(owner, label, nonce));
+        bytes32 salt = keccak256(abi.encode(deployer, owner, label, nonce));
         bytes32 initCodeHash = keccak256(
             abi.encodePacked(
                 type(GuardedWallet).creationCode,

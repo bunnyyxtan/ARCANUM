@@ -117,11 +117,11 @@ Network: **Arc Testnet** · Explorer: [testnet.arcscan.app](https://testnet.arcs
 
 | Module | Address | Responsibility |
 | --- | --- | --- |
-| WalletFactory | `0x1Da7E51b537F9E6CF5bB308b3B2d6fdc5D9E4750` | Deploys GuardedWallet instances |
-| PolicyEngine | `0x767C95C3E914d63bD26a5f1cDE4d6DA950462112` | Evaluates doctrine rules on every spend |
-| EscalationManager | `0x6E03e0030fCeE242E2cCB77Da8D7C6c93a36A37E` | Quorum approvals for sensitive actions |
-| AnomalyOracle | `0x7A80C967A69E1d1a6bb2286089BB5945f3274cf4` | Anomaly signals for the policy layer |
-| VendorRegistry | `0x4A4d419292F2E374421B45907861BBB5adA6eF82` | Vendor allowlist, categories, and caps |
+| WalletFactory | `0x51A560589e23AcD2e57173641267f4583e0e65E7` | Deploys GuardedWallet instances |
+| PolicyEngine | `0x67f3731280e1Dfcc38B8a388412FE0c971a4A215` | Evaluates doctrine rules on every spend |
+| EscalationManager | `0x9dc6C86469650A3859e7CA9A03adDfE9C964D134` | Quorum approvals for sensitive actions |
+| AnomalyOracle | `0x4ee7c78afFd9C5d9e0FD4EFEaEe82BEe32E8C0DC` | Anomaly signals for the policy layer |
+| VendorRegistry | `0x0fAe8E2Cd6f22aa9715E256B61f58b42357ABd1b` | Vendor allowlist, categories, and caps |
 
 These are testnet contracts. They are not audited and must not hold production funds.
 

@@ -56,6 +56,11 @@
         "internalType": "uint256"
       },
       {
+        "name": "monthlySpent",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
         "name": "vendorRegistry",
         "type": "address",
         "internalType": "contract IVendorRegistry"

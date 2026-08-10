@@ -26,7 +26,8 @@ enum EscalationReason {
     DAILY_CAP,
     ESCALATION_THRESHOLD,
     BLOCKED_VENDOR,
-    CATEGORY_DISABLED
+    CATEGORY_DISABLED,
+    MONTHLY_CAP
 }
 
 /// @notice Spend policy enforced by every GuardedWallet transfer path.

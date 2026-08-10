@@ -42,6 +42,7 @@ REASONS = (
     "ESCALATION_THRESHOLD",
     "BLOCKED_VENDOR",
     "CATEGORY_DISABLED",
+    "MONTHLY_CAP",
 )
 ESCALATION_STATUSES = ("PENDING", "EXECUTED", "REJECTED", "EXPIRED")
 
@@ -71,6 +72,9 @@ class ArcanumClient:
     def get_daily_spent(self) -> int:
         return self.wallet.functions.dailySpent().call()
 
+    def get_monthly_spent(self) -> int:
+        return self.wallet.functions.monthlySpent().call()
+
     def simulate(self, to: str, amount: int) -> SimulationResult:
         policy_engine = self.wallet.functions.policyEngine().call()
         vendor_registry = self.wallet.functions.vendorRegistry().call()
@@ -80,6 +84,7 @@ class ArcanumClient:
             Web3.to_checksum_address(to),
             amount,
             self.get_daily_spent(),
+            self.get_monthly_spent(),
             vendor_registry,
         ).call({"from": self.wallet_address})
         return SimulationResult(VERDICTS[int(verdict)], REASONS[int(reason)])
@@ -204,6 +209,9 @@ class AsyncArcanumClient:
     async def get_daily_spent(self) -> int:
         return await self.wallet.functions.dailySpent().call()
 
+    async def get_monthly_spent(self) -> int:
+        return await self.wallet.functions.monthlySpent().call()
+
     async def simulate(self, to: str, amount: int) -> SimulationResult:
         policy_engine = await self.wallet.functions.policyEngine().call()
         vendor_registry = await self.wallet.functions.vendorRegistry().call()
@@ -214,6 +222,7 @@ class AsyncArcanumClient:
             Web3.to_checksum_address(to),
             amount,
             await self.get_daily_spent(),
+            await self.get_monthly_spent(),
             vendor_registry,
         ).call({"from": self.wallet_address})
         return SimulationResult(VERDICTS[int(verdict)], REASONS[int(reason)])

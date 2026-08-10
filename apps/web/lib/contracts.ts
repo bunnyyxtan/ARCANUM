@@ -48,7 +48,7 @@ export const walletFactoryAbi = [
   {
     type: "function",
     name: "nonces",
-    inputs: [{ name: "owner", type: "address" }],
+    inputs: [{ name: "deployer", type: "address" }],
     outputs: [{ name: "nonce", type: "uint256" }],
     stateMutability: "view",
   },
@@ -56,6 +56,7 @@ export const walletFactoryAbi = [
     type: "function",
     name: "predictWallet",
     inputs: [
+      { name: "deployer", type: "address" },
       { name: "owner", type: "address" },
       { name: "label", type: "string" },
       { name: "nonce", type: "uint256" },

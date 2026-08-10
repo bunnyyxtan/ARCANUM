@@ -18,6 +18,7 @@ contract PolicyEngine is IPolicyEngine {
         address to,
         uint256 amount,
         uint256 dailySpent,
+        uint256 monthlySpent,
         IVendorRegistry vendorRegistry
     ) external view returns (Verdict verdict, EscalationReason reason) {
         IVendorRegistry.Vendor memory vendor = vendorRegistry.getVendorFor(msg.sender, to);
@@ -42,12 +43,19 @@ contract PolicyEngine is IPolicyEngine {
             return (Verdict.DENY, EscalationReason.PER_TX_CAP);
         }
 
+        // Amount-based human review is evaluated before budget caps so a single
+        // escalation-eligible transfer routes to quorum instead of being denied
+        // when it also crosses the daily or monthly budget.
+        if (amount > policy.escalationThreshold) {
+            return (Verdict.ESCALATE, EscalationReason.ESCALATION_THRESHOLD);
+        }
+
         if (dailySpent + amount > policy.daily24hCap) {
             return (Verdict.DENY, EscalationReason.DAILY_CAP);
         }
 
-        if (amount > policy.escalationThreshold) {
-            return (Verdict.ESCALATE, EscalationReason.ESCALATION_THRESHOLD);
+        if (policy.monthlyRollingCap != 0 && monthlySpent + amount > policy.monthlyRollingCap) {
+            return (Verdict.DENY, EscalationReason.MONTHLY_CAP);
         }
 
         return (Verdict.ALLOW, EscalationReason.NONE);

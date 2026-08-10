@@ -8,6 +8,7 @@ import { IAnomalyOracle } from "./interfaces/IAnomalyOracle.sol";
 import { IGuardedWallet } from "./interfaces/IGuardedWallet.sol";
 import {
     OracleOptOut,
+    SignatureExpired,
     SignatureInvalid,
     ThresholdNotMet,
     ZeroAddress
@@ -18,6 +19,7 @@ import { Events } from "./libraries/Events.sol";
 contract AnomalyOracle is IAnomalyOracle {
     address public immutable oracleSigner;
     mapping(address wallet => uint256 sigmaBps) public latestSigmaBps;
+    mapping(address wallet => uint256 nonce) public scoreNonce;
 
     /// @notice Sets the immutable signer that authorizes anomaly scores.
     constructor(address oracleSigner_) {
@@ -28,14 +30,29 @@ contract AnomalyOracle is IAnomalyOracle {
     }
 
     /// @inheritdoc IAnomalyOracle
-    function submitScore(address wallet, uint256 sigmaBps, bytes calldata signature) external {
+    function submitScore(
+        address wallet,
+        uint256 sigmaBps,
+        uint256 deadline,
+        bytes calldata signature
+    ) external {
         if (wallet == address(0)) {
             revert ZeroAddress();
         }
+        if (block.timestamp > deadline) {
+            revert SignatureExpired();
+        }
 
+        uint256 nonce = scoreNonce[wallet];
         bytes32 digest = keccak256(
             abi.encodePacked(
-                "ARCANUM_ANOMALY_SCORE", block.chainid, address(this), wallet, sigmaBps
+                "ARCANUM_ANOMALY_SCORE",
+                block.chainid,
+                address(this),
+                wallet,
+                sigmaBps,
+                nonce,
+                deadline
             )
         );
         address recovered =
@@ -44,6 +61,7 @@ contract AnomalyOracle is IAnomalyOracle {
             revert SignatureInvalid();
         }
 
+        scoreNonce[wallet] = nonce + 1;
         latestSigmaBps[wallet] = sigmaBps;
         emit Events.AnomalyScoreSubmitted(wallet, sigmaBps, block.timestamp);
     }
@@ -61,6 +79,9 @@ contract AnomalyOracle is IAnomalyOracle {
         if (latestSigmaBps[wallet] <= guardedWallet.anomalyFreezeThresholdBps()) {
             revert ThresholdNotMet();
         }
+
+        // Consume the score so one signed score cannot re-freeze after an owner unfreeze.
+        latestSigmaBps[wallet] = 0;
 
         guardedWallet.triggerFreeze(reason);
     }

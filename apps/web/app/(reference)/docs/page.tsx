@@ -451,7 +451,7 @@ const account = privateKeyToAccount(process.env.OPERATOR_KEY);
 const walletClient = createWalletClient({ account, chain: arcTestnet, transport: http() });
 
 // WalletFactory on Arc Testnet
-const WALLET_FACTORY = "0x1Da7E51b537F9E6CF5bB308b3B2d6fdc5D9E4750";
+const WALLET_FACTORY = "0x51A560589e23AcD2e57173641267f4583e0e65E7";
 
 const policy = {
   perTxCap: parseUnits("50", 6),

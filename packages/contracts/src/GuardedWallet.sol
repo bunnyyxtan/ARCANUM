@@ -40,6 +40,8 @@ contract GuardedWallet is IGuardedWallet, ReentrancyGuard {
     bool public frozen;
     uint256 public dailySpent;
     uint256 public lastSpendReset;
+    uint256 public monthlySpent;
+    uint256 public lastMonthlyReset;
     uint256 public anomalyFreezeThresholdBps;
 
     modifier onlyOwner() {
@@ -86,6 +88,7 @@ contract GuardedWallet is IGuardedWallet, ReentrancyGuard {
         vendorRegistry = vendorRegistry_;
         policy = initialPolicy;
         lastSpendReset = block.timestamp;
+        lastMonthlyReset = block.timestamp;
         anomalyFreezeThresholdBps = 500;
 
         for (uint256 i = 0; i < initialSigners.length; ++i) {
@@ -110,10 +113,11 @@ contract GuardedWallet is IGuardedWallet, ReentrancyGuard {
 
         _rollSpendWindow();
         (Verdict verdict, EscalationReason decisionReason) =
-            policyEngine.evaluate(policy, to, amount, dailySpent, vendorRegistry);
+            policyEngine.evaluate(policy, to, amount, dailySpent, monthlySpent, vendorRegistry);
 
         if (verdict == Verdict.ALLOW) {
             dailySpent += amount;
+            monthlySpent += amount;
             IERC20(usdc).safeTransfer(to, amount);
             emit Events.TransferExecuted(address(this), msg.sender, to, amount);
             return;
@@ -148,6 +152,7 @@ contract GuardedWallet is IGuardedWallet, ReentrancyGuard {
 
         _rollSpendWindow();
         dailySpent += amount;
+        monthlySpent += amount;
         IERC20(usdc).safeTransfer(to, amount);
         emit Events.TransferExecuted(address(this), msg.sender, to, amount);
     }
@@ -269,6 +274,10 @@ contract GuardedWallet is IGuardedWallet, ReentrancyGuard {
         if (block.timestamp >= lastSpendReset + 1 days) {
             dailySpent = 0;
             lastSpendReset = block.timestamp;
+        }
+        if (block.timestamp >= lastMonthlyReset + 30 days) {
+            monthlySpent = 0;
+            lastMonthlyReset = block.timestamp;
         }
     }
 

@@ -360,7 +360,7 @@ export function DeployWalletModal({
         address: walletFactoryAddress,
         abi: walletFactoryAbi,
         functionName: "predictWallet",
-        args: [address, label, nonce, policy, signers, council, quorum],
+        args: [address, address, label, nonce, policy, signers, council, quorum],
       });
       setPredictedWallet(predicted);
 
