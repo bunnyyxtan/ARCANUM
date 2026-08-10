@@ -24,6 +24,7 @@ error EscalationExpiredError();
 error EscalationNotExpired();
 error EscalationMissing();
 error SignatureInvalid();
+error SignatureExpired();
 error OracleOptOut();
 error ThresholdNotMet();
 error VendorMissing();

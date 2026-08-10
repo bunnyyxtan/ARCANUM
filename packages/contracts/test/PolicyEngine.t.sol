@@ -28,13 +28,20 @@ contract PolicyEngineTest is ArcanumTestBase {
         assertEq(uint256(reason), uint256(EscalationReason.ESCALATION_THRESHOLD));
     }
 
+    function test_evaluateEscalatesOverDailyBudgetWhenAboveThreshold() public {
+        (Verdict verdict, EscalationReason reason) =
+            _evaluate(awsBedrock, 73 * USDC_1, 990 * USDC_1);
+        assertEq(uint256(verdict), uint256(Verdict.ESCALATE));
+        assertEq(uint256(reason), uint256(EscalationReason.ESCALATION_THRESHOLD));
+    }
+
     function test_evaluateDeniesDisabledCategory() public {
         PolicyEnvelope memory policy = defaultPolicy();
         policy.allowedCategories &= ~(uint256(1) << uint8(0));
 
         vm.prank(address(wallet));
         (Verdict verdict, EscalationReason reason) =
-            policyEngine.evaluate(policy, openAi, 10 * USDC_1, 0, vendorRegistry);
+            policyEngine.evaluate(policy, openAi, 10 * USDC_1, 0, 0, vendorRegistry);
 
         assertEq(uint256(verdict), uint256(Verdict.DENY));
         assertEq(uint256(reason), uint256(EscalationReason.CATEGORY_DISABLED));
@@ -48,7 +55,7 @@ contract PolicyEngineTest is ArcanumTestBase {
 
         vm.prank(address(wallet));
         (Verdict verdict, EscalationReason reason) =
-            policyEngine.evaluate(policy, awsBedrock, 501 * USDC_1, 0, vendorRegistry);
+            policyEngine.evaluate(policy, awsBedrock, 501 * USDC_1, 0, 0, vendorRegistry);
 
         assertEq(uint256(verdict), uint256(Verdict.DENY));
         assertEq(uint256(reason), uint256(EscalationReason.PER_TX_CAP));
@@ -60,7 +67,7 @@ contract PolicyEngineTest is ArcanumTestBase {
 
         vm.prank(address(wallet));
         (Verdict verdict, EscalationReason reason) =
-            policyEngine.evaluate(policy, recipient, 10 * USDC_1, 0, vendorRegistry);
+            policyEngine.evaluate(policy, recipient, 10 * USDC_1, 0, 0, vendorRegistry);
 
         assertEq(uint256(verdict), uint256(Verdict.ALLOW));
         assertEq(uint256(reason), uint256(EscalationReason.NONE));
@@ -82,6 +89,30 @@ contract PolicyEngineTest is ArcanumTestBase {
         assertEq(uint256(reason), uint256(EscalationReason.DAILY_CAP));
     }
 
+    function test_evaluateDeniesAboveMonthlyCap() public {
+        PolicyEnvelope memory policy = defaultPolicy();
+
+        vm.prank(address(wallet));
+        (Verdict verdict, EscalationReason reason) =
+            policyEngine.evaluate(policy, openAi, 30 * USDC_1, 0, 29_980 * USDC_1, vendorRegistry);
+
+        assertEq(uint256(verdict), uint256(Verdict.DENY));
+        assertEq(uint256(reason), uint256(EscalationReason.MONTHLY_CAP));
+    }
+
+    function test_evaluateTreatsZeroMonthlyCapAsUnlimited() public {
+        PolicyEnvelope memory policy = defaultPolicy();
+        policy.monthlyRollingCap = 0;
+
+        vm.prank(address(wallet));
+        (Verdict verdict, EscalationReason reason) = policyEngine.evaluate(
+            policy, openAi, 30 * USDC_1, 0, 1_000_000 * USDC_1, vendorRegistry
+        );
+
+        assertEq(uint256(verdict), uint256(Verdict.ALLOW));
+        assertEq(uint256(reason), uint256(EscalationReason.NONE));
+    }
+
     function test_evaluateAllowsWithinPolicy() public {
         (Verdict verdict, EscalationReason reason) = _evaluate(openAi, 10 * USDC_1, 0);
         assertEq(uint256(verdict), uint256(Verdict.ALLOW));
@@ -94,6 +125,6 @@ contract PolicyEngineTest is ArcanumTestBase {
     {
         PolicyEnvelope memory policy = defaultPolicy();
         vm.prank(address(wallet));
-        return policyEngine.evaluate(policy, to, amount, dailySpent, vendorRegistry);
+        return policyEngine.evaluate(policy, to, amount, dailySpent, 0, vendorRegistry);
     }
 }

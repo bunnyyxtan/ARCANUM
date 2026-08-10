@@ -12,6 +12,7 @@ interface IPolicyEngine {
         address to,
         uint256 amount,
         uint256 dailySpent,
+        uint256 monthlySpent,
         IVendorRegistry vendorRegistry
     ) external view returns (Verdict verdict, EscalationReason reason);
 }

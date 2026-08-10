@@ -137,7 +137,7 @@
     "name": "nonces",
     "inputs": [
       {
-        "name": "owner",
+        "name": "deployer",
         "type": "address",
         "internalType": "address"
       }
@@ -168,6 +168,11 @@
     "type": "function",
     "name": "predictWallet",
     "inputs": [
+      {
+        "name": "deployer",
+        "type": "address",
+        "internalType": "address"
+      },
       {
         "name": "owner",
         "type": "address",

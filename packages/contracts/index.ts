@@ -224,6 +224,19 @@ export const GuardedWalletAbi = [
   },
   {
     type: "function",
+    name: "monthlySpent",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
     name: "escalationManager",
     inputs: [],
     outputs: [
@@ -292,6 +305,19 @@ export const GuardedWalletAbi = [
   {
     type: "function",
     name: "lastSpendReset",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "lastMonthlyReset",
     inputs: [],
     outputs: [
       {
@@ -909,6 +935,11 @@ export const PolicyEngineAbi = [
         internalType: "uint256",
       },
       {
+        name: "monthlySpent",
+        type: "uint256",
+        internalType: "uint256",
+      },
+      {
         name: "vendorRegistry",
         type: "address",
         internalType: "contract IVendorRegistry",
@@ -1397,6 +1428,25 @@ export const AnomalyOracleAbi = [
   },
   {
     type: "function",
+    name: "scoreNonce",
+    inputs: [
+      {
+        name: "wallet",
+        type: "address",
+        internalType: "address",
+      },
+    ],
+    outputs: [
+      {
+        name: "nonce",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
     name: "submitScore",
     inputs: [
       {
@@ -1406,6 +1456,11 @@ export const AnomalyOracleAbi = [
       },
       {
         name: "sigmaBps",
+        type: "uint256",
+        internalType: "uint256",
+      },
+      {
+        name: "deadline",
         type: "uint256",
         internalType: "uint256",
       },
@@ -2005,6 +2060,11 @@ export const WalletFactoryAbi = [
     type: "function",
     name: "predictWallet",
     inputs: [
+      {
+        name: "deployer",
+        type: "address",
+        internalType: "address",
+      },
       {
         name: "owner",
         type: "address",

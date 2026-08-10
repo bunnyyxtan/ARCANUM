@@ -131,6 +131,54 @@ contract GuardedWalletTest is ArcanumTestBase {
         wallet.executeUSDC(openAi, 10 * USDC_1, bytes("second"));
     }
 
+    function test_executeUSDC_revertsAboveMonthlyCap() public {
+        PolicyEnvelope memory nextPolicy = defaultPolicy();
+        nextPolicy.monthlyRollingCap = 60 * USDC_1;
+        vm.prank(owner);
+        wallet.setPolicy(nextPolicy);
+
+        vm.prank(signer);
+        wallet.executeUSDC(openAi, 40 * USDC_1, bytes("first"));
+        assertEq(wallet.monthlySpent(), 40 * USDC_1);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(TransferDenied.selector, EscalationReason.MONTHLY_CAP)
+        );
+        vm.prank(signer);
+        wallet.executeUSDC(openAi, 30 * USDC_1, bytes("second"));
+    }
+
+    function test_executeUSDCRollsMonthlyWindow() public {
+        vm.prank(signer);
+        wallet.executeUSDC(openAi, 40 * USDC_1, bytes("first"));
+        assertEq(wallet.monthlySpent(), 40 * USDC_1);
+
+        vm.warp(block.timestamp + 30 days);
+        vm.prank(signer);
+        wallet.executeUSDC(openAi, 10 * USDC_1, bytes("next month"));
+
+        assertEq(wallet.monthlySpent(), 10 * USDC_1);
+        assertEq(wallet.lastMonthlyReset(), block.timestamp);
+    }
+
+    function test_escalatedTransferCountsTowardBudgets() public {
+        uint256 timestamp = block.timestamp;
+        vm.prank(signer);
+        wallet.executeUSDC(awsBedrock, 73 * USDC_1, bytes("GPU lease"));
+        assertEq(wallet.monthlySpent(), 0);
+
+        bytes32 escalationId =
+            escalationIdFor(address(wallet), awsBedrock, 73 * USDC_1, 1, timestamp);
+        vm.prank(councilOne);
+        escalationManager.approve(escalationId);
+        vm.prank(councilTwo);
+        escalationManager.approve(escalationId);
+
+        assertEq(usdc.balanceOf(awsBedrock), 73 * USDC_1);
+        assertEq(wallet.dailySpent(), 73 * USDC_1);
+        assertEq(wallet.monthlySpent(), 73 * USDC_1);
+    }
+
     function test_executeUSDC_escalatesAboveThreshold() public {
         uint256 timestamp = block.timestamp;
         vm.prank(signer);
