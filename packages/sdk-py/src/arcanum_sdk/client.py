@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-import time
+import threading
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -139,22 +139,31 @@ class ArcanumClient:
         escalation_id: str,
         callback: Callable[[dict[str, str]], None],
     ) -> Callable[[], None]:
-        stopped = False
-
-        def stop() -> None:
-            nonlocal stopped
-            stopped = True
+        stop_event = threading.Event()
 
         manager_address = self.wallet.functions.escalationManager().call()
         manager = self.web3.eth.contract(address=manager_address, abi=ESCALATION_MANAGER_ABI)
-        last_status = "PENDING"
 
-        while not stopped:
-            status = ESCALATION_STATUSES[int(manager.functions.statusOf(escalation_id).call())]
-            if status != last_status:
-                last_status = status
-                callback({"escalation_id": escalation_id, "status": status})
-            time.sleep(self.polling_interval_seconds)
+        def _poll() -> None:
+            last_status = "PENDING"
+            while not stop_event.is_set():
+                status = ESCALATION_STATUSES[
+                    int(manager.functions.statusOf(escalation_id).call())
+                ]
+                if status != last_status:
+                    last_status = status
+                    callback({"escalation_id": escalation_id, "status": status})
+                stop_event.wait(self.polling_interval_seconds)
+
+        thread = threading.Thread(
+            target=_poll,
+            name=f"arcanum-escalation-{escalation_id}",
+            daemon=True,
+        )
+        thread.start()
+
+        def stop() -> None:
+            stop_event.set()
 
         return stop
 
