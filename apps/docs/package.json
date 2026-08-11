@@ -24,7 +24,7 @@
   },
   "devDependencies": {
     "@arcanum/config": "2.0.0",
-    "@types/node": "^22.15.30",
+    "@types/node": "^26.2.0",
     "@types/react": "^19.1.6",
     "@types/react-dom": "^19.1.6",
     "tsx": "^4.20.6",

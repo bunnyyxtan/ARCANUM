@@ -35,7 +35,7 @@
   },
   "devDependencies": {
     "@arcanum/config": "2.0.0",
-    "@types/node": "^22.15.30",
+    "@types/node": "^26.2.0",
     "tsx": "^4.19.2",
     "typescript": "^5.6.0",
     "vitest": "^3.2.7"
