@@ -35,7 +35,7 @@
     "build:publish": "tsup --config tsup.publish.config.ts && tsup --config tsup.publish.dts.config.ts && node scripts/rewrite-dts.mjs"
   },
   "peerDependencies": {
-    "viem": "^2.21.0"
+    "viem": "^2.55.11"
   },
   "dependencies": {
     "@arcanum/contracts": "2.0.0",
@@ -48,7 +48,7 @@
     "tsup": "^8.3.0",
     "typescript": "^5.6.0",
     "vitest": "^3.2.7",
-    "viem": "^2.21.0"
+    "viem": "^2.55.11"
   },
   "size-limit": [
     {

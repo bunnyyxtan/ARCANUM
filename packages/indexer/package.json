@@ -15,9 +15,9 @@
     "@arcanum/contracts": "2.0.0",
     "@arcanum/db": "2.0.0",
     "@arcanum/shared": "2.0.0",
-    "drizzle-orm": "^0.36.0",
-    "ponder": "^0.16.6",
-    "viem": "^2.21.0",
+    "drizzle-orm": "^0.45.2",
+    "ponder": "^0.17.5",
+    "viem": "^2.55.11",
     "zod": "^3.23.8"
   },
   "devDependencies": {
