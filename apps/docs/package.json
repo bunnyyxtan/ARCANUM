@@ -15,7 +15,7 @@
     "@arcanum/sdk": "2.0.0",
     "@arcanum/shared": "2.0.0",
     "@sentry/nextjs": "^8.55.0",
-    "nextra": "^3.3.0",
+    "nextra": "^4.6.1",
     "nextra-theme-docs": "^3.3.0",
     "next": "^15.0.0",
     "posthog-js": "^1.203.1",
