@@ -6,11 +6,11 @@ date: "2026-06-08"
 
 # Introducing Arcanum: Open Governance for Autonomous AI Money on Arc
 
-Arc is the chain where autonomous AI agents will hold, move, and earn stablecoins. Arcanum is the on-chain governance layer that makes it safe.
+Arc is the chain where autonomous AI agents will hold, move, and earn stablecoins. Arcanum is the onchain governance layer that makes it safe.
 
-We built Arcanum for the teams already turning agents into on-chain operators: DAO treasury working groups, DeFi protocol engineers, DePIN networks, and builders wiring agents into real USDC workflows. These agents can rebalance positions, pay vendors, buy compute, settle rewards, and trigger payments at machine speed. That is powerful. It also means the wallet needs guardrails that live where the money moves.
+We built Arcanum for the teams already turning agents into onchain operators: DAO treasury working groups, DeFi protocol engineers, DePIN networks, and builders wiring agents into real USDC workflows. These agents can rebalance positions, pay vendors, buy compute, settle rewards, and trigger payments at machine speed. That is powerful. It also means the wallet needs guardrails that live where the money moves.
 
-Arcanum gives an agent a real wallet on Arc, then routes every transfer through an on-chain policy envelope. The envelope can enforce a per-transaction cap, a daily spend ceiling, a vendor allowlist, an escalation threshold, and anomaly defense. If the transfer is inside policy, it executes. If it requires human review, the contract holds it for council quorum. If it violates the envelope, the transfer fails on-chain.
+Arcanum gives an agent a real wallet on Arc, then routes every transfer through an onchain policy envelope. The envelope can enforce a per-transaction cap, a daily spend ceiling, a vendor allowlist, an escalation threshold, and anomaly defense. If the transfer is inside policy, it executes. If it requires human review, the contract holds it for council quorum. If it violates the envelope, the transfer fails onchain.
 
 The dashboard is not the source of authority. The indexer is not the source of authority. The API is not the source of authority. The GuardedWallet contract is.
 
@@ -39,7 +39,7 @@ First, the protocol is non-custodial. Arcanum-controlled addresses cannot call `
 
 Second, there is no upgrade key on user wallets. A GuardedWallet is deployed as immutable bytecode. Owners can rotate modules and update policy, but the custody guarantees remain anchored in the deployed contract.
 
-Third, policy enforcement is on-chain. The dashboard, indexer, tRPC API, and SDK are observability and UX layers. They help operators understand and sign actions, but they do not have authority to allow, block, or modify transfers.
+Third, policy enforcement is onchain. The dashboard, indexer, tRPC API, and SDK are observability and UX layers. They help operators understand and sign actions, but they do not have authority to allow, block, or modify transfers.
 
 Fourth, deployment is permissionless. Anyone can deploy a governed wallet on Arc. No KYC gate. No deployer allowlist. No central approval path.
 
@@ -47,7 +47,7 @@ These commitments are enforced by Foundry invariant tests in the repo. We want b
 
 ## The Helix DAO Example
 
-The first demo organization is Helix DAO, a fictional on-chain DAO with a multisig treasury and a set of AI agents.
+The first demo organization is Helix DAO, a fictional onchain DAO with a multisig treasury and a set of AI agents.
 
 Helix gives `TreasuryRebalancerAgent` a governed wallet on Arc. The policy is direct:
 
@@ -60,11 +60,11 @@ Helix gives `TreasuryRebalancerAgent` a governed wallet on Arc. The policy is di
 
 When the agent sends $425 to an approved venue, the transfer is inside policy and executes immediately. The event lands on Arc, the indexer picks it up, and the dashboard updates the governed event stream.
 
-When the agent sends $1,250 to an approved vendor, the transfer crosses the escalation threshold. The EscalationManager holds the transfer. Council members can approve or reject. When quorum is reached, the wallet executes on-chain.
+When the agent sends $1,250 to an approved vendor, the transfer crosses the escalation threshold. The EscalationManager holds the transfer. Council members can approve or reject. When quorum is reached, the wallet executes onchain.
 
 When `DevAgent-01` attempts to pay `evil-data-broker.com`, the VendorRegistry blocks the path and the wallet enters frozen review. The DAO sees the danger event, investigates, and unfreezes only after explicit owner action.
 
-Every step is visible. Every step is on-chain.
+Every step is visible. Every step is onchain.
 
 ## What Ships Today
 

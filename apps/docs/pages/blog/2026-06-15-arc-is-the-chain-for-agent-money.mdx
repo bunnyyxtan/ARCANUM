@@ -12,13 +12,13 @@ That thesis is the reason Arcanum exists. Agents need money that settles at soft
 
 Circle and the Arc team are creating that foundation. Arcanum is our contribution to the ecosystem: open, non-custodial governance for the agents that will operate on top of it.
 
-## Agents Are Becoming On-Chain Operators
+## Agents Are Becoming Onchain Operators
 
 The first generation of agents mostly produced text, tickets, summaries, and tool calls. The next generation will operate wallets.
 
 That changes the problem. A wallet-enabled agent can pay an API vendor, rebalance a treasury position, post collateral, settle a subcontractor, buy compute, route rewards, or run a maintenance job for a protocol. Once it can spend USDC, it becomes an economic actor.
 
-Arc is built for this kind of activity. It gives builders a stablecoin-native environment where the unit of account is practical, settlement is permissionless, and agent workflows can be expressed directly on-chain.
+Arc is built for this kind of activity. It gives builders a stablecoin-native environment where the unit of account is practical, settlement is permissionless, and agent workflows can be expressed directly onchain.
 
 Arcanum focuses on the missing governance layer for those workflows.
 
@@ -30,7 +30,7 @@ USDC on Arc gives builders that base layer. An agent can be given a budget and a
 
 The question becomes: what guardrails sit around that wallet?
 
-Arcanum answers with on-chain policy envelopes. Each GuardedWallet can define per-transfer caps, daily caps, monthly caps, escalation thresholds, category rules, and vendor allowlists. The policy travels with the wallet because the policy is enforced by the wallet.
+Arcanum answers with onchain policy envelopes. Each GuardedWallet can define per-transfer caps, daily caps, monthly caps, escalation thresholds, category rules, and vendor allowlists. The policy travels with the wallet because the policy is enforced by the wallet.
 
 ## Permissionless Governance Primitives
 
@@ -40,7 +40,7 @@ That means permissionless deployment. Anyone can deploy a GuardedWallet through 
 
 It means non-custodial design. The protocol cannot move user funds.
 
-It means transparent enforcement. The policy is evaluated on-chain during the transfer path.
+It means transparent enforcement. The policy is evaluated onchain during the transfer path.
 
 It means transparent operations. The dashboard, indexer, API, and database are documented end to end so operators can verify how their data flows.
 
@@ -54,7 +54,7 @@ For DAO operators, Arcanum makes treasury agents easier to reason about. A DAO c
 
 For DeFi engineers, Arcanum can sit around keeper or liquidator agents. The bot logic can remain focused on protocol actions while the wallet enforces spend policy and anomaly containment.
 
-For DePIN operators, Arcanum can govern subcontracting agents that pay compute providers, data providers, validators, or other network participants. Vendor allowlists and per-vendor caps become on-chain state.
+For DePIN operators, Arcanum can govern subcontracting agents that pay compute providers, data providers, validators, or other network participants. Vendor allowlists and per-vendor caps become onchain state.
 
 For agent-framework builders, Arcanum can become a recipe: replace the direct USDC transfer call with `arc.executeUSDC`, configure a wallet policy, and let the contract enforce the envelope.
 

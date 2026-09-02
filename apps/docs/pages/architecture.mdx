@@ -10,7 +10,7 @@ No Arcanum-controlled address can call `GuardedWallet.executeUSDC`. Enforced by 
 
 Once deployed, your GuardedWallet bytecode is immutable. Modules are pluggable, but only you can plug them. Enforced by `invariant_NoUpgradeKeyOnWallets`. [view test](https://github.com/bunnyyxtan/ARCANUM/blob/main/packages/contracts/test/Invariants.t.sol)
 
-## 3. Policy enforcement is on-chain. Always.
+## 3. Policy enforcement is onchain. Always.
 
 The dashboard is observability. The protocol enforces at the contract level on Arc, so policy checks continue as long as the chain and wallet bytecode exist. Enforced by `invariant_PolicyEnforcementIsOnChain`. [view test](https://github.com/bunnyyxtan/ARCANUM/blob/main/packages/contracts/test/Invariants.t.sol)
 
@@ -22,12 +22,12 @@ WalletFactory accepts any EOA, any geography, any time. Enforced by `invariant_A
 
 | Layer | Module | Role |
 | --- | --- | --- |
-| Arc on-chain enforcement | WalletFactory | Deploys new GuardedWallet instances. |
-| Arc on-chain enforcement | GuardedWallet | Holds USDC and checks policy before execution. |
-| Arc on-chain enforcement | PolicyEngine | Evaluates spend caps, vendors, and doctrine rules. |
-| Arc on-chain enforcement | EscalationManager | Records restraint requests and human quorum decisions. |
-| Arc on-chain enforcement | AnomalyOracle | Reports anomaly posture for freeze and review logic. |
-| Arc on-chain enforcement | VendorRegistry | Stores approved vendors and categories. |
+| Arc onchain enforcement | WalletFactory | Deploys new GuardedWallet instances. |
+| Arc onchain enforcement | GuardedWallet | Holds USDC and checks policy before execution. |
+| Arc onchain enforcement | PolicyEngine | Evaluates spend caps, vendors, and doctrine rules. |
+| Arc onchain enforcement | EscalationManager | Records restraint requests and human quorum decisions. |
+| Arc onchain enforcement | AnomalyOracle | Reports anomaly posture for freeze and review logic. |
+| Arc onchain enforcement | VendorRegistry | Stores approved vendors and categories. |
 | Observability | Ponder indexer | Reads contract events and builds the read model. |
 | Observability | Postgres | Stores indexed events for the API and dashboard. |
 | Observability | tRPC API | Serves dashboard, SDK, explorer, and badge reads. |
@@ -39,10 +39,10 @@ The important boundary is simple: contracts decide whether funds can move; the i
 
 Arc is built for stablecoin finance, and stablecoin finance is where autonomous agents become operationally serious. Agents will rebalance treasury positions, pay API vendors, route DePIN work, and execute keeper tasks at a cadence human operators cannot manually supervise transaction by transaction.
 
-That economy needs governance primitives that are as transparent and permissionless as the chain itself. A policy envelope should be visible, auditable, and enforced before USDC moves. Escalation should be an on-chain request, not a private queue. Vendor status should be a contract read, not a spreadsheet.
+That economy needs governance primitives that are as transparent and permissionless as the chain itself. A policy envelope should be visible, auditable, and enforced before USDC moves. Escalation should be an onchain request, not a private queue. Vendor status should be a contract read, not a spreadsheet.
 
 Arc's stablecoin focus makes it a natural home for agents that earn, hold, and spend USDC. Arcanum adds the missing operating envelope: what an agent may do, which counterparties it may pay, when humans must sign, and when the system should freeze for review.
 
-Governance infrastructure earns trust when operators can read and audit the code that guards their funds. Arcanum's source is public for exactly that reason: DAO treasuries, DeFi protocols, DePIN networks, and on-chain builders can verify every rule before they rely on it. Production use runs through the official Arcanum deployment, with commercial licensing available for teams that need their own.
+Governance infrastructure earns trust when operators can read and audit the code that guards their funds. Arcanum's source is public for exactly that reason: DAO treasuries, DeFi protocols, DePIN networks, and onchain builders can verify every rule before they rely on it. Production use runs through the official Arcanum deployment, with commercial licensing available for teams that need their own.
 
-The off-chain stack makes the system usable. The on-chain stack makes the system binding. That boundary is the heart of Arcanum.
+The off-chain stack makes the system usable. The onchain stack makes the system binding. That boundary is the heart of Arcanum.

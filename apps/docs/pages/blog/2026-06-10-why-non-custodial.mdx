@@ -38,7 +38,7 @@ That matters for agent money because the wallet becomes part of the operating su
 
 The invariant test `invariant_NoUpgradeKeyOnWallets` protects this property by checking for upgrade-related selectors and proxy-style escape hatches.
 
-## Commitment Three: Policy Enforcement Is On-Chain
+## Commitment Three: Policy Enforcement Is Onchain
 
 The dashboard is useful because it gives operators a live view: posture index, event stream, escalations, anomaly register, ledger, and vendor registry. The indexer is useful because it turns Arc events into queryable state. The API is useful because it gives the frontend a clean tenant-isolated interface.
 
@@ -66,6 +66,6 @@ In each case, Arcanum handles the same underlying job: enforce the policy before
 
 Arc gives the stablecoin agent economy a permissionless settlement layer. Circle and the Arc team have created a place where USDC-native applications can be built directly into the chain's operating rhythm. Arcanum is designed to meet that rhythm with governance primitives that are transparent, forkable, and operator-owned.
 
-The goal is not to hide complexity. It is to put the hard boundary in the right place. Custody stays with the wallet. Policy stays on-chain. Observability stays optional and self-hostable.
+The goal is not to hide complexity. It is to put the hard boundary in the right place. Custody stays with the wallet. Policy stays onchain. Observability stays optional and self-hostable.
 
 That is what non-custodial means in Arcanum: not a promise to trust us, but a contract path you can inspect, test, and run yourself.
