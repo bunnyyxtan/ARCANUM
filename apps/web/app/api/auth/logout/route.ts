@@ -5,6 +5,8 @@ import { NextResponse } from "next/server";
 
 export async function POST() {
   const session = await getIronSession<AuthSessionData>(await cookies(), getSessionOptions());
-  session.destroy();
+  // Awaited so the cleared cookie is written before the response is returned;
+  // a floating destroy could lose the race and leave the session usable.
+  await session.destroy();
   return NextResponse.json({ ok: true });
 }

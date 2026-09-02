@@ -660,13 +660,10 @@ export async function readSupabaseTransfers(ctx: ApiContext) {
   return rowsForWalletIdentity(rows, wallets).map((row) => transferFromRow(row, wallets));
 }
 
-/** Governance event derived from an indexed ledger row. The field shape
+/** Governance event from the indexed Supabase audit trail. The field shape
  * matches what the dashboard event stream historically received from the local
- * `events` table. Categories are narrower by design: the indexed read model
- * currently only carries transfer outcomes (allowed / escalated / denied) -
- * freeze, policy, and signer changes are not indexed into Supabase yet, and
- * the retired local-Postgres indexer that once produced them no longer runs
- * anywhere. */
+ * `events` table, while the production stream now includes transfer outcomes
+ * and the policy, signer, module, and vendor changes emitted on chain. */
 export type GovernanceEventRecord = {
   id: string;
   tenantId: string;
@@ -714,6 +711,48 @@ function governanceEventFromRow(row: SupabaseRow, wallets: Wallet[]): Governance
   };
 }
 
+function storedGovernanceEventFromRow(row: SupabaseRow): GovernanceEventRecord {
+  const txHash = stringField(row, ["tx_hash"], stableHash(`governance:${JSON.stringify(row)}`));
+  const payload = row.payload;
+  return {
+    id: stringField(row, ["id"], stableUuid(`governance:${txHash}`)),
+    tenantId: stringField(row, ["tenant_id", "organization_id"], FALLBACK_TENANT_ID),
+    walletId: stringField(row, ["governed_wallet_id", "wallet_id"], null),
+    type: stringField(row, ["event_type", "type"], "GOVERNANCE_EVENT"),
+    severity: stringField(row, ["severity"], "info"),
+    payload:
+      payload && typeof payload === "object" && !Array.isArray(payload)
+        ? (payload as Record<string, unknown>)
+        : {},
+    blockNumber: numberField(row, ["block_number"], 0),
+    txHash,
+    timestamp: dateField(row, ["event_time", "created_at"]),
+  };
+}
+
+async function readOptionalGovernanceRows(ctx: ApiContext) {
+  if (!ctx.supabase) {
+    return selectRows(ctx, "governance_events", { order: "event_time.desc" });
+  }
+  try {
+    return await ctx.supabase.selectRows("governance_events", { order: "event_time.desc" });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    // Deploying API code can precede the migration. Only absence of this new
+    // table is optional; every other read failure remains fail-closed.
+    if (
+      message.includes("404") ||
+      message.includes("42P01") ||
+      message.includes("PGRST205") ||
+      message.includes("Could not find the table")
+    ) {
+      warnSupabase("governance_events.not-migrated", error);
+      return [];
+    }
+    throw readModelUnavailable("governance_events.read", error);
+  }
+}
+
 /**
  * Owner-scoped governance event stream, read from the indexed Supabase ledger.
  * The dashboard's "Governed event stream" used to read the local Postgres
@@ -731,15 +770,24 @@ export async function readSupabaseEvents(
     return [];
   }
 
-  const rows = await selectRows(ctx, "ledger_events", {
-    order: "event_time.desc",
-  });
+  const [rows, governanceRows] = await Promise.all([
+    selectRows(ctx, "ledger_events", {
+      order: "event_time.desc",
+    }),
+    readOptionalGovernanceRows(ctx),
+  ]);
 
   const page = options?.page ?? 0;
   const pageSize = options?.pageSize ?? 50;
 
-  return rowsForWalletIdentity(rows, wallets)
-    .map((row) => governanceEventFromRow(row, wallets))
+  const walletIds = new Set(wallets.map((wallet) => wallet.id));
+  return [
+    ...rowsForWalletIdentity(rows, wallets).map((row) => governanceEventFromRow(row, wallets)),
+    ...governanceRows
+      .map(storedGovernanceEventFromRow)
+      .filter((event) => event.walletId !== null && walletIds.has(event.walletId)),
+  ]
+    .sort((left, right) => right.timestamp.getTime() - left.timestamp.getTime())
     .filter((event) => (options?.walletId ? event.walletId === options.walletId : true))
     .slice(page * pageSize, page * pageSize + pageSize);
 }

@@ -15,21 +15,31 @@ Telemetry is off by default. Enable it only after reviewing what your deployment
 emits and where the data is sent:
 
 ```txt
+NEXT_PUBLIC_ARCANUM_TELEMETRY=on
 ARCANUM_TELEMETRY=on
-POSTHOG_KEY=...
-POSTHOG_HOST=...
+NEXT_PUBLIC_POSTHOG_KEY=...
+NEXT_PUBLIC_POSTHOG_HOST=...
+NEXT_PUBLIC_SENTRY_DSN_WEB=...
 SENTRY_DSN_WEB=...
-SENTRY_DSN_INDEXER=...
 ```
+
+Both halves are required: the switch on its own emits nothing, and a key on its
+own is ignored. The client reads the `NEXT_PUBLIC_` values, so they are baked in
+at build time.
 
 Telemetry is never required for protocol operation. Do not send private keys,
 service-role keys, seed phrases, or sensitive user secrets to telemetry tools.
 
 ## Rate limits
 
-API routes include rate-limit helpers where Redis/Upstash is configured. Wallet
-transactions are still explicit user actions; the app must not auto-submit
-contract writes on page load.
+Every API procedure is rate limited. With `UPSTASH_REDIS_REST_URL` and
+`UPSTASH_REDIS_REST_TOKEN` configured the limit is shared across instances;
+without them the API falls back to a per-process ceiling and logs that it did
+so. Set `ARCANUM_REQUIRE_RATE_LIMIT_BACKEND=true` to refuse requests instead of
+accepting the weaker guarantee.
+
+Wallet transactions are still explicit user actions; the app must not
+auto-submit contract writes on page load.
 
 ## Audit status
 

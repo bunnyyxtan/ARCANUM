@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 
-import { db, defaultTenantId } from "@arcanum/db";
+import { db, defaultTenantId, isDatabaseConfigured } from "@arcanum/db";
 import { users } from "@arcanum/db/schema";
 import { and, eq } from "drizzle-orm";
 import type { SessionOptions } from "iron-session";
@@ -35,13 +35,21 @@ export function resolveTenantId(host?: string | null) {
 
   const normalizedHost = host?.split(":")[0]?.toLowerCase();
   if (!normalizedHost) {
-    return defaultTenantId();
+    throw new Error("Tenant host is missing");
   }
 
-  return (
-    process.env[`ARCANUM_TENANT_${normalizedHost.replaceAll(".", "_").toUpperCase()}`] ??
-    defaultTenantId()
-  );
+  const tenantId =
+    process.env[`ARCANUM_TENANT_${normalizedHost.replaceAll(".", "_").toUpperCase()}`];
+
+  // In multi-tenant mode the Host header IS the tenant selector, so an
+  // unrecognised host has no safe interpretation. Quietly falling back to the
+  // default tenant meant a request arriving through a misconfigured proxy - or
+  // carrying a forged Host - signed in against somebody else's data.
+  if (!tenantId) {
+    throw new Error("Unknown tenant host");
+  }
+
+  return tenantId;
 }
 
 export function getSessionOptions() {
@@ -56,7 +64,14 @@ export function getSessionOptions() {
     cookieOptions: {
       httpOnly: true,
       path: "/",
-      secure: process.env.NODE_ENV === "production",
+      // Anything that is not local development is assumed to be served over
+      // TLS, so staging and preview deployments stop shipping the session
+      // cookie in the clear. ARCANUM_INSECURE_COOKIES is the deliberate escape
+      // hatch for running a production build against plain http locally.
+      secure:
+        process.env.ARCANUM_INSECURE_COOKIES === "true"
+          ? false
+          : process.env.NODE_ENV !== "development",
       sameSite: "lax",
       maxAge: 60 * 60 * 24 * 7,
     },
@@ -70,11 +85,18 @@ export async function verifySiweLogin(input: {
   host?: string | null;
   /** When set, the SIWE message must be signed for exactly this chain. */
   expectedChainId?: number;
+  /**
+   * When set, the SIWE message must be signed for exactly this domain. Without
+   * it, a signature the wallet produced for any other site can be replayed
+   * here to open a session.
+   */
+  expectedDomain?: string;
 }) {
   const siwe = new SiweMessage(input.message);
   const result = await siwe.verify({
     signature: input.signature,
     nonce: input.expectedNonce,
+    ...(input.expectedDomain ? { domain: input.expectedDomain } : {}),
   });
 
   if (!result.success) {
@@ -87,60 +109,69 @@ export async function verifySiweLogin(input: {
 
   const walletAddress = siwe.address.toLowerCase();
   const tenantId = resolveTenantId(input.host);
-  try {
-    const existingUser = await db.query.users.findFirst({
-      where: and(eq(users.walletAddress, walletAddress), eq(users.tenantId, tenantId)),
-    });
 
-    if (!existingUser) {
-      if (process.env.ARCANUM_OPEN_REGISTRATION !== "true") {
-        throw new Error("Wallet is not registered for this tenant");
-      }
-
-      const created = await db
-        .insert(users)
-        .values({
-          tenantId,
-          walletAddress,
-          displayName: `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`,
-          role: "viewer",
-        })
-        .returning();
-      const user = created[0];
-
-      if (!user) {
-        throw new Error("User creation failed");
-      }
-
-      return toSession(user.walletAddress, user.tenantId, user.role);
+  // Deployed environments deliberately run without a direct Postgres user
+  // directory - identity lives in Supabase and is provisioned by the caller
+  // immediately after verification. That mode is a configuration decision, so
+  // it is detected as one.
+  //
+  // It used to be detected by catching whatever the unavailable-database proxy
+  // threw, which meant a real outage looked identical to a supported
+  // deployment: any query failure fell through to a signed session. An error
+  // must never widen access, so a configured directory now fails closed.
+  if (!isDatabaseConfigured()) {
+    if (!openRegistrationEnabled()) {
+      throw new Error("Wallet is not registered for this tenant");
     }
 
-    return toSession(existingUser.walletAddress, existingUser.tenantId, existingUser.role);
-  } catch (error) {
-    if (canUseSignedOpenRegistrationSession()) {
-      warnSignedOpenRegistrationFallback(error);
-      return toSession(walletAddress, tenantId, "viewer");
-    }
-
-    throw error;
+    warnDirectorylessSessionOnce();
+    return toSession(walletAddress, tenantId, "viewer");
   }
+
+  const existingUser = await db.query.users.findFirst({
+    where: and(eq(users.walletAddress, walletAddress), eq(users.tenantId, tenantId)),
+  });
+
+  if (existingUser) {
+    return toSession(existingUser.walletAddress, existingUser.tenantId, existingUser.role);
+  }
+
+  if (!openRegistrationEnabled()) {
+    throw new Error("Wallet is not registered for this tenant");
+  }
+
+  const created = await db
+    .insert(users)
+    .values({
+      tenantId,
+      walletAddress,
+      displayName: `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`,
+      role: "viewer",
+    })
+    .returning();
+  const user = created[0];
+
+  if (!user) {
+    throw new Error("User creation failed");
+  }
+
+  return toSession(user.walletAddress, user.tenantId, user.role);
 }
 
-function canUseSignedOpenRegistrationSession() {
+function openRegistrationEnabled() {
   return process.env.ARCANUM_OPEN_REGISTRATION === "true";
 }
 
-let warnedSignedOpenRegistrationFallback = false;
+let warnedDirectorylessSession = false;
 
-function warnSignedOpenRegistrationFallback(error: unknown) {
-  if (warnedSignedOpenRegistrationFallback) {
+function warnDirectorylessSessionOnce() {
+  if (warnedDirectorylessSession) {
     return;
   }
 
-  warnedSignedOpenRegistrationFallback = true;
-  const message = error instanceof Error ? error.message : String(error);
+  warnedDirectorylessSession = true;
   console.warn(
-    `[arcanum-auth] using signed open-registration session because the user database is unavailable: ${message}`,
+    "[arcanum-auth] no user directory is configured; open registration is issuing viewer sessions for any wallet that completes SIWE.",
   );
 }
 

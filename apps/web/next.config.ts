@@ -1,4 +1,12 @@
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { NextConfig } from "next";
+
+// This workspace can sit inside an outer checkout that carries its own
+// lockfile, and Next then guesses which root to trace production output
+// against. Pinning it to the repository root keeps standalone builds from
+// silently tracing the wrong tree.
+const repositoryRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 type WebpackConfig = Parameters<NonNullable<NextConfig["webpack"]>>[0];
 
@@ -35,6 +43,7 @@ const configureWebpack: NonNullable<NextConfig["webpack"]> = (config, context) =
 
 const nextConfig: NextConfig = {
   devIndicators: false,
+  outputFileTracingRoot: repositoryRoot,
   transpilePackages: ["@arcanum/shared"],
   async headers() {
     // The CSP must allow direct browser connections to the active Arc RPC.

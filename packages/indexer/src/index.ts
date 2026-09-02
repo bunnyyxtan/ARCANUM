@@ -21,6 +21,7 @@ import {
   syncCheckpoint,
   syncEscalationApproval,
   syncEscalationStatus,
+  syncGovernanceEvent,
   syncTransferEscalated,
   syncTransferExecuted,
   syncWalletCreated,
@@ -193,7 +194,11 @@ async function findTransferByTx(tenantId: string, txHash: string) {
 }
 
 ponder.on("WalletFactory:WalletCreated", async ({ event }) => {
-  await syncWalletCreated(asAddress(event.args.wallet), blockDate(event.block.timestamp));
+  await syncWalletCreated(
+    asAddress(event.args.wallet),
+    blockDate(event.block.timestamp),
+    Number(event.block.number),
+  );
   await syncCheckpoint(Number(event.block.number));
 
   const tenantId = defaultTenantId();
@@ -377,7 +382,12 @@ ponder.on("GuardedWallet:TransferEscalated", async ({ event }) => {
 });
 
 ponder.on("GuardedWallet:Frozen", async ({ event }) => {
-  await syncWalletFrozenState(asAddress(event.args.wallet), true, blockDate(event.block.timestamp));
+  await syncWalletFrozenState(
+    asAddress(event.args.wallet),
+    true,
+    blockDate(event.block.timestamp),
+    Number(event.block.number),
+  );
   await syncCheckpoint(Number(event.block.number));
 
   const tenantId = defaultTenantId();
@@ -408,6 +418,7 @@ ponder.on("GuardedWallet:Unfrozen", async ({ event }) => {
     asAddress(event.args.wallet),
     false,
     blockDate(event.block.timestamp),
+    Number(event.block.number),
   );
   await syncCheckpoint(Number(event.block.number));
 
@@ -431,6 +442,17 @@ ponder.on("GuardedWallet:Unfrozen", async ({ event }) => {
 });
 
 ponder.on("GuardedWallet:PolicyUpdated", async ({ event }) => {
+  await syncGovernanceEvent({
+    walletAddress: asAddress(event.args.wallet),
+    eventType: "POLICY_UPDATED",
+    severity: "info",
+    payload: { source: "GuardedWallet.PolicyUpdated" },
+    blockNumber: Number(event.block.number),
+    txHash: event.transaction.hash,
+    timestamp: blockDate(event.block.timestamp),
+  });
+  await syncCheckpoint(Number(event.block.number));
+
   const tenantId = defaultTenantId();
   const wallet = await findWallet(asAddress(event.args.wallet), tenantId);
   if (!wallet) {
@@ -467,6 +489,17 @@ ponder.on("GuardedWallet:PolicyUpdated", async ({ event }) => {
 });
 
 ponder.on("GuardedWallet:SignerAdded", async ({ event }) => {
+  await syncGovernanceEvent({
+    walletAddress: asAddress(event.args.wallet),
+    eventType: "SIGNER_AUTHORIZED",
+    severity: "info",
+    payload: { signer: asAddress(event.args.signer) },
+    blockNumber: Number(event.block.number),
+    txHash: event.transaction.hash,
+    timestamp: blockDate(event.block.timestamp),
+  });
+  await syncCheckpoint(Number(event.block.number));
+
   const tenantId = defaultTenantId();
   const wallet = await findWallet(asAddress(event.args.wallet), tenantId);
   if (!wallet) {
@@ -516,6 +549,17 @@ ponder.on("GuardedWallet:SignerAdded", async ({ event }) => {
 });
 
 ponder.on("GuardedWallet:SignerRemoved", async ({ event }) => {
+  await syncGovernanceEvent({
+    walletAddress: asAddress(event.args.wallet),
+    eventType: "SIGNER_REVOKED",
+    severity: "info",
+    payload: { signer: asAddress(event.args.signer) },
+    blockNumber: Number(event.block.number),
+    txHash: event.transaction.hash,
+    timestamp: blockDate(event.block.timestamp),
+  });
+  await syncCheckpoint(Number(event.block.number));
+
   const tenantId = defaultTenantId();
   const wallet = await findWallet(asAddress(event.args.wallet), tenantId);
   if (!wallet) {
@@ -558,6 +602,17 @@ ponder.on("GuardedWallet:SignerRemoved", async ({ event }) => {
 });
 
 ponder.on("GuardedWallet:ModuleRotated", async ({ event }) => {
+  await syncGovernanceEvent({
+    walletAddress: asAddress(event.args.wallet),
+    eventType: "MODULE_ROTATED",
+    severity: "info",
+    payload: { module: asString(event.args.module), newModule: asAddress(event.args.newModule) },
+    blockNumber: Number(event.block.number),
+    txHash: event.transaction.hash,
+    timestamp: blockDate(event.block.timestamp),
+  });
+  await syncCheckpoint(Number(event.block.number));
+
   const tenantId = defaultTenantId();
   const wallet = await findWallet(asAddress(event.args.wallet), tenantId);
   if (!wallet) {
@@ -577,7 +632,11 @@ ponder.on("GuardedWallet:ModuleRotated", async ({ event }) => {
 });
 
 ponder.on("EscalationManager:EscalationApproved", async ({ event }) => {
-  await syncEscalationApproval(asString(event.args.escalationId), asNumber(event.args.count));
+  await syncEscalationApproval(
+    asString(event.args.escalationId),
+    asNumber(event.args.count),
+    Number(event.block.number),
+  );
   await syncCheckpoint(Number(event.block.number));
   if (pgMirrorDisabled) {
     return;
@@ -618,19 +677,33 @@ ponder.on("EscalationManager:EscalationApproved", async ({ event }) => {
 });
 
 ponder.on("EscalationManager:EscalationRejected", async ({ event }) => {
-  await syncEscalationStatus(asString(event.args.escalationId), "denied", event.transaction.hash);
+  await syncEscalationStatus(
+    asString(event.args.escalationId),
+    "denied",
+    Number(event.block.number),
+    event.transaction.hash,
+  );
   await syncCheckpoint(Number(event.block.number));
   await updateEscalationStatus(asString(event.args.escalationId), "REJECTED", event);
 });
 
 ponder.on("EscalationManager:EscalationExpired", async ({ event }) => {
-  await syncEscalationStatus(asString(event.args.escalationId), "expired");
+  await syncEscalationStatus(
+    asString(event.args.escalationId),
+    "expired",
+    Number(event.block.number),
+  );
   await syncCheckpoint(Number(event.block.number));
   await updateEscalationStatus(asString(event.args.escalationId), "EXPIRED", event);
 });
 
 ponder.on("EscalationManager:EscalationExecuted", async ({ event }) => {
-  await syncEscalationStatus(asString(event.args.escalationId), "released", event.transaction.hash);
+  await syncEscalationStatus(
+    asString(event.args.escalationId),
+    "released",
+    Number(event.block.number),
+    event.transaction.hash,
+  );
   await syncCheckpoint(Number(event.block.number));
   if (pgMirrorDisabled) {
     return;
@@ -669,6 +742,7 @@ ponder.on("AnomalyOracle:AnomalyScoreSubmitted", async ({ event }) => {
     title: "Signed anomaly score",
     description: `Anomaly oracle submitted a signed score of ${sigmaValue.toFixed(2)}σ.`,
     timestamp: blockDate(event.block.timestamp),
+    blockNumber: Number(event.block.number),
     metadata: { txHash: event.transaction.hash, blockNumber: Number(event.block.number) },
   });
   await syncCheckpoint(Number(event.block.number));
@@ -715,6 +789,22 @@ ponder.on("AnomalyOracle:AnomalyScoreSubmitted", async ({ event }) => {
 });
 
 ponder.on("VendorRegistry:VendorAdded", async ({ event }) => {
+  await syncGovernanceEvent({
+    walletAddress: asAddress(event.args.wallet),
+    eventType: "VENDOR_ALLOWED",
+    severity: "info",
+    payload: {
+      vendor: asAddress(event.args.vendor),
+      category: categoryName(asNumber(event.args.category)),
+      perVendorCap: asBigint(event.args.perVendorCap).toString(),
+      metadataHash: asString(event.args.metadataHash),
+    },
+    blockNumber: Number(event.block.number),
+    txHash: event.transaction.hash,
+    timestamp: blockDate(event.block.timestamp),
+  });
+  await syncCheckpoint(Number(event.block.number));
+
   const tenantId = defaultTenantId();
   const wallet = await findWallet(asAddress(event.args.wallet), tenantId);
   if (!wallet) {
@@ -811,6 +901,17 @@ async function upsertVendorStatus(
   },
   status: "blocked" | "removed",
 ) {
+  await syncGovernanceEvent({
+    walletAddress: asAddress(event.args.wallet),
+    eventType: status === "blocked" ? "VENDOR_BLOCKED" : "VENDOR_REMOVED",
+    severity: status === "blocked" ? "warning" : "info",
+    payload: { vendor: asAddress(event.args.vendor) },
+    blockNumber: Number(event.block.number),
+    txHash: event.transaction.hash,
+    timestamp: blockDate(event.block.timestamp),
+  });
+  await syncCheckpoint(Number(event.block.number));
+
   const tenantId = defaultTenantId();
   const wallet = await findWallet(asAddress(event.args.wallet), tenantId);
   if (!wallet) {
