@@ -81,6 +81,38 @@ contract GuardedWalletTest is ArcanumTestBase {
         );
     }
 
+    function test_constructorRejectsZeroAnomalyOracle() public {
+        address[] memory signers = new address[](1);
+        signers[0] = signer;
+
+        vm.expectRevert(ZeroAddress.selector);
+        new GuardedWallet(
+            owner,
+            address(usdc),
+            policyEngine,
+            escalationManager,
+            AnomalyOracle(address(0)),
+            vendorRegistry,
+            defaultPolicy(),
+            signers,
+            defaultCouncil(),
+            2
+        );
+    }
+
+    /// @dev A wallet must start with an oracle so that dropping it is a visible act.
+    ///      Opting out stays available; it just has to be done on the record.
+    function test_anomalyOracleOptOutIsAnExplicitOwnerActionAfterDeployment() public {
+        assertEq(address(wallet.anomalyOracle()), address(anomalyOracle));
+
+        vm.expectEmit(true, true, true, true, address(wallet));
+        emit Events.ModuleRotated(address(wallet), ModuleKeys.ANOMALY_ORACLE, address(0));
+        vm.prank(owner);
+        wallet.rotateModule(ModuleKeys.ANOMALY_ORACLE, address(0));
+
+        assertEq(address(wallet.anomalyOracle()), address(0));
+    }
+
     function test_executeUSDC_revertsForZeroRecipient() public {
         vm.expectRevert(ZeroAddress.selector);
         vm.prank(signer);

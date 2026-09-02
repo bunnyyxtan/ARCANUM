@@ -2,6 +2,7 @@
 pragma solidity 0.8.24;
 
 import { ArcanumTestBase } from "./ArcanumTestBase.sol";
+import { AnomalyOracle } from "../src/AnomalyOracle.sol";
 import { GuardedWallet } from "../src/GuardedWallet.sol";
 import { VendorRegistry } from "../src/VendorRegistry.sol";
 import { WalletFactory } from "../src/WalletFactory.sol";
@@ -40,6 +41,19 @@ contract WalletFactoryTest is ArcanumTestBase {
             escalationManager,
             anomalyOracle,
             VendorRegistry(address(0))
+        );
+    }
+
+    /// @dev The factory's modules are immutable, so a zero oracle here would opt every
+    ///      wallet it ever creates out of anomaly freezes with no way back.
+    function test_constructorRejectsZeroAnomalyOracle() public {
+        vm.expectRevert(ZeroAddress.selector);
+        new WalletFactory(
+            address(usdc),
+            policyEngine,
+            escalationManager,
+            AnomalyOracle(address(0)),
+            vendorRegistry
         );
     }
 
