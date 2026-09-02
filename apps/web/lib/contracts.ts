@@ -1,5 +1,5 @@
 /**
- * On-chain contract surface for ARCANUM governed wallets.
+ * Onchain contract surface for ARCANUM governed wallets.
  *
  * Extracted verbatim from the old frontend (components/arcanum/canvas/pages.tsx)
  * before the UI was removed, so the contract logic survives the frontend

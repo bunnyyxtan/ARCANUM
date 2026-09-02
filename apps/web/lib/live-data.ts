@@ -169,7 +169,7 @@ export function useLiveAgents() {
     return {
       id: agent.id,
       name: agent.label,
-      // Routes and on-chain reads key on the governed wallet, not the signer key.
+      // Routes and onchain reads key on the governed wallet, not the signer key.
       wallet: walletAddressById.get(agent.walletId) ?? agent.walletId,
       signer: agent.signerAddress,
       owner: "Owner synced in Supabase",
