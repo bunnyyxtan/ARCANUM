@@ -372,8 +372,8 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
                   the request.
                 </h3>
                 <p className="mt-4 text-[13px] leading-[1.5] text-[var(--wl-body)]">
-                  Your decision is signed onchain and becomes part of the immutable decision
-                  record. There is no silent approval.
+                  Your decision is signed onchain and becomes part of the immutable decision record.
+                  There is no silent approval.
                 </p>
                 <div className="mt-7 grid grid-cols-1 gap-3 sm:grid-cols-2 md:flex">
                   <button
