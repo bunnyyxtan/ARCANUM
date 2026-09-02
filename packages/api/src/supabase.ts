@@ -1336,8 +1336,11 @@ export async function readSupabaseRuntimeHealth(ctx: ApiContext): Promise<Supaba
 
   const client = ctx.supabase;
   const readModel = await safeHealthRead(() => client.selectRows("governed_wallets", { limit: 1 }));
+  // Newest first: a deployment that ran under the old checkpoint name leaves a
+  // second row behind, and "how fresh is the read model" cannot be answered
+  // differently from one request to the next depending on which row came back.
   const checkpoint = await safeHealthRead(() =>
-    client.selectRows("indexer_checkpoints", { limit: 1 }),
+    client.selectRows("indexer_checkpoints", { limit: 1, order: "updated_at.desc" }),
   );
   const readModelError = readModel.ok ? null : safeSupabaseError(readModel.error);
   const checkpointError = checkpoint.ok ? null : safeSupabaseError(checkpoint.error);
