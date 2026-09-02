@@ -11,11 +11,20 @@ const t = initTRPC.context<ApiContext>().create({
 });
 
 export const router = t.router;
-export const publicProcedure = t.procedure;
-export const rateLimitedPublicProcedure = t.procedure.use(async ({ ctx, next, path, type }) => {
+
+// Every public procedure is rate limited. The limiter used to be opt-in and only
+// two procedures ever opted in, so the other fifty-odd unauthenticated read
+// endpoints - the entire dashboard read API - answered without any ceiling. The
+// ceiling is per caller (session identity, else client IP) and per procedure
+// path, at 600 queries and 60 mutations a minute, which is far above what a page
+// load costs and far below what a scraper wants.
+export const publicProcedure = t.procedure.use(async ({ ctx, next, path, type }) => {
   await enforceRateLimit(ctx, type, path);
   return next();
 });
+
+// Kept so call sites that want to state the intent explicitly still read clearly.
+export const rateLimitedPublicProcedure = publicProcedure;
 
 export const protectedProcedure = t.procedure.use(async ({ ctx, next, path, type }) => {
   const session = ctx.session ?? createLocalDevSession(ctx.env.allowDevAuth);
