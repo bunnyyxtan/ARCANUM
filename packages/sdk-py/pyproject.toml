@@ -4,7 +4,7 @@ version = "2.0.0"
 description = "Open, non-custodial governance SDK for autonomous AI money on Arc."
 readme = "README.md"
 requires-python = ">=3.11"
-license = { text = "Proprietary" }
+license = { text = "Apache-2.0" }
 authors = [{ name = "Arcanum Contributors" }]
 dependencies = [
   "eth-account>=0.10,<0.14",

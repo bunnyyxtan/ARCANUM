@@ -28,7 +28,7 @@
     "tsx": "^4.19.2",
     "typescript": "^5.6.0"
   },
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "AGPL-3.0-only",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/bunnyyxtan/ARCANUM.git"

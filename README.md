@@ -17,7 +17,7 @@
 
 <p align="center">
   <a href="https://github.com/bunnyyxtan/ARCANUM/actions/workflows/ci.yml"><img src="https://github.com/bunnyyxtan/ARCANUM/actions/workflows/ci.yml/badge.svg" alt="CI status" /></a>
-  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-source--available-2f3542" alt="Source available license" /></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-2f3542" alt="AGPL-3.0 license" /></a>
   <a href="https://github.com/bunnyyxtan/ARCANUM/releases/tag/v2.0.0"><img src="https://img.shields.io/badge/release-v2.0.0-ff5a1f" alt="Latest release v2.0.0" /></a>
   <img src="https://img.shields.io/badge/network-Arc%20Testnet-6e9e7c" alt="Arc Testnet" />
 </p>
@@ -254,6 +254,10 @@ Do not report vulnerabilities through public issues. Follow the private process 
 
 ## License
 
-Source available. The code is public for reading and review. Using, copying,
-modifying, or hosting it requires written permission. See
-[LICENSE](./LICENSE) for the full terms.
+Open source. The application — web app, API, indexer, and database layer — is licensed
+under [AGPL-3.0](./LICENSE). You may use, modify, and self-host it; a modified version
+offered to others over a network must publish its source.
+
+The parts meant to be embedded in other software are permissive instead. The
+[contracts](./packages/contracts/LICENSE), the [TypeScript SDK](./packages/sdk/LICENSE),
+and the [Python SDK](./packages/sdk-py/LICENSE) are Apache-2.0.
