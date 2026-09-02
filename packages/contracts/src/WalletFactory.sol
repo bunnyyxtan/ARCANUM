@@ -27,9 +27,15 @@ contract WalletFactory {
         IAnomalyOracle anomalyOracle_,
         IVendorRegistry vendorRegistry_
     ) {
+        // Every module here is immutable and shared by every wallet this factory will
+        // ever create, so a zero anomaly oracle would keep minting wallets that start
+        // out opted out of anomaly freezes. An owner can rotate one back in for their
+        // own wallet, but the default cannot be corrected without deploying a new
+        // factory. Owners keep the opt-out either way, through rotateModule.
         if (
             usdc_ == address(0) || address(policyEngine_) == address(0)
                 || address(escalationManager_) == address(0)
+                || address(anomalyOracle_) == address(0)
                 || address(vendorRegistry_) == address(0)
         ) {
             revert ZeroAddress();

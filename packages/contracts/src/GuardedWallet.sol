@@ -71,9 +71,16 @@ contract GuardedWallet is IGuardedWallet, ReentrancyGuard {
         address[] memory escalationCouncil,
         uint8 escalationThreshold
     ) {
+        // The anomaly oracle is required here even though rotateModule lets the owner
+        // drop it later, and the difference is how visible the choice is. Opting out
+        // after deployment emits ModuleRotated, which indexers already follow; a wallet
+        // born with a zero oracle carries that only in its stored module and its
+        // constructor arguments, where nobody is watching. Same end state either way,
+        // but this ordering puts it on the record.
         if (
             owner_ == address(0) || usdc_ == address(0) || address(policyEngine_) == address(0)
                 || address(escalationManager_) == address(0)
+                || address(anomalyOracle_) == address(0)
                 || address(vendorRegistry_) == address(0)
         ) {
             revert ZeroAddress();
@@ -197,6 +204,15 @@ contract GuardedWallet is IGuardedWallet, ReentrancyGuard {
             }
             escalationManager = IEscalationManager(newModule);
         } else if (module == ModuleKeys.ANOMALY_ORACLE) {
+            // Zero is permitted on purpose: this is how an owner opts out of
+            // oracle-driven freezes, and AnomalyOracle.triggerFreeze reads the value
+            // back to detect exactly that. The other three are rejected at zero because
+            // the wallet calls into them - the policy engine and vendor registry on
+            // every transfer, the escalation manager whenever a verdict escalates - so
+            // emptying one takes a working path away. This module is only ever read to
+            // authorise a freeze, and triggerFreeze compares it against msg.sender,
+            // which can never be zero, so an empty oracle closes that path rather than
+            // opening it to callers.
             anomalyOracle = IAnomalyOracle(newModule);
         } else if (module == ModuleKeys.VENDOR_REGISTRY) {
             if (newModule == address(0)) {
