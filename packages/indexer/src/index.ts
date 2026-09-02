@@ -28,7 +28,7 @@ import {
   syncWalletFrozenState,
 } from "./supabase-sync";
 
-/** Fallback expiry used only when the on-chain escalation cannot be read. */
+/** Fallback expiry used only when the onchain escalation cannot be read. */
 const DEFAULT_ESCALATION_EXPIRY_SECONDS = 3_600n;
 const DEFAULT_ESCALATION_THRESHOLD = 1;
 

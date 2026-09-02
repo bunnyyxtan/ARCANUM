@@ -356,7 +356,7 @@ export default function DocsPage() {
                 </h2>
                 <p className="mt-5 text-[15px] leading-[1.55] text-[var(--wl-body)]">
                   Stand up a governed agent wallet on Arc Testnet in five steps. Every transaction
-                  it attempts will be evaluated against a Doctrine before it can settle on-chain.
+                  it attempts will be evaluated against a Doctrine before it can settle onchain.
                 </p>
                 <ol className="mt-9 space-y-7">
                   {[
@@ -479,7 +479,7 @@ console.log("Deployed:", txHash);`}</CodeBlock>
                         RESTRAINT
                       </div>
                       <p className="mt-1 text-[12.5px] leading-[1.5] text-[var(--wl-body)]">
-                        On-chain policy changes affect real testnet state. Test with small limits
+                        Onchain policy changes affect real testnet state. Test with small limits
                         first.
                       </p>
                     </div>

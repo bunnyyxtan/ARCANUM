@@ -16,7 +16,7 @@ export default function PrivacyPage() {
     <LegalPage
       kicker="REFERENCE / PRIVACY"
       title="What we hold."
-      lede="ARCANUM is signed into with a wallet, not an account. That makes this short: there is no profile to sell, no mailing list to leak, and most of what the product shows you was already public on chain."
+      lede="ARCANUM is signed into with a wallet, not an account. That makes this short: there is no profile to sell, no mailing list to leak, and most of what the product shows you was already public onchain."
       updated="6 AUGUST 2026"
       sections={[
         {

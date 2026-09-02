@@ -3,7 +3,7 @@
  *
  * The dashboard API reads activity from the Supabase tables `ledger_events`,
  * `escalations`, `anomalies`, and `indexer_checkpoints`. The indexer is the
- * only writer of on-chain activity into those tables. Every handler in
+ * only writer of onchain activity into those tables. Every handler in
  * `index.ts` calls into this module so real Arc Testnet activity shows up in
  * the ledger and escalation queue.
  *
@@ -55,7 +55,7 @@ function configured() {
   if (!warnedUnconfigured) {
     warnedUnconfigured = true;
     console.error(
-      "[supabase-sync] SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are not configured - on-chain activity will NOT reach the dashboard read model.",
+      "[supabase-sync] SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are not configured - onchain activity will NOT reach the dashboard read model.",
     );
   }
   return false;
@@ -168,7 +168,7 @@ async function trackedWrite(key: string, blockNumber: number, operation: () => P
  *
  * Failures are re-driven and staged rows are re-checked here rather than only
  * when the next event for that wallet arrives, so a read model that fell behind
- * can catch up without waiting for on-chain activity that may never come.
+ * can catch up without waiting for onchain activity that may never come.
  */
 async function runMaintenance() {
   const now = Date.now();
@@ -186,7 +186,7 @@ async function runMaintenance() {
  *
  * Staging happens when a transfer is indexed before the application has written
  * its wallet row. The row usually appears moments later through a path this
- * indexer never observes, so waiting for the next on-chain event for that
+ * indexer never observes, so waiting for the next onchain event for that
  * wallet can strand the staged rows indefinitely.
  */
 async function reconcileStagedEvents() {
@@ -244,7 +244,7 @@ function str(row: Row | undefined, key: string) {
   return typeof value === "string" ? value : "";
 }
 
-/** On-chain USDC base units (6 decimals) -> decimal USDC used by the read model. */
+/** Onchain USDC base units (6 decimals) -> decimal USDC used by the read model. */
 function usdcDecimal(amountBaseUnits: bigint) {
   return Number(amountBaseUnits) / 1_000_000;
 }
@@ -455,7 +455,7 @@ async function persistEscalation(wallet: Row, input: EscalatedTransferInput) {
     status: "escalated",
     amount: input.amount,
     counterpartyAddress: input.toAddress,
-    reason: input.reason || "Escalated by on-chain policy.",
+    reason: input.reason || "Escalated by onchain policy.",
     blockNumber: input.blockNumber,
     timestamp: input.timestamp,
   });
@@ -469,7 +469,7 @@ async function persistEscalation(wallet: Row, input: EscalatedTransferInput) {
       amount_usdc: usdcDecimal(input.amount),
       category: "other",
       counterparty_address: input.toAddress.toLowerCase(),
-      reason: input.reason || "Escalated by on-chain policy.",
+      reason: input.reason || "Escalated by onchain policy.",
       status: "pending",
       approvals_count: 0,
       quorum_required: input.quorumRequired,
@@ -525,7 +525,7 @@ async function flushUnlinkedLedgerEvents(wallet: Row) {
         status: "allowed",
         amount: common.amount,
         counterpartyAddress: common.toAddress,
-        reason: "On-chain policy allowed the transfer.",
+        reason: "Onchain policy allowed the transfer.",
         blockNumber: common.blockNumber,
         timestamp: common.timestamp,
       });
@@ -561,7 +561,7 @@ export async function syncTransferExecuted(input: TransferInput) {
       status: "allowed",
       amount: input.amount,
       counterpartyAddress: input.toAddress,
-      reason: "On-chain policy allowed the transfer.",
+      reason: "Onchain policy allowed the transfer.",
       blockNumber: input.blockNumber,
       timestamp: input.timestamp,
     });
@@ -666,7 +666,7 @@ export async function syncAnomaly(input: {
       if (!wallet) return;
       // Anomalies carry no natural key, so a retry after an ambiguous failure
       // (write committed, response lost) would file the same finding twice.
-      // Wallet plus detection time plus title identifies one on-chain event.
+      // Wallet plus detection time plus title identifies one onchain event.
       const sameMoment = await request("GET", "anomalies", {
         filters: {
           governed_wallet_id: str(wallet, "id"),

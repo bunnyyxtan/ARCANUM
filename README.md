@@ -2,7 +2,7 @@
 
 <p align="center">
   Governed, non-custodial USDC wallets for autonomous AI agents on Arc.
-  Every payment is checked against on-chain policy before money moves.
+  Every payment is checked against onchain policy before money moves.
 </p>
 
 <p align="center">
@@ -140,7 +140,7 @@ Supabase read models  <──  Ponder indexer  <──  Arc Testnet contracts
                                                  AnomalyOracle · VendorRegistry
 ```
 
-Policy enforcement happens on-chain. The indexer turns contract events into read models, and the web app renders the evidence. The server never holds agent private keys.
+Policy enforcement happens onchain. The indexer turns contract events into read models, and the web app renders the evidence. The server never holds agent private keys.
 
 | Path | Purpose |
 | --- | --- |
@@ -158,7 +158,7 @@ Policy enforcement happens on-chain. The indexer turns contract events into read
 
 | Layer | Technology | Responsibility |
 | --- | --- | --- |
-| Contracts | Solidity 0.8.24 · Foundry | On-chain policy enforcement and tests |
+| Contracts | Solidity 0.8.24 · Foundry | Onchain policy enforcement and tests |
 | Application | Next.js 15 · React | Operator console and public surfaces |
 | Language | TypeScript | Static typing across app, API, and SDK |
 | API | tRPC | Typed, session-aware application reads |

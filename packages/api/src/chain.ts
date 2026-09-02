@@ -4,7 +4,7 @@ import { http, type Address, type Hex, createPublicClient } from "viem";
 
 /**
  * Server-side chain reads. The read model must never take a client's word for
- * what happened on-chain, so decisions are verified here before they are
+ * what happened onchain, so decisions are verified here before they are
  * mirrored into Supabase.
  */
 const escalationStatusByIndex = ["pending", "released", "denied", "expired"] as const;

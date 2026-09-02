@@ -55,7 +55,7 @@ const terms: Term[] = [
     term: "Governed wallet",
     letter: "G",
     definition:
-      "An on-chain wallet whose outgoing transactions are checked against a doctrine before settlement.",
+      "An onchain wallet whose outgoing transactions are checked against a doctrine before settlement.",
     detail:
       "The agent can propose spend, but it does not hold the operator key. The governed wallet is the boundary where intent becomes accountable capital movement.",
     related: ["Doctrine", "Operator"],
@@ -66,7 +66,7 @@ const terms: Term[] = [
     definition:
       "The append-only record of proposals, policy verdicts, transactions, and human decisions.",
     detail:
-      "A ledger entry answers four questions: what was requested, what policy said, what moved on-chain, and who stepped in. It is the memory of the control loop.",
+      "A ledger entry answers four questions: what was requested, what policy said, what moved onchain, and who stepped in. It is the memory of the control loop.",
     related: ["Restraint", "Arc testnet"],
   },
   {

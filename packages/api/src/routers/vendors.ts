@@ -22,7 +22,7 @@ function onChainVendorWriteOnly(): never {
   throw new TRPCError({
     code: "PRECONDITION_FAILED",
     message:
-      "VendorRegistry writes must be submitted on-chain by the governed wallet owner.",
+      "VendorRegistry writes must be submitted onchain by the governed wallet owner.",
   });
 }
 
@@ -49,7 +49,7 @@ export const vendorsRouter = router({
     }),
 
   /**
-   * Mirror a VendorRegistry write that already settled on-chain. The status is
+   * Mirror a VendorRegistry write that already settled onchain. The status is
    * read back from the chain so the registry can never claim an allowlist entry
    * the wallet does not actually enforce.
    */
@@ -98,7 +98,7 @@ export const vendorsRouter = router({
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
           message:
-            "VendorRegistry is not reachable; vendor state could not be verified on-chain.",
+            "VendorRegistry is not reachable; vendor state could not be verified onchain.",
         });
       }
 

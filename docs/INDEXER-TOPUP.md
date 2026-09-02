@@ -5,7 +5,7 @@ it while the workspace is open. Instead of paying for an always-on host, a GitHu
 Actions cron job catches the read model up every 3 hours. On a private
 repository this fits inside GitHub's 2000 free minutes per month, so the total
 cost is zero. The tradeoff is honesty about freshness: with the workspace
-closed, on-chain activity can take up to ~3 hours to appear on the site.
+closed, onchain activity can take up to ~3 hours to appear on the site.
 
 Ponder's checkpoint for these runs lives in the `ponder_app` schema of the
 Supabase database, so every run resumes exactly where the last one stopped.

@@ -68,7 +68,7 @@ transaction hash.
 path:
 
 - `allow` transfers real Arc Testnet USDC from the GuardedWallet.
-- `escalate` creates an on-chain escalation and does not transfer immediately.
+- `escalate` creates an onchain escalation and does not transfer immediately.
 - `freeze` submits the guarded wallet call so the contract can freeze/block the
   wallet without transferring funds.
 

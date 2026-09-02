@@ -18,7 +18,7 @@ import { findWalletByLooseId } from "./helpers";
 function onChainPolicyWriteOnly(): never {
   throw new TRPCError({
     code: "PRECONDITION_FAILED",
-    message: "Policy updates must be submitted on-chain by the governed wallet owner.",
+    message: "Policy updates must be submitted onchain by the governed wallet owner.",
   });
 }
 
@@ -140,7 +140,7 @@ export const policiesRouter = router({
   }),
 
   /**
-   * Mirror a policy revision that is already confirmed on-chain into the read
+   * Mirror a policy revision that is already confirmed onchain into the read
    * model. Without this the dashboard keeps showing the previous caps while the
    * wallet enforces the new ones.
    */

@@ -34,7 +34,7 @@ export default function TermsPage() {
               </p>
               <p>
                 ARCANUM does not take custody of funds and never holds your keys. Enforcement lives
-                in the contracts on chain; this site is the surface you read and act through.
+                in the contracts onchain; this site is the surface you read and act through.
               </p>
             </>
           ),
@@ -62,7 +62,7 @@ export default function TermsPage() {
                 deploy a wallet or change a policy.
               </p>
               <p>
-                On-chain transactions cannot be reversed by us. If an agent spends inside the policy
+                Onchain transactions cannot be reversed by us. If an agent spends inside the policy
                 you wrote, that spend stands.
               </p>
             </>

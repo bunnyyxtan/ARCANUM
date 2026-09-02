@@ -285,7 +285,7 @@ export async function syncSupabaseAuthSession(user: {
 
 /**
  * The workspace a caller belongs to, resolved from their membership rather than
- * from the wallets they happen to own on chain.
+ * from the wallets they happen to own onchain.
  *
  * Ownership of a governed wallet used to be the only way in, which meant a
  * teammate invited to a workspace saw an empty product and a brand new visitor
@@ -401,10 +401,10 @@ export async function readSupabaseWallets(ctx: ApiContext): Promise<Wallet[]> {
 }
 
 /**
- * Resolve a governed wallet by its on-chain address WITHOUT scoping to the
+ * Resolve a governed wallet by its onchain address WITHOUT scoping to the
  * signed-in owner. An escalation approver is often a council member rather than
  * the owner, so the owner-scoped lookup would hide the wallet from them.
- * Callers must enforce their own authorization (owner or on-chain signer)
+ * Callers must enforce their own authorization (owner or onchain signer)
  * before acting on the result.
  */
 export async function readSupabaseWalletByAddressUnscoped(ctx: ApiContext, address: string) {
@@ -663,7 +663,7 @@ export async function readSupabaseTransfers(ctx: ApiContext) {
 /** Governance event from the indexed Supabase audit trail. The field shape
  * matches what the dashboard event stream historically received from the local
  * `events` table, while the production stream now includes transfer outcomes
- * and the policy, signer, module, and vendor changes emitted on chain. */
+ * and the policy, signer, module, and vendor changes emitted onchain. */
 export type GovernanceEventRecord = {
   id: string;
   tenantId: string;
@@ -936,7 +936,7 @@ export async function recordSupabaseAnomalyDecision(
 }
 
 /**
- * Persist a policy revision that is already live on-chain, so the read model
+ * Persist a policy revision that is already live onchain, so the read model
  * stops advertising caps the wallet no longer enforces.
  */
 export async function recordSupabaseDeployedPolicy(
@@ -956,7 +956,7 @@ export async function recordSupabaseDeployedPolicy(
       limit: 1,
     });
 
-    // Mirroring the same on-chain policy twice must not inflate the doctrine
+    // Mirroring the same onchain policy twice must not inflate the doctrine
     // version: a retry after a network blip should be a no-op.
     const currentCategories = arrayField(current, ["allowed_categories"])
       .map((category) => String(category).toLowerCase())
@@ -999,7 +999,7 @@ export async function recordSupabaseDeployedPolicy(
         escalate_above_usdc: input.escalationThreshold,
         allowed_categories: input.allowedCategories,
         require_vendor_allowlist: input.requireAllowlist,
-        // Signers, council and quorum are governed by their own on-chain
+        // Signers, council and quorum are governed by their own onchain
         // transactions, so a policy deployment must carry them over untouched.
         signers: arrayField(current, ["signers"]),
         escalation_council: arrayField(current, ["escalation_council"]),
@@ -1019,8 +1019,8 @@ export async function recordSupabaseDeployedPolicy(
 }
 
 /**
- * Mirror an escalation decision that is already settled on-chain. Callers must
- * verify the on-chain status first; this only writes what the chain reports.
+ * Mirror an escalation decision that is already settled onchain. Callers must
+ * verify the onchain status first; this only writes what the chain reports.
  */
 export async function recordSupabaseEscalationDecision(
   ctx: ApiContext,
@@ -1058,7 +1058,7 @@ export async function recordSupabaseEscalationDecision(
         ok: false,
         reason: "unavailable",
         message:
-          "The escalation is settled on-chain but no matching row exists in the read model yet.",
+          "The escalation is settled onchain but no matching row exists in the read model yet.",
       };
     }
 
@@ -1134,7 +1134,7 @@ export async function recordSupabaseCreatedWallet(
       show_public_badge: false,
       posture_score: postureFromDoctrineRow(doctrineRow as SupabaseRow, false),
       health_grade: "PENDING INDEXER",
-      summary: `${input.label} is synced in Supabase. On-chain event history may lag.`,
+      summary: `${input.label} is synced in Supabase. Onchain event history may lag.`,
       updated_at: now,
     };
 
@@ -1265,7 +1265,7 @@ async function writePublicWalletProfileRow(
   const existingId = stringField(existing, ["id"], "");
 
   if (existingId) {
-    // The indexer owns health_grade/summary once it has seen on-chain events
+    // The indexer owns health_grade/summary once it has seen onchain events
     // for this wallet; re-recording a deploy must not knock the profile back
     // into the PENDING INDEXER state.
     const alreadyIndexed = Boolean(stringField(existing, ["last_indexed_at"], ""));
@@ -1744,7 +1744,7 @@ function escalationFromRow(row: SupabaseRow, wallets: Wallet[]): Escalation {
   const wallet = walletForRow(row, wallets);
   const walletAddress = requireWalletAddress(wallet);
   // The dashboard and the public approver portal both call the escalation
-  // manager with this id, so it must be the on-chain escalation key. Falling
+  // manager with this id, so it must be the onchain escalation key. Falling
   // back to the Supabase UUID leaves approve/reject permanently disabled.
   const id = stringField(
     row,
@@ -2014,7 +2014,7 @@ function anomalySeverityFromString(value: string): Anomaly["severity"] {
   return "info";
 }
 
-/** Bit positions of RestraintCategory in the on-chain policy bitmask. */
+/** Bit positions of RestraintCategory in the onchain policy bitmask. */
 const CATEGORY_BITS: Record<string, number> = {
   api: 1,
   compute: 2,
@@ -2093,7 +2093,7 @@ function unavailableWrite<T>(label: string, error: unknown): SupabaseWriteResult
   return {
     ok: false,
     reason: "unavailable",
-    message: `Supabase ${label} write failed; save the on-chain address and retry sync.`,
+    message: `Supabase ${label} write failed; save the onchain address and retry sync.`,
   };
 }
 

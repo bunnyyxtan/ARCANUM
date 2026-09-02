@@ -180,7 +180,7 @@ export default function StatusPage() {
             <HealthCard
               index={1}
               label="EVENT SYNC"
-              detail="On-chain history is synced for governed wallets and may lag behind the latest Arc block."
+              detail="Onchain history is synced for governed wallets and may lag behind the latest Arc block."
               metric={indexerMetric}
               metricLabel={indexerMetricLabel}
               state={indexerState}
@@ -260,7 +260,7 @@ export default function StatusPage() {
               STATUS / HOW TO READ THIS
             </p>
             <p className="mt-8 text-[16px] leading-[1.5] text-[var(--wl-body)]">
-              Workspace records are stored off-chain so the dashboard can answer quickly. On-chain
+              Workspace records are stored off-chain so the dashboard can answer quickly. Onchain
               history syncs continuously and may lag behind the latest Arc block.
             </p>
             <p className="mt-5 text-[16px] leading-[1.5] text-[var(--wl-body)]">

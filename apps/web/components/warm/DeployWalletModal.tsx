@@ -275,7 +275,7 @@ export function DeployWalletModal({
         persisted.dataSource === "supabase"
           ? null
           : (persisted.message ??
-              "Wallet deployed on-chain, but the record sync failed. Save this wallet address and retry sync."),
+              "Wallet deployed onchain, but the record sync failed. Save this wallet address and retry sync."),
       );
       return persisted.dataSource;
     } catch (persistError) {
@@ -283,7 +283,7 @@ export function DeployWalletModal({
       setPersistenceState("supabase_failed");
       setPersistenceMessage(
         message ||
-          "Wallet deployed on-chain, but the record sync failed. Save this wallet address and retry sync.",
+          "Wallet deployed onchain, but the record sync failed. Save this wallet address and retry sync.",
       );
       return "supabase_failed" as const;
     }
@@ -505,14 +505,14 @@ export function DeployWalletModal({
                     : persistenceState === "saving"
                       ? "FINALIZING - SAVING RECORD"
                       : persistenceFailed
-                        ? "ON-CHAIN DEPLOYED - RECORD SYNC FAILED"
+                        ? "ONCHAIN DEPLOYED - RECORD SYNC FAILED"
                         : "FINALIZING ON ARC"}
                 </div>
               </div>
               {persistenceFailed ? (
                 <div className="border border-[var(--wl-amber)] bg-[var(--wl-bg-soft)] p-3 text-[11px] leading-relaxed text-[var(--wl-amber)]">
                   {persistenceMessage ??
-                    "Wallet deployed on-chain, but the record sync failed. Save this wallet address and retry sync."}
+                    "Wallet deployed onchain, but the record sync failed. Save this wallet address and retry sync."}
                 </div>
               ) : null}
               <div className="space-y-2 border border-[var(--wl-line)] bg-[var(--wl-bg-soft)] p-3 font-mono text-[10px] uppercase tracking-[.12em]">

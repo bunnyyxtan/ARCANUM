@@ -149,7 +149,7 @@ export default function DashboardPage() {
     {
       label: "VALUE GOVERNED",
       value: <CountUp target={metrics.valueGoverned} prefix="$" decimals={2} />,
-      note: "on-chain record",
+      note: "onchain record",
     },
     {
       label: "ACTIVE AGENTS",
@@ -399,7 +399,7 @@ export default function DashboardPage() {
                     Review &amp; sign →
                   </Link>
                   <span className="font-mono text-[8.5px] uppercase tracking-[.12em] text-[var(--wl-mute)]">
-                    on-chain quorum vote
+                    onchain quorum vote
                   </span>
                 </div>
               </div>
@@ -471,7 +471,7 @@ export default function DashboardPage() {
         className="mt-14 flex flex-col justify-between gap-5 border-t border-[var(--wl-line)] pt-5 text-[11px] text-[var(--wl-secondary)] sm:flex-row"
       >
         <span className="font-mono uppercase tracking-[.14em]">Arc testnet · USDC</span>
-        <span>Live record · governed spend settled on-chain</span>
+        <span>Live record · governed spend settled onchain</span>
       </section>
     </div>
   );

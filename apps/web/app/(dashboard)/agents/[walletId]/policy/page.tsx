@@ -346,7 +346,7 @@ export default function PolicyEditorPage() {
   ]);
 
   // Safety net: "PENDING INDEXER SYNC" must never become a permanent state.
-  // If no on-chain re-read confirms the update within 90s, stop waiting.
+  // If no onchain re-read confirms the update within 90s, stop waiting.
   useEffect(() => {
     if (!policyPendingIndexer) {
       return;
@@ -463,7 +463,7 @@ export default function PolicyEditorPage() {
         ]).catch(() => undefined);
       try {
         // The mirror write must not be able to hang the button either: the
-        // policy is already live on-chain, so cap the dashboard sync wait.
+        // policy is already live onchain, so cap the dashboard sync wait.
         const syncPromise = recordDeployedPolicy.mutateAsync({
           walletAddress: governedWallet,
           txHash: hash,
@@ -511,12 +511,12 @@ export default function PolicyEditorPage() {
       void refreshPolicyQueries();
 
       if (syncFailed) {
-        toast.warning("POLICY LIVE ON-CHAIN · DASHBOARD NOT SYNCED", {
+        toast.warning("POLICY LIVE ONCHAIN · DASHBOARD NOT SYNCED", {
           description: `The wallet now enforces the new policy, but the dashboard could not be updated: ${syncFailed}`,
         });
       } else {
         toast.success("POLICY TX CONFIRMED", {
-          description: "Policy update is confirmed on-chain and reflected across the dashboard.",
+          description: "Policy update is confirmed onchain and reflected across the dashboard.",
         });
       }
     } catch (caught) {
@@ -574,7 +574,7 @@ export default function PolicyEditorPage() {
           <div className="flex flex-wrap items-center gap-3 max-md:w-full">
             <span className="font-mono text-[9px] uppercase tracking-[.13em] text-[var(--wl-secondary)]">
               {policyReadStatus === "checking"
-                ? "READING ON-CHAIN POLICY"
+                ? "READING ONCHAIN POLICY"
                 : policyPendingIndexer
                   ? "FINALIZING"
                   : `${ARC_NETWORK_BADGE} POLICY`}
@@ -904,7 +904,7 @@ export default function PolicyEditorPage() {
                 EFFECT OF SIGNATURE
               </p>
               <p className="mt-3 text-[13px] leading-[1.5] text-[var(--wl-body)]">
-                The new limits become authoritative on-chain for the next governed event. The
+                The new limits become authoritative onchain for the next governed event. The
                 dashboard may take a moment to reflect them.
               </p>
             </div>

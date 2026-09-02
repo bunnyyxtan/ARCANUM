@@ -33,7 +33,7 @@ function onChainAgentRestraintWriteOnly(): never {
   throw new TRPCError({
     code: "PRECONDITION_FAILED",
     message:
-      "Agent restraint changes must be submitted on-chain by the governed wallet owner; this API only reflects indexed state.",
+      "Agent restraint changes must be submitted onchain by the governed wallet owner; this API only reflects indexed state.",
   });
 }
 
@@ -108,7 +108,7 @@ export const agentsRouter = router({
   }),
 
   // There is deliberately no server-side "register an agent" write. An agent
-  // exists because a wallet was deployed on chain and a signer was authorised
+  // exists because a wallet was deployed onchain and a signer was authorised
   // there; recordCreatedWallet below records that deployment against the
   // signed-in owner. The old register mutation wrote straight to a database
   // production no longer has, under a hardcoded organisation and a placeholder

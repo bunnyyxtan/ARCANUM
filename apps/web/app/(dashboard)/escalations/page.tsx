@@ -230,7 +230,7 @@ function EscalationCard({
       onResolved();
 
       if (syncFailed) {
-        toast.warning("DECISION LIVE ON-CHAIN · QUEUE NOT SYNCED", {
+        toast.warning("DECISION LIVE ONCHAIN · QUEUE NOT SYNCED", {
           description: `The decision is settled on ${ARC_NETWORK_NAME}, but the queue could not be updated: ${syncFailed}`,
         });
       } else if (action === "approve") {
@@ -243,12 +243,12 @@ function EscalationCard({
             description:
               nextCount >= preflight.threshold
                 ? `Release for ${amountLabel} to ${item.counterparty} executed in the approval transaction.`
-                : `Vote for ${amountLabel} to ${item.counterparty} confirmed on-chain.`,
+                : `Vote for ${amountLabel} to ${item.counterparty} confirmed onchain.`,
           },
         );
       } else {
         toast.success("ESCALATION REJECTED", {
-          description: `Rejection for ${amountLabel} to ${item.counterparty} confirmed on-chain.`,
+          description: `Rejection for ${amountLabel} to ${item.counterparty} confirmed onchain.`,
         });
       }
     } catch (caught) {

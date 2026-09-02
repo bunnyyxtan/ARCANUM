@@ -217,7 +217,7 @@ export function WorkspaceGate({ children }: Readonly<{ children: ReactNode }>) {
         <ul className="mt-14 border-t border-[var(--wl-line)]">
           {[
             ["01", "Deploy a governed wallet", "Your agent spends from it, under caps you set."],
-            ["02", "Write the policy", "Per-transfer and daily limits, enforced on chain."],
+            ["02", "Write the policy", "Per-transfer and daily limits, enforced onchain."],
             [
               "03",
               "Invite your reviewers",

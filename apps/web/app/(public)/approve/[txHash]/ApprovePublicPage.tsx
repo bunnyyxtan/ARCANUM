@@ -227,12 +227,12 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
             description:
               nextCount >= preflight.threshold
                 ? `Release for ${amount} to ${counterparty} executed. The record will update shortly.`
-                : `Vote for ${amount} to ${counterparty} confirmed on-chain. The record will update shortly.`,
+                : `Vote for ${amount} to ${counterparty} confirmed onchain. The record will update shortly.`,
           },
         );
       } else {
         toast.success("ESCALATION REJECTED", {
-          description: `Rejection for ${amount} to ${counterparty} confirmed on-chain. The record will update shortly.`,
+          description: `Rejection for ${amount} to ${counterparty} confirmed onchain. The record will update shortly.`,
         });
       }
     } catch (caught) {
@@ -372,7 +372,7 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
                   the request.
                 </h3>
                 <p className="mt-4 text-[13px] leading-[1.5] text-[var(--wl-body)]">
-                  Your decision is signed on-chain and becomes part of the immutable decision
+                  Your decision is signed onchain and becomes part of the immutable decision
                   record. There is no silent approval.
                 </p>
                 <div className="mt-7 grid grid-cols-1 gap-3 sm:grid-cols-2 md:flex">
@@ -417,7 +417,7 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
                   {stage === "checking"
                     ? "CHECKING PERMISSION"
                     : stage === "confirming"
-                      ? "CONFIRMING ON-CHAIN"
+                      ? "CONFIRMING ONCHAIN"
                       : "WAITING FOR SIGNATURE"}
                 </p>
                 <p className="mt-4 text-[14px] text-[var(--wl-body)]">

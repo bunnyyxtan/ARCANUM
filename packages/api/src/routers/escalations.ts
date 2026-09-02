@@ -20,7 +20,7 @@ function onChainEscalationWriteOnly(): never {
   throw new TRPCError({
     code: "PRECONDITION_FAILED",
     message:
-      "Escalation approvals and rejections must be submitted on-chain by an authorized approver.",
+      "Escalation approvals and rejections must be submitted onchain by an authorized approver.",
   });
 }
 
@@ -36,7 +36,7 @@ export const escalationsRouter = router({
     .query(({ ctx, input }) => readSupabaseEscalationByTxHash(ctx, input.txHash)),
 
   /**
-   * Mirror an approve/reject that already settled on-chain into the read model.
+   * Mirror an approve/reject that already settled onchain into the read model.
    * The status is taken from the chain, never from the caller, so the queue can
    * never be marked resolved for a transaction that did not happen.
    */
@@ -65,7 +65,7 @@ export const escalationsRouter = router({
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
           message:
-            "Escalation is still pending on-chain; nothing to record yet.",
+            "Escalation is still pending onchain; nothing to record yet.",
         });
       }
 

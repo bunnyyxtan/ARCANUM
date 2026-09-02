@@ -108,7 +108,7 @@ export default function VendorsPage() {
 
   /**
    * Mirror a settled VendorRegistry write into the read model. The server
-   * re-reads the registry on-chain, so this can only record what is true.
+   * re-reads the registry onchain, so this can only record what is true.
    * Returns an error message when the sync failed, or null on success.
    */
   const recordVendorState = async (
@@ -130,7 +130,7 @@ export default function VendorsPage() {
       return null;
     } catch (caught) {
       const message = errorMessage(caught);
-      toast.warning("VENDOR WRITE LIVE ON-CHAIN · REGISTRY NOT SYNCED", { description: message });
+      toast.warning("VENDOR WRITE LIVE ONCHAIN · REGISTRY NOT SYNCED", { description: message });
       return message;
     }
   };
@@ -406,7 +406,7 @@ export default function VendorsPage() {
           : `${name.toUpperCase()} WRITE CONFIRMED · REGISTRY UPDATED`,
       );
       toast.success("VENDOR WRITE CONFIRMED", {
-        description: "On-chain write confirmed. The record may take a moment to update.",
+        description: "Onchain write confirmed. The record may take a moment to update.",
       });
     } catch (caught) {
       const message = errorMessage(caught);
@@ -431,7 +431,7 @@ export default function VendorsPage() {
     }
     if (!isEvmAddress(vendor.address)) {
       toast.info("Vendor action unavailable", {
-        description: "A full vendor address is required for on-chain writes.",
+        description: "A full vendor address is required for onchain writes.",
       });
       return;
     }
@@ -474,7 +474,7 @@ export default function VendorsPage() {
       );
       if (!syncFailed) {
         toast.success(action === "block" ? "VENDOR BLOCK CONFIRMED" : "VENDOR REMOVE CONFIRMED", {
-          description: "On-chain write confirmed and the vendor registry has been updated.",
+          description: "Onchain write confirmed and the vendor registry has been updated.",
         });
       }
     } catch (caught) {
@@ -504,7 +504,7 @@ export default function VendorsPage() {
       }
       if (!isEvmAddress(selected.address)) {
         toast.info("Cap update unavailable", {
-          description: "A full vendor address is required for on-chain updates.",
+          description: "A full vendor address is required for onchain updates.",
         });
         return;
       }
@@ -544,7 +544,7 @@ export default function VendorsPage() {
         );
         if (!syncFailed) {
           toast.success("VENDOR CAP CONFIRMED", {
-            description: "On-chain write confirmed and the vendor registry has been updated.",
+            description: "Onchain write confirmed and the vendor registry has been updated.",
           });
         }
       } catch (caught) {
