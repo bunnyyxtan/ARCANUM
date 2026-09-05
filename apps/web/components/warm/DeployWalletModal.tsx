@@ -11,6 +11,7 @@ import { isAddress as isViemAddress } from "viem";
 import { useAccount, usePublicClient, useSwitchChain, useWriteContract } from "wagmi";
 
 import { getArcscanAddressUrl, getArcscanTxUrl } from "@/lib/arcscan";
+import { describeChainError, errorText } from "@/lib/chain-errors";
 import {
   type DeployWalletFormState,
   allPolicyCategoriesMask,
@@ -123,13 +124,6 @@ function buildWalletPolicy(form: DeployWalletFormState) {
     escalationThreshold,
     requireAllowlist: form.requireAllowlist,
   };
-}
-
-function errorMessage(error: unknown) {
-  if (typeof error === "object" && error !== null && "shortMessage" in error) {
-    return String((error as { shortMessage?: unknown }).shortMessage);
-  }
-  return error instanceof Error ? error.message : "Transaction failed. Please retry.";
 }
 
 function walletCreatedFromReceipt(logs: readonly unknown[]) {
@@ -279,7 +273,7 @@ export function DeployWalletModal({
       );
       return persisted.dataSource;
     } catch (persistError) {
-      const message = errorMessage(persistError);
+      const message = errorText(persistError);
       setPersistenceState("supabase_failed");
       setPersistenceMessage(
         message ||
@@ -305,7 +299,7 @@ export function DeployWalletModal({
         await switchChainAsync({ chainId: arcChain.id });
       } catch (caught) {
         setStatus("error");
-        setError(errorMessage(caught));
+        setError(describeChainError(caught));
       }
       return;
     }
@@ -417,7 +411,7 @@ export function DeployWalletModal({
       }
     } catch (caught) {
       setStatus("error");
-      setError(errorMessage(caught));
+      setError(describeChainError(caught));
     } finally {
       submittingRef.current = false;
     }

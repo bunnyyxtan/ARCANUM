@@ -16,6 +16,7 @@ import { useAccount, usePublicClient, useSwitchChain, useWriteContract } from "w
 import { ConnectCta } from "@/components/warm/ConnectCta";
 import { getArcscanTxUrl } from "@/lib/arcscan";
 import { useWorkspaceMode } from "@/lib/auth-session";
+import { describeChainError, errorText } from "@/lib/chain-errors";
 import { escalationManagerAbi, escalationStatusLabels } from "@/lib/contracts";
 import { isConfiguredAddress, isZeroAddress, shortAddress } from "@/lib/format/address";
 import { formatUsd } from "@/lib/format/money";
@@ -25,13 +26,6 @@ import type { Escalation } from "@/lib/types";
 
 function isTxHashValue(value: string | null | undefined): value is `0x${string}` {
   return Boolean(value && /^0x[a-fA-F0-9]{64}$/.test(value));
-}
-
-function errorMessage(error: unknown) {
-  if (typeof error === "object" && error !== null && "shortMessage" in error) {
-    return String((error as { shortMessage?: unknown }).shortMessage);
-  }
-  return error instanceof Error ? error.message : "Transaction failed. Please retry.";
 }
 
 function allowTrustedMutation(action: string, event: ReactMouseEvent<HTMLElement>) {
@@ -222,7 +216,7 @@ function EscalationCard({
       try {
         await recordDecision.mutateAsync({ escalationKey: escalationId, txHash: hash });
       } catch (caught) {
-        syncFailed = errorMessage(caught);
+        syncFailed = errorText(caught);
       }
 
       await Promise.all([utils.escalations.list.invalidate(), utils.ledger.list.invalidate()]);
@@ -253,7 +247,7 @@ function EscalationCard({
       }
     } catch (caught) {
       setTxStage("error");
-      const message = errorMessage(caught);
+      const message = describeChainError(caught);
       setActionError(message);
       toast.error("ESCALATION ACTION FAILED", { description: message });
     } finally {

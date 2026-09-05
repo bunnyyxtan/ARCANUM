@@ -11,6 +11,7 @@ import type { Address, Hash } from "viem";
 import { useAccount, usePublicClient, useSwitchChain, useWriteContract } from "wagmi";
 
 import { useWorkspaceMode } from "@/lib/auth-session";
+import { describeChainError, errorText } from "@/lib/chain-errors";
 import {
   type DoctrineCategoryValue,
   type PolicyDraftState,
@@ -22,13 +23,6 @@ import {
 } from "@/lib/contracts";
 import { isEvmAddress, isSameAddress, shortAddress } from "@/lib/format/address";
 import { trpc } from "@/lib/trpc";
-
-function errorMessage(error: unknown) {
-  if (typeof error === "object" && error !== null && "shortMessage" in error) {
-    return String((error as { shortMessage?: unknown }).shortMessage);
-  }
-  return error instanceof Error ? error.message : "Transaction failed. Please retry.";
-}
 
 function allowTrustedMutation(action: string, event: ReactMouseEvent<HTMLElement>) {
   if (event.nativeEvent.isTrusted) {
@@ -502,7 +496,7 @@ export default function PolicyEditorPage() {
           }),
         ]);
       } catch (caught) {
-        syncFailed = errorMessage(caught);
+        syncFailed = errorText(caught);
       } finally {
         clearTimeout(syncTimer);
       }
@@ -520,7 +514,7 @@ export default function PolicyEditorPage() {
         });
       }
     } catch (caught) {
-      const message = errorMessage(caught);
+      const message = describeChainError(caught);
       setPolicyError(message);
       toast.error("POLICY UPDATE FAILED", { description: message });
     } finally {

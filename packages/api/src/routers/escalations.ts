@@ -1,4 +1,5 @@
 import {
+  ARC_NETWORK_NAME,
   escalationByTxHashInputSchema,
   escalationDecisionInputSchema,
   escalationListInputSchema,
@@ -58,7 +59,7 @@ export const escalationsRouter = router({
       if (!chainState) {
         throw new TRPCError({
           code: "NOT_FOUND",
-          message: "Escalation was not found on Arc Testnet.",
+          message: `Escalation was not found on ${ARC_NETWORK_NAME}.`,
         });
       }
       if (chainState.status === "pending") {

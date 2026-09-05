@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Address, Hash } from "viem";
 import { useAccount, usePublicClient, useSwitchChain, useWriteContract } from "wagmi";
 
+import { describeChainError } from "@/lib/chain-errors";
 import { escalationManagerAbi, escalationStatusLabels } from "@/lib/contracts";
 import { isConfiguredAddress, isZeroAddress, shortAddress } from "@/lib/format/address";
 import { formatUsd } from "@/lib/format/money";
@@ -18,13 +19,6 @@ import { trpc } from "@/lib/trpc";
 
 function isTxHashValue(value: string | null | undefined): value is `0x${string}` {
   return /^0x[a-fA-F0-9]{64}$/.test(value ?? "");
-}
-
-function errorMessage(error: unknown) {
-  if (typeof error === "object" && error !== null && "shortMessage" in error) {
-    return String((error as { shortMessage?: unknown }).shortMessage);
-  }
-  return error instanceof Error ? error.message : "Transaction failed. Please retry.";
 }
 
 type Stage = "idle" | "checking" | "wallet" | "confirming" | "pending_indexer" | "done" | "error";
@@ -237,7 +231,7 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
       }
     } catch (caught) {
       setStage("error");
-      const message = errorMessage(caught);
+      const message = describeChainError(caught);
       setActionError(message);
       const { toast } = await import("sonner");
       toast.error("ESCALATION ACTION FAILED", { description: message });

@@ -24,6 +24,7 @@ import {
 import { AddVendorModal } from "@/components/warm/AddVendorModal";
 import { ConnectCta } from "@/components/warm/ConnectCta";
 import { useWorkspaceMode } from "@/lib/auth-session";
+import { describeChainError, errorText } from "@/lib/chain-errors";
 import {
   type AddVendorFormState,
   type VendorCategoryValue,
@@ -57,13 +58,6 @@ function parseUsdcCapInput(value: string, label: string) {
     throw new Error(`${label} must be a non-negative USDC amount with up to 6 decimals.`);
   }
   return parseUnits(trimmed, 6);
-}
-
-function errorMessage(error: unknown) {
-  if (typeof error === "object" && error !== null && "shortMessage" in error) {
-    return String((error as { shortMessage?: unknown }).shortMessage);
-  }
-  return error instanceof Error ? error.message : "Transaction failed. Please retry.";
 }
 
 function allowTrustedMutation(action: string, event: ReactMouseEvent<HTMLElement>) {
@@ -129,7 +123,7 @@ export default function VendorsPage() {
       });
       return null;
     } catch (caught) {
-      const message = errorMessage(caught);
+      const message = errorText(caught);
       toast.warning("VENDOR WRITE LIVE ONCHAIN · REGISTRY NOT SYNCED", { description: message });
       return message;
     }
@@ -288,7 +282,7 @@ export default function VendorsPage() {
       }
       await utils.vendorFlags.invalidate();
     } catch (caught) {
-      setNotice(errorMessage(caught).toUpperCase());
+      setNotice(describeChainError(caught).toUpperCase());
     }
   };
 
@@ -305,7 +299,7 @@ export default function VendorsPage() {
       );
       await utils.vendorFlags.invalidate();
     } catch (caught) {
-      setNotice(errorMessage(caught).toUpperCase());
+      setNotice(describeChainError(caught).toUpperCase());
     }
   };
 
@@ -409,7 +403,7 @@ export default function VendorsPage() {
         description: "Onchain write confirmed. The record may take a moment to update.",
       });
     } catch (caught) {
-      const message = errorMessage(caught);
+      const message = describeChainError(caught);
       setVendorError(message);
       toast.error("VENDOR WRITE FAILED", { description: message });
     } finally {
@@ -478,7 +472,7 @@ export default function VendorsPage() {
         });
       }
     } catch (caught) {
-      const message = errorMessage(caught);
+      const message = describeChainError(caught);
       toast.error("VENDOR ACTION FAILED", { description: message });
     } finally {
       setVendorSaving(false);
@@ -548,7 +542,7 @@ export default function VendorsPage() {
           });
         }
       } catch (caught) {
-        const message = errorMessage(caught);
+        const message = describeChainError(caught);
         setNotice(message.toUpperCase());
         toast.error("VENDOR CAP FAILED", { description: message });
       } finally {

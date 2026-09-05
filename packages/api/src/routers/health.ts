@@ -1,3 +1,5 @@
+import { ARC_NETWORK_NAME } from "@arcanum/shared";
+
 import { readSupabaseRuntimeHealth } from "../supabase";
 import { publicProcedure, router } from "../trpc";
 
@@ -64,7 +66,7 @@ export const healthRouter = router({
       rpc: {
         status: rpc.ok ? "available" : "unavailable",
         latestBlock: rpc.ok ? rpc.data.toString() : null,
-        error: rpc.ok ? null : "Arc Testnet RPC is unavailable.",
+        error: rpc.ok ? null : `${ARC_NETWORK_NAME} RPC is unavailable.`,
       },
       deploymentMode: process.env.ARCANUM_DEPLOYMENT_MODE ?? "supabase",
     };

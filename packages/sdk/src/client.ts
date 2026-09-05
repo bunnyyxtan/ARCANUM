@@ -6,6 +6,7 @@ import {
 } from "@arcanum/contracts";
 import {
   ARC_CHAIN_ID,
+  ARC_NETWORK_NAME,
   ARC_USDC_ADDRESS,
   createPaymentIntentMessage,
   createPaymentIntentResult,
@@ -134,7 +135,7 @@ export class ArcanumClient {
     if (intent.chainId !== ARC_CHAIN_ID) {
       return paymentIntentResult(intent, {
         decision: "unsupported",
-        reason: "Only Arc Testnet payment intents are supported.",
+        reason: `Only ${ARC_NETWORK_NAME} payment intents are supported.`,
         errorCode: "UNSUPPORTED_CHAIN",
       });
     }
@@ -142,7 +143,7 @@ export class ArcanumClient {
     if (!sameAddress(intent.tokenAddress, ARC_USDC_ADDRESS)) {
       return paymentIntentResult(intent, {
         decision: "unsupported",
-        reason: "Only Arc Testnet USDC payment intents are supported.",
+        reason: `Only ${ARC_NETWORK_NAME} USDC payment intents are supported.`,
         errorCode: "UNSUPPORTED_TOKEN",
       });
     }

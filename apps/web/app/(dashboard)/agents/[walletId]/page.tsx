@@ -10,6 +10,7 @@ import type { Address, Hash } from "viem";
 import { useAccount, usePublicClient, useSwitchChain, useWriteContract } from "wagmi";
 
 import { getArcscanTxUrl } from "@/lib/arcscan";
+import { describeChainError } from "@/lib/chain-errors";
 import { guardedWalletControlAbi } from "@/lib/contracts";
 import { isEvmAddress, isSameAddress, isZeroAddress, shortAddress } from "@/lib/format/address";
 import { formatUsd, formatUsdCompact } from "@/lib/format/money";
@@ -29,13 +30,6 @@ function resolveGovernedWalletAddress(value: string | string[] | undefined): Add
     decoded = raw;
   }
   return isEvmAddress(decoded) ? (decoded as Address) : null;
-}
-
-function errorMessage(error: unknown) {
-  if (typeof error === "object" && error !== null && "shortMessage" in error) {
-    return String((error as { shortMessage?: unknown }).shortMessage);
-  }
-  return error instanceof Error ? error.message : "Transaction failed. Please retry.";
 }
 
 function allowTrustedMutation(action: string, event: ReactMouseEvent<HTMLElement>) {
@@ -160,7 +154,7 @@ function AgentSignerPanel({ governedWalletAddress }: { governedWalletAddress: Ad
     } catch (caught) {
       setWalletOwner(null);
       setReadStatus("error");
-      setReadError(errorMessage(caught));
+      setReadError(describeChainError(caught));
     }
   }, [governedWalletAddress, publicClient]);
 
@@ -286,7 +280,7 @@ function AgentSignerPanel({ governedWalletAddress }: { governedWalletAddress: Ad
       });
     } catch (caught) {
       setTxStatus(contractConfirmed ? "sync_failed" : "error");
-      setTxError(errorMessage(caught));
+      setTxError(describeChainError(caught));
     } finally {
       submittingRef.current = false;
     }
@@ -300,7 +294,7 @@ function AgentSignerPanel({ governedWalletAddress }: { governedWalletAddress: Ad
       setTxError(null);
       await switchChainAsync({ chainId: arcChain.id });
     } catch (caught) {
-      setTxError(errorMessage(caught));
+      setTxError(describeChainError(caught));
     }
   };
 

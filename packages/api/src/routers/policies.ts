@@ -1,4 +1,9 @@
-import { agentByWalletInputSchema, arcChain, policyUpdateInputSchema } from "@arcanum/shared";
+import {
+  ARC_NETWORK_NAME,
+  agentByWalletInputSchema,
+  arcChain,
+  policyUpdateInputSchema,
+} from "@arcanum/shared";
 import { TRPCError } from "@trpc/server";
 import { http, createPublicClient, isAddress } from "viem";
 import { z } from "zod";
@@ -77,7 +82,7 @@ export const policiesRouter = router({
     const bytecode = await arcReadClient.getCode({ address }).catch((error: unknown) => {
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
-        message: "Arc Testnet RPC is unavailable. Please retry.",
+        message: `${ARC_NETWORK_NAME} RPC is unavailable. Please retry.`,
         cause: error,
       });
     });
@@ -85,7 +90,7 @@ export const policiesRouter = router({
     if (!bytecode || bytecode === "0x") {
       throw new TRPCError({
         code: "NOT_FOUND",
-        message: "No governed wallet contract found at this address on Arc Testnet.",
+        message: `No governed wallet contract found at this address on ${ARC_NETWORK_NAME}.`,
       });
     }
 
@@ -116,7 +121,7 @@ export const policiesRouter = router({
     } catch (error) {
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
-        message: "Failed to read policy from Arc Testnet. Please retry.",
+        message: `Failed to read policy from ${ARC_NETWORK_NAME}. Please retry.`,
         cause: error,
       });
     }
@@ -171,7 +176,9 @@ export const policiesRouter = router({
       if (!chainPolicy) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message: "The wallet policy could not be read from Arc Testnet; nothing was recorded.",
+          message:
+            `The wallet policy could not be read from ${ARC_NETWORK_NAME}; ` +
+            "nothing was recorded.",
         });
       }
 
