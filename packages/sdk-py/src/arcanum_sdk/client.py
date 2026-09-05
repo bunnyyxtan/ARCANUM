@@ -16,7 +16,6 @@ from .abi import (
     POLICY_ENGINE_ABI,
     VENDOR_REGISTRY_ABI,
 )
-from .chains import ARC_TESTNET_USDC_ADDRESS
 from .errors import (
     AgentNotAuthorizedError,
     EscalationRequiredError,
@@ -178,7 +177,9 @@ class ArcanumClient:
             raise AgentNotAuthorizedError(signer)
         if self.wallet.functions.frozen().call():
             raise WalletFrozenError()
-        usdc = self.web3.eth.contract(address=ARC_TESTNET_USDC_ADDRESS, abi=ERC20_ABI)
+        usdc = self.web3.eth.contract(
+            address=Web3.to_checksum_address(self.chain["usdc"]), abi=ERC20_ABI
+        )
         balance = usdc.functions.balanceOf(self.wallet_address).call()
         if balance < amount:
             raise InsufficientUSDCError(amount, balance)

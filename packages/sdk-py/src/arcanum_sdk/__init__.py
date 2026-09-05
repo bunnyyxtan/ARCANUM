@@ -1,4 +1,10 @@
-from .chains import ARC_TESTNET_USDC_ADDRESS, arc_testnet
+from .chains import (
+    ARC_MAINNET_USDC_ADDRESS,
+    ARC_TESTNET_USDC_ADDRESS,
+    arc_mainnet,
+    arc_testnet,
+    resolve_chain,
+)
 from .client import ArcanumClient, AsyncArcanumClient
 from .errors import (
     AgentNotAuthorizedError,
@@ -11,6 +17,7 @@ from .errors import (
 from .types import ExecuteUSDCResult, PolicyEnvelope, SimulationResult, VendorInfo
 
 __all__ = [
+    "ARC_MAINNET_USDC_ADDRESS",
     "ARC_TESTNET_USDC_ADDRESS",
     "AgentNotAuthorizedError",
     "ArcanumClient",
@@ -24,5 +31,7 @@ __all__ = [
     "SimulationResult",
     "VendorInfo",
     "WalletFrozenError",
+    "arc_mainnet",
     "arc_testnet",
+    "resolve_chain",
 ]

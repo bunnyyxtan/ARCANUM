@@ -171,6 +171,23 @@ cd ..\..
 npm run dev
 ```
 
+## Arc Mainnet
+
+Mainnet uses a separate script, `script/DeployArcMainnet.s.sol:DeployArcMainnet`. The testnet script is unchanged and stays testnet-only.
+
+Nothing about mainnet is hardcoded, because Circle had not published the mainnet parameters when this was written. The script reads:
+
+- `ARC_MAINNET_USDC_ADDRESS` (required) - reverts if unset, zero, or an address with no code on the connected chain
+- `ARC_MAINNET_CHAIN_ID` (optional, defaults to `5042`) - the script reverts unless the connected chain matches
+- `DEPLOYER_PRIVATE_KEY` and `ANOMALY_ORACLE_PRIVATE_KEY` - same roles as on testnet
+
+Before the first mainnet deploy, confirm two things against Circle's own launch documentation:
+
+1. The real mainnet chain id. `5042` is the strongly signalled value, not a confirmed one.
+2. The USDC token address and its decimals. Native gas USDC on Arc is 18 decimals, while the ERC-20 USDC the wallets move is 6. Arcanum's amount handling assumes 6 for the token; verify before sending value.
+
+It writes `deployments/arc-mainnet.json`, including `startBlock`, which the indexer needs so Ponder does not backfill from genesis.
+
 ## Do Not Paste Publicly
 
 - `DEPLOYER_PRIVATE_KEY`
