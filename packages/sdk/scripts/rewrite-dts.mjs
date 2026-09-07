@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { copyFileSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -31,14 +31,21 @@ for (const file of readdirSync(dir)) {
 }
 if (failed) process.exit(1);
 
-const workspaceManifest = JSON.parse(
-  readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "package.json"), "utf8"),
-);
+const packageDir = join(dirname(fileURLToPath(import.meta.url)), "..");
+const workspaceManifest = JSON.parse(readFileSync(join(packageDir, "package.json"), "utf8"));
+const rootManifest = JSON.parse(readFileSync(join(packageDir, "..", "..", "package.json"), "utf8"));
+for (const file of ["README.md", "LICENSE", "CHANGELOG.md"]) {
+  copyFileSync(join(packageDir, file), join(dir, file));
+}
 const publishManifest = {
   name: "arcanum-sdk",
   version: workspaceManifest.version,
   description: workspaceManifest.description,
   license: workspaceManifest.license,
+  homepage: rootManifest.homepage,
+  repository: { ...rootManifest.repository, directory: "packages/sdk" },
+  bugs: rootManifest.bugs,
+  keywords: workspaceManifest.keywords,
   type: workspaceManifest.type,
   exports: {
     ".": {
