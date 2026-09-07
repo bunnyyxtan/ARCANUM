@@ -78,7 +78,7 @@ export default createConfig({
       // The official public RPC (rpc.testnet.arc.network) rate-limits
       // eth_getLogs so aggressively that a backfill never progresses, so the
       // dRPC public endpoint goes first and the official one is the fallback.
-      // Mainnet mirrors are unknown until launch, so mainnet uses only the
+      // No third-party mainnet mirror is configured, so mainnet uses only the
       // env override plus the configured official endpoint.
       rpc: [
         process.env.ARC_RPC_URL ??

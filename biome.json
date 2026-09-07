@@ -15,7 +15,9 @@
       "cache/**",
       "broadcast/**",
       ".ponder/**",
-      "packages/contracts/lib/**"
+      "packages/contracts/lib/**",
+      "**/drizzle/meta/**",
+      "**/generated/**"
     ]
   },
   "formatter": {
