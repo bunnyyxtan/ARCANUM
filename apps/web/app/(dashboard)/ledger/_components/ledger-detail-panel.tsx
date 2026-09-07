@@ -1,11 +1,11 @@
 import { categoryLabel, formatUsd } from "@/lib/format";
 
+import { StatusPill } from "@/components/arcanum/status-pill";
 import type { LedgerController } from "../_hooks/use-ledger-controller";
 import { datePart, timePart } from "../_lib/helpers";
 import { LedgerFlagState } from "./ledger-flag-state";
 import { LedgerNoteEditor } from "./ledger-note-editor";
 import { LedgerReviewHistory } from "./ledger-review-history";
-import { StatusPill } from "./status-pill";
 
 export function LedgerDetailPanel({ ledger }: { ledger: LedgerController }) {
   const { selection, notes, vendorFlags } = ledger;
@@ -33,7 +33,7 @@ export function LedgerDetailPanel({ ledger }: { ledger: LedgerController }) {
             flagDetail={flagDetail}
             unflagDetail={unflagDetail}
           />
-          <StatusPill status={selected.status} />
+          <StatusPill status={selected.status} tone={selected.status} />
           <button
             type="button"
             onClick={() => selection.setSelectedId(null)}

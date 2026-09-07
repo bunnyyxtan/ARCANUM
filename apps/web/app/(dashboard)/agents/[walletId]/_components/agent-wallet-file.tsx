@@ -5,9 +5,9 @@ import type { CSSProperties } from "react";
 import { shortAddress } from "@/lib/format/address";
 import { formatUsd } from "@/lib/format/money";
 
+import { StatusPill } from "@/components/arcanum/status-pill";
 import type { AgentDetailController } from "../_hooks/use-agent-detail-controller";
 import { AgentSignerPanel } from "./agent-signer-panel";
-import { StatusPill } from "./detail-primitives";
 
 export function AgentWalletFile({ controller }: { controller: AgentDetailController }) {
   const { agent, behavior, capWidth, dailyLimit, dailySpend, frozen, governedWalletAddress } =
@@ -26,7 +26,7 @@ export function AgentWalletFile({ controller }: { controller: AgentDetailControl
             Wallet file
           </h2>
         </div>
-        <StatusPill status={frozen ? "FROZEN" : "ACTIVE"} />
+        <StatusPill status={frozen ? "FROZEN" : "ACTIVE"} tone={frozen ? "frozen" : "active"} />
       </div>
       <dl className="divide-y divide-[var(--wl-line)] font-mono text-[10px]">
         {(

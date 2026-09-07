@@ -1,6 +1,8 @@
+import { Reveal } from "@/components/arcanum/reveal";
 import type { ReactNode } from "react";
 import type { DashboardController } from "../_hooks/use-dashboard-controller";
-import { CountUp, Reveal } from "./dashboard-primitives";
+
+import { CountUp } from "./count-up";
 
 type Kpi = { label: string; value: ReactNode; note: string; accent?: boolean };
 

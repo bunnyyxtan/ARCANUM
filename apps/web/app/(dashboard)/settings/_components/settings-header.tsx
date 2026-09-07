@@ -1,3 +1,5 @@
+import { Arrow } from "@/components/arcanum/arrow";
+
 import type { SettingsController } from "../_hooks/use-settings-controller";
 
 export function SettingsHeader({ settings }: { settings: SettingsController }) {
@@ -31,10 +33,7 @@ export function SettingsHeader({ settings }: { settings: SettingsController }) {
           }}
           className="warm-pill group rounded-full bg-[var(--wl-signal)] px-5 py-3 text-[12px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Invite member{" "}
-          <span className="ml-1.5 inline-block transition-transform duration-[220ms] group-hover:translate-x-1">
-            ↗
-          </span>
+          Invite member <Arrow glyph="↗" />
         </button>
         {!settings.isConnected ? (
           <span className="font-mono text-[9px] tracking-[.12em] text-[var(--wl-mute)]">

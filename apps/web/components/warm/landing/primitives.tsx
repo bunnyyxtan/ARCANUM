@@ -10,15 +10,10 @@ import {
   useState,
 } from "react";
 
+import { Arrow as SharedArrow } from "@/components/arcanum/arrow";
+
 export function Arrow() {
-  return (
-    <span
-      aria-hidden="true"
-      className="ml-2 inline-block transition-transform duration-[220ms] group-hover:translate-x-1"
-    >
-      ↗
-    </span>
-  );
+  return <SharedArrow glyph="↗" className="ml-2 inline-block" />;
 }
 
 export function XMark({ className = "h-3.5 w-3.5" }: { className?: string }) {

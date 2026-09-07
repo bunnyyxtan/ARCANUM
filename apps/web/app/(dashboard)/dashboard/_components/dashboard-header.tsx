@@ -1,6 +1,6 @@
+import { Reveal } from "@/components/arcanum/reveal";
 import Link from "next/link";
 import type { DashboardController } from "../_hooks/use-dashboard-controller";
-import { Reveal } from "./dashboard-primitives";
 
 export function DashboardHeader({ readOnly, org }: Pick<DashboardController, "readOnly" | "org">) {
   return (

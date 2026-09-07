@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 
+import { Arrow } from "@/components/arcanum/arrow";
 import type { AgentsController } from "../_hooks/use-agents-controller";
-import { Arrow } from "./agent-ui";
 
 type AgentsHeaderProps = Pick<AgentsController, "openDeploy">;
 

@@ -4,8 +4,8 @@ import type { CSSProperties } from "react";
 import { formatUsd } from "@/lib/format/money";
 import type { Agent } from "@/lib/types";
 
+import { StatusPill } from "@/components/arcanum/status-pill";
 import { agentStatus } from "../_lib/agent-status";
-import { StatusPill } from "./agent-ui";
 
 interface AgentRowProps {
   agent: Agent;
@@ -28,7 +28,10 @@ export function AgentRow({ agent, index, selected, selectAgent }: AgentRowProps)
       }`}
     >
       <div className="max-md:mb-4">
-        <StatusPill status={status} />
+        <StatusPill
+          status={status}
+          tone={status === "ACTIVE" ? "active" : status === "FROZEN" ? "frozen" : "idle"}
+        />
       </div>
       <div className="max-md:mb-4">
         <span className="mb-1 block font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-mute)] md:hidden">

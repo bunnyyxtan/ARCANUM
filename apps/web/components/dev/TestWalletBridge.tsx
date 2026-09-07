@@ -10,7 +10,7 @@ import { useEffect } from "react";
  *
  * Private keys never reach the browser: every signing request is forwarded to
  * the dev-only /api/dev/test-wallet route, which signs server side. Read calls
- * go straight to the Arc Testnet RPC.
+ * go straight to the Arc RPC the env points at.
  *
  * Switch personas with ?testWallet=agent|operator|vendorA|vendorB - the choice
  * is remembered in localStorage so navigation keeps the same identity.

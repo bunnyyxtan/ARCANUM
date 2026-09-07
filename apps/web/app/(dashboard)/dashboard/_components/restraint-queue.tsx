@@ -1,7 +1,8 @@
+import { Arrow } from "@/components/arcanum/arrow";
+import { Reveal } from "@/components/arcanum/reveal";
 import { categoryLabel, formatUsdCompact } from "@/lib/format";
 import Link from "next/link";
 import type { DashboardController } from "../_hooks/use-dashboard-controller";
-import { Arrow, Reveal } from "./dashboard-primitives";
 
 export function RestraintQueue({
   readOnly,

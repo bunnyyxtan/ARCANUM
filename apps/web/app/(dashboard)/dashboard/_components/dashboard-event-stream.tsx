@@ -1,10 +1,12 @@
+import { Arrow } from "@/components/arcanum/arrow";
+import { Reveal } from "@/components/arcanum/reveal";
+import { StatusPill } from "@/components/arcanum/status-pill";
 import { ConnectCta } from "@/components/warm/ConnectCta";
 import { formatUsdCompact } from "@/lib/format";
 import type { GovernanceEvent } from "@/lib/types";
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import type { DashboardController } from "../_hooks/use-dashboard-controller";
-import { Arrow, Reveal, StatusPill } from "./dashboard-primitives";
 
 function StreamRow({ event, index }: { event: GovernanceEvent; index: number }) {
   // Every row opens its full movement in the ledger: the compact stream hides
@@ -20,7 +22,7 @@ function StreamRow({ event, index }: { event: GovernanceEvent; index: number }) 
           {event.timestamp}
         </span>
         <span className="md:hidden">
-          <StatusPill status={event.status} />
+          <StatusPill status={event.status} tone={event.status} />
         </span>
       </div>
       <span className="truncate text-[12px] font-medium">{event.label}</span>
@@ -32,7 +34,7 @@ function StreamRow({ event, index }: { event: GovernanceEvent; index: number }) 
         {event.amount > 0 ? formatUsdCompact(event.amount) : "-"}
       </span>
       <span className="hidden md:block">
-        <StatusPill status={event.status} />
+        <StatusPill status={event.status} tone={event.status} />
       </span>
     </Link>
   );

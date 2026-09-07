@@ -4,8 +4,8 @@ import type { CSSProperties } from "react";
 
 import { formatUsd } from "@/lib/format/money";
 
+import { Arrow } from "@/components/arcanum/arrow";
 import type { AgentDetailController } from "../_hooks/use-agent-detail-controller";
-import { Arrow } from "./detail-primitives";
 
 export function AgentHeaderSummary({ controller }: { controller: AgentDetailController }) {
   const {
@@ -58,7 +58,7 @@ export function AgentHeaderSummary({ controller }: { controller: AgentDetailCont
             className="warm-pill group rounded-full bg-[var(--wl-signal)] px-5 py-3 text-[11px] font-semibold text-white"
           >
             Edit policy
-            <Arrow />
+            <Arrow className="ml-1" />
           </Link>
         </div>
       </div>

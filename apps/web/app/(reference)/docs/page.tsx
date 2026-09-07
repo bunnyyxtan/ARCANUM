@@ -4,6 +4,8 @@ import { ARC_NETWORK_BADGE } from "@arcanum/shared";
 import Link from "next/link";
 import { type ReactNode, useState } from "react";
 
+import { Reveal } from "@/components/arcanum/reveal";
+
 const sections = [
   { id: "orientation", number: "00", label: "Read this first" },
   { id: "wallet", number: "01", label: "Deploy a wallet" },
@@ -12,10 +14,6 @@ const sections = [
   { id: "runbook", number: "04", label: "Operator runbook" },
   { id: "sdk", number: "05", label: "SDK quickstart" },
 ];
-
-function Reveal({ children, index = 0 }: { children: ReactNode; index?: number }) {
-  return <div className={`docs-reveal docs-delay-${index}`}>{children}</div>;
-}
 
 function Note({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -69,7 +67,7 @@ export default function DocsPage() {
         @media (prefers-reduced-motion:reduce){.docs-reveal{animation:none}.docs-nav-link,.docs-warm-button,.docs-warm-button:before{transition:none}}
       `}</style>
       <div className="mx-auto max-w-[1400px] px-5 py-9 md:px-8 md:py-12">
-        <Reveal>
+        <Reveal className="docs-reveal" delayClassPrefix="docs-delay-">
           <div className="flex flex-col justify-between gap-8 border-b border-[var(--wl-line)] pb-10 lg:flex-row lg:items-end">
             <div>
               <p className="font-mono text-[10px] uppercase tracking-[.2em] text-[var(--wl-signal)]">
@@ -124,7 +122,7 @@ export default function DocsPage() {
           </nav>
 
           <article className="min-w-0 pt-10">
-            <Reveal>
+            <Reveal className="docs-reveal" delayClassPrefix="docs-delay-">
               <section
                 id="orientation"
                 className="docs-anchor border-b border-[var(--wl-line)] pb-12"
@@ -161,7 +159,7 @@ export default function DocsPage() {
               </section>
             </Reveal>
 
-            <Reveal index={1}>
+            <Reveal className="docs-reveal" delayClassPrefix="docs-delay-" index={1}>
               <section id="wallet" className="docs-anchor border-b border-[var(--wl-line)] py-14">
                 <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
                   01 / DEPLOY A GOVERNED WALLET
@@ -217,7 +215,7 @@ export default function DocsPage() {
               </section>
             </Reveal>
 
-            <Reveal index={2}>
+            <Reveal className="docs-reveal" delayClassPrefix="docs-delay-" index={2}>
               <section id="doctrine" className="docs-anchor border-b border-[var(--wl-line)] py-14">
                 <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
                   02 / AUTHOR A POLICY DOCTRINE
@@ -263,7 +261,7 @@ export default function DocsPage() {
               </section>
             </Reveal>
 
-            <Reveal index={3}>
+            <Reveal className="docs-reveal" delayClassPrefix="docs-delay-" index={3}>
               <section
                 id="restraint"
                 className="docs-anchor border-b border-[var(--wl-line)] py-14"
@@ -306,7 +304,7 @@ export default function DocsPage() {
               </section>
             </Reveal>
 
-            <Reveal index={1}>
+            <Reveal className="docs-reveal" delayClassPrefix="docs-delay-" index={1}>
               <section id="runbook" className="docs-anchor border-b border-[var(--wl-line)] py-14">
                 <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
                   04 / OPERATOR RUNBOOK
@@ -346,7 +344,7 @@ export default function DocsPage() {
               </section>
             </Reveal>
 
-            <Reveal index={2}>
+            <Reveal className="docs-reveal" delayClassPrefix="docs-delay-" index={2}>
               <section id="sdk" className="docs-anchor py-14">
                 <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
                   05 / SDK QUICKSTART

@@ -3,8 +3,8 @@ import type { CSSProperties } from "react";
 import { categoryLabel, formatUsdCompact } from "@/lib/format";
 import type { LedgerEntry } from "@/lib/types";
 
+import { StatusPill } from "@/components/arcanum/status-pill";
 import { timePart } from "../_lib/helpers";
-import { StatusPill } from "./status-pill";
 
 type LedgerRowProps = {
   row: LedgerEntry;
@@ -95,7 +95,7 @@ export function LedgerRow({ row, index, selected, flagged, onSelect }: LedgerRow
         <span className="font-mono text-[8px] uppercase tracking-[.12em] text-[var(--wl-mute)] md:hidden">
           Status
         </span>
-        <StatusPill status={row.status} />
+        <StatusPill status={row.status} tone={row.status} />
       </span>
     </button>
   );

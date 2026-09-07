@@ -5,6 +5,7 @@ import { ARC_EXPLORER_URL, ARC_NETWORK_BADGE, ARC_NETWORK_NAME, arcChain } from 
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Link from "next/link";
 
+import { Arrow } from "@/components/arcanum/arrow";
 import { ThemeToggle } from "@/components/warm/ThemeToggle";
 import { useEffect, useRef, useState } from "react";
 import type { Address, Hash } from "viem";
@@ -378,9 +379,7 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
                   >
                     <span className="relative z-10">
                       {!isConnected ? "Connect to approve" : "Approve transaction"}{" "}
-                      <span className="ml-2 inline-block transition-transform duration-[220ms] group-hover:translate-x-1 group-disabled:translate-x-0">
-                        ↗
-                      </span>
+                      <Arrow glyph="↗" className="ml-2 inline-block group-disabled:translate-x-0" />
                     </span>
                   </button>
                   <button
@@ -391,9 +390,7 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
                   >
                     <span className="relative z-10">
                       Reject{" "}
-                      <span className="ml-2 inline-block transition-transform duration-[220ms] group-hover:translate-x-1 group-disabled:translate-x-0">
-                        ↗
-                      </span>
+                      <Arrow glyph="↗" className="ml-2 inline-block group-disabled:translate-x-0" />
                     </span>
                   </button>
                 </div>

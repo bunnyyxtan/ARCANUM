@@ -2,9 +2,10 @@ import Link from "next/link";
 
 import { formatUsd } from "@/lib/format/money";
 
+import { Arrow } from "@/components/arcanum/arrow";
+import { StatusPill } from "@/components/arcanum/status-pill";
 import type { AgentDetailController } from "../_hooks/use-agent-detail-controller";
 import { ledgerStatusLabel } from "../_lib/agent-detail-helpers";
-import { Arrow, StatusPill } from "./detail-primitives";
 
 export function AgentDecisionRecord({ controller }: { controller: AgentDetailController }) {
   const { decisions, ledgerQuery } = controller;
@@ -24,7 +25,7 @@ export function AgentDecisionRecord({ controller }: { controller: AgentDetailCon
           className="group font-mono text-[9px] uppercase tracking-[.13em] text-[var(--wl-body)] hover:text-[var(--wl-signal)]"
         >
           Open ledger
-          <Arrow />
+          <Arrow className="ml-1" />
         </Link>
       </div>
       {ledgerQuery.isLoading ? (
@@ -96,7 +97,7 @@ export function AgentDecisionRecord({ controller }: { controller: AgentDetailCon
                 </span>
                 {formatUsd(row.amount)}
               </span>
-              <StatusPill status={ledgerStatusLabel(row.status)} />
+              <StatusPill status={ledgerStatusLabel(row.status)} tone={row.status} />
             </div>
           ))}
         </div>

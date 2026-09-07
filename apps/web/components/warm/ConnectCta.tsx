@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { Arrow } from "@/components/arcanum/arrow";
 import { ConnectModal } from "@/components/warm/landing/ConnectModal";
 
 /**
@@ -26,9 +27,7 @@ export function ConnectCta({ note, className }: Readonly<{ note?: string; classN
         className="warm-pill group mt-6 rounded-full bg-[var(--wl-signal)] px-6 py-3 text-[12px] font-semibold text-white"
       >
         Connect wallet
-        <span className="ml-1.5 inline-block transition-transform duration-[220ms] group-hover:translate-x-1">
-          ↗
-        </span>
+        <Arrow glyph="↗" />
       </button>
       <ConnectModal open={open} onClose={() => setOpen(false)} />
     </div>

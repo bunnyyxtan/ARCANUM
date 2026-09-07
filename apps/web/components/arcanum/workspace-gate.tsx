@@ -4,6 +4,7 @@ import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useAccount } from "wagmi";
 
+import { Arrow } from "@/components/arcanum/arrow";
 import { useWorkspaceMode } from "@/lib/auth-session";
 import { trpc } from "@/lib/trpc";
 
@@ -185,9 +186,7 @@ export function WorkspaceGate({ children }: Readonly<{ children: ReactNode }>) {
               className="warm-pill group rounded-full bg-[var(--wl-signal)] px-6 py-3 text-[12px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
               {pending ? "Saving…" : needsWorkspace ? "Create workspace" : "Save name"}
-              <span className="ml-1.5 inline-block transition-transform duration-[220ms] group-hover:translate-x-1">
-                ↗
-              </span>
+              <Arrow glyph="↗" />
             </button>
             {needsName ? (
               <button

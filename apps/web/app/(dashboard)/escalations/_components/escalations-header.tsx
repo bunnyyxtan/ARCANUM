@@ -1,3 +1,5 @@
+import { Arrow } from "@/components/arcanum/arrow";
+
 interface EscalationsHeaderProps {
   reviewNext: () => void;
 }
@@ -21,10 +23,7 @@ export function EscalationsHeader({ reviewNext }: Readonly<EscalationsHeaderProp
         onClick={reviewNext}
         className="arc-pill group w-fit rounded-full bg-[var(--wl-signal)] px-5 py-3 text-[11px] font-semibold text-[var(--wl-bg)]"
       >
-        Review next{" "}
-        <span className="ml-2 transition-transform duration-[220ms] group-hover:translate-x-1">
-          ↗
-        </span>
+        Review next <Arrow glyph="↗" className="ml-2" />
       </button>
     </div>
   );

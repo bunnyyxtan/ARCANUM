@@ -4,8 +4,9 @@ import type { CSSProperties } from "react";
 
 import { formatUsd } from "@/lib/format/money";
 
+import { Arrow } from "@/components/arcanum/arrow";
+import { StatusPill } from "@/components/arcanum/status-pill";
 import type { AgentsController } from "../_hooks/use-agents-controller";
-import { Arrow, StatusPill } from "./agent-ui";
 
 type AgentDetailPanelProps = Pick<AgentsController, "selectedAgent" | "selectedStatus">;
 
@@ -26,7 +27,16 @@ export function AgentDetailPanel({ selectedAgent, selectedStatus }: AgentDetailP
                 {selectedAgent.name}
               </h2>
             </div>
-            <StatusPill status={selectedStatus} />
+            <StatusPill
+              status={selectedStatus}
+              tone={
+                selectedStatus === "ACTIVE"
+                  ? "active"
+                  : selectedStatus === "FROZEN"
+                    ? "frozen"
+                    : "idle"
+              }
+            />
           </div>
           <div className="border-b border-[var(--wl-line)] py-6">
             <p className="font-mono text-[9px] uppercase tracking-[.14em] text-[var(--wl-secondary)]">

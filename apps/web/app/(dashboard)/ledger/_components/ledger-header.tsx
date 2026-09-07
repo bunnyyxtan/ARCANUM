@@ -1,3 +1,4 @@
+import { Arrow } from "@/components/arcanum/arrow";
 import { formatUsd } from "@/lib/format";
 
 import type { LedgerController } from "../_hooks/use-ledger-controller";
@@ -26,10 +27,7 @@ export function LedgerHeader({ ledger }: { ledger: LedgerController }) {
             onClick={() => ledgerExport.setExportOpen((open) => !open)}
             className="arc-pill group w-fit rounded-full bg-[var(--wl-signal)] px-5 py-3 text-[11px] font-semibold text-[var(--wl-bg)]"
           >
-            Export report{" "}
-            <span className="ml-2 transition-transform duration-[220ms] group-hover:translate-x-1">
-              ↗
-            </span>
+            Export report <Arrow glyph="↗" className="ml-2" />
           </button>
           {ledgerExport.exportOpen && (
             <>

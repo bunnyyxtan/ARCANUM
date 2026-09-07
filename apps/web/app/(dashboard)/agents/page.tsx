@@ -34,7 +34,16 @@ export default function AgentsPage() {
           setQuery={agents.setQuery}
         />
         <section className="grid gap-10 xl:grid-cols-[minmax(0,1.65fr)_minmax(330px,.75fr)]">
-          <AgentsRegistry {...agents} />
+          <AgentsRegistry
+            visibleAgents={agents.visibleAgents}
+            agents={agents.agents}
+            selectedAgent={agents.selectedAgent}
+            setSelectedId={agents.setSelectedId}
+            readOnly={agents.readOnly}
+            agentsQuery={agents.agentsQuery}
+            openDeploy={agents.openDeploy}
+            clearFilters={agents.clearFilters}
+          />
           <AgentDetailPanel
             selectedAgent={agents.selectedAgent}
             selectedStatus={agents.selectedStatus}
