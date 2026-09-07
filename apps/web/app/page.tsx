@@ -37,6 +37,14 @@ export default function LandingPage() {
   const railRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // A wallet app's in-app browser lands here from the deep link in the
+    // connect modal. Reopen the modal so the visitor picks up where they were.
+    if (new URLSearchParams(window.location.search).get("connect") === "1") {
+      setConnectOpen(true);
+    }
+  }, []);
+
+  useEffect(() => {
     const ids = ["governed", "policies", "record", "contact"];
     const sections = ids.map((id) => document.getElementById(id)).filter(Boolean) as HTMLElement[];
     const observer = new IntersectionObserver(
@@ -235,6 +243,13 @@ export default function LandingPage() {
                     Launch Dashboard
                     <Arrow />
                   </button>
+                  <MagneticAnchor
+                    href="/dashboard?preview=1"
+                    className="warm-pill warm-pill-ghost inline-flex items-center gap-2 rounded-full border border-[var(--wl-line)] px-6 py-3.5 text-[12px] font-semibold text-[var(--wl-ink)]"
+                  >
+                    Preview read-only
+                    <Arrow />
+                  </MagneticAnchor>
                   <MagneticAnchor
                     href="/docs"
                     className="warm-pill warm-pill-ghost inline-flex items-center gap-2 rounded-full border border-[var(--wl-line)] px-6 py-3.5 text-[12px] font-semibold text-[var(--wl-ink)]"

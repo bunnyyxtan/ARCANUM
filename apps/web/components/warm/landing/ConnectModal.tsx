@@ -4,100 +4,20 @@ import { ARC_NETWORK_BADGE } from "@arcanum/shared";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import type { Connector } from "wagmi";
 import { ConnectorAlreadyConnectedError, useAccount, useConnect, useDisconnect } from "wagmi";
 
-type WalletOption = { name: string; hint: string; logo: string; match: string[] };
+import {
+  type Environment,
+  WALLET_OPTIONS,
+  type WalletOption,
+  availabilityHint,
+  availabilityOf,
+  dappUrlFor,
+  detectEnvironment,
+  resolveConnector,
+} from "./wallet-options";
 
-const WALLET_OPTIONS: WalletOption[] = [
-  {
-    name: "MetaMask",
-    hint: "Browser extension",
-    logo: "/wallets/metamask.png",
-    match: ["metamask", "io.metamask"],
-  },
-  {
-    name: "Rabby",
-    hint: "Browser extension",
-    logo: "/wallets/rabby.png",
-    match: ["rabby", "io.rabby"],
-  },
-  {
-    name: "OKX Wallet",
-    hint: "Extension · mobile",
-    logo: "/wallets/okx.png",
-    match: ["okx", "com.okex.wallet"],
-  },
-  {
-    name: "Phantom",
-    hint: "Extension · mobile",
-    logo: "/wallets/phantom.png",
-    match: ["phantom", "app.phantom"],
-  },
-  {
-    name: "Coinbase Wallet",
-    hint: "Extension · mobile",
-    logo: "/wallets/coinbase.png",
-    match: ["coinbase", "coinbasewalletsdk", "com.coinbase.wallet"],
-  },
-];
-
-function matchesOption(connector: Connector, option: WalletOption): boolean {
-  return option.match.some(
-    (needle) =>
-      connector.id.toLowerCase().includes(needle) || connector.name.toLowerCase().includes(needle),
-  );
-}
-
-/**
- * A wallet extension announced through EIP-6963 shows up as its own injected
- * connector with the extension's reverse-DNS id (io.rabby, app.phantom, ...).
- * The generic "injected" connector is wagmi's catch-all, not a detection.
- */
-function isAnnouncedExtension(connector: Connector): boolean {
-  return connector.type === "injected" && connector.id !== "injected";
-}
-
-function isDetected(connectors: readonly Connector[], option: WalletOption): boolean {
-  return connectors.some(
-    (connector) => isAnnouncedExtension(connector) && matchesOption(connector, option),
-  );
-}
-
-function resolveConnector(
-  connectors: readonly Connector[],
-  option: WalletOption,
-): Connector | undefined {
-  // 1. The extension the user actually asked for, announced via EIP-6963.
-  const announced = connectors.find(
-    (connector) => isAnnouncedExtension(connector) && matchesOption(connector, option),
-  );
-  if (announced) return announced;
-  // 2. SDK-backed connectors (e.g. Coinbase Wallet) work without an extension.
-  const sdk = connectors.find((connector) => matchesOption(connector, option));
-  if (sdk) return sdk;
-  // 3. Development-only test wallet stands in for every option locally.
-  const testWallet = connectors.find(
-    (connector) =>
-      connector.id.toLowerCase().includes("arcanum") ||
-      connector.name.toLowerCase().includes("arcanum"),
-  );
-  if (testWallet) return testWallet;
-  // 4. Legacy browsers: a wallet sits on window.ethereum without announcing
-  // itself. Only use the catch-all when NO extension announced itself, so
-  // clicking Phantom can never secretly open MetaMask.
-  const anyAnnounced = connectors.some(isAnnouncedExtension);
-  if (
-    !anyAnnounced &&
-    typeof window !== "undefined" &&
-    (window as { ethereum?: unknown }).ethereum
-  ) {
-    return connectors.find(
-      (connector) => connector.id === "injected" || connector.type === "injected",
-    );
-  }
-  return undefined;
-}
+const DESKTOP_ENVIRONMENT: Environment = { isMobile: false, hasInjectedProvider: false };
 
 export function ConnectModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const router = useRouter();
@@ -106,6 +26,13 @@ export function ConnectModal({ open, onClose }: { open: boolean; onClose: () => 
   const { disconnectAsync } = useDisconnect();
   const [chosenWallet, setChosenWallet] = useState<WalletOption | null>(null);
   const [connecting, setConnecting] = useState(false);
+  const [environment, setEnvironment] = useState<Environment>(DESKTOP_ENVIRONMENT);
+
+  useEffect(() => {
+    setEnvironment(
+      detectEnvironment(navigator.userAgent, Boolean((window as { ethereum?: unknown }).ethereum)),
+    );
+  }, []);
 
   // Once a wallet is connected while the modal is open, hand off to the dashboard.
   useEffect(() => {
@@ -142,8 +69,21 @@ export function ConnectModal({ open, onClose }: { open: boolean; onClose: () => 
   };
 
   const handleConnect = async (option: WalletOption) => {
-    const connector = resolveConnector(connectors, option);
+    const connector = resolveConnector(connectors, option, environment.hasInjectedProvider);
     if (!connector) {
+      const availability = availabilityOf(option, connectors, environment);
+      if (availability === "mobile-app" && option.mobileLink) {
+        // No extension exists on a phone. Hand the page to the wallet app's
+        // own browser, where the wallet is injected and this modal reopens.
+        window.location.assign(option.mobileLink(dappUrlFor(window.location.origin)));
+        return;
+      }
+      if (availability === "desktop-only") {
+        toast.error(
+          `DESKTOP ONLY / ${option.name} has no mobile app browser. Use MetaMask, Phantom, OKX or Coinbase Wallet here, or open Arcanum on desktop`,
+        );
+        return;
+      }
       toast.error(`NOT DETECTED / install the ${option.name} extension and reload`);
       return;
     }
@@ -199,7 +139,7 @@ export function ConnectModal({ open, onClose }: { open: boolean; onClose: () => 
       }}
     >
       <div
-        className="warm-modal-panel w-full max-w-[440px] border border-[var(--wl-line-strong2)] bg-[var(--wl-bg)] shadow-[0_24px_60px_-16px_rgba(var(--wl-ink-rgb),.35)]"
+        className="warm-modal-panel max-h-[calc(100dvh-40px)] w-full max-w-[440px] overflow-y-auto border border-[var(--wl-line-strong2)] bg-[var(--wl-bg)] shadow-[0_24px_60px_-16px_rgba(var(--wl-ink-rgb),.35)]"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-[var(--wl-line-soft)] px-7 py-4">
@@ -266,49 +206,60 @@ export function ConnectModal({ open, onClose }: { open: boolean; onClose: () => 
               policies.
             </p>
             <div className="mt-6 space-y-2.5">
-              {WALLET_OPTIONS.map((option) => (
-                <button
-                  key={option.name}
-                  type="button"
-                  onClick={() => handleConnect(option)}
-                  className="warm-wallet-option flex w-full items-center gap-3.5 border border-[var(--wl-line)] bg-[var(--wl-glass)] px-3.5 py-3 text-left"
-                >
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center border border-[var(--wl-line-soft)] bg-[var(--wl-surface)]">
-                    <img src={option.logo} alt="" className="h-6 w-6 object-contain" />
-                  </span>
-                  <span className="flex-1">
-                    <span className="flex items-center gap-2">
-                      <span className="block text-[13.5px] font-semibold tracking-[-.01em]">
-                        {option.name}
-                      </span>
-                      {isDetected(connectors, option) && (
-                        <span className="rounded-full bg-[var(--wl-green-tint)] px-2 py-0.5 font-mono text-[8px] tracking-[.1em] text-[var(--wl-green)]">
-                          INSTALLED
+              {WALLET_OPTIONS.map((option) => {
+                const availability = availabilityOf(option, connectors, environment);
+                return (
+                  <button
+                    key={option.name}
+                    type="button"
+                    onClick={() => handleConnect(option)}
+                    className="warm-wallet-option flex w-full items-center gap-3.5 border border-[var(--wl-line)] bg-[var(--wl-glass)] px-3.5 py-3 text-left"
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center border border-[var(--wl-line-soft)] bg-[var(--wl-surface)]">
+                      <img src={option.logo} alt="" className="h-6 w-6 object-contain" />
+                    </span>
+                    <span className="flex-1">
+                      <span className="flex items-center gap-2">
+                        <span className="block text-[13.5px] font-semibold tracking-[-.01em]">
+                          {option.name}
                         </span>
-                      )}
+                        {availability === "installed" && (
+                          <span className="rounded-full bg-[var(--wl-green-tint)] px-2 py-0.5 font-mono text-[8px] tracking-[.1em] text-[var(--wl-green)]">
+                            INSTALLED
+                          </span>
+                        )}
+                      </span>
+                      <span className="mt-0.5 block font-mono text-[9px] tracking-[.06em] text-[var(--wl-muted)]">
+                        {availabilityHint(availability).toUpperCase()}
+                      </span>
                     </span>
-                    <span className="mt-0.5 block font-mono text-[9px] tracking-[.06em] text-[var(--wl-muted)]">
-                      {option.hint.toUpperCase()}
+                    <span className="warm-wallet-arrow font-mono text-[12px] text-[var(--wl-signal)]">
+                      {availability === "mobile-app" ? "↗" : "→"}
                     </span>
-                  </span>
-                  <span className="warm-wallet-arrow font-mono text-[12px] text-[var(--wl-signal)]">
-                    →
-                  </span>
-                </button>
-              ))}
+                  </button>
+                );
+              })}
             </div>
-            <div className="mt-5 flex items-center justify-between border-t border-[var(--wl-line-soft)] pt-4">
-              <p className="font-mono text-[9px] tracking-[.12em] text-[var(--wl-muted)]">
-                SIWE · {ARC_NETWORK_BADGE}
-              </p>
-              <button
-                type="button"
-                onClick={readOnly}
-                className="warm-link font-mono text-[10px] tracking-[.12em] text-[var(--wl-secondary)] hover:text-[var(--wl-ink)]"
-              >
-                CONTINUE READ-ONLY
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={readOnly}
+              className="warm-wallet-option mt-5 flex w-full items-center gap-3.5 border border-dashed border-[var(--wl-line)] px-3.5 py-3 text-left"
+            >
+              <span className="flex-1">
+                <span className="block text-[13.5px] font-semibold tracking-[-.01em]">
+                  Browse read-only
+                </span>
+                <span className="mt-0.5 block font-mono text-[9px] tracking-[.06em] text-[var(--wl-muted)]">
+                  NO WALLET NEEDED · WRITES STAY LOCKED
+                </span>
+              </span>
+              <span className="warm-wallet-arrow font-mono text-[12px] text-[var(--wl-signal)]">
+                →
+              </span>
+            </button>
+            <p className="mt-4 font-mono text-[9px] tracking-[.12em] text-[var(--wl-muted)]">
+              SIWE · {ARC_NETWORK_BADGE}
+            </p>
           </div>
         )}
       </div>
