@@ -23,7 +23,13 @@ export type SupabaseRuntimeHealth = {
   };
   indexerCheckpoint: {
     status: "available" | "empty" | "unavailable" | "not_configured";
+    /** Last block that carried an Arcanum contract event. */
     lastIndexedBlock: number | null;
+    /**
+     * Highest chain block the read model is confirmed level with. On a quiet
+     * chain this runs ahead of lastIndexedBlock, which only moves on events.
+     */
+    lastSeenChainBlock: number | null;
     lastIndexedAt: string | null;
     error: string | null;
   };
@@ -68,6 +74,7 @@ export async function readSupabaseRuntimeHealth(ctx: ApiContext): Promise<Supaba
       indexerCheckpoint: {
         status: "not_configured",
         lastIndexedBlock: null,
+        lastSeenChainBlock: null,
         lastIndexedAt: null,
         error: "Supabase URL is missing.",
       },
@@ -85,6 +92,7 @@ export async function readSupabaseRuntimeHealth(ctx: ApiContext): Promise<Supaba
       indexerCheckpoint: {
         status: "not_configured",
         lastIndexedBlock: null,
+        lastSeenChainBlock: null,
         lastIndexedAt: null,
         error: "SUPABASE_SERVICE_ROLE_KEY is missing.",
       },
@@ -123,6 +131,7 @@ export async function readSupabaseRuntimeHealth(ctx: ApiContext): Promise<Supaba
     indexerCheckpoint: {
       status: checkpoint.ok ? (checkpointRow ? "available" : "empty") : "unavailable",
       lastIndexedBlock: checkpointRow ? checkpointBlock(checkpointRow) : null,
+      lastSeenChainBlock: checkpointRow ? checkpointSeenBlock(checkpointRow) : null,
       lastIndexedAt: checkpointRow ? checkpointTime(checkpointRow) : null,
       error: checkpointError,
     },
@@ -214,6 +223,24 @@ function checkpointBlock(row: SupabaseRow) {
     "block_number",
     "block",
   ]);
+}
+
+/**
+ * The chain height the read model is known to be level with.
+ *
+ * The catch-up job records `last_seen_block` when Ponder reports the backfill
+ * reached the tip; the indexer records `last_block` when it handles an event.
+ * An event can land after the last recorded catch-up, so the greater of the
+ * two is the honest answer, and with no catch-up recorded yet the event height
+ * is all that is known.
+ */
+export function checkpointSeenBlock(row: SupabaseRow) {
+  const seen = numberOrNull(row, ["last_seen_block"]);
+  const indexed = checkpointBlock(row);
+  if (seen === null) {
+    return indexed;
+  }
+  return indexed === null ? seen : Math.max(seen, indexed);
 }
 
 function checkpointTime(row: SupabaseRow) {

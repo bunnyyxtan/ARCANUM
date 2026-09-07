@@ -58,6 +58,7 @@ export const healthRouter = router({
               : "available"
             : supabase.indexerCheckpoint.status,
         lastIndexedBlock: supabase.indexerCheckpoint.lastIndexedBlock,
+        lastSeenChainBlock: supabase.indexerCheckpoint.lastSeenChainBlock,
         lastIndexedAt,
         error:
           supabase.indexerCheckpoint.error ??

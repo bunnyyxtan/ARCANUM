@@ -4,6 +4,8 @@ import { useState } from "react";
 
 import { trpc } from "@/lib/trpc";
 
+import { indexerMetricLabel } from "../_lib/indexer-metric-label";
+
 export type HealthState = "OPERATIONAL" | "DEGRADED" | "CHECKING";
 
 export function useStatusController() {
@@ -50,16 +52,19 @@ export function useStatusController() {
   return {
     checkedAt: checkedAt ?? (health.isLoading ? "Checking…" : "Not checked yet"),
     indexer: {
+      // The headline number is the chain height the read model is level with,
+      // so it compares directly with the RPC card. The last event block sits in
+      // the label: on a quiet chain it is older, and that is not lag.
       metric: health.isLoading
         ? "…"
-        : indexer?.lastIndexedBlock != null
-          ? String(indexer.lastIndexedBlock)
+        : (indexer?.lastSeenChainBlock ?? indexer?.lastIndexedBlock) != null
+          ? String(indexer?.lastSeenChainBlock ?? indexer?.lastIndexedBlock)
           : "-",
       metricLabel: health.isLoading
         ? "CHECKING"
         : indexer?.status === "stale"
           ? "STALE / SYNC LAG"
-          : (indexer?.error ?? "LAST SYNCED BLOCK"),
+          : (indexer?.error ?? indexerMetricLabel(indexer)),
       state: indexerState,
     },
     isFetching: health.isFetching,
