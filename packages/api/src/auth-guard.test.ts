@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createContext } from "./context";
 import { protectedProcedure, router } from "./trpc";
@@ -47,14 +47,8 @@ describe("protectedProcedure auth guard", () => {
 });
 
 describe("allowDevAuth environment derivation", () => {
-  const originalNodeEnv = process.env.NODE_ENV;
-  const originalRequireAuth = process.env.ARCANUM_REQUIRE_AUTH;
-
   afterEach(() => {
-    if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
-    else process.env.NODE_ENV = originalNodeEnv;
-    if (originalRequireAuth === undefined) delete process.env.ARCANUM_REQUIRE_AUTH;
-    else process.env.ARCANUM_REQUIRE_AUTH = originalRequireAuth;
+    vi.unstubAllEnvs();
   });
 
   function derivedAllowDevAuth() {
@@ -68,28 +62,28 @@ describe("allowDevAuth environment derivation", () => {
   }
 
   it("is disabled when NODE_ENV=production", () => {
-    process.env.NODE_ENV = "production";
-    delete process.env.ARCANUM_REQUIRE_AUTH;
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("ARCANUM_REQUIRE_AUTH", undefined);
     expect(derivedAllowDevAuth()).toBe(false);
   });
 
   it("is disabled when ARCANUM_REQUIRE_AUTH=true even outside production", () => {
-    process.env.NODE_ENV = "development";
-    process.env.ARCANUM_REQUIRE_AUTH = "true";
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("ARCANUM_REQUIRE_AUTH", "true");
     expect(derivedAllowDevAuth()).toBe(false);
   });
 
   it("is disabled when NODE_ENV is unset or non-development (staging/preview fail closed)", () => {
-    delete process.env.NODE_ENV;
-    delete process.env.ARCANUM_REQUIRE_AUTH;
+    vi.stubEnv("NODE_ENV", undefined);
+    vi.stubEnv("ARCANUM_REQUIRE_AUTH", undefined);
     expect(derivedAllowDevAuth()).toBe(false);
-    process.env.NODE_ENV = "test";
+    vi.stubEnv("NODE_ENV", "test");
     expect(derivedAllowDevAuth()).toBe(false);
   });
 
   it("is enabled only in development with ARCANUM_REQUIRE_AUTH unset", () => {
-    process.env.NODE_ENV = "development";
-    delete process.env.ARCANUM_REQUIRE_AUTH;
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("ARCANUM_REQUIRE_AUTH", undefined);
     expect(derivedAllowDevAuth()).toBe(true);
   });
 });

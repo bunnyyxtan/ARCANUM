@@ -13,6 +13,7 @@
   "scripts": {
     "build": "tsc --noEmit -p tsconfig.json",
     "lint": "biome check .",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
