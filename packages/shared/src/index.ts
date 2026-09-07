@@ -30,4 +30,5 @@ export {
   arcChain,
 } from "./chains/network";
 export * from "./workspace";
+export * from "./deployment";
 export * from "./schemas";

@@ -85,7 +85,7 @@ const intent = {
   tokenSymbol: "USDC" as const,
   amount: "12.50",
   purpose: "Arc Testnet API invoice",
-  idempotencyKey: "invoice-2026-0001",
+  reference: "invoice-2026-0001",
 };
 
 const signedIntent = await arcanum.signPaymentIntent(intent);
@@ -100,6 +100,10 @@ if (decision.decision === "allow" || decision.decision === "escalate") {
   console.log(result.decision, result.txHash, result.escalationId);
 }
 ```
+
+`reference` is descriptive metadata, not an idempotency guarantee. If receipt
+waiting times out, do not submit the transfer again: keep the transaction hash
+and call `await arcanum.confirm(txHash)`. Resubmission can transfer funds twice.
 
 Use the signed intent when calling the Arcanum API from an agent service. The
 signature proves that the authorized agent signer approved the exact request;

@@ -18,7 +18,7 @@ remappings = [
 
 [profile.ci]
 fuzz = { runs = 5000 }
-invariant = { runs = 1000, depth = 256, fail_on_revert = false }
+invariant = { runs = 1000, depth = 256, fail_on_revert = true }
 
 [fmt]
 line_length = 100

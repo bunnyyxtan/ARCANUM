@@ -1,131 +1,421 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.24;
 
+import { MessageHashUtils } from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import { StdInvariant } from "forge-std/StdInvariant.sol";
+import { Test } from "forge-std/Test.sol";
 
-import { ArcanumTestBase } from "./ArcanumTestBase.sol";
+import { AnomalyOracle } from "../src/AnomalyOracle.sol";
+import { EscalationManager } from "../src/EscalationManager.sol";
 import { GuardedWallet } from "../src/GuardedWallet.sol";
-import { PolicyEnvelope } from "../src/libraries/PolicyTypes.sol";
+import { IEscalationManager } from "../src/interfaces/IEscalationManager.sol";
+import { ModuleKeys, PolicyEnvelope, RestraintCategory } from "../src/libraries/PolicyTypes.sol";
+import { MockUSDC } from "../src/mocks/MockUSDC.sol";
+import { VendorRegistry } from "../src/VendorRegistry.sol";
+import { ArcanumTestBase } from "./ArcanumTestBase.sol";
 
-contract ProtocolAttackerHandler is ArcanumTestBase {
-    GuardedWallet internal targetWallet;
-    address internal attackerAddress;
+contract ProtocolHandler is Test {
+    GuardedWallet internal wallet;
+    EscalationManager internal manager;
+    AnomalyOracle internal oracle;
+    MockUSDC internal usdc;
 
-    constructor(GuardedWallet wallet_, address attacker_) {
-        targetWallet = wallet_;
-        attackerAddress = attacker_;
+    address internal owner;
+    address internal signer;
+    address internal councilOne;
+    address internal councilTwo;
+    address internal councilThree;
+    address internal allowedVendor;
+    address internal blockedVendor;
+    address internal unknownVendor;
+    uint256 internal oraclePrivateKey;
+
+    bytes32[] internal escalationIds;
+    mapping(bytes32 escalationId => uint256 amount) internal escalationAmounts;
+    mapping(bytes32 escalationId => uint256 count) internal executionCounts;
+    mapping(bytes32 escalationId => uint256 version) internal heldCouncilVersions;
+    mapping(bytes32 escalationId => uint256 version) internal executionCouncilVersions;
+
+    uint256 public ghostTransferOut;
+    uint256 public ghostOwnerWithdrawals;
+    uint256 public ghostEscalatedOut;
+    bool public ghostTransferWhileFrozen;
+
+    constructor(
+        GuardedWallet wallet_,
+        EscalationManager manager_,
+        AnomalyOracle oracle_,
+        MockUSDC usdc_,
+        address owner_,
+        address signer_,
+        address[3] memory council_,
+        address[3] memory vendors_,
+        uint256 oraclePrivateKey_
+    ) {
+        wallet = wallet_;
+        manager = manager_;
+        oracle = oracle_;
+        usdc = usdc_;
+        owner = owner_;
+        signer = signer_;
+        councilOne = council_[0];
+        councilTwo = council_[1];
+        councilThree = council_[2];
+        allowedVendor = vendors_[0];
+        blockedVendor = vendors_[1];
+        unknownVendor = vendors_[2];
+        oraclePrivateKey = oraclePrivateKey_;
     }
 
-    function tryExecute(uint96 rawAmount) external {
-        uint256 amount = bound(uint256(rawAmount), 1, 1_000_000_000);
-        vm.prank(attackerAddress);
-        (bool executeCallOk,) = address(targetWallet)
-            .call(
-                abi.encodeWithSelector(
-                    targetWallet.executeUSDC.selector, address(0xAAAA), amount, bytes("attack")
-                )
+    function executeUSDC(uint256 vendorSeed, uint256 rawAmount) external {
+        uint256 balanceBefore = usdc.balanceOf(address(wallet));
+        if (balanceBefore == 0) {
+            return;
+        }
+        address to = _vendor(vendorSeed);
+        uint256 amount = bound(rawAmount, 1, balanceBefore);
+        uint256 nonceBefore = manager.walletNonces(address(wallet));
+        bool frozenBefore = wallet.frozen();
+        uint256 timestamp = block.timestamp;
+
+        vm.prank(signer);
+        (bool ok,) = address(wallet).call(
+            abi.encodeWithSelector(wallet.executeUSDC.selector, to, amount, bytes("invariant"))
+        );
+        uint256 balanceAfter = usdc.balanceOf(address(wallet));
+        _recordTransfer(balanceBefore, balanceAfter, frozenBefore);
+
+        if (ok && manager.walletNonces(address(wallet)) == nonceBefore + 1) {
+            bytes32 escalationId =
+                keccak256(abi.encode(address(wallet), to, amount, nonceBefore + 1, timestamp));
+            escalationIds.push(escalationId);
+            escalationAmounts[escalationId] = amount;
+            heldCouncilVersions[escalationId] = manager.councilVersion(address(wallet));
+        }
+    }
+
+    function setPolicy(
+        uint256 rawPerTx,
+        uint256 rawDaily,
+        uint256 rawMonthly,
+        uint256 rawThreshold,
+        bool requireAllowlist,
+        bool freezeOnBlockedVendor
+    ) external {
+        uint256 minimumDaily = wallet.dailySpent();
+        if (minimumDaily == 0) {
+            minimumDaily = 1;
+        }
+        uint256 daily = bound(rawDaily, minimumDaily, 4_000_000_000);
+        uint256 perTx = bound(rawPerTx, 1, daily);
+        uint256 monthly = bound(rawMonthly, daily, 120_000_000_000);
+        uint256 threshold = bound(rawThreshold, 1, perTx);
+        PolicyEnvelope memory nextPolicy = PolicyEnvelope({
+            perTxCap: perTx,
+            daily24hCap: daily,
+            monthlyCap: monthly,
+            allowedCategories: type(uint256).max,
+            escalationThreshold: threshold,
+            requireAllowlist: requireAllowlist,
+            freezeOnBlockedVendor: freezeOnBlockedVendor
+        });
+
+        vm.prank(owner);
+        (bool ok,) =
+            address(wallet).call(abi.encodeWithSelector(wallet.setPolicy.selector, nextPolicy));
+        ok;
+    }
+
+    function freezeOrUnfreeze(bool shouldFreeze) external {
+        vm.prank(owner);
+        if (shouldFreeze) {
+            (bool ok,) = address(wallet).call(
+                abi.encodeWithSelector(wallet.freeze.selector, bytes("invariant"))
             );
-        executeCallOk;
+            ok;
+        } else {
+            (bool ok,) = address(wallet).call(abi.encodeWithSelector(wallet.unfreeze.selector));
+            ok;
+        }
     }
 
-    function tryOwnerFunctions(uint96 rawAmount) external {
-        PolicyEnvelope memory nextPolicy = defaultPolicy();
-        nextPolicy.perTxCap = bound(uint256(rawAmount), 1, 100 * USDC_1);
-        vm.startPrank(attackerAddress);
-        (bool setPolicyOk,) = address(targetWallet)
-            .call(abi.encodeWithSelector(targetWallet.setPolicy.selector, nextPolicy));
-        (bool addSignerOk,) = address(targetWallet)
-            .call(abi.encodeWithSelector(targetWallet.addSigner.selector, attackerAddress));
-        (bool unfreezeOk,) =
-            address(targetWallet).call(abi.encodeWithSelector(targetWallet.unfreeze.selector));
-        setPolicyOk;
-        addSignerOk;
-        unfreezeOk;
+    function withdrawUSDC(uint256 rawAmount) external {
+        uint256 balanceBefore = usdc.balanceOf(address(wallet));
+        if (balanceBefore == 0) {
+            return;
+        }
+        uint256 amount = bound(rawAmount, 1, balanceBefore);
+        vm.prank(owner);
+        (bool ok,) = address(wallet).call(
+            abi.encodeWithSelector(wallet.withdrawUSDC.selector, address(0xD00D), amount)
+        );
+        if (ok) {
+            ghostOwnerWithdrawals += balanceBefore - usdc.balanceOf(address(wallet));
+        }
+    }
+
+    function resolveEscalation(uint256 idSeed, uint256 councilSeed, bool approve) external {
+        if (escalationIds.length == 0) {
+            return;
+        }
+        bytes32 escalationId = escalationIds[idSeed % escalationIds.length];
+        if (manager.statusOf(escalationId) != IEscalationManager.Status.PENDING) {
+            return;
+        }
+        address council = _council(councilSeed);
+        uint256 balanceBefore = usdc.balanceOf(address(wallet));
+        bool frozenBefore = wallet.frozen();
+
+        vm.prank(council);
+        if (approve) {
+            (bool ok,) = address(manager).call(
+                abi.encodeWithSelector(manager.approve.selector, escalationId)
+            );
+            ok;
+        } else {
+            (bool ok,) =
+                address(manager).call(abi.encodeWithSelector(manager.reject.selector, escalationId));
+            ok;
+        }
+
+        uint256 balanceAfter = usdc.balanceOf(address(wallet));
+        _recordTransfer(balanceBefore, balanceAfter, frozenBefore);
+        if (
+            manager.statusOf(escalationId) == IEscalationManager.Status.EXECUTED
+                && executionCounts[escalationId] == 0
+        ) {
+            executionCounts[escalationId] = 1;
+            executionCouncilVersions[escalationId] = manager.councilVersion(address(wallet));
+            ghostEscalatedOut += balanceBefore - balanceAfter;
+        }
+    }
+
+    function configureEscalation(uint256 rawSubset, uint256 rawThreshold, uint256 rawExpiry)
+        external
+    {
+        uint256 subset = (rawSubset % 7) + 1;
+        uint256 memberCount;
+        for (uint256 i = 0; i < 3; ++i) {
+            if ((subset & (uint256(1) << i)) != 0) {
+                ++memberCount;
+            }
+        }
+
+        address[] memory council = new address[](memberCount);
+        uint256 nextIndex;
+        for (uint256 i = 0; i < 3; ++i) {
+            if ((subset & (uint256(1) << i)) != 0) {
+                council[nextIndex++] = _council(i);
+            }
+        }
+        uint8 threshold = uint8(bound(rawThreshold, 1, memberCount));
+        uint64 expiry = uint64(bound(rawExpiry, 1 hours, 3 days));
+
+        vm.prank(owner);
+        (bool ok,) = address(wallet).call(
+            abi.encodeWithSelector(wallet.configureEscalation.selector, council, threshold, expiry)
+        );
+        ok;
+    }
+
+    function cancelEscalation(uint256 idSeed) external {
+        if (escalationIds.length == 0) {
+            return;
+        }
+        bytes32 escalationId = escalationIds[idSeed % escalationIds.length];
+        if (manager.statusOf(escalationId) != IEscalationManager.Status.PENDING) {
+            return;
+        }
+
+        vm.prank(owner);
+        (bool ok,) = address(wallet).call(
+            abi.encodeWithSelector(wallet.cancelEscalation.selector, escalationId)
+        );
+        ok;
+    }
+
+    function rotateVendorRegistry() external {
+        VendorRegistry nextRegistry = new VendorRegistry();
+        vm.startPrank(owner);
+        (bool rotated,) = address(wallet).call(
+            abi.encodeWithSelector(
+                wallet.rotateModule.selector, ModuleKeys.VENDOR_REGISTRY, address(nextRegistry)
+            )
+        );
+        if (rotated) {
+            wallet.addVendor(
+                allowedVendor, uint8(RestraintCategory.API), 0, keccak256(bytes("allowed"))
+            );
+            wallet.addVendor(
+                blockedVendor, uint8(RestraintCategory.DATA), 0, keccak256(bytes("blocked"))
+            );
+            wallet.blockVendor(blockedVendor);
+        }
         vm.stopPrank();
+    }
+
+    function oracleScoreAndFreeze(uint256 rawScore) external {
+        uint256 score = bound(rawScore, wallet.anomalyFreezeThresholdBps() + 1, 10_000);
+        uint256 deadline = block.timestamp + 1 days;
+        uint256 nonce = oracle.scoreNonce(address(wallet));
+        bytes32 digest = keccak256(
+            abi.encodePacked(
+                "ARCANUM_ANOMALY_SCORE",
+                block.chainid,
+                address(oracle),
+                address(wallet),
+                score,
+                nonce,
+                deadline
+            )
+        );
+        (uint8 v, bytes32 r, bytes32 s) =
+            vm.sign(oraclePrivateKey, MessageHashUtils.toEthSignedMessageHash(digest));
+        bytes memory signature = abi.encodePacked(r, s, v);
+        (bool submitted,) = address(oracle).call(
+            abi.encodeWithSelector(
+                oracle.submitScore.selector, address(wallet), score, deadline, signature
+            )
+        );
+        if (!submitted) {
+            return;
+        }
+        (bool frozen,) = address(oracle).call(
+            abi.encodeWithSelector(
+                oracle.triggerFreeze.selector, address(wallet), bytes("invariant")
+            )
+        );
+        frozen;
+    }
+
+    function warpForward(uint256 rawSeconds) external {
+        vm.warp(block.timestamp + bound(rawSeconds, 0, 2 days));
+    }
+
+    function escalationCount() external view returns (uint256) {
+        return escalationIds.length;
+    }
+
+    function escalationAt(uint256 index)
+        external
+        view
+        returns (
+            bytes32 id,
+            uint256 amount,
+            uint256 executionCount,
+            uint256 heldCouncilVersion,
+            uint256 executionCouncilVersion
+        )
+    {
+        id = escalationIds[index];
+        amount = escalationAmounts[id];
+        executionCount = executionCounts[id];
+        heldCouncilVersion = heldCouncilVersions[id];
+        executionCouncilVersion = executionCouncilVersions[id];
+    }
+
+    function _recordTransfer(uint256 beforeBalance, uint256 afterBalance, bool frozenBefore)
+        private
+    {
+        if (afterBalance >= beforeBalance) {
+            return;
+        }
+        uint256 delta = beforeBalance - afterBalance;
+        ghostTransferOut += delta;
+        if (frozenBefore) {
+            ghostTransferWhileFrozen = true;
+        }
+    }
+
+    function _vendor(uint256 seed) private view returns (address) {
+        uint256 index = seed % 3;
+        if (index == 0) {
+            return allowedVendor;
+        }
+        if (index == 1) {
+            return blockedVendor;
+        }
+        return unknownVendor;
+    }
+
+    function _council(uint256 seed) private view returns (address) {
+        uint256 index = seed % 3;
+        if (index == 0) {
+            return councilOne;
+        }
+        if (index == 1) {
+            return councilTwo;
+        }
+        return councilThree;
     }
 }
 
 contract Invariants is StdInvariant, ArcanumTestBase {
-    ProtocolAttackerHandler private handler;
-    address private attacker = address(0xBAD);
-    address[] private deployedWallets;
-    bytes32 private expiredEscalationId;
-    uint256 private expiredWalletBalance;
+    ProtocolHandler private handler;
+    uint256 private initialMint;
 
     function setUp() public {
         setUpProtocol();
         deployDefaultWallet();
-        handler = new ProtocolAttackerHandler(wallet, attacker);
+        initialMint = usdc.balanceOf(address(wallet));
+
+        address[3] memory council = [councilOne, councilTwo, councilThree];
+        address[3] memory vendors = [openAi, evilVendor, recipient];
+        handler = new ProtocolHandler(
+            wallet,
+            escalationManager,
+            anomalyOracle,
+            usdc,
+            owner,
+            signer,
+            council,
+            vendors,
+            oraclePrivateKey
+        );
         targetContract(address(handler));
+    }
 
-        for (uint160 i = 1; i <= 50; ++i) {
-            address deployer = address(i + 0x9000);
-            address targetOwner = address(i + 0xA000);
-            vm.prank(deployer);
-            deployedWallets.push(
-                factory.createWallet(
-                    targetOwner,
-                    "Wallet",
-                    defaultPolicy(),
-                    _oneSigner(address(i + 0xB000)),
-                    defaultCouncil(),
-                    2
-                )
-            );
+    function invariant_NoTransferExecutesWhileFrozen() public view {
+        assertFalse(handler.ghostTransferWhileFrozen());
+    }
+
+    function invariant_DailySpendNeverExceedsCurrentPolicyCap() public view {
+        (, uint256 daily24hCap,,,,,) = wallet.policy();
+        assertLe(wallet.dailySpent(), daily24hCap);
+    }
+
+    function invariant_EscalationsExecuteAtMostOnceAndReconcile() public view {
+        uint256 executedTotal;
+        uint256 count = handler.escalationCount();
+        for (uint256 i = 0; i < count; ++i) {
+            (bytes32 id, uint256 amount, uint256 executionCount,,) = handler.escalationAt(i);
+            assertLe(executionCount, 1);
+            if (escalationManager.statusOf(id) == IEscalationManager.Status.EXECUTED) {
+                executedTotal += amount;
+                assertEq(executionCount, 1);
+            }
         }
-
-        uint256 timestamp = block.timestamp;
-        vm.prank(signer);
-        wallet.executeUSDC(awsBedrock, 73 * USDC_1, bytes("expires"));
-        expiredEscalationId =
-            escalationIdFor(address(wallet), awsBedrock, 73 * USDC_1, 1, timestamp);
-        expiredWalletBalance = usdc.balanceOf(address(wallet));
-        vm.warp(block.timestamp + 1 hours + 1);
-        escalationManager.sweepExpired(expiredEscalationId);
+        assertEq(handler.ghostEscalatedOut(), executedTotal);
     }
 
-    function invariant_NoProtocolAddressCanMoveFunds() public view {
-        assertEq(usdc.balanceOf(attacker), 0);
-        assertEq(usdc.balanceOf(address(handler)), 0);
-    }
-
-    function invariant_NoUpgradeKeyOnWallets() public {
-        assertFalse(_selectorSucceeds(0x3659cfe6));
-        assertFalse(_selectorSucceeds(0x4f1ef286));
-        assertFalse(_selectorSucceeds(0x52d1902d));
-        assertFalse(_selectorSucceeds(0x5c60da1b));
-        assertFalse(_selectorSucceeds(0xf851a440));
-    }
-
-    function invariant_PolicyEnforcementIsOnChain() public {
-        vm.prank(signer);
-        (bool ok,) = address(wallet)
-            .call(
-                abi.encodeWithSelector(
-                    wallet.executeUSDC.selector, openAi, 101 * USDC_1, bytes("over cap")
-                )
-            );
-        assertFalse(ok);
-    }
-
-    function invariant_AnyoneCanDeploy() public view {
-        assertEq(deployedWallets.length, 50);
-        for (uint256 i = 0; i < deployedWallets.length; ++i) {
-            assertGt(deployedWallets[i].code.length, 0);
+    function invariant_ExecutedEscalationsUseTheirHeldCouncilVersion() public view {
+        uint256 count = handler.escalationCount();
+        for (uint256 i = 0; i < count; ++i) {
+            (bytes32 id,,, uint256 heldCouncilVersion, uint256 executionCouncilVersion) =
+                handler.escalationAt(i);
+            (,,,,,,,, IEscalationManager.Status status,, uint256 storedCouncilVersion) =
+                escalationManager.getEscalation(id);
+            assertEq(storedCouncilVersion, heldCouncilVersion);
+            if (status == IEscalationManager.Status.EXECUTED) {
+                assertEq(executionCouncilVersion, heldCouncilVersion);
+            }
         }
     }
 
-    function invariant_ExpiredEscalationsDoNotExecute() public view {
-        assertEq(usdc.balanceOf(address(wallet)), expiredWalletBalance);
-        assertEq(usdc.balanceOf(awsBedrock), 0);
-    }
-
-    function _selectorSucceeds(bytes4 selector) private returns (bool ok) {
-        (ok,) = address(wallet).call(abi.encodeWithSelector(selector, address(0), bytes("")));
-    }
-
-    function _oneSigner(address signer_) private pure returns (address[] memory signers) {
-        signers = new address[](1);
-        signers[0] = signer_;
+    function invariant_WalletBalanceReconcilesAllOutflows() public view {
+        assertEq(
+            usdc.balanceOf(address(wallet)),
+            initialMint - handler.ghostTransferOut() - handler.ghostOwnerWithdrawals()
+        );
     }
 }

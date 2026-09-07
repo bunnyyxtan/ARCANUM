@@ -3,45 +3,51 @@
     "type": "constructor",
     "inputs": [
       {
+        "name": "owner_",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
         "name": "usdc_",
         "type": "address",
         "internalType": "address"
       },
       {
-        "name": "policyEngine_",
-        "type": "address",
-        "internalType": "contract IPolicyEngine"
-      },
-      {
-        "name": "escalationManager_",
-        "type": "address",
-        "internalType": "contract IEscalationManager"
-      },
-      {
-        "name": "anomalyOracle_",
-        "type": "address",
-        "internalType": "contract IAnomalyOracle"
-      },
-      {
-        "name": "vendorRegistry_",
-        "type": "address",
-        "internalType": "contract IVendorRegistry"
+        "name": "initialDefaults",
+        "type": "tuple",
+        "internalType": "struct WalletFactory.Defaults",
+        "components": [
+          {
+            "name": "policyEngine",
+            "type": "address",
+            "internalType": "contract IPolicyEngine"
+          },
+          {
+            "name": "escalationManager",
+            "type": "address",
+            "internalType": "contract IEscalationManager"
+          },
+          {
+            "name": "anomalyOracle",
+            "type": "address",
+            "internalType": "contract IAnomalyOracle"
+          },
+          {
+            "name": "vendorRegistry",
+            "type": "address",
+            "internalType": "contract IVendorRegistry"
+          }
+        ]
       }
     ],
     "stateMutability": "nonpayable"
   },
   {
     "type": "function",
-    "name": "anomalyOracle",
+    "name": "acceptOwnership",
     "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract IAnomalyOracle"
-      }
-    ],
-    "stateMutability": "view"
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -73,7 +79,7 @@
             "internalType": "uint256"
           },
           {
-            "name": "monthlyRollingCap",
+            "name": "monthlyCap",
             "type": "uint256",
             "internalType": "uint256"
           },
@@ -89,6 +95,11 @@
           },
           {
             "name": "requireAllowlist",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "freezeOnBlockedVendor",
             "type": "bool",
             "internalType": "bool"
           }
@@ -108,6 +119,11 @@
         "name": "escalationThreshold",
         "type": "uint8",
         "internalType": "uint8"
+      },
+      {
+        "name": "escalationExpirySeconds",
+        "type": "uint64",
+        "internalType": "uint64"
       }
     ],
     "outputs": [
@@ -121,13 +137,41 @@
   },
   {
     "type": "function",
-    "name": "escalationManager",
+    "name": "defaults",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "policyEngine",
+        "type": "address",
+        "internalType": "contract IPolicyEngine"
+      },
+      {
+        "name": "escalationManager",
+        "type": "address",
+        "internalType": "contract IEscalationManager"
+      },
+      {
+        "name": "anomalyOracle",
+        "type": "address",
+        "internalType": "contract IAnomalyOracle"
+      },
+      {
+        "name": "vendorRegistry",
+        "type": "address",
+        "internalType": "contract IVendorRegistry"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "defaultsVersion",
     "inputs": [],
     "outputs": [
       {
         "name": "",
-        "type": "address",
-        "internalType": "contract IEscalationManager"
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -153,13 +197,26 @@
   },
   {
     "type": "function",
-    "name": "policyEngine",
+    "name": "owner",
     "inputs": [],
     "outputs": [
       {
         "name": "",
         "type": "address",
-        "internalType": "contract IPolicyEngine"
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "pendingOwner",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "stateMutability": "view"
@@ -204,7 +261,7 @@
             "internalType": "uint256"
           },
           {
-            "name": "monthlyRollingCap",
+            "name": "monthlyCap",
             "type": "uint256",
             "internalType": "uint256"
           },
@@ -220,6 +277,11 @@
           },
           {
             "name": "requireAllowlist",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "freezeOnBlockedVendor",
             "type": "bool",
             "internalType": "bool"
           }
@@ -239,6 +301,11 @@
         "name": "escalationThreshold",
         "type": "uint8",
         "internalType": "uint8"
+      },
+      {
+        "name": "escalationExpirySeconds",
+        "type": "uint64",
+        "internalType": "uint64"
       }
     ],
     "outputs": [
@@ -249,6 +316,61 @@
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "renounceOwnership",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setDefaults",
+    "inputs": [
+      {
+        "name": "nextDefaults",
+        "type": "tuple",
+        "internalType": "struct WalletFactory.Defaults",
+        "components": [
+          {
+            "name": "policyEngine",
+            "type": "address",
+            "internalType": "contract IPolicyEngine"
+          },
+          {
+            "name": "escalationManager",
+            "type": "address",
+            "internalType": "contract IEscalationManager"
+          },
+          {
+            "name": "anomalyOracle",
+            "type": "address",
+            "internalType": "contract IAnomalyOracle"
+          },
+          {
+            "name": "vendorRegistry",
+            "type": "address",
+            "internalType": "contract IVendorRegistry"
+          }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "transferOwnership",
+    "inputs": [
+      {
+        "name": "newOwner",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -264,17 +386,79 @@
     "stateMutability": "view"
   },
   {
-    "type": "function",
-    "name": "vendorRegistry",
-    "inputs": [],
-    "outputs": [
+    "type": "event",
+    "name": "DefaultsUpdated",
+    "inputs": [
       {
-        "name": "",
+        "name": "version",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "policyEngine",
         "type": "address",
-        "internalType": "contract IVendorRegistry"
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "escalationManager",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "anomalyOracle",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "vendorRegistry",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
       }
     ],
-    "stateMutability": "view"
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OwnershipTransferStarted",
+    "inputs": [
+      {
+        "name": "previousOwner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "newOwner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OwnershipTransferred",
+    "inputs": [
+      {
+        "name": "previousOwner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "newOwner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
   },
   {
     "type": "event",
@@ -299,6 +483,12 @@
         "internalType": "string"
       },
       {
+        "name": "defaultsVersion",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
         "name": "timestamp",
         "type": "uint256",
         "indexed": false,
@@ -306,6 +496,33 @@
       }
     ],
     "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "NotContract",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "OwnableInvalidOwner",
+    "inputs": [
+      {
+        "name": "owner",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "OwnableUnauthorizedAccount",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
   },
   {
     "type": "error",

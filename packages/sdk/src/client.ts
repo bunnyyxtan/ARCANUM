@@ -15,9 +15,11 @@ import {
 import {
   http,
   type Address,
+  type Hash,
   type Hex,
   createPublicClient,
   createWalletClient,
+  decodeErrorResult,
   decodeEventLog,
   encodeEventTopics,
   encodeFunctionData,
@@ -32,10 +34,12 @@ import {
   EscalationRequiredError,
   InsufficientUSDCError,
   PolicyDeniedError,
+  TransferRevertedError,
   WalletFrozenError,
 } from "./errors";
 import type {
   ArcanumClientConfig,
+  Escalation,
   EscalationResolved,
   ExecuteUSDCInput,
   ExecuteUSDCResult,
@@ -59,8 +63,17 @@ const REASONS = [
   "BLOCKED_VENDOR",
   "CATEGORY_DISABLED",
   "MONTHLY_CAP",
+  "PER_VENDOR_CAP",
 ] as const;
-const ESCALATION_STATUSES = ["PENDING", "EXECUTED", "REJECTED", "EXPIRED"] as const;
+const ESCALATION_STATUSES = [
+  "PENDING",
+  "EXECUTED",
+  "REJECTED",
+  "EXPIRED",
+  "DENIED",
+  "CANCELLED",
+  "INVALIDATED",
+] as const;
 
 export class ArcanumClient {
   readonly walletAddress: Address;
@@ -238,7 +251,7 @@ export class ArcanumClient {
         amount: BigInt(preflight.amountBaseUnits),
         reason: intent.purpose,
         metadata: {
-          idempotencyKey: intent.idempotencyKey,
+          reference: intent.reference,
           tokenSymbol: intent.tokenSymbol ?? "USDC",
         },
       });
@@ -269,6 +282,7 @@ export class ArcanumClient {
       args: [input.to, input.amount, reasonBytes(input.reason, input.metadata)],
     });
     const receipt = await this.publicClient.waitForTransactionReceipt({ hash: txHash });
+    await this.assertReceiptSucceeded(txHash, receipt.status, receipt.blockNumber);
     const escalationId = findEscalationId(receipt.logs);
 
     if (simulation.verdict === "ESCALATE") {
@@ -302,11 +316,46 @@ export class ArcanumClient {
     return {
       perTxCap: policy[0],
       daily24hCap: policy[1],
-      monthlyRollingCap: policy[2],
+      monthlyCap: policy[2],
       allowedCategories: policy[3],
       escalationThreshold: policy[4],
       requireAllowlist: policy[5],
+      freezeOnBlockedVendor: policy[6],
     };
+  }
+
+  async getEscalation(escalationId: Hex): Promise<Escalation> {
+    const manager = await this.escalationManager();
+    const escalation = await this.publicClient.readContract({
+      address: manager,
+      abi: EscalationManagerAbi,
+      functionName: "getEscalation",
+      args: [escalationId],
+    });
+
+    return {
+      wallet: escalation[0],
+      to: escalation[1],
+      amount: escalation[2],
+      reason: escalation[3],
+      createdAt: escalation[4],
+      expiresAt: escalation[5],
+      threshold: escalation[6],
+      signaturesCount: escalation[7],
+      status: escalationStatus(escalation[8]),
+      policyVersion: escalation[9],
+      heldCouncilVersion: escalation[10],
+    };
+  }
+
+  /**
+   * Confirms a submitted hash. After a receipt timeout, confirm the original hash:
+   * submitting the same reference again can execute the transfer twice.
+   */
+  async confirm(txHash: Hash) {
+    const receipt = await this.publicClient.waitForTransactionReceipt({ hash: txHash });
+    await this.assertReceiptSucceeded(txHash, receipt.status, receipt.blockNumber);
+    return receipt;
   }
 
   async getDailySpent(): Promise<bigint> {
@@ -379,7 +428,7 @@ export class ArcanumClient {
           args: [escalationId],
         }),
       );
-      const status = ESCALATION_STATUSES[statusIndex] ?? "PENDING";
+      const status = escalationStatus(statusIndex);
 
       if (status !== lastStatus) {
         lastStatus = status;
@@ -471,6 +520,44 @@ export class ArcanumClient {
       abi: GuardedWalletAbi,
       functionName: "vendorRegistry",
     });
+  }
+
+  private async assertReceiptSucceeded(
+    txHash: Hash,
+    status: "success" | "reverted",
+    blockNumber: bigint,
+  ) {
+    if (status === "success") {
+      return;
+    }
+    throw new TransferRevertedError(txHash, await this.recoverRevertName(txHash, blockNumber));
+  }
+
+  private async recoverRevertName(txHash: Hash, blockNumber: bigint) {
+    try {
+      const transaction = await this.publicClient.getTransaction({ hash: txHash });
+      await this.publicClient.call({
+        account: transaction.from,
+        to: transaction.to ?? undefined,
+        data: transaction.input,
+        value: transaction.value,
+        blockNumber,
+      });
+      return undefined;
+    } catch (error) {
+      const data = findHexData(error);
+      if (data === undefined) {
+        return undefined;
+      }
+      try {
+        return decodeErrorResult({ abi: GuardedWalletAbi, data }).errorName;
+      } catch (decodeError) {
+        if (decodeError instanceof Error && decodeError.name === "AbiErrorSignatureNotFoundError") {
+          return undefined;
+        }
+        throw decodeError;
+      }
+    }
   }
 
   private logEscalationLink(escalationId?: Hex) {
@@ -580,6 +667,9 @@ function paymentIntentExecutionErrorResult(
   preflight: PaymentIntentResult,
   error: unknown,
 ): PaymentIntentResult {
+  if (error instanceof TransferRevertedError) {
+    throw error;
+  }
   if (error instanceof ArcanumError) {
     return createPaymentIntentResult(intent, {
       decision: verdictToPaymentDecision(error.verdict),
@@ -620,4 +710,29 @@ function paymentIntentResult(
 
 function sameAddress(a: Address | string, b: Address | string) {
   return a.toLowerCase() === b.toLowerCase();
+}
+
+function escalationStatus(index: number): EscalationResolved["status"] {
+  const status = ESCALATION_STATUSES[index];
+  if (status === undefined) {
+    throw new Error(`Unknown escalation status: ${index}`);
+  }
+  return status;
+}
+
+function findHexData(value: unknown, seen = new Set<object>()): Hex | undefined {
+  if (typeof value === "string" && /^0x[0-9a-fA-F]{8,}$/.test(value)) {
+    return value as Hex;
+  }
+  if (typeof value !== "object" || value === null || seen.has(value)) {
+    return undefined;
+  }
+  seen.add(value);
+  for (const nested of Object.values(value)) {
+    const data = findHexData(nested, seen);
+    if (data !== undefined) {
+      return data;
+    }
+  }
+  return undefined;
 }

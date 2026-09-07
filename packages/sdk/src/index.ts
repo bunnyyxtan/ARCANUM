@@ -14,11 +14,13 @@ export {
   EscalationRequiredError,
   InsufficientUSDCError,
   PolicyDeniedError,
+  TransferRevertedError,
   WalletFrozenError,
 } from "./errors";
 export type { ArcanumErrorCode, ArcanumVerdict } from "./errors";
 export type {
   ArcanumClientConfig,
+  Escalation,
   EscalationResolved,
   ExecuteUSDCInput,
   ExecuteUSDCResult,

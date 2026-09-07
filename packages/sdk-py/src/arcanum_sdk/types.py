@@ -8,10 +8,31 @@ Verdict = Literal["ALLOW", "ESCALATE", "DENY", "FREEZE"]
 class PolicyEnvelope:
     per_tx_cap: int
     daily_24h_cap: int
-    monthly_rolling_cap: int
+    monthly_cap: int
     allowed_categories: int
     escalation_threshold: int
     require_allowlist: bool
+    freeze_on_blocked_vendor: bool
+
+
+EscalationStatus = Literal[
+    "PENDING", "EXECUTED", "REJECTED", "EXPIRED", "DENIED", "CANCELLED", "INVALIDATED"
+]
+
+
+@dataclass(frozen=True)
+class Escalation:
+    wallet: str
+    to: str
+    amount: int
+    reason: bytes
+    created_at: int
+    expires_at: int
+    threshold: int
+    signatures_count: int
+    status: EscalationStatus
+    policy_version: int
+    held_council_version: int
 
 
 @dataclass(frozen=True)

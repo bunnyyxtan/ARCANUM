@@ -11,27 +11,22 @@ permissions:
 
 jobs:
   foundry:
-    # Dependency restore is pinned to exact release tags, so the job is
-    # deterministic and safe to run on every push.
+    # Third-party actions are pinned to immutable commits.
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: packages/contracts
     steps:
-      - uses: actions/checkout@v7
-      - uses: foundry-rs/foundry-toolchain@v1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: foundry-rs/foundry-toolchain@908c540300062bd5a7e473851cdb4282204cee09
         with:
           version: v1.5.1
       - name: Restore Foundry dependencies
-        run: |
-          rm -rf lib
-          mkdir -p lib
-          git clone --depth 1 --branch v1.9.7 https://github.com/foundry-rs/forge-std lib/forge-std
-          git clone --depth 1 --branch v5.0.2 https://github.com/OpenZeppelin/openzeppelin-contracts lib/openzeppelin-contracts
-          git clone --depth 1 --branch v5.0.2 https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable lib/openzeppelin-contracts-upgradeable
-          git clone --depth 1 --branch v0.1.22 https://github.com/Vectorized/solady lib/solady
+        run: scripts/restore-foundry-deps.sh
       - run: forge build
       - run: forge test
+        env:
+          FOUNDRY_PROFILE: ci
 
   analyzers:
     runs-on: ubuntu-latest
@@ -39,22 +34,11 @@ jobs:
       run:
         working-directory: packages/contracts
     steps:
-      - uses: actions/checkout@v7
-      - uses: foundry-rs/foundry-toolchain@v1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: foundry-rs/foundry-toolchain@908c540300062bd5a7e473851cdb4282204cee09
         with:
-          version: stable
+          version: v1.5.1
       - name: Restore Foundry dependencies
-        run: |
-          rm -rf lib
-          mkdir -p lib
-          git clone --depth 1 --branch v1.9.7 https://github.com/foundry-rs/forge-std lib/forge-std
-          git clone --depth 1 --branch v5.0.2 https://github.com/OpenZeppelin/openzeppelin-contracts lib/openzeppelin-contracts
-          git clone --depth 1 --branch v5.0.2 https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable lib/openzeppelin-contracts-upgradeable
-          git clone --depth 1 --branch v0.1.22 https://github.com/Vectorized/solady lib/solady
-      # Analyzer findings are triaged manually; they do not gate merges.
-      - run: pipx install slither-analyzer
-      - run: slither .
-        continue-on-error: true
-      - run: pipx install mythril
-      - run: myth analyze src/GuardedWallet.sol
-        continue-on-error: true
+        run: scripts/restore-foundry-deps.sh
+      - run: pipx install slither-analyzer==0.10.4
+      - run: slither . --fail-high --filter-paths "lib/|test/|script/"

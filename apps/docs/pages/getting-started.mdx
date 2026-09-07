@@ -8,14 +8,14 @@ These snippets are Arc Testnet examples for local development. Keep private keys
 in local environment variables only, and do not commit `.env` files.
 
 ```ts
-import { ArcanumClient } from "@arcanum/sdk"
-import { arcTestnet } from "@arcanum/sdk/chains"
+import { ArcanumClient } from "arcanum-sdk"
+import { arcTestnet } from "arcanum-sdk/chains"
 import { createWalletClient, http, parseUnits } from "viem"
 import { privateKeyToAccount } from "viem/accounts"
 ```
 
 ```bash
-npm install @arcanum/sdk viem
+npm install arcanum-sdk viem
 ```
 
 ## Step 2 - Deploy through WalletFactory
@@ -29,10 +29,11 @@ const client = createWalletClient({ account: owner, chain: arcTestnet, transport
 const policy = {
   perTxCap: parseUnits("5000", 6),
   daily24hCap: parseUnits("5000", 6),
-  monthlyRollingCap: parseUnits("10000", 6),
+  monthlyCap: parseUnits("10000", 6),
   allowedCategories: 0b11111n,
   escalationThreshold: parseUnits("1000", 6),
   requireAllowlist: true,
+  freezeOnBlockedVendor: true,
 }
 
 const hash = await client.writeContract({
@@ -50,6 +51,7 @@ const hash = await client.writeContract({
       process.env.COUNCIL_3 as `0x${string}`,
     ],
     2,
+    3600,
   ],
 })
 ```

@@ -23,6 +23,7 @@ abstract contract ArcanumTestBase is Test {
 
     uint256 internal oraclePrivateKey = 0xA11CE;
     address internal oracleSigner;
+    address internal protocolAdmin = address(0x0ADD);
     address internal owner = address(0x1001);
     address internal signer = address(0x2001);
     address internal signerTwo = address(0x2002);
@@ -35,16 +36,25 @@ abstract contract ArcanumTestBase is Test {
     address internal recipient = address(0x5001);
 
     uint256 internal constant USDC_1 = 1e6;
+    uint256 internal constant MAX_SCORE_AGE = 1 days;
+    uint64 internal constant ESCALATION_EXPIRY = 1 hours;
 
     function setUpProtocol() internal {
         oracleSigner = vm.addr(oraclePrivateKey);
         usdc = new MockUSDC();
         policyEngine = new PolicyEngine();
         escalationManager = new EscalationManager();
-        anomalyOracle = new AnomalyOracle(oracleSigner);
+        anomalyOracle = new AnomalyOracle(protocolAdmin, oracleSigner, MAX_SCORE_AGE);
         vendorRegistry = new VendorRegistry();
         factory = new WalletFactory(
-            address(usdc), policyEngine, escalationManager, anomalyOracle, vendorRegistry
+            protocolAdmin,
+            address(usdc),
+            WalletFactory.Defaults({
+                policyEngine: policyEngine,
+                escalationManager: escalationManager,
+                anomalyOracle: anomalyOracle,
+                vendorRegistry: vendorRegistry
+            })
         );
     }
 
@@ -54,8 +64,9 @@ abstract contract ArcanumTestBase is Test {
         signers[1] = signerTwo;
 
         address[] memory council = defaultCouncil();
-        address walletAddress =
-            factory.createWallet(owner, "ResearchAgent", defaultPolicy(), signers, council, 2);
+        address walletAddress = factory.createWallet(
+            owner, "ResearchAgent", defaultPolicy(), signers, council, 2, ESCALATION_EXPIRY
+        );
         deployedWallet = GuardedWallet(walletAddress);
         wallet = deployedWallet;
 
@@ -79,14 +90,15 @@ abstract contract ArcanumTestBase is Test {
         policy = PolicyEnvelope({
             perTxCap: 100 * USDC_1,
             daily24hCap: 1_000 * USDC_1,
-            monthlyRollingCap: 30_000 * USDC_1,
+            monthlyCap: 30_000 * USDC_1,
             allowedCategories: (uint256(1) << uint8(RestraintCategory.API))
                 | (uint256(1) << uint8(RestraintCategory.COMPUTE))
                 | (uint256(1) << uint8(RestraintCategory.DATA))
                 | (uint256(1) << uint8(RestraintCategory.SUBCONTRACTING))
                 | (uint256(1) << uint8(RestraintCategory.OTHER)),
             escalationThreshold: 50 * USDC_1,
-            requireAllowlist: true
+            requireAllowlist: true,
+            freezeOnBlockedVendor: true
         });
     }
 

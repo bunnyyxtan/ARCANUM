@@ -1,9 +1,13 @@
 # Python SDK
 
-`arcanum-sdk` mirrors the TypeScript surface for Python agent stacks. It uses `web3.py`, signs locally with `eth-account`, and talks directly to Arc RPC.
+Version `3.0.0` of `arcanum-sdk` mirrors the direct-RPC TypeScript surface for Python agent
+stacks. It uses `web3.py` and signs locally with `eth-account`.
 
-The examples below are for Arc Testnet/local development. Never hard-code
-private keys or commit `.env` files.
+```bash
+pip install arcanum-sdk==3.0.0
+```
+
+The example is for Arc Testnet development. Keep private keys outside source control.
 
 ```python
 import os
@@ -27,6 +31,9 @@ result = arc.execute_usdc(
 )
 ```
 
+Payment-intent APIs use `reference` in place of the v2 `idempotency_key` field. It carries the
+caller's stable business reference.
+
 ## Async client
 
 ```python
@@ -39,3 +46,7 @@ async_client = AsyncArcanumClient(
     rpc_url=os.environ["ARC_TESTNET_RPC"],
 )
 ```
+
+Both clients expose `TransferRevertedError` when a submitted chain transaction reverts. It is
+distinct from `PolicyDeniedError`: callers should retain the transaction context and surface
+the underlying revert reason.

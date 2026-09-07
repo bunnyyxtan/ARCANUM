@@ -34,3 +34,10 @@ class InsufficientUSDCError(ArcanumError):
             "DENY",
             f"required {required}, available {available}",
         )
+
+
+class TransferRevertedError(ArcanumError):
+    def __init__(self, tx_hash: str, custom_error_name: str | None = None):
+        self.tx_hash = tx_hash
+        self.custom_error_name = custom_error_name
+        super().__init__("TRANSFER_REVERTED", "DENY", custom_error_name)

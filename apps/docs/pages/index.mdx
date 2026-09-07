@@ -3,8 +3,8 @@
 Arcanum is Arc-native protocol infrastructure for teams that want AI agents to hold and move USDC with real onchain guardrails. Operators deploy GuardedWallets, define policy envelopes, approve escalations with their own signers, and observe every event through a self-hostable indexer.
 
 ```ts
-import { ArcanumClient } from "@arcanum/sdk"
-import { arcTestnet } from "@arcanum/sdk/chains"
+import { ArcanumClient } from "arcanum-sdk"
+import { arcTestnet } from "arcanum-sdk/chains"
 import { privateKeyToAccount } from "viem/accounts"
 
 const arc = new ArcanumClient({

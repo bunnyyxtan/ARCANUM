@@ -1,13 +1,37 @@
 # EscalationManager
 
-EscalationManager stores transfer requests that need human quorum. Required signers can approve, reject, or let the request expire. Expiry settles to rejection.
+`EscalationManager` stores transfers that require human quorum. Its statuses are `PENDING`,
+`EXECUTED`, `REJECTED`, `EXPIRED`, `DENIED`, `CANCELLED`, and `INVALIDATED`.
+
+Each `configureWallet` call installs a signer council and increments that wallet's
+`councilVersion`. A held escalation records both the policy version and council version under
+which it was created. Reconfiguring the council therefore prevents an old council from
+releasing an old request.
+
+`approve`, `reject`, and owner cancellation use settle-on-touch semantics. Before accepting an
+action, the manager settles a pending request as:
+
+- `EXPIRED` when its deadline has passed; or
+- `INVALIDATED` when its stored council version differs from the wallet's current version.
+
+Settlement returns without recording the attempted vote. The wallet owner can also call
+`GuardedWallet.cancelEscalation`, which asks the manager to mark a live request `CANCELLED`.
+Only the wallet that owns the escalation can cancel it.
+
+When an approval reaches quorum, the manager marks the request `EXECUTED` before calling the
+wallet. The wallet re-evaluates the transfer under current policy. A policy denial changes the
+status to `DENIED`; a successful release remains `EXECUTED`. If the wallet call reverts, the
+transaction reverts and the request remains `PENDING`.
+
+The originating `GuardedWallet`, not the manager, emits `TransferEscalated`. Consumers must
+listen for that event on wallet addresses and use its `policyVersion`, `councilVersion`,
+threshold, and expiry as the terms recorded at creation.
 
 Key calls:
 
 - `approve(bytes32 escalationId)`
 - `reject(bytes32 escalationId)`
+- `cancel(bytes32 escalationId)` (wallet only)
 - `sweepExpired(bytes32 escalationId)`
 - `statusOf(bytes32 escalationId)`
 - `getEscalation(bytes32 escalationId)`
-
-Escalated transfers execute only after threshold approval.

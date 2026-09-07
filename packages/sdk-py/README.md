@@ -30,3 +30,7 @@ result = arc.execute_usdc(
     metadata={"category": "API"},
 )
 ```
+
+`reference` values in reason metadata are descriptive, not idempotency keys.
+If receipt waiting times out, do not submit the transfer again: retain the hash
+and call `arc.confirm(tx_hash)`. Resubmission can transfer funds twice.

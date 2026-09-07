@@ -12,9 +12,10 @@ from .errors import (
     EscalationRequiredError,
     InsufficientUSDCError,
     PolicyDeniedError,
+    TransferRevertedError,
     WalletFrozenError,
 )
-from .types import ExecuteUSDCResult, PolicyEnvelope, SimulationResult, VendorInfo
+from .types import Escalation, ExecuteUSDCResult, PolicyEnvelope, SimulationResult, VendorInfo
 
 __all__ = [
     "ARC_MAINNET_USDC_ADDRESS",
@@ -24,11 +25,13 @@ __all__ = [
     "ArcanumError",
     "AsyncArcanumClient",
     "EscalationRequiredError",
+    "Escalation",
     "ExecuteUSDCResult",
     "InsufficientUSDCError",
     "PolicyDeniedError",
     "PolicyEnvelope",
     "SimulationResult",
+    "TransferRevertedError",
     "VendorInfo",
     "WalletFrozenError",
     "arc_mainnet",
