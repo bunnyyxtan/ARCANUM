@@ -2,6 +2,14 @@
   "name": "@arcanum/sdk",
   "version": "3.0.0",
   "description": "TypeScript SDK for integrating Arcanum governed wallets",
+  "keywords": [
+    "arc",
+    "usdc",
+    "agent",
+    "wallet",
+    "policy",
+    "viem"
+  ],
   "license": "Apache-2.0",
   "type": "module",
   "exports": {
