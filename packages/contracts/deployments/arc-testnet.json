@@ -1,9 +1,32 @@
 {
-  "anomalyOracle": "0x4ee7c78afFd9C5d9e0FD4EFEaEe82BEe32E8C0DC",
-  "escalationManager": "0x9dc6C86469650A3859e7CA9A03adDfE9C964D134",
-  "policyEngine": "0x67f3731280e1Dfcc38B8a388412FE0c971a4A215",
+  "anomalyOracle": "0x2eae369C3f93ebf5Bbe62FBE6d2CD976977f7AE8",
+  "chainId": 5042002,
+  "codeHashes": {
+    "anomalyOracle": "0xc865eaee1a2a98c7ed7570aa7369a1a42acc65237d4bbb883d87c9cb41d851f0",
+    "escalationManager": "0x98da9088604470ea69376393455d4a162710b3b5df5b89ae32f596804965765f",
+    "policyEngine": "0x38fe29e4a8c388faca2b21ad9dfc33790711baf6966518f617aa86da6e0f21f0",
+    "vendorRegistry": "0x140f2bc854cbffce5fe1d067b1dde55d02f717656bea952a64e3578813842ae5",
+    "walletFactory": "0x7118fd2c44e252103d29a24ddc7df1114e696de8d7ae7f637cc67e8ff982384d"
+  },
+  "create2Salt": "0x663d114a69c8dabd7a4aa705da43d14d1b3a913d9119c13d54e0687e1414fcd7",
+  "deployer": "0x836BEEa5C4382196393C5DF8bA345E09F7b20Bd4",
+  "escalationManager": "0xb5907700Df79B9030FafDaA48C26AE355512cCcd",
+  "network": "arc-testnet",
+  "oracleSigner": "0x049d94DDCE32B06B5D16E496967f107B20Ef0a95",
+  "policyEngine": "0x7777ac24A19202E619bF67B92375E714e72033A4",
+  "protocolAdmin": "0x77d9Da1f1a29f499da7f238a1CbD896c0Da27cAD",
+  "startBlock": 60951839,
   "usdc": "0x3600000000000000000000000000000000000000",
-  "vendorRegistry": "0x0fAe8E2Cd6f22aa9715E256B61f58b42357ABd1b",
-  "walletFactory": "0x51A560589e23AcD2e57173641267f4583e0e65E7",
-  "startBlock": 56247635
+  "vendorRegistry": "0xeA4597b02Ea2958A80afc47c417422598b9c548C",
+  "walletFactory": "0xbE1bC48F26e7166D872828d40e82A6407dbD350C",
+  "deployedAt": "2026-09-07T18:47:58.000Z",
+  "compiler": "0.8.24+commit.e11b9ed9",
+  "evmVersion": "shanghai",
+  "txHashes": {
+    "policyEngine": "0x15725df08cd36783ecb407117913e650a2d7e99e58b1f560d32d0f1f2fbab4e2",
+    "escalationManager": "0xeb2c844a6ea35a70f9fdeb9feca5f52519a8299ff9d38869f3fbd49c30f6c9a5",
+    "anomalyOracle": "0x02484ca02422355c1d4a17c3b0f1f4957637ce8a0fcaaecd2c19d8d43dfa24ae",
+    "vendorRegistry": "0x19feeef555f8549e4e8c7b9ea5fb3610d5c0f0573196d722d21186de376887ba",
+    "walletFactory": "0xc02124b2125f63154332f9cb365f57a86574af5a2ea329e363b3af27147f21c5"
+  }
 }
