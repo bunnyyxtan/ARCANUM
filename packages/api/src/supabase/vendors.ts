@@ -8,8 +8,9 @@ import {
   warnSupabase,
 } from "./client";
 import { stringField } from "./fields";
-import { orgScopedRowsForWallets, rowsForWallets, selectRows } from "./internal";
 import { vendorFromRow } from "./mappers";
+import { orgScopedRowsForWallets, rowsForWallets } from "./scope";
+import { selectRows } from "./transport";
 import { readSupabaseWallets } from "./wallets";
 
 // Vendor registers are intentionally bounded to keep workspace reads predictable.

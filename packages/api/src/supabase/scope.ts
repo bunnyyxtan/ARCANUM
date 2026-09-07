@@ -1,30 +1,7 @@
 import type { Wallet } from "@arcanum/db/schema";
 import type { ApiContext } from "../context";
-import { type SupabaseRequestOptions, type SupabaseRow, readModelUnavailable } from "./client";
+import type { SupabaseRow } from "./client";
 import { stringField } from "./fields";
-
-export async function selectRows(ctx: ApiContext, table: string, options?: SupabaseRequestOptions) {
-  // Reads scoped in memory cannot be bounded until legacy wallet identity columns are retired.
-  // PostgREST has no tolerant `or` across columns that may not exist.
-  const client = ctx.supabase;
-  if (!client) {
-    // A missing configuration must never look like "no rows": for a product
-    // whose promise is showing what an agent spent, a calm empty dashboard on
-    // top of a broken read model is worse than an error.
-    throw readModelUnavailable(
-      `${table}.read`,
-      new Error(
-        "Supabase read model is not configured (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).",
-      ),
-    );
-  }
-
-  try {
-    return await client.selectRows(table, options);
-  } catch (error) {
-    throw readModelUnavailable(`${table}.read`, error);
-  }
-}
 
 export function scopedRows(ctx: ApiContext, rows: SupabaseRow[]) {
   const scope = ownerScope(ctx);
@@ -150,9 +127,3 @@ export function requiredStringField(row: SupabaseRow | undefined, keys: string[]
 
   return value;
 }
-
-/**
- * Every auto-provisioned workspace starts under the same placeholder. Keeping
- * it in one exported constant is what lets the product recognise a workspace
- * nobody has named yet and ask its owner for a real one.
- */

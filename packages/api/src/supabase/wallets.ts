@@ -11,19 +11,14 @@ import {
 } from "./client";
 import { arrayField, stringField } from "./fields";
 import {
-  ownerScope,
-  requiredStringField,
-  rowsForWallets,
-  scopedRows,
-  selectRows,
-} from "./internal";
-import {
   agentFromSigner,
   policyFromDoctrineRow,
   postureFromDoctrineRow,
   walletFromGovernedWalletRow,
   zeroWallet,
 } from "./mappers";
+import { ownerScope, requiredStringField, rowsForWallets, scopedRows } from "./scope";
+import { selectRows } from "./transport";
 
 // A workspace is capped well above the expected fleet size while preventing unbounded reads.
 const MAX_WALLETS_PER_ORG = 500;

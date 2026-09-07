@@ -13,7 +13,6 @@ import {
   warnSupabase,
 } from "./client";
 import { arrayField, booleanField, numberField, stringField } from "./fields";
-import { requiredStringField } from "./internal";
 import {
   DEFAULT_WORKSPACE_NAME,
   agentFromSigner,
@@ -22,6 +21,7 @@ import {
   walletFromGovernedWalletRow,
   workspaceSlugForWallet,
 } from "./mappers";
+import { requiredStringField } from "./scope";
 import { readSupabaseWalletByAddressUnscoped } from "./wallets";
 
 export type SupabaseCreatedWalletInput = {

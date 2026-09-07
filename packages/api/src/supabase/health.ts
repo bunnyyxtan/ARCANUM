@@ -1,9 +1,9 @@
 import type { ApiContext } from "../context";
 import { type SupabaseRow, createSupabaseServiceRoleClient, safeSupabaseError } from "./client";
 import { numberOrNull, stringField } from "./fields";
-import { selectRows } from "./internal";
 import { PUBLIC_AGGREGATE_WINDOW, formatUsdcBaseUnits, readSupabasePublicLedger } from "./ledger";
 import { postureFromDoctrineRow, publicProfileFromRow, shortAddress } from "./mappers";
+import { selectRows } from "./transport";
 import { readSupabaseWalletByAddressUnscoped } from "./wallets";
 
 export type SupabaseRuntimeHealth = {

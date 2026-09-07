@@ -23,7 +23,7 @@ import {
   stringField,
 } from "./fields";
 import type { SupabasePublicWalletProfile } from "./health";
-import { walletForRow } from "./internal";
+import { walletForRow } from "./scope";
 import type { AgentWithDoctrine } from "./wallets";
 
 export const DEFAULT_WORKSPACE_NAME = "Arcanum Workspace";

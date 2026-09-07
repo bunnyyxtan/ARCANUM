@@ -8,8 +8,9 @@ import {
   warnSupabase,
 } from "./client";
 import { stringField } from "./fields";
-import { orgScopedRowsForWallets, rowsForWallets, selectRows } from "./internal";
 import { anomalyFromRow, escalationFromRow } from "./mappers";
+import { orgScopedRowsForWallets, rowsForWallets } from "./scope";
+import { selectRows } from "./transport";
 import { readSupabaseWallets } from "./wallets";
 
 export async function readSupabaseEscalations(ctx: ApiContext, status?: Escalation["status"]) {

@@ -11,14 +11,14 @@ import {
   stableUuid,
   stringField,
 } from "./fields";
+import { transferFromRow } from "./mappers";
 import {
   orgScopedRowsForWallets,
   rowsForWalletIdentity,
   rowsForWallets,
-  selectRows,
   walletForRow,
-} from "./internal";
-import { transferFromRow } from "./mappers";
+} from "./scope";
+import { selectRows } from "./transport";
 import { readSupabaseWalletByAddressUnscoped, readSupabaseWallets } from "./wallets";
 
 /** How many recent ledger events the public trust figures are computed over. */

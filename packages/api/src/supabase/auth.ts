@@ -1,7 +1,8 @@
 import type { ApiContext } from "../context";
 import { createSupabaseServiceRoleClient, warnSupabase } from "./client";
 import { stringField } from "./fields";
-import { ownerScope, selectRows } from "./internal";
+import { ownerScope } from "./scope";
+import { selectRows } from "./transport";
 import { ensureOwnerWorkspaceForWallet } from "./writes";
 
 export async function syncSupabaseAuthSession(user: {
