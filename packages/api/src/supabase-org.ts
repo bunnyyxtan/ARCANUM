@@ -153,27 +153,31 @@ export async function readSupabaseOrgMembers(ctx: ApiContext): Promise<Organizat
   const memberRows = await client.selectRows(MEMBERS_TABLE, {
     filters: { organization_id: anchor.orgId },
     order: "created_at.desc",
+    limit: 500,
+    select: "id,profile_id,role,created_at",
   });
 
-  // The REST client filters on equality only, so profiles are resolved one call
-  // per member. Membership lists are small, and the alternative -- reading
-  // every profile in the database -- would leak other tenants' members.
-  const profiles = await Promise.all(
-    memberRows.map(async (member) => {
-      const profileId = text(member, "profile_id");
-      if (!profileId) {
-        return null;
-      }
-      const [profile] = await client.selectRows(PROFILES_TABLE, {
-        filters: { id: profileId },
-        limit: 1,
-      });
-      return profile ?? null;
+  const profileIds = memberRows.flatMap((member) => {
+    const profileId = text(member, "profile_id");
+    return profileId ? [profileId] : [];
+  });
+  const profileRows =
+    profileIds.length > 0
+      ? await client.selectRows(PROFILES_TABLE, {
+          inFilters: { id: profileIds },
+          select: "id,wallet_address,display_name",
+        })
+      : [];
+  const profilesById = new Map(
+    profileRows.flatMap((profile) => {
+      const profileId = text(profile, "id");
+      return profileId ? [[profileId, profile] as const] : [];
     }),
   );
 
-  return memberRows.flatMap((member, index) => {
-    const profile = profiles[index];
+  return memberRows.flatMap((member) => {
+    const profileId = text(member, "profile_id");
+    const profile = profileId ? profilesById.get(profileId) : undefined;
     const walletAddress = profile ? text(profile, "wallet_address") : null;
     // A membership row with no reachable profile has no identity to show, and
     // rendering a blank teammate would misrepresent who holds access.

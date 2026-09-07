@@ -21,8 +21,7 @@ import { findWalletByLooseId } from "./helpers";
 function onChainVendorWriteOnly(): never {
   throw new TRPCError({
     code: "PRECONDITION_FAILED",
-    message:
-      "VendorRegistry writes must be submitted onchain by the governed wallet owner.",
+    message: "VendorRegistry writes must be submitted onchain by the governed wallet owner.",
   });
 }
 
@@ -32,19 +31,15 @@ function onChainVendorWriteOnly(): never {
 export const vendorsRouter = router({
   list: publicProcedure.query(({ ctx }) => readSupabaseVendors(ctx)),
 
-  byId: publicProcedure
-    .input(vendorByIdInputSchema)
-    .query(async ({ ctx, input }) => {
-      const rows = await readSupabaseVendors(ctx);
-      return rows.find((vendor) => vendor.id === input.id) ?? null;
-    }),
+  byId: publicProcedure.input(vendorByIdInputSchema).query(async ({ ctx, input }) => {
+    const rows = await readSupabaseVendors(ctx);
+    return rows.find((vendor) => vendor.id === input.id) ?? null;
+  }),
 
   getByWallet: publicProcedure
     .input(vendorAddInputSchema.pick({ walletId: true }))
     .query(async ({ ctx, input }) => {
-      const wallet = input.walletId
-        ? await findWalletByLooseId(ctx, input.walletId)
-        : null;
+      const wallet = input.walletId ? await findWalletByLooseId(ctx, input.walletId) : null;
       return readSupabaseVendors(ctx, wallet);
     }),
 
@@ -56,17 +51,13 @@ export const vendorsRouter = router({
   recordOnChainState: protectedProcedure
     .input(
       z.object({
-        walletAddress: z
-          .string()
-          .regex(/^0x[0-9a-fA-F]{40}$/, "Invalid wallet address"),
-        vendorAddress: z
-          .string()
-          .regex(/^0x[0-9a-fA-F]{40}$/, "Invalid vendor address"),
+        walletAddress: z.string().regex(/^0x[0-9a-fA-F]{40}$/, "Invalid wallet address"),
+        vendorAddress: z.string().regex(/^0x[0-9a-fA-F]{40}$/, "Invalid vendor address"),
         name: z.string().min(1).max(80),
         category: z.string().min(1).max(40),
         kycStatus: z.enum(["public", "arcanevm"]).default("public"),
         perVendorCap: z.number().nonnegative().default(0),
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       const walletAddress = input.walletAddress.toLowerCase();
@@ -78,35 +69,26 @@ export const vendorsRouter = router({
           message: "Governed wallet was not found.",
         });
       }
-      if (
-        wallet.ownerAddress.toLowerCase() !==
-        ctx.session.walletAddress.toLowerCase()
-      ) {
+      if (wallet.ownerAddress.toLowerCase() !== ctx.session.walletAddress.toLowerCase()) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message:
-            "Only the governed wallet owner can record vendor registry changes.",
+          message: "Only the governed wallet owner can record vendor registry changes.",
         });
       }
 
       const chainState = await readVendorChainState(
         walletAddress as `0x${string}`,
-        input.vendorAddress.toLowerCase() as `0x${string}`
+        input.vendorAddress.toLowerCase() as `0x${string}`,
       );
 
       if (!chainState) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message:
-            "VendorRegistry is not reachable; vendor state could not be verified onchain.",
+          message: "VendorRegistry is not reachable; vendor state could not be verified onchain.",
         });
       }
 
-      const status = chainState.blocked
-        ? "blocked"
-        : chainState.allowed
-        ? "allowed"
-        : "removed";
+      const status = chainState.blocked ? "blocked" : chainState.allowed ? "allowed" : "removed";
 
       // Only the display name is off-chain metadata; the category, cap and
       // status all come back from the registry so the read model cannot claim
@@ -121,7 +103,7 @@ export const vendorsRouter = router({
           perVendorCap: Number(chainState.perVendorCap) / 1e6,
           status,
         },
-        wallet
+        wallet,
       );
 
       if (!result.ok) {
@@ -134,27 +116,21 @@ export const vendorsRouter = router({
       return result.data;
     }),
 
-  add: protectedProcedure
-    .input(vendorAddInputSchema)
-    .mutation(async ({ ctx, input }) => {
-      void ctx;
-      void input;
-      return onChainVendorWriteOnly();
-    }),
+  add: protectedProcedure.input(vendorAddInputSchema).mutation(async ({ ctx, input }) => {
+    void ctx;
+    void input;
+    return onChainVendorWriteOnly();
+  }),
 
-  update: protectedProcedure
-    .input(vendorUpdateInputSchema)
-    .mutation(async ({ ctx, input }) => {
-      void ctx;
-      void input;
-      return onChainVendorWriteOnly();
-    }),
+  update: protectedProcedure.input(vendorUpdateInputSchema).mutation(async ({ ctx, input }) => {
+    void ctx;
+    void input;
+    return onChainVendorWriteOnly();
+  }),
 
-  remove: protectedProcedure
-    .input(vendorRemoveInputSchema)
-    .mutation(async ({ ctx, input }) => {
-      void ctx;
-      void input;
-      return onChainVendorWriteOnly();
-    }),
+  remove: protectedProcedure.input(vendorRemoveInputSchema).mutation(async ({ ctx, input }) => {
+    void ctx;
+    void input;
+    return onChainVendorWriteOnly();
+  }),
 });

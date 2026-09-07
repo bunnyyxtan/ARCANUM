@@ -32,8 +32,7 @@ export const analyticsRouter = router({
     const frozen = supabaseAgents.filter((agent) => agent.status === "frozen").length;
     const denied = supabaseTransfers.filter((transfer) => transfer.verdict === "DENY").length;
     const danger = supabaseAnomalies.filter((anomaly) => anomaly.severity === "danger").length;
-    const hasSignal =
-      frozen > 0 || supabaseTransfers.length > 0 || supabaseAnomalies.length > 0;
+    const hasSignal = frozen > 0 || supabaseTransfers.length > 0 || supabaseAnomalies.length > 0;
     const value = hasSignal
       ? Math.max(0, Math.min(100, 100 - frozen * 10 - denied * 3 - danger * 8))
       : 0;
@@ -44,9 +43,7 @@ export const analyticsRouter = router({
 
   valueGoverned24h: publicProcedure.query(async ({ ctx }) => {
     const supabaseTransfers = await readSupabaseTransfers(ctx);
-    return String(
-      supabaseTransfers.reduce((sum, transfer) => sum + Number(transfer.amount), 0),
-    );
+    return String(supabaseTransfers.reduce((sum, transfer) => sum + Number(transfer.amount), 0));
   }),
 
   activeAgents: publicProcedure.query(async ({ ctx }) => {

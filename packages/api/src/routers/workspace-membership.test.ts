@@ -82,7 +82,10 @@ function createReadModel() {
   });
 
   const client = {
-    selectRows: async (table: string, opts?: { filters?: Record<string, unknown>; limit?: number }) => {
+    selectRows: async (
+      table: string,
+      opts?: { filters?: Record<string, unknown>; limit?: number },
+    ) => {
       const options = opts ?? {};
       const rows = tableOf(table).filter((row) => matches(row, options.filters));
       return (options.limit ? rows.slice(0, options.limit) : rows).map((row) => ({ ...row }));

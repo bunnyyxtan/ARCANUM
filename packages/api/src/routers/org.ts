@@ -59,9 +59,7 @@ async function currentOrgFor(ctx: OrgContext) {
     return orgForSession(ctx);
   }
 
-  const membership = await failClosed("org.getCurrent.membership", () =>
-    readCallerMembership(ctx),
-  );
+  const membership = await failClosed("org.getCurrent.membership", () => readCallerMembership(ctx));
 
   return {
     ...baseOrg,

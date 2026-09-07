@@ -138,7 +138,7 @@ async function evaluatePaymentIntent(
       return intentResult(intent, {
         amount,
         decision: "unsupported",
-        reason: "GuardedWallet is not configured for Arc Testnet USDC.",
+        reason: `GuardedWallet is not configured for ${ARC_NETWORK_NAME} USDC.`,
         errorCode: "UNSUPPORTED_WALLET_TOKEN",
       });
     }
@@ -195,7 +195,7 @@ async function evaluatePaymentIntent(
     return intentResult(intent, {
       amount,
       decision: "validation_error",
-      reason: "Unable to read governed wallet policy state on Arc Testnet.",
+      reason: `Unable to read governed wallet policy state on ${ARC_NETWORK_NAME}.`,
       errorCode: "CHAIN_READ_FAILED",
     });
   }
@@ -209,6 +209,7 @@ async function verifyIntentSignature(intent: NormalizedSignedPaymentIntentInput)
       signature: intent.signature,
     });
   } catch {
+    // Malformed signatures are expected user input and verify as invalid.
     return false;
   }
 }
@@ -218,6 +219,7 @@ function parsePaymentIntentAmount(amount: string) {
     const parsed = parseUnits(amount, 6);
     return parsed > 0n ? parsed : null;
   } catch {
+    // Invalid decimal input is reported through the payment-intent validation result.
     return null;
   }
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { computePostureScore, type PostureInputs } from "./posture";
+import { type PostureInputs, computePostureScore } from "./posture";
 
 const strict: PostureInputs = {
   requireVendorAllowlist: true,
@@ -55,9 +55,7 @@ describe("computePostureScore", () => {
   });
 
   it("docks frozen wallets", () => {
-    expect(computePostureScore({ ...strict, frozen: true })).toBe(
-      computePostureScore(strict) - 15
-    );
+    expect(computePostureScore({ ...strict, frozen: true })).toBe(computePostureScore(strict) - 15);
   });
 
   it("credits doctrine maturity but caps it", () => {
@@ -69,9 +67,7 @@ describe("computePostureScore", () => {
   });
 
   it("clamps to the 5-95 band", () => {
-    expect(
-      computePostureScore({ ...bare, frozen: true })
-    ).toBeGreaterThanOrEqual(5);
+    expect(computePostureScore({ ...bare, frozen: true })).toBeGreaterThanOrEqual(5);
     expect(computePostureScore(strict)).toBeLessThanOrEqual(95);
   });
 });

@@ -44,13 +44,9 @@ export const escalationsRouter = router({
   recordDecision: protectedProcedure
     .input(
       z.object({
-        escalationKey: z
-          .string()
-          .regex(/^0x[0-9a-fA-F]{64}$/, "Invalid escalation key"),
-        txHash: z
-          .string()
-          .regex(/^0x[0-9a-fA-F]{64}$/, "Invalid transaction hash"),
-      })
+        escalationKey: z.string().regex(/^0x[0-9a-fA-F]{64}$/, "Invalid escalation key"),
+        txHash: z.string().regex(/^0x[0-9a-fA-F]{64}$/, "Invalid transaction hash"),
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       const escalationKey = input.escalationKey as `0x${string}`;
@@ -65,17 +61,13 @@ export const escalationsRouter = router({
       if (chainState.status === "pending") {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message:
-            "Escalation is still pending onchain; nothing to record yet.",
+          message: "Escalation is still pending onchain; nothing to record yet.",
         });
       }
 
       // Approvers are frequently council members rather than the wallet owner,
       // so resolve the wallet unscoped and authorize against the chain below.
-      const wallet = await readSupabaseWalletByAddressUnscoped(
-        ctx,
-        chainState.wallet
-      );
+      const wallet = await readSupabaseWalletByAddressUnscoped(ctx, chainState.wallet);
       if (!wallet) {
         throw new TRPCError({
           code: "NOT_FOUND",
@@ -85,14 +77,10 @@ export const escalationsRouter = router({
 
       const caller = ctx.session.walletAddress.toLowerCase();
       const isOwner = wallet.ownerAddress.toLowerCase() === caller;
-      if (
-        !isOwner &&
-        !(await isEscalationSigner(chainState.wallet, caller as `0x${string}`))
-      ) {
+      if (!isOwner && !(await isEscalationSigner(chainState.wallet, caller as `0x${string}`))) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message:
-            "Only the wallet owner or an authorized approver can record this decision.",
+          message: "Only the wallet owner or an authorized approver can record this decision.",
         });
       }
 

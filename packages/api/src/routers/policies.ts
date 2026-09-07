@@ -176,9 +176,7 @@ export const policiesRouter = router({
       if (!chainPolicy) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message:
-            `The wallet policy could not be read from ${ARC_NETWORK_NAME}; ` +
-            "nothing was recorded.",
+          message: `The wallet policy could not be read from ${ARC_NETWORK_NAME}; nothing was recorded.`,
         });
       }
 
