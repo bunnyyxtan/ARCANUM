@@ -29,6 +29,7 @@
   },
   "scripts": {
     "build": "tsup src/index.ts src/chains.ts --format esm,cjs --dts --clean",
+    "lint": "biome check .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
     "size": "size-limit",

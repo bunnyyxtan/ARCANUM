@@ -10,10 +10,10 @@ out/
 coverage/
 *.tsbuildinfo
 
-# environment
+# environment (only the committed example is allowed)
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 
 # foundry
 packages/contracts/out/
