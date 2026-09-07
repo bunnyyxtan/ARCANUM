@@ -7,10 +7,10 @@ import { IAnomalyOracle } from "./IAnomalyOracle.sol";
 /// @notice Per-agent wallet that enforces policy before moving USDC.
 interface IGuardedWallet {
     /// @notice Returns the wallet owner.
-    function owner() external view returns (address owner);
+    function owner() external view returns (address);
 
     /// @notice Returns the address that may accept ownership, or zero.
-    function pendingOwner() external view returns (address pendingOwner);
+    function pendingOwner() external view returns (address);
 
     /// @notice Returns the configured anomaly oracle module.
     function anomalyOracle() external view returns (IAnomalyOracle oracle);

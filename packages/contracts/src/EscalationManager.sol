@@ -81,8 +81,8 @@ contract EscalationManager is IEscalationManager {
             config.requiredSigners.push(signer);
         }
 
-        config.threshold = threshold;
-        config.expirySeconds = expirySeconds;
+        _configs[msg.sender].threshold = threshold;
+        _configs[msg.sender].expirySeconds = expirySeconds;
         uint256 version = ++councilVersion[msg.sender];
 
         emit Events.WalletRegistered(msg.sender, version, requiredSigners, threshold, expirySeconds);
