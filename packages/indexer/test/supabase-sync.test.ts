@@ -94,7 +94,7 @@ describe("Supabase synchronization", () => {
   });
 
   it("stores a repeated ledger event only once", async () => {
-    const { syncTransferExecuted } = await import("./supabase-sync");
+    const { syncTransferExecuted } = await import("../src/supabase-sync");
     await syncTransferExecuted(transfer);
     await syncTransferExecuted(transfer);
     expect(tableRows("ledger_events")).toHaveLength(1);
@@ -103,7 +103,7 @@ describe("Supabase synchronization", () => {
 
   it("stages an event when its wallet row does not exist", async () => {
     tables.governed_wallets = [];
-    const { syncTransferExecuted } = await import("./supabase-sync");
+    const { syncTransferExecuted } = await import("../src/supabase-sync");
     await syncTransferExecuted(transfer);
     expect(tableRows("ledger_events")).toHaveLength(0);
     expect(tableRows("unlinked_ledger_events")).toHaveLength(1);
@@ -116,7 +116,7 @@ describe("Supabase synchronization", () => {
 
   it("retains a failed write and stops the checkpoint before it", async () => {
     failLedgerWrites = true;
-    const { syncCheckpoint, syncTransferExecuted } = await import("./supabase-sync");
+    const { syncCheckpoint, syncTransferExecuted } = await import("../src/supabase-sync");
     await syncTransferExecuted(transfer);
     await syncCheckpoint(30);
     expect(tableRows("indexer_checkpoints")[0]).toMatchObject({
@@ -127,7 +127,7 @@ describe("Supabase synchronization", () => {
   });
 
   it("advances a successful checkpoint to the indexed block", async () => {
-    const { syncCheckpoint, syncTransferExecuted } = await import("./supabase-sync");
+    const { syncCheckpoint, syncTransferExecuted } = await import("../src/supabase-sync");
     await syncTransferExecuted(transfer);
     await syncCheckpoint(30);
     expect(tableRows("indexer_checkpoints")[0]).toMatchObject({
