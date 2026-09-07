@@ -1,10 +1,25 @@
 import { ConnectCta } from "@/components/warm/ConnectCta";
+import type { Escalation } from "@/lib/types";
 
-import type { EscalationsController } from "../_hooks/use-escalations-controller";
 import { EscalationCard } from "./escalation-card";
 
-export function EscalationsQueue({ controller }: Readonly<{ controller: EscalationsController }>) {
-  const { errored, liveEscalations, loading, markResolved, queue, readOnly } = controller;
+interface EscalationsQueueProps {
+  errored: boolean;
+  liveEscalations: { refetch: () => Promise<unknown> };
+  loading: boolean;
+  markResolved: (id: string) => void;
+  queue: readonly Escalation[];
+  readOnly: boolean;
+}
+
+export function EscalationsQueue({
+  errored,
+  liveEscalations,
+  loading,
+  markResolved,
+  queue,
+  readOnly,
+}: EscalationsQueueProps) {
   return (
     <div className="mt-8 grid gap-6 lg:grid-cols-2">
       {readOnly ? (

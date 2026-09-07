@@ -25,10 +25,47 @@ export default function PolicyEditorPage() {
         @media(prefers-reduced-motion:reduce){.policy-in{animation:none}}
       `}</style>
       <div className="mx-auto max-w-[1400px] px-5 py-9 md:px-8 md:py-10">
-        <PolicyHeader routeWalletId={routeWalletId} {...controller} />
+        <PolicyHeader
+          policyBusy={controller.policyBusy}
+          policyPendingIndexer={controller.policyPendingIndexer}
+          policyReadStatus={controller.policyReadStatus}
+          policyTxHash={controller.policyTxHash}
+          policyWalletOptions={controller.policyWalletOptions}
+          policyWriteDisabledReason={controller.policyWriteDisabledReason}
+          resetDraft={controller.resetDraft}
+          routeWalletId={routeWalletId}
+          savePolicyOnChain={controller.savePolicyOnChain}
+          selectedPolicyWalletAddress={controller.selectedPolicyWalletAddress}
+          selectedPolicyWalletLabel={controller.selectedPolicyWalletLabel}
+          setSelectedPolicyWalletAddress={controller.setSelectedPolicyWalletAddress}
+          unsavedCount={controller.unsavedCount}
+        />
         <div className="grid gap-10 pt-10 xl:grid-cols-[minmax(0,1.55fr)_360px]">
-          <PolicyDocument {...controller} />
-          <DeploymentRecord routeWalletId={routeWalletId} {...controller} />
+          <PolicyDocument
+            policyBusy={controller.policyBusy}
+            policyDraft={controller.policyDraft}
+            policyError={controller.policyError}
+            policyNetworkNotice={controller.policyNetworkNotice}
+            policyReadStatus={controller.policyReadStatus}
+            policyWriteDisabledReason={controller.policyWriteDisabledReason}
+            resetDraft={controller.resetDraft}
+            savePolicyOnChain={controller.savePolicyOnChain}
+            selectedGovernedWalletAddress={controller.selectedGovernedWalletAddress}
+            selectedPolicyWalletLabel={controller.selectedPolicyWalletLabel}
+            toggleCategory={controller.toggleCategory}
+            unsavedCount={controller.unsavedCount}
+            updatePolicyDraft={controller.updatePolicyDraft}
+            walletsLoading={controller.walletsLoading}
+          />
+          <DeploymentRecord
+            address={controller.address}
+            deployStatusLabel={controller.deployStatusLabel}
+            policyDiffs={controller.policyDiffs}
+            policyWalletOwner={controller.policyWalletOwner}
+            routeWalletId={routeWalletId}
+            selectedGovernedWalletAddress={controller.selectedGovernedWalletAddress}
+            unsavedCount={controller.unsavedCount}
+          />
         </div>
         <footer className="mt-14 flex flex-col justify-between gap-3 border-t border-[var(--wl-line)] pt-5 font-mono text-[9px] uppercase tracking-[.13em] text-[var(--wl-mute)] sm:flex-row">
           <span>Draft changes · no capital movement until signed</span>

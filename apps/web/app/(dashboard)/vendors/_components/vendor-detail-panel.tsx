@@ -1,17 +1,35 @@
 import { shortAddress } from "@/lib/format/address";
-import { vendorFlagEventLabel } from "@/lib/live-data";
+import {
+  type VendorFlagDetail,
+  type VendorFlagHistoryEntry,
+  type VendorUnflagDetail,
+  vendorFlagEventLabel,
+} from "@/lib/live-data";
+import type { Vendor } from "@/lib/types";
 
-import type { VendorsController } from "../_hooks/use-vendors-controller";
 import { categoryLabel } from "../_lib/helpers";
-import { VendorReviewControls } from "./vendor-review-controls";
+import { VendorReviewControls, type VendorReviewControlsProps } from "./vendor-review-controls";
 import { StatePill } from "./vendor-row";
 
-export function VendorDetailPanel(controller: VendorsController) {
-  const { selected } = controller;
+interface VendorDetailPanelProps {
+  controls: Omit<VendorReviewControlsProps, "selected">;
+  flagHistory: {
+    entries: readonly VendorFlagHistoryEntry[];
+    isError: boolean;
+    isLoading: boolean;
+  };
+  isVendorFlagged: (address: string) => boolean;
+  selected: Vendor | null;
+  vendorFlagDetail: (address: string) => VendorFlagDetail | undefined;
+  vendorUnflagDetail: (address: string) => VendorUnflagDetail | undefined;
+}
+
+export function VendorDetailPanel(props: VendorDetailPanelProps) {
+  const { selected } = props;
   if (!selected) return null;
-  const flag = controller.vendorFlagDetail(selected.address);
-  const unflag = controller.vendorUnflagDetail(selected.address);
-  const flagged = controller.isVendorFlagged(selected.address);
+  const flag = props.vendorFlagDetail(selected.address);
+  const unflag = props.vendorUnflagDetail(selected.address);
+  const flagged = props.isVendorFlagged(selected.address);
   return (
     <aside className="mt-8 grid gap-7 border-t-2 border-[var(--wl-ink)] bg-[var(--wl-bg-soft)] p-6 sm:p-8 lg:grid-cols-[.7fr_1.3fr]">
       <div>
@@ -83,15 +101,32 @@ export function VendorDetailPanel(controller: VendorsController) {
             <span>Added {selected.createdAt ?? "N/A"}</span>
           </div>
         </div>
-        <VendorReviewControls {...controller} />
+        <VendorReviewControls
+          detail={props.controls.detail}
+          flagToggling={props.controls.flagToggling}
+          isConnected={props.controls.isConnected}
+          isVendorFlagged={props.controls.isVendorFlagged}
+          saveNoteEdit={props.controls.saveNoteEdit}
+          selected={selected}
+          setVendorStatusRemote={props.controls.setVendorStatusRemote}
+          submitCap={props.controls.submitCap}
+          toggleVendorFlag={props.controls.toggleVendorFlag}
+          vendorFlagDetail={props.controls.vendorFlagDetail}
+          vendorSaving={props.controls.vendorSaving}
+        />
       </div>
-      <VendorFactsAndHistory controller={controller} />
+      <VendorFactsAndHistory flagHistory={props.flagHistory} selected={selected} />
     </aside>
   );
 }
 
-function VendorFactsAndHistory({ controller }: { controller: VendorsController }) {
-  const { selected, flagHistory } = controller;
+function VendorFactsAndHistory({
+  flagHistory,
+  selected,
+}: {
+  flagHistory: VendorDetailPanelProps["flagHistory"];
+  selected: Vendor | null;
+}) {
   if (!selected) return null;
   return (
     <div>

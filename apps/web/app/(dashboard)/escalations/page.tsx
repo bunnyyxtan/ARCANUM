@@ -28,7 +28,14 @@ export default function EscalationsPage() {
         queueCount={controller.queue.length}
         resolvedCount={controller.resolvedCount}
       />
-      <EscalationsQueue controller={controller} />
+      <EscalationsQueue
+        errored={controller.errored}
+        liveEscalations={controller.liveEscalations}
+        loading={controller.loading}
+        markResolved={controller.markResolved}
+        queue={controller.queue}
+        readOnly={controller.readOnly}
+      />
       <ResolvedEscalations items={controller.resolvedHistory} />
     </div>
   );

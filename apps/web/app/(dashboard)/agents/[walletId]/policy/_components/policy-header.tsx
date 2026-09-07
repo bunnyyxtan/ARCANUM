@@ -1,26 +1,25 @@
 import { ARC_NETWORK_BADGE, ARC_NETWORK_NAME } from "@arcanum/shared";
 import Link from "next/link";
-import type { CSSProperties } from "react";
+import type { CSSProperties, MouseEvent } from "react";
+import type { Hash } from "viem";
 
 import { isEvmAddress, shortAddress } from "@/lib/format/address";
 
-import type { PolicyController } from "../_hooks/use-policy-controller";
-
-type PolicyHeaderProps = Pick<
-  PolicyController,
-  | "policyBusy"
-  | "policyPendingIndexer"
-  | "policyReadStatus"
-  | "policyTxHash"
-  | "policyWalletOptions"
-  | "policyWriteDisabledReason"
-  | "resetDraft"
-  | "savePolicyOnChain"
-  | "selectedPolicyWalletAddress"
-  | "selectedPolicyWalletLabel"
-  | "setSelectedPolicyWalletAddress"
-  | "unsavedCount"
-> & { routeWalletId: string };
+interface PolicyHeaderProps {
+  policyBusy: boolean;
+  policyPendingIndexer: boolean;
+  policyReadStatus: "idle" | "checking" | "ready" | "error";
+  policyTxHash: Hash | null;
+  policyWalletOptions: readonly { address: string; id: string; label: string }[];
+  policyWriteDisabledReason: string | null;
+  resetDraft: () => void;
+  routeWalletId: string;
+  savePolicyOnChain: (event: MouseEvent<HTMLButtonElement>) => Promise<void>;
+  selectedPolicyWalletAddress: string;
+  selectedPolicyWalletLabel: string;
+  setSelectedPolicyWalletAddress: (address: string) => void;
+  unsavedCount: number;
+}
 
 export function PolicyHeader({
   routeWalletId,

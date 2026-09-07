@@ -24,8 +24,43 @@ export default function VendorsPage() {
         categoryCount={controller.categoryCount}
         openAddVendor={controller.openAddVendor}
       />
-      <VendorRegistry {...controller} />
-      <VendorDetailPanel {...controller} />
+      <VendorRegistry
+        errored={controller.errored}
+        loading={controller.loading}
+        openAddVendor={controller.openAddVendor}
+        registry={controller.registry}
+        retryVendors={controller.retryVendors}
+        rowActions={{
+          isVendorFlagged: controller.isVendorFlagged,
+          selectVendor: controller.selectVendor,
+          setVendorStatusRemote: controller.setVendorStatusRemote,
+          vendorFlagDetail: controller.vendorFlagDetail,
+          vendorSaving: controller.form.vendorSaving,
+          vendorUnflagDetail: controller.vendorUnflagDetail,
+        }}
+        selected={controller.selected}
+        visible={controller.visible}
+        workspace={controller.workspace}
+      />
+      <VendorDetailPanel
+        controls={{
+          detail: controller.detail,
+          flagToggling: controller.flagToggling,
+          isConnected: controller.isConnected,
+          isVendorFlagged: controller.isVendorFlagged,
+          saveNoteEdit: controller.saveNoteEdit,
+          setVendorStatusRemote: controller.setVendorStatusRemote,
+          submitCap: controller.submitCap,
+          toggleVendorFlag: controller.toggleVendorFlag,
+          vendorFlagDetail: controller.vendorFlagDetail,
+          vendorSaving: controller.form.vendorSaving,
+        }}
+        flagHistory={controller.flagHistory}
+        isVendorFlagged={controller.isVendorFlagged}
+        selected={controller.selected}
+        vendorFlagDetail={controller.vendorFlagDetail}
+        vendorUnflagDetail={controller.vendorUnflagDetail}
+      />
       {form.addVendorOpen && (
         <AddVendorModal
           error={form.vendorError}

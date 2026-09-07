@@ -1,9 +1,9 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, MouseEvent } from "react";
 
 import { shortAddress } from "@/lib/format/address";
+import type { VendorFlagDetail, VendorUnflagDetail } from "@/lib/live-data";
 import type { Vendor } from "@/lib/types";
 
-import type { VendorsController } from "../_hooks/use-vendors-controller";
 import { categoryLabel } from "../_lib/helpers";
 
 export function StatePill({ blocked }: { blocked: boolean }) {
@@ -20,20 +20,29 @@ export function StatePill({ blocked }: { blocked: boolean }) {
   );
 }
 
-type VendorRowProps = Pick<
-  VendorsController,
-  | "selected"
-  | "registry"
-  | "selectVendor"
-  | "isVendorFlagged"
-  | "vendorFlagDetail"
-  | "vendorUnflagDetail"
-  | "form"
-  | "setVendorStatusRemote"
-> & { vendor: Vendor; index: number };
+interface VendorRowProps {
+  index: number;
+  isVendorFlagged: (address: string) => boolean;
+  registry: {
+    menu: string | null;
+    setMenu: (value: string | null) => void;
+    setNotice: (value: string) => void;
+  };
+  selected: Vendor | null;
+  selectVendor: (id: string) => void;
+  setVendorStatusRemote: (
+    action: "block" | "remove",
+    vendor: Vendor,
+    event: MouseEvent<HTMLElement>,
+  ) => Promise<void>;
+  vendor: Vendor;
+  vendorFlagDetail: (address: string) => VendorFlagDetail | undefined;
+  vendorSaving: boolean;
+  vendorUnflagDetail: (address: string) => VendorUnflagDetail | undefined;
+}
 
 export function VendorRow(props: VendorRowProps) {
-  const { vendor, index, registry, form } = props;
+  const { vendor, index, registry } = props;
   const flag = props.vendorFlagDetail(vendor.address);
   const unflag = props.vendorUnflagDetail(vendor.address);
   return (
@@ -156,7 +165,9 @@ export function VendorRow(props: VendorRowProps) {
                 <button
                   key={action}
                   type="button"
-                  disabled={form.vendorSaving || (action === "block" && vendor.trust === "blocked")}
+                  disabled={
+                    props.vendorSaving || (action === "block" && vendor.trust === "blocked")
+                  }
                   onClick={(event) => {
                     registry.setMenu(null);
                     void props.setVendorStatusRemote(action, vendor, event);

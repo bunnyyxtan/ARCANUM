@@ -1,11 +1,44 @@
 import { ConnectCta } from "@/components/warm/ConnectCta";
+import type { VendorFlagDetail, VendorUnflagDetail } from "@/lib/live-data";
+import type { Vendor } from "@/lib/types";
 
-import type { VendorsController } from "../_hooks/use-vendors-controller";
 import { VendorRow } from "./vendor-row";
 import { VendorFilters } from "./vendor-summary";
 
-export function VendorRegistry(controller: VendorsController) {
-  const { workspace, loading, errored, visible, selected, registry } = controller;
+interface VendorRegistryProps {
+  errored: boolean;
+  loading: boolean;
+  openAddVendor: () => void;
+  registry: {
+    category: string;
+    menu: string | null;
+    notice: string;
+    query: string;
+    setCategory: (value: string) => void;
+    setMenu: (value: string | null) => void;
+    setNotice: (value: string) => void;
+    setQuery: (value: string) => void;
+  };
+  retryVendors: () => Promise<void>;
+  rowActions: {
+    isVendorFlagged: (address: string) => boolean;
+    selectVendor: (id: string) => void;
+    setVendorStatusRemote: (
+      action: "block" | "remove",
+      vendor: Vendor,
+      event: React.MouseEvent<HTMLElement>,
+    ) => Promise<void>;
+    vendorFlagDetail: (address: string) => VendorFlagDetail | undefined;
+    vendorSaving: boolean;
+    vendorUnflagDetail: (address: string) => VendorUnflagDetail | undefined;
+  };
+  selected: Vendor | null;
+  visible: readonly Vendor[];
+  workspace: { dataMode: string; isResolving: boolean };
+}
+
+export function VendorRegistry(props: VendorRegistryProps) {
+  const { workspace, loading, errored, visible, selected, registry, rowActions } = props;
   return (
     <section className="mt-14">
       <div className="flex flex-col justify-between gap-4 border-b border-[var(--wl-ink)] pb-4 lg:flex-row lg:items-end">
@@ -54,7 +87,7 @@ export function VendorRegistry(controller: VendorsController) {
             </p>
             <button
               type="button"
-              onClick={() => void controller.retryVendors()}
+              onClick={() => void props.retryVendors()}
               className="mt-3 font-mono text-[10px] tracking-[.12em] text-[var(--wl-secondary)] hover:text-[var(--wl-ink)]"
             >
               RETRY
@@ -72,18 +105,18 @@ export function VendorRegistry(controller: VendorsController) {
               index={index}
               selected={selected}
               registry={registry}
-              selectVendor={controller.selectVendor}
-              isVendorFlagged={controller.isVendorFlagged}
-              vendorFlagDetail={controller.vendorFlagDetail}
-              vendorUnflagDetail={controller.vendorUnflagDetail}
-              form={controller.form}
-              setVendorStatusRemote={controller.setVendorStatusRemote}
+              selectVendor={rowActions.selectVendor}
+              isVendorFlagged={rowActions.isVendorFlagged}
+              vendorFlagDetail={rowActions.vendorFlagDetail}
+              vendorUnflagDetail={rowActions.vendorUnflagDetail}
+              vendorSaving={rowActions.vendorSaving}
+              setVendorStatusRemote={rowActions.setVendorStatusRemote}
             />
           ))
         )}
         <button
           type="button"
-          onClick={controller.openAddVendor}
+          onClick={props.openAddVendor}
           className="flex min-h-14 w-full items-center gap-3 border border-dashed border-[var(--wl-line)] px-4 py-5 text-left text-[var(--wl-secondary)] transition-colors duration-[220ms] hover:border-[var(--wl-signal)] hover:text-[var(--wl-signal)]"
         >
           <span className="font-mono text-[13px]">+</span>

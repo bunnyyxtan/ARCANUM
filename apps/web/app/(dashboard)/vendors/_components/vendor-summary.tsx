@@ -1,12 +1,18 @@
-import type { VendorsController } from "../_hooks/use-vendors-controller";
 import { vendorCategories } from "../_lib/helpers";
+
+interface VendorHeaderProps {
+  approvedCount: number;
+  blockedCount: number;
+  categoryCount: number;
+  openAddVendor: () => void;
+}
 
 export function VendorHeader({
   approvedCount,
   blockedCount,
   categoryCount,
   openAddVendor,
-}: Pick<VendorsController, "approvedCount" | "blockedCount" | "categoryCount" | "openAddVendor">) {
+}: VendorHeaderProps) {
   return (
     <>
       <section className="flex flex-col justify-between gap-6 border-b border-[var(--wl-line)] pb-8 sm:flex-row sm:items-end">
@@ -57,7 +63,16 @@ export function VendorHeader({
   );
 }
 
-export function VendorFilters({ registry }: Pick<VendorsController, "registry">) {
+interface VendorFiltersProps {
+  registry: {
+    category: string;
+    query: string;
+    setCategory: (value: string) => void;
+    setQuery: (value: string) => void;
+  };
+}
+
+export function VendorFilters({ registry }: VendorFiltersProps) {
   return (
     <div className="flex flex-col justify-between gap-4 border-b border-[var(--wl-line)] py-4 sm:flex-row sm:items-center">
       <div className="flex flex-wrap gap-2">

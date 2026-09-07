@@ -1,20 +1,19 @@
 import { ARC_NETWORK_BADGE } from "@arcanum/shared";
 import Link from "next/link";
 import type { CSSProperties } from "react";
+import type { Address } from "viem";
 
 import { isEvmAddress, shortAddress } from "@/lib/format/address";
 
-import type { PolicyController } from "../_hooks/use-policy-controller";
-
-type DeploymentRecordProps = Pick<
-  PolicyController,
-  | "address"
-  | "deployStatusLabel"
-  | "policyDiffs"
-  | "policyWalletOwner"
-  | "selectedGovernedWalletAddress"
-  | "unsavedCount"
-> & { routeWalletId: string };
+interface DeploymentRecordProps {
+  address: Address | undefined;
+  deployStatusLabel: string;
+  policyDiffs: readonly (readonly [string, string, string])[];
+  policyWalletOwner: Address | null;
+  routeWalletId: string;
+  selectedGovernedWalletAddress: Address | null;
+  unsavedCount: number;
+}
 
 export function DeploymentRecord({
   address,

@@ -1,22 +1,41 @@
-import type { VendorsController } from "../_hooks/use-vendors-controller";
+import type { Dispatch, MouseEvent, SetStateAction } from "react";
 
-type Props = Pick<
-  VendorsController,
-  | "selected"
-  | "detail"
-  | "form"
-  | "isConnected"
-  | "flagToggling"
-  | "isVendorFlagged"
-  | "vendorFlagDetail"
-  | "toggleVendorFlag"
-  | "saveNoteEdit"
-  | "setVendorStatusRemote"
-  | "submitCap"
->;
+import type { VendorFlagDetail } from "@/lib/live-data";
+import type { Vendor } from "@/lib/types";
 
-export function VendorReviewControls(props: Props) {
-  const { selected, detail, form } = props;
+export interface VendorReviewControlsProps {
+  detail: {
+    capEditing: boolean;
+    capValue: string;
+    flagNote: string;
+    flagNoteOpen: boolean;
+    noteEditOpen: boolean;
+    noteEditValue: string;
+    setCapEditing: Dispatch<SetStateAction<boolean>>;
+    setCapValue: Dispatch<SetStateAction<string>>;
+    setFlagNote: Dispatch<SetStateAction<string>>;
+    setFlagNoteOpen: Dispatch<SetStateAction<boolean>>;
+    setNoteEditOpen: Dispatch<SetStateAction<boolean>>;
+    setNoteEditValue: Dispatch<SetStateAction<string>>;
+  };
+  flagToggling: boolean;
+  isConnected: boolean;
+  isVendorFlagged: (address: string) => boolean;
+  saveNoteEdit: (vendor: Vendor) => Promise<void>;
+  selected: Vendor | null;
+  setVendorStatusRemote: (
+    action: "block" | "remove",
+    vendor: Vendor,
+    event: MouseEvent<HTMLElement>,
+  ) => Promise<void>;
+  submitCap: (event: MouseEvent<HTMLButtonElement>) => void;
+  toggleVendorFlag: (vendor: Vendor) => Promise<void>;
+  vendorFlagDetail: (address: string) => VendorFlagDetail | undefined;
+  vendorSaving: boolean;
+}
+
+export function VendorReviewControls(props: VendorReviewControlsProps) {
+  const { selected, detail } = props;
   if (!selected) return null;
   const flagged = props.isVendorFlagged(selected.address);
   return (
@@ -34,7 +53,7 @@ export function VendorReviewControls(props: Props) {
         </button>
         <button
           type="button"
-          disabled={form.vendorSaving || selected.trust === "blocked"}
+          disabled={props.vendorSaving || selected.trust === "blocked"}
           onClick={(event) => void props.setVendorStatusRemote("block", selected, event)}
           className="rounded-full border border-[var(--wl-signal)] px-4 py-2.5 font-mono text-[9px] tracking-[.1em] text-[var(--wl-signal)] transition-transform duration-[220ms] hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
         >
@@ -145,11 +164,11 @@ export function VendorReviewControls(props: Props) {
             <span className="font-mono text-[10px] text-[var(--wl-mute)]">/ MO · USDC</span>
             <button
               type="button"
-              disabled={form.vendorSaving}
+              disabled={props.vendorSaving}
               onClick={props.submitCap}
               className="warm-pill ml-2 rounded-full bg-[var(--wl-signal)] px-4 py-2 font-mono text-[9px] tracking-[.1em] text-[var(--wl-bg)] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {form.vendorSaving ? "SIGNING…" : "SIGN & APPLY"}
+              {props.vendorSaving ? "SIGNING…" : "SIGN & APPLY"}
             </button>
             <button
               type="button"

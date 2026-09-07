@@ -1,31 +1,33 @@
 import { ARC_NETWORK_NAME } from "@arcanum/shared";
 import Link from "next/link";
-import type { CSSProperties } from "react";
+import type { CSSProperties, MouseEvent } from "react";
+import type { Address } from "viem";
 
-import { doctrineCategoryOptions } from "@/lib/contracts";
-
-import type { PolicyController } from "../_hooks/use-policy-controller";
+import {
+  type DoctrineCategoryValue,
+  type PolicyDraftState,
+  doctrineCategoryOptions,
+} from "@/lib/contracts";
 
 const policyInputClass =
   "mt-1 w-full border-b border-[var(--wl-faint)] bg-transparent py-2.5 font-mono text-[13px] outline-none transition-colors focus:border-[var(--wl-signal)]";
 
-type PolicyDocumentProps = Pick<
-  PolicyController,
-  | "policyBusy"
-  | "policyDraft"
-  | "policyError"
-  | "policyNetworkNotice"
-  | "policyReadStatus"
-  | "policyWriteDisabledReason"
-  | "resetDraft"
-  | "savePolicyOnChain"
-  | "selectedGovernedWalletAddress"
-  | "selectedPolicyWalletLabel"
-  | "toggleCategory"
-  | "unsavedCount"
-  | "updatePolicyDraft"
-  | "walletsLoading"
->;
+interface PolicyDocumentProps {
+  policyBusy: boolean;
+  policyDraft: PolicyDraftState;
+  policyError: string | null;
+  policyNetworkNotice: string | null;
+  policyReadStatus: "idle" | "checking" | "ready" | "error";
+  policyWriteDisabledReason: string | null;
+  resetDraft: () => void;
+  savePolicyOnChain: (event: MouseEvent<HTMLButtonElement>) => Promise<void>;
+  selectedGovernedWalletAddress: Address | null;
+  selectedPolicyWalletLabel: string;
+  toggleCategory: (category: DoctrineCategoryValue) => void;
+  unsavedCount: number;
+  updatePolicyDraft: (patch: Partial<PolicyDraftState>) => void;
+  walletsLoading: boolean;
+}
 
 export function PolicyDocument(controller: PolicyDocumentProps) {
   const {
