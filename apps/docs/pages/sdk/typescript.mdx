@@ -1,14 +1,19 @@
 # TypeScript SDK
 
-`@arcanum/sdk` is a direct Arc RPC client. It reads contract state, simulates policy decisions, and signs `executeUSDC` with your agent signer.
+Version `3.0.0` installs from npm as `arcanum-sdk`. It is a direct Arc RPC client that reads
+contract state, simulates policy decisions, and signs `executeUSDC` with an agent signer.
 
-The write example below is for Arc Testnet/local development. Never hard-code
-private keys or commit `.env` files. Production operators should use managed
-signer infrastructure or user-controlled wallets.
+```bash
+npm install arcanum-sdk viem
+```
+
+The write example below is for Arc Testnet development. Keep private keys outside source
+control; production operators should use managed signer infrastructure or user-controlled
+wallets.
 
 ```ts
-import { ArcanumClient } from "@arcanum/sdk"
-import { ARC_TESTNET_RPC_URL, arcTestnet, usdcErc20 } from "@arcanum/sdk/chains"
+import { ArcanumClient } from "arcanum-sdk"
+import { ARC_TESTNET_RPC_URL, arcTestnet, usdcErc20 } from "arcanum-sdk/chains"
 import { privateKeyToAccount } from "viem/accounts"
 
 const arc = new ArcanumClient({
@@ -26,9 +31,15 @@ const result = await arc.executeUSDC({
 })
 ```
 
+Payment-intent methods use `reference` as the caller's stable business reference. Version 3
+replaces the former `idempotencyKey` name; do not send both.
+The reference does not make execution idempotent. If receipt waiting times out, retain the
+submitted hash and call `confirm(txHash)`; resubmitting can transfer funds twice.
+
 ## API
 
 - `executeUSDC({ to, amount, reason, metadata })`
+- `createPaymentIntent({ ..., reference })`
 - `simulate({ to, amount })`
 - `getPolicy()`
 - `getDailySpent()`
@@ -38,4 +49,7 @@ const result = await arc.executeUSDC({
 
 ## Errors
 
-`PolicyDeniedError`, `EscalationRequiredError`, `WalletFrozenError`, `AgentNotAuthorizedError`, and `InsufficientUSDCError` all extend `ArcanumError`.
+`PolicyDeniedError`, `EscalationRequiredError`, `TransferRevertedError`, `WalletFrozenError`,
+`AgentNotAuthorizedError`, and `InsufficientUSDCError` extend `ArcanumError`.
+`TransferRevertedError` means the submitted chain transaction reverted; inspect its cause and
+transaction hash rather than treating it as a policy denial.

@@ -5,10 +5,7 @@
   "private": true,
   "type": "module",
   "packageManager": "npm@11.6.2",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
+  "workspaces": ["apps/*", "packages/*"],
   "scripts": {
     "build": "npm run build --workspace @arcanum/web",
     "dev": "npm run dev --workspace @arcanum/web",

@@ -11,6 +11,7 @@ import { isAddress as isViemAddress } from "viem";
 import { useAccount, usePublicClient, useSwitchChain, useWriteContract } from "wagmi";
 
 import { getArcscanAddressUrl, getArcscanTxUrl } from "@/lib/arcscan";
+import { useWorkspaceMode } from "@/lib/auth-session";
 import { describeChainError, errorText } from "@/lib/chain-errors";
 import {
   type DeployWalletFormState,
@@ -19,6 +20,7 @@ import {
   initialDeployWalletForm,
   walletFactoryAbi,
 } from "@/lib/contracts";
+import { contractAddresses } from "@/lib/deployment";
 import { isConfiguredAddress, shortAddress } from "@/lib/format/address";
 import { trpc } from "@/lib/trpc";
 
@@ -35,6 +37,7 @@ type CreatedWalletResult = {
   monthlyCap: string;
   escalationThreshold: string;
   requireAllowlist: boolean;
+  freezeOnBlockedVendor: boolean;
 };
 
 type CreatedWalletSyncInput = {
@@ -43,11 +46,12 @@ type CreatedWalletSyncInput = {
   label: string;
   deployTxHash: Hash;
   chainId: number;
-  perTxCap: number;
-  dailyCap: number;
-  monthlyCap: number;
-  escalationThreshold: number;
+  perTxCap: string;
+  dailyCap: string;
+  monthlyCap: string;
+  escalationThreshold: string;
   requireAllowlist: boolean;
+  freezeOnBlockedVendor: boolean;
   signers: Address[];
   council: Address[];
   quorum: number;
@@ -87,6 +91,14 @@ function parseUsdcInput(value: string, label: string) {
   return parsed;
 }
 
+function parseMonthlyCap(value: string) {
+  const trimmed = value.trim();
+  if (!/^\d+(\.\d{1,6})?$/.test(trimmed)) {
+    throw new Error("Monthly cap must be a USDC amount with up to 6 decimals.");
+  }
+  return parseUnits(trimmed, 6);
+}
+
 function parseAddressList(value: string, fallback: Address, label: string) {
   const parts = value
     .split(/[,\s]+/)
@@ -106,23 +118,24 @@ function parseAddressList(value: string, fallback: Address, label: string) {
 function buildWalletPolicy(form: DeployWalletFormState) {
   const perTxCap = parseUsdcInput(form.perTxCap, "Per transaction cap");
   const daily24hCap = parseUsdcInput(form.dailyCap, "Daily cap");
-  const monthlyRollingCap = parseUsdcInput(form.monthlyCap, "Monthly cap");
+  const monthlyCap = parseMonthlyCap(form.monthlyCap);
   const escalationThreshold = parseUsdcInput(form.escalationAmount, "Escalation amount");
 
   if (perTxCap > daily24hCap) {
     throw new Error("Per transaction cap must be less than or equal to the daily cap.");
   }
-  if (daily24hCap > monthlyRollingCap) {
+  if (monthlyCap !== 0n && daily24hCap > monthlyCap) {
     throw new Error("Daily cap must be less than or equal to the monthly cap.");
   }
 
   return {
     perTxCap,
     daily24hCap,
-    monthlyRollingCap,
+    monthlyCap,
     allowedCategories: allPolicyCategoriesMask,
     escalationThreshold,
     requireAllowlist: form.requireAllowlist,
+    freezeOnBlockedVendor: form.freezeOnBlockedVendor,
   };
 }
 
@@ -191,12 +204,13 @@ export function DeployWalletModal({
   onWalletCreated,
 }: Readonly<{ onClose: () => void; onWalletCreated?: (result: CreatedWalletResult) => void }>) {
   const { address, chainId, isConnected } = useAccount();
+  const workspace = useWorkspaceMode();
   const publicClient = usePublicClient({ chainId: arcChain.id });
   const { switchChainAsync, isPending: switchPending } = useSwitchChain();
   const { writeContractAsync, isPending: writePending } = useWriteContract();
   const recordCreatedWallet = trpc.agents.recordCreatedWallet.useMutation();
   const deployment = deployContractStatus();
-  const walletFactoryAddress = configuredAddress(process.env.NEXT_PUBLIC_WALLET_FACTORY);
+  const walletFactoryAddress = configuredAddress(contractAddresses.walletFactory);
   const [form, setForm] = useState<DeployWalletFormState>(initialDeployWalletForm);
   const [txHash, setTxHash] = useState<Hash | null>(null);
   const [createdWallet, setCreatedWallet] = useState<Address | null>(null);
@@ -211,12 +225,17 @@ export function DeployWalletModal({
   const [advancedGovernanceOpen, setAdvancedGovernanceOpen] = useState(false);
   const submittingRef = useRef(false);
   const readyForTransaction =
-    deployment.ready && walletFactoryAddress !== null && isConnected && chainId === arcChain.id;
+    deployment.ready &&
+    walletFactoryAddress !== null &&
+    isConnected &&
+    workspace.isAuthenticated &&
+    chainId === arcChain.id;
   const isBusy = writePending || switchPending || status === "confirming" || submittingRef.current;
   const primaryDisabled =
     isBusy ||
     !deployment.ready ||
     !isConnected ||
+    !workspace.isAuthenticated ||
     (chainId === arcChain.id && !readyForTransaction);
 
   useEffect(() => {
@@ -292,6 +311,11 @@ export function DeployWalletModal({
       setStatus("error");
       return;
     }
+    if (!workspace.isAuthenticated) {
+      setError("Sign in with Ethereum before deploying a governed wallet.");
+      setStatus("error");
+      return;
+    }
     if (chainId !== arcChain.id) {
       setError(null);
       setStatus("idle");
@@ -334,6 +358,7 @@ export function DeployWalletModal({
       }
 
       const policy = buildWalletPolicy(form);
+      const escalationExpirySeconds = 3600n;
       const signers = parseAddressList(form.signerAddresses, address, "Agent signers");
       const council = parseAddressList(form.councilAddresses, address, "Escalation council");
       const quorum = Number.parseInt(form.quorum, 10);
@@ -354,7 +379,17 @@ export function DeployWalletModal({
         address: walletFactoryAddress,
         abi: walletFactoryAbi,
         functionName: "predictWallet",
-        args: [address, address, label, nonce, policy, signers, council, quorum],
+        args: [
+          address,
+          address,
+          label,
+          nonce,
+          policy,
+          signers,
+          council,
+          quorum,
+          escalationExpirySeconds,
+        ],
       });
       setPredictedWallet(predicted);
 
@@ -362,7 +397,7 @@ export function DeployWalletModal({
         address: walletFactoryAddress,
         abi: walletFactoryAbi,
         functionName: "createWallet",
-        args: [address, label, policy, signers, council, quorum],
+        args: [address, label, policy, signers, council, quorum, escalationExpirySeconds],
         chainId: arcChain.id,
       });
       setTxHash(hash);
@@ -378,6 +413,7 @@ export function DeployWalletModal({
         monthlyCap: form.monthlyCap,
         escalationThreshold: form.escalationAmount,
         requireAllowlist: form.requireAllowlist,
+        freezeOnBlockedVendor: form.freezeOnBlockedVendor,
       };
       setCreatedWallet(wallet);
       setStatus("success");
@@ -388,11 +424,12 @@ export function DeployWalletModal({
         label,
         deployTxHash: hash,
         chainId: arcChain.id,
-        perTxCap: Number(form.perTxCap),
-        dailyCap: Number(form.dailyCap),
-        monthlyCap: Number(form.monthlyCap),
-        escalationThreshold: Number(form.escalationAmount),
+        perTxCap: form.perTxCap,
+        dailyCap: form.dailyCap,
+        monthlyCap: form.monthlyCap,
+        escalationThreshold: form.escalationAmount,
         requireAllowlist: form.requireAllowlist,
+        freezeOnBlockedVendor: form.freezeOnBlockedVendor,
         signers,
         council,
         quorum,
@@ -421,15 +458,17 @@ export function DeployWalletModal({
     ? "DEPLOYMENT CONFIG REQUIRED"
     : !isConnected
       ? "CONNECT WALLET FIRST"
-      : chainId !== arcChain.id
-        ? switchPending
-          ? "SWITCHING NETWORK"
-          : `SWITCH TO ${ARC_NETWORK_BADGE}`
-        : status === "confirming" || writePending
-          ? txHash
-            ? "WAITING FOR RECEIPT"
-            : "CONFIRM IN WALLET"
-          : "CREATE GOVERNED WALLET";
+      : !workspace.isAuthenticated
+        ? "SIGN IN TO DEPLOY"
+        : chainId !== arcChain.id
+          ? switchPending
+            ? "SWITCHING NETWORK"
+            : `SWITCH TO ${ARC_NETWORK_BADGE}`
+          : status === "confirming" || writePending
+            ? txHash
+              ? "WAITING FOR RECEIPT"
+              : "CONFIRM IN WALLET"
+            : "CREATE GOVERNED WALLET";
 
   const hasSuccess = status === "success" && createdWallet !== null && txHash !== null;
   const createdAgentHref = createdWallet ? `/agents/${createdWallet}` : "/agents";
@@ -451,9 +490,9 @@ export function DeployWalletModal({
   };
 
   return (
-    <div
+    <dialog
+      open
       className="warm-modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-[rgba(var(--wl-ink-rgb),.28)] p-2 sm:p-4"
-      role="dialog"
       aria-modal="true"
     >
       <button
@@ -676,6 +715,17 @@ export function DeployWalletModal({
                 />
                 REQUIRE VENDOR ALLOWLIST / ALL CATEGORIES ENABLED
               </label>
+              <label
+                className={`flex items-center gap-2 font-mono text-[10px] uppercase tracking-[.14em] text-[var(--wl-secondary)] ${!advancedGovernanceOpen ? "hidden" : ""}`}
+              >
+                <input
+                  type="checkbox"
+                  checked={form.freezeOnBlockedVendor}
+                  onChange={(event) => updateForm("freezeOnBlockedVendor", event.target.checked)}
+                  className="h-3.5 w-3.5 accent-[var(--wl-signal)]"
+                />
+                FREEZE WALLET ON BLOCKED VENDOR
+              </label>
               {predictedWallet || txHash || createdWallet ? (
                 <div className="space-y-2 border border-[var(--wl-line)] bg-[var(--wl-bg-soft)] p-3 font-mono text-[10px] uppercase tracking-[.12em]">
                   {predictedWallet ? (
@@ -712,9 +762,11 @@ export function DeployWalletModal({
                     ? "Configure deployed contract addresses before deploying a governed wallet."
                     : !isConnected
                       ? "Connect wallet first."
-                      : chainId !== arcChain.id
-                        ? `Switch wallet network to ${ARC_NETWORK_NAME}.`
-                        : `Create a GuardedWallet on ${ARC_NETWORK_NAME}.`
+                      : !workspace.isAuthenticated
+                        ? "Sign in with Ethereum before deploying."
+                        : chainId !== arcChain.id
+                          ? `Switch wallet network to ${ARC_NETWORK_NAME}.`
+                          : `Create a GuardedWallet on ${ARC_NETWORK_NAME}.`
                 }
                 className={`flex h-9 w-full items-center justify-center border font-mono text-[11px] uppercase tracking-[.12em] ${
                   primaryDisabled
@@ -735,7 +787,7 @@ export function DeployWalletModal({
           )}
         </div>
       </section>
-    </div>
+    </dialog>
   );
 }
 

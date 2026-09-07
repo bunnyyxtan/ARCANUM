@@ -20,6 +20,7 @@ const OWNER = "0x1111111111111111111111111111111111111111";
 const TEAMMATE = "0x2222222222222222222222222222222222222222";
 const STRANGER = "0x3333333333333333333333333333333333333333";
 const NEWCOMER = "0x4444444444444444444444444444444444444444";
+const FACTORY = "0x4444444444444444444444444444444444444444";
 
 type Row = Record<string, unknown>;
 
@@ -34,6 +35,7 @@ function createReadModel() {
     owner_address: owner,
     label: id,
     status: "active",
+    wallet_factory_address: FACTORY,
     created_at: stamp(),
   });
 

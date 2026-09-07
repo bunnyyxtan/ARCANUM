@@ -43,6 +43,7 @@ export default function AgentsPage() {
             agentsQuery={agents.agentsQuery}
             openDeploy={agents.openDeploy}
             clearFilters={agents.clearFilters}
+            legacyWalletCount={agents.legacyWalletCount}
           />
           <AgentDetailPanel
             selectedAgent={agents.selectedAgent}

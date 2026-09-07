@@ -52,6 +52,7 @@ function useAgentsControllerInternal() {
     activeCount: agents.filter((agent) => agentStatus(agent) === "ACTIVE").length,
     frozenCount: agents.filter((agent) => agentStatus(agent) === "FROZEN").length,
     idleCount: agents.filter((agent) => agentStatus(agent) === "IDLE").length,
+    legacyWalletCount: agentsQuery.legacyWalletCount,
   };
 }
 

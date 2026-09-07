@@ -7,8 +7,8 @@
  * `index.ts` calls into this module so real activity on the configured Arc
  * network shows up in the ledger and escalation queue.
  *
- * All writes are idempotent (select-then-insert keyed on tx_hash /
- * escalation_key) so re-indexing after a restart never duplicates rows.
+ * All writes are idempotent so re-indexing after a restart never duplicates
+ * rows.
  */
 
 import { ARC_CHAIN_ID, ARC_NETWORK } from "@arcanum/shared";
@@ -27,16 +27,6 @@ const supabaseUrl = (env("SUPABASE_URL") ?? env("NEXT_PUBLIC_SUPABASE_URL"))?.re
 const serviceRoleKey = env("SUPABASE_SERVICE_ROLE_KEY");
 
 let warnedUnconfigured = false;
-type PendingWrite = { blockNumber: number; note: string; retry: () => Promise<void> };
-
-/** Bounded so a long outage cannot turn the failure ledger into a memory leak. */
-const MAX_TRACKED_FAILURES = 500;
-const MAINTENANCE_INTERVAL_MS = 30_000;
-
-const failedWrites = new Map<string, PendingWrite>();
-let lastMaintenanceAt = 0;
-/** Lowest block whose failure was discarded by the bound above, if any. */
-let droppedFailureBlock: number | null = null;
 
 class SupabaseRequestError extends Error {
   constructor(
@@ -91,7 +81,7 @@ async function request(
   });
 
   if (!response.ok) {
-    const body = await response.text().catch(() => "");
+    const body = await response.text();
     throw new SupabaseRequestError(
       response.status,
       body,
@@ -108,15 +98,6 @@ function isUniqueViolation(error: unknown) {
   return (
     error instanceof SupabaseRequestError &&
     (error.status === 409 || error.responseBody.includes("23505"))
-  );
-}
-
-function isMissingTable(error: unknown) {
-  return (
-    error instanceof SupabaseRequestError &&
-    (error.status === 404 ||
-      error.responseBody.includes("42P01") ||
-      error.responseBody.includes("PGRST205"))
   );
 }
 
@@ -140,47 +121,6 @@ async function insertDuplicateSafe(
   }
 }
 
-async function trackedWrite(key: string, blockNumber: number, operation: () => Promise<void>) {
-  try {
-    await operation();
-    failedWrites.delete(key);
-  } catch (error) {
-    // The operation is kept, not just the fact that it failed. Ponder does not
-    // re-emit an event once its handler returns, so without a retry path a
-    // single transient Supabase blip would pin the reported checkpoint below
-    // that block permanently - honest, but never recovering on its own.
-    if (failedWrites.size < MAX_TRACKED_FAILURES || failedWrites.has(key)) {
-      failedWrites.set(key, { blockNumber, note: failureNote(error), retry: operation });
-    } else {
-      // Past the bound the operation itself is discarded, so nothing can repair
-      // this block later. Remember the block anyway: once the retained
-      // failures drain, the checkpoint would otherwise heal over data that was
-      // never written and report a block it never actually synced.
-      droppedFailureBlock =
-        droppedFailureBlock === null ? blockNumber : Math.min(droppedFailureBlock, blockNumber);
-    }
-    console.error(failureNote(error));
-  }
-}
-
-/**
- * Periodic repair pass, throttled because it is driven by every indexed event.
- *
- * Failures are re-driven and staged rows are re-checked here rather than only
- * when the next event for that wallet arrives, so a read model that fell behind
- * can catch up without waiting for onchain activity that may never come.
- */
-async function runMaintenance() {
-  const now = Date.now();
-  if (now - lastMaintenanceAt < MAINTENANCE_INTERVAL_MS) {
-    return;
-  }
-  lastMaintenanceAt = now;
-
-  await retryFailedWrites();
-  await reconcileStagedEvents().catch((error) => console.error(failureNote(error)));
-}
-
 /**
  * Flush staged events whose wallet has since been created.
  *
@@ -190,18 +130,10 @@ async function runMaintenance() {
  * wallet can strand the staged rows indefinitely.
  */
 async function reconcileStagedEvents() {
-  let rows: Row[];
-  try {
-    rows = await request("GET", "unlinked_ledger_events", {
-      filters: { chain_id: CHAIN_ID },
-      limit: 200,
-    });
-  } catch (error) {
-    if (isMissingTable(error)) {
-      return;
-    }
-    throw error;
-  }
+  const rows = await request("GET", "unlinked_ledger_events", {
+    filters: { chain_id: CHAIN_ID },
+    limit: 200,
+  });
 
   const addresses = [...new Set(rows.map((row) => str(row, "wallet_address")).filter(Boolean))];
   for (const address of addresses) {
@@ -211,32 +143,6 @@ async function reconcileStagedEvents() {
     }
     await flushUnlinkedLedgerEvents(wallet);
   }
-}
-
-/**
- * Re-drive writes that failed earlier so `degraded` can heal by itself.
- *
- * Every write reachable from here is duplicate-safe, so replaying one that
- * actually succeeded is harmless. Throttled because a sustained outage would
- * otherwise replay the whole backlog on every indexed event.
- */
-async function retryFailedWrites() {
-  if (failedWrites.size === 0) {
-    return;
-  }
-
-  for (const [key, pending] of [...failedWrites]) {
-    try {
-      await pending.retry();
-      failedWrites.delete(key);
-    } catch (error) {
-      pending.note = failureNote(error);
-    }
-  }
-}
-
-function failureNote(error: unknown) {
-  return error instanceof Error ? error.message.slice(0, 180) : String(error).slice(0, 180);
 }
 
 function str(row: Row | undefined, key: string) {
@@ -279,11 +185,16 @@ async function markWalletIndexed(wallet: Row, timestamp: Date, frozen?: boolean)
   await request("PATCH", "public_wallet_profiles", {
     filters: { governed_wallet_id: walletId },
     body: { health_grade: grade, last_indexed_at: timestamp.toISOString(), updated_at: now },
-  }).catch((error) => console.error(String(error)));
+  });
   await flushUnlinkedLedgerEvents(wallet);
 }
 
-async function updateCheckpoint(blockNumber: number) {
+async function updateCheckpoint(blockNumber: number, startBlock: number) {
+  if (blockNumber < startBlock) {
+    throw new Error(
+      `[supabase-sync] refusing checkpoint block ${blockNumber} below deployment start block ${startBlock}`,
+    );
+  }
   let [existing] = await request("GET", "indexer_checkpoints", {
     filters: { chain_id: CHAIN_ID, contract_name: CHECKPOINT_CONTRACT },
     limit: 1,
@@ -295,31 +206,21 @@ async function updateCheckpoint(blockNumber: number) {
     });
   }
   const now = new Date().toISOString();
-  const failures = [...failedWrites.values()];
-  const failureBlocks = failures.map((failure) => failure.blockNumber);
-  if (droppedFailureBlock !== null) {
-    failureBlocks.push(droppedFailureBlock);
-  }
-  const firstFailure = failureBlocks.length > 0 ? Math.min(...failureBlocks) : null;
-  const firstFailureNote =
-    failures.find((failure) => failure.blockNumber === firstFailure)?.note ??
-    (firstFailure !== null && firstFailure === droppedFailureBlock
-      ? "too many pending failures to retain; a reindex is required to repair this block"
-      : undefined);
-  const reportedBlock =
-    firstFailure === null ? blockNumber : Math.min(blockNumber, firstFailure - 1);
   const checkpointPatch: Row = {
-    last_block: Math.max(0, reportedBlock),
-    status: firstFailure === null ? "synced" : "degraded",
-    error_note:
-      firstFailure === null
-        ? null
-        : `Write failed at block ${firstFailure}: ${firstFailureNote ?? "Supabase write failed"}`,
+    last_block: blockNumber,
+    status: "synced",
+    error_note: null,
     updated_at: now,
   };
   if (existing) {
     const lastBlock = Number(existing.last_block ?? 0);
-    if (firstFailure === null && blockNumber <= lastBlock && str(existing, "status") === "synced") {
+    if (lastBlock < startBlock) {
+      console.info(
+        `[supabase-sync] deployment start block ${startBlock} is above stored checkpoint ${lastBlock}; cutting over to the new deployment`,
+      );
+      checkpointPatch.last_seen_block = null;
+    }
+    if (blockNumber <= lastBlock && str(existing, "status") === "synced") {
       return;
     }
     await request("PATCH", "indexer_checkpoints", {
@@ -346,6 +247,10 @@ async function updateCheckpoint(blockNumber: number) {
 async function upsertLedgerEvent(input: {
   wallet: Row;
   txHash: string;
+  logIndex: number;
+  escalationId?: string;
+  policyVersion?: string;
+  councilVersion?: string;
   status: "allowed" | "escalated" | "blocked" | "frozen";
   amount: bigint;
   counterpartyAddress: string;
@@ -354,7 +259,11 @@ async function upsertLedgerEvent(input: {
   timestamp: Date;
 }): Promise<Row | null> {
   const [existing] = await request("GET", "ledger_events", {
-    filters: { tx_hash: input.txHash.toLowerCase() },
+    filters: {
+      chain_id: CHAIN_ID,
+      tx_hash: input.txHash.toLowerCase(),
+      log_index: input.logIndex,
+    },
     limit: 1,
   });
   if (existing) {
@@ -367,25 +276,36 @@ async function upsertLedgerEvent(input: {
       organization_id: str(input.wallet, "organization_id"),
       governed_wallet_id: str(input.wallet, "id"),
       tx_hash: input.txHash.toLowerCase(),
+      log_index: input.logIndex,
       event_time: input.timestamp.toISOString(),
       agent_label: str(input.wallet, "label") || null,
-      category: "other",
+      category: null,
       counterparty_address: input.counterpartyAddress.toLowerCase(),
       amount_usdc: usdcDecimal(input.amount),
       status: input.status,
       decision_reason: input.reason,
       block_number: input.blockNumber,
       chain_id: CHAIN_ID,
-      policy_snapshot: {},
+      policy_snapshot: {
+        ...(input.escalationId ? { escalationId: input.escalationId } : {}),
+        ...(input.policyVersion ? { policyVersion: input.policyVersion } : {}),
+        ...(input.councilVersion ? { councilVersion: input.councilVersion } : {}),
+      },
       data_source: "live",
     },
-    { tx_hash: input.txHash.toLowerCase() },
+    {
+      chain_id: CHAIN_ID,
+      tx_hash: input.txHash.toLowerCase(),
+      log_index: input.logIndex,
+    },
   );
 }
 
 type TransferInput = {
   walletAddress: string;
   txHash: string;
+  logIndex: number;
+  escalationId?: string;
   toAddress: string;
   amount: bigint;
   blockNumber: number;
@@ -395,6 +315,8 @@ type TransferInput = {
 type EscalatedTransferInput = TransferInput & {
   reason: string;
   escalationId: string;
+  policyVersion: string;
+  councilVersion: string;
   expiresAt: Date;
   quorumRequired: number;
 };
@@ -405,57 +327,54 @@ async function stageUnlinked(
 ) {
   const payload: Row = {
     txHash: input.txHash,
+    logIndex: input.logIndex,
     toAddress: input.toAddress,
     amount: input.amount.toString(),
   };
-  if ("escalationId" in input) {
-    payload.reason = input.reason;
+  if (input.escalationId) {
     payload.escalationId = input.escalationId;
+  }
+  if ("expiresAt" in input) {
+    payload.reason = input.reason;
     payload.expiresAt = input.expiresAt.toISOString();
     payload.quorumRequired = input.quorumRequired;
+    payload.policyVersion = input.policyVersion;
+    payload.councilVersion = input.councilVersion;
   }
-  const eventKey = "escalationId" in input ? input.escalationId : input.txHash.toLowerCase();
-  try {
-    await insertDuplicateSafe(
-      "unlinked_ledger_events",
-      {
-        wallet_address: input.walletAddress.toLowerCase(),
-        chain_id: CHAIN_ID,
-        event_kind: eventKind,
-        event_key: eventKey,
-        payload,
-        block_number: input.blockNumber,
-        event_time: input.timestamp.toISOString(),
-      },
-      {
-        wallet_address: input.walletAddress.toLowerCase(),
-        chain_id: CHAIN_ID,
-        event_kind: eventKind,
-        event_key: eventKey,
-      },
-    );
-  } catch (error) {
-    // Application code can ship ahead of the migration. Staging is a safety
-    // net, and a missing net must not stop the pipeline that was already
-    // running without one.
-    if (isMissingTable(error)) {
-      console.error(
-        "[supabase-sync] unlinked_ledger_events is not migrated; this event cannot be replayed later",
-      );
-      return;
-    }
-    throw error;
-  }
+  const eventKey =
+    "expiresAt" in input ? input.escalationId : `${input.txHash.toLowerCase()}:${input.logIndex}`;
+  await insertDuplicateSafe(
+    "unlinked_ledger_events",
+    {
+      wallet_address: input.walletAddress.toLowerCase(),
+      chain_id: CHAIN_ID,
+      event_kind: eventKind,
+      event_key: eventKey,
+      payload,
+      block_number: input.blockNumber,
+      event_time: input.timestamp.toISOString(),
+    },
+    {
+      wallet_address: input.walletAddress.toLowerCase(),
+      chain_id: CHAIN_ID,
+      event_kind: eventKind,
+      event_key: eventKey,
+    },
+  );
 }
 
 async function persistEscalation(wallet: Row, input: EscalatedTransferInput) {
   const ledgerEvent = await upsertLedgerEvent({
     wallet,
     txHash: input.txHash,
+    logIndex: input.logIndex,
+    escalationId: input.escalationId,
+    policyVersion: input.policyVersion,
+    councilVersion: input.councilVersion,
     status: "escalated",
     amount: input.amount,
     counterpartyAddress: input.toAddress,
-    reason: input.reason || "Escalated by onchain policy.",
+    reason: input.reason,
     blockNumber: input.blockNumber,
     timestamp: input.timestamp,
   });
@@ -467,9 +386,9 @@ async function persistEscalation(wallet: Row, input: EscalatedTransferInput) {
       ledger_event_id: ledgerEvent ? str(ledgerEvent, "id") : null,
       escalation_key: input.escalationId,
       amount_usdc: usdcDecimal(input.amount),
-      category: "other",
+      category: null,
       counterparty_address: input.toAddress.toLowerCase(),
-      reason: input.reason || "Escalated by onchain policy.",
+      reason: input.reason,
       status: "pending",
       approvals_count: 0,
       quorum_required: input.quorumRequired,
@@ -484,18 +403,9 @@ async function persistEscalation(wallet: Row, input: EscalatedTransferInput) {
 async function flushUnlinkedLedgerEvents(wallet: Row) {
   const walletAddress = str(wallet, "wallet_address").toLowerCase();
   if (!walletAddress) return;
-  let rows: Row[];
-  try {
-    rows = await request("GET", "unlinked_ledger_events", {
-      filters: { wallet_address: walletAddress, chain_id: CHAIN_ID },
-    });
-  } catch (error) {
-    if (isMissingTable(error)) {
-      console.warn("[supabase-sync] unlinked_ledger_events is not migrated; staged flush skipped");
-      return;
-    }
-    throw error;
-  }
+  const rows = await request("GET", "unlinked_ledger_events", {
+    filters: { wallet_address: walletAddress, chain_id: CHAIN_ID },
+  });
   for (const row of rows) {
     const payload = row.payload;
     if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
@@ -505,6 +415,7 @@ async function flushUnlinkedLedgerEvents(wallet: Row) {
     const common: TransferInput = {
       walletAddress,
       txHash: str(staged, "txHash"),
+      logIndex: Number(staged.logIndex),
       toAddress: str(staged, "toAddress"),
       amount: BigInt(str(staged, "amount")),
       blockNumber: Number(row.block_number),
@@ -517,11 +428,15 @@ async function flushUnlinkedLedgerEvents(wallet: Row) {
         escalationId: str(staged, "escalationId"),
         expiresAt: new Date(str(staged, "expiresAt")),
         quorumRequired: Number(staged.quorumRequired),
+        policyVersion: str(staged, "policyVersion"),
+        councilVersion: str(staged, "councilVersion"),
       });
     } else {
       await upsertLedgerEvent({
         wallet,
         txHash: common.txHash,
+        logIndex: common.logIndex,
+        escalationId: str(staged, "escalationId") || undefined,
         status: "allowed",
         amount: common.amount,
         counterpartyAddress: common.toAddress,
@@ -534,117 +449,99 @@ async function flushUnlinkedLedgerEvents(wallet: Row) {
   }
 }
 
-export async function syncWalletCreated(
-  walletAddress: string,
-  timestamp: Date,
-  blockNumber: number,
-) {
+export async function syncWalletCreated(walletAddress: string, timestamp: Date) {
   if (!configured()) return;
-  await trackedWrite(`wallet:${walletAddress.toLowerCase()}`, blockNumber, async () => {
-    const wallet = await findGovernedWallet(walletAddress);
-    if (!wallet) return;
-    await markWalletIndexed(wallet, timestamp);
-  });
+  const wallet = await findGovernedWallet(walletAddress);
+  if (!wallet) return;
+  await markWalletIndexed(wallet, timestamp);
 }
 
 export async function syncTransferExecuted(input: TransferInput) {
   if (!configured()) return;
-  await trackedWrite(`transfer:${input.txHash.toLowerCase()}`, input.blockNumber, async () => {
-    const wallet = await findGovernedWallet(input.walletAddress);
-    if (!wallet) {
-      await stageUnlinked("transfer_executed", input);
-      return;
-    }
-    await upsertLedgerEvent({
-      wallet,
-      txHash: input.txHash,
-      status: "allowed",
-      amount: input.amount,
-      counterpartyAddress: input.toAddress,
-      reason: "Onchain policy allowed the transfer.",
-      blockNumber: input.blockNumber,
-      timestamp: input.timestamp,
-    });
-    await markWalletIndexed(wallet, input.timestamp);
+  const wallet = await findGovernedWallet(input.walletAddress);
+  if (!wallet) {
+    await stageUnlinked("transfer_executed", input);
+    return;
+  }
+  await upsertLedgerEvent({
+    wallet,
+    txHash: input.txHash,
+    logIndex: input.logIndex,
+    escalationId: input.escalationId,
+    status: "allowed",
+    amount: input.amount,
+    counterpartyAddress: input.toAddress,
+    reason: "Onchain policy allowed the transfer.",
+    blockNumber: input.blockNumber,
+    timestamp: input.timestamp,
   });
+  await markWalletIndexed(wallet, input.timestamp);
 }
 
 export async function syncTransferEscalated(input: EscalatedTransferInput) {
   if (!configured()) return;
-  await trackedWrite(`escalation:${input.escalationId}`, input.blockNumber, async () => {
-    const wallet = await findGovernedWallet(input.walletAddress);
-    if (!wallet) {
-      await stageUnlinked("transfer_escalated", input);
-      return;
-    }
-    await persistEscalation(wallet, input);
-    await markWalletIndexed(wallet, input.timestamp);
-  });
+  const wallet = await findGovernedWallet(input.walletAddress);
+  if (!wallet) {
+    await stageUnlinked("transfer_escalated", input);
+    return;
+  }
+  await persistEscalation(wallet, input);
+  await markWalletIndexed(wallet, input.timestamp);
 }
 
-export async function syncEscalationApproval(
-  escalationId: string,
-  approvalsCount: number,
-  blockNumber: number,
-) {
+export async function syncEscalationApproval(escalationId: string, approvalsCount: number) {
   if (!configured()) return;
-  await trackedWrite(`approval:${escalationId}`, blockNumber, async () => {
-    const [existing] = await request("GET", "escalations", {
-      filters: { escalation_key: escalationId },
-      limit: 1,
-    });
-    if (!existing) return;
-    await request("PATCH", "escalations", {
-      filters: { id: str(existing, "id") },
-      body: {
-        approvals_count: Math.max(approvalsCount, Number(existing.approvals_count ?? 0)),
-        updated_at: new Date().toISOString(),
-      },
-    });
+  const [existing] = await request("GET", "escalations", {
+    filters: { escalation_key: escalationId },
+    limit: 1,
+  });
+  if (!existing) return;
+  await request("PATCH", "escalations", {
+    filters: { id: str(existing, "id") },
+    body: {
+      approvals_count: Math.max(approvalsCount, Number(existing.approvals_count ?? 0)),
+      updated_at: new Date().toISOString(),
+    },
   });
 }
 
 export async function syncEscalationStatus(
   escalationId: string,
-  status: "approved" | "denied" | "expired" | "released",
-  blockNumber: number,
+  status: "approved" | "cancelled" | "denied" | "expired" | "invalidated" | "rejected" | "released",
   txHash?: string,
 ) {
   if (!configured()) return;
-  await trackedWrite(`escalation-status:${escalationId}:${status}`, blockNumber, async () => {
-    const [existing] = await request("GET", "escalations", {
-      filters: { escalation_key: escalationId },
-      limit: 1,
-    });
-    if (!existing) return;
-    const patch: Row = { status, updated_at: new Date().toISOString() };
-    if (txHash) {
-      if (status === "released" || status === "approved") {
-        patch.release_tx_hash = txHash.toLowerCase();
-      }
-      if (status === "denied") {
-        patch.deny_tx_hash = txHash.toLowerCase();
-      }
-    }
-    await request("PATCH", "escalations", { filters: { id: str(existing, "id") }, body: patch });
+  const [existing] = await request("GET", "escalations", {
+    filters: { escalation_key: escalationId },
+    limit: 1,
   });
+  if (!existing) return;
+  const patch: Row = { status, updated_at: new Date().toISOString() };
+  if (txHash) {
+    if (status === "released") {
+      patch.release_tx_hash = txHash.toLowerCase();
+    }
+    if (
+      status === "rejected" ||
+      status === "denied" ||
+      status === "cancelled" ||
+      status === "invalidated"
+    ) {
+      patch.deny_tx_hash = txHash.toLowerCase();
+    }
+  }
+  await request("PATCH", "escalations", { filters: { id: str(existing, "id") }, body: patch });
 }
 
 export async function syncWalletFrozenState(
   walletAddress: string,
   frozen: boolean,
   timestamp: Date,
-  blockNumber: number,
 ) {
   if (!configured()) return;
-  // Keyed by wallet, not by wallet+state: freeze and unfreeze are the same
-  // piece of state. Separate keys would let a failed freeze be retried after a
-  // later unfreeze succeeded and quietly restore the stale value.
-  await trackedWrite(`frozen:${walletAddress}`, blockNumber, async () => {
-    const wallet = await findGovernedWallet(walletAddress);
-    if (!wallet) return;
-    await markWalletIndexed(wallet, timestamp, frozen);
-  });
+  const wallet = await findGovernedWallet(walletAddress);
+  if (!wallet) return;
+  await markWalletIndexed(wallet, timestamp, frozen);
 }
 
 export async function syncAnomaly(input: {
@@ -658,42 +555,33 @@ export async function syncAnomaly(input: {
   metadata?: Record<string, unknown>;
 }) {
   if (!configured()) return;
-  await trackedWrite(
-    `anomaly:${String(input.metadata?.txHash ?? input.timestamp.toISOString())}`,
-    input.blockNumber,
-    async () => {
-      const wallet = await findGovernedWallet(input.walletAddress);
-      if (!wallet) return;
-      // Anomalies carry no natural key, so a retry after an ambiguous failure
-      // (write committed, response lost) would file the same finding twice.
-      // Wallet plus detection time plus title identifies one onchain event.
-      const sameMoment = await request("GET", "anomalies", {
-        filters: {
-          governed_wallet_id: str(wallet, "id"),
-          detected_at: input.timestamp.toISOString(),
-        },
-      });
-      if (sameMoment.some((row) => str(row, "title") === input.title)) {
-        return;
-      }
-      await request("POST", "anomalies", {
-        body: [
-          {
-            organization_id: str(wallet, "organization_id"),
-            governed_wallet_id: str(wallet, "id"),
-            severity: input.severity,
-            score: input.score,
-            title: input.title,
-            description: input.description,
-            status: "open",
-            metadata: input.metadata ?? null,
-            detected_at: input.timestamp.toISOString(),
-            data_source: "live",
-          },
-        ],
-      });
+  const wallet = await findGovernedWallet(input.walletAddress);
+  if (!wallet) return;
+  const sameMoment = await request("GET", "anomalies", {
+    filters: {
+      governed_wallet_id: str(wallet, "id"),
+      detected_at: input.timestamp.toISOString(),
     },
-  );
+  });
+  if (sameMoment.some((row) => str(row, "title") === input.title)) {
+    return;
+  }
+  await request("POST", "anomalies", {
+    body: [
+      {
+        organization_id: str(wallet, "organization_id"),
+        governed_wallet_id: str(wallet, "id"),
+        severity: input.severity,
+        score: input.score,
+        title: input.title,
+        description: input.description,
+        status: "open",
+        metadata: input.metadata ?? null,
+        detected_at: input.timestamp.toISOString(),
+        data_source: "live",
+      },
+    ],
+  });
 }
 
 export async function syncGovernanceEvent(input: {
@@ -706,50 +594,38 @@ export async function syncGovernanceEvent(input: {
   timestamp: Date;
 }) {
   if (!configured()) return;
-  await trackedWrite(
-    `governance:${input.txHash.toLowerCase()}:${input.eventType}:${input.walletAddress.toLowerCase()}`,
-    input.blockNumber,
-    async () => {
-      const wallet = await findGovernedWallet(input.walletAddress);
-      if (!wallet) {
-        // WalletFactory is permissionless, so the chain carries governance
-        // events for wallets this deployment does not track. Treating those as
-        // failures would let any stranger deploy a wallet, rotate a module and
-        // pin this indexer's reported progress indefinitely.
-        return;
-      }
-      await insertDuplicateSafe(
-        "governance_events",
-        {
-          organization_id: str(wallet, "organization_id"),
-          governed_wallet_id: str(wallet, "id"),
-          event_type: input.eventType,
-          severity: input.severity,
-          payload: input.payload,
-          block_number: input.blockNumber,
-          tx_hash: input.txHash.toLowerCase(),
-          chain_id: CHAIN_ID,
-          event_time: input.timestamp.toISOString(),
-          data_source: "live",
-        },
-        {
-          tx_hash: input.txHash.toLowerCase(),
-          event_type: input.eventType,
-          governed_wallet_id: str(wallet, "id"),
-        },
-      );
-      await markWalletIndexed(wallet, input.timestamp);
+  const wallet = await findGovernedWallet(input.walletAddress);
+  if (!wallet) {
+    // WalletFactory is permissionless; foreign wallet events are not part of
+    // this deployment's read model.
+    return;
+  }
+  await insertDuplicateSafe(
+    "governance_events",
+    {
+      organization_id: str(wallet, "organization_id"),
+      governed_wallet_id: str(wallet, "id"),
+      event_type: input.eventType,
+      severity: input.severity,
+      payload: input.payload,
+      block_number: input.blockNumber,
+      tx_hash: input.txHash.toLowerCase(),
+      chain_id: CHAIN_ID,
+      event_time: input.timestamp.toISOString(),
+      data_source: "live",
+    },
+    {
+      tx_hash: input.txHash.toLowerCase(),
+      event_type: input.eventType,
+      governed_wallet_id: str(wallet, "id"),
     },
   );
+  await markWalletIndexed(wallet, input.timestamp);
 }
 
 /** Record indexing progress so `health.indexer` reports a real checkpoint. */
-export async function syncCheckpoint(blockNumber: number) {
+export async function syncCheckpoint(blockNumber: number, startBlock: number) {
   if (!configured()) return;
-  try {
-    await runMaintenance();
-    await updateCheckpoint(blockNumber);
-  } catch (error) {
-    console.error(String(error));
-  }
+  await reconcileStagedEvents();
+  await updateCheckpoint(blockNumber, startBlock);
 }

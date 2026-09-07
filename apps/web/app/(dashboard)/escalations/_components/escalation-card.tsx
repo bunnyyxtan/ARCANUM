@@ -8,17 +8,23 @@ import { formatUsd } from "@/lib/format/money";
 import type { Escalation } from "@/lib/types";
 
 import { useEscalationAction } from "../_hooks/use-escalation-action";
+import type { EscalationChainUpdate } from "../_hooks/use-escalation-action";
 import { formatFooterTimestamp } from "../_lib/helpers";
 
 interface EscalationCardProps {
   item: Escalation;
   index: number;
   cardId: string;
-  onResolved: () => void;
+  onChainUpdate: (update: EscalationChainUpdate) => void;
 }
 
-export function EscalationCard({ item, index, cardId, onResolved }: Readonly<EscalationCardProps>) {
-  const action = useEscalationAction(item, onResolved);
+export function EscalationCard({
+  item,
+  index,
+  cardId,
+  onChainUpdate,
+}: Readonly<EscalationCardProps>) {
+  const action = useEscalationAction(item, onChainUpdate);
   const amountLabel = formatUsd(item.amount);
   const isNear = item.expiryPercent < 10;
   return (
@@ -120,6 +126,16 @@ export function EscalationCard({ item, index, cardId, onResolved }: Readonly<Esc
             >
               Reject
             </button>
+            {action.ownerCanCancel ? (
+              <button
+                type="button"
+                disabled={action.actionsDisabled}
+                onClick={(event) => void action.submitResolution("cancel", event)}
+                className="arc-pill arc-ghost min-h-11 rounded-full border border-[var(--wl-line)] px-5 py-3 text-[10px] font-semibold disabled:cursor-not-allowed disabled:opacity-55 md:min-h-0"
+              >
+                Cancel
+              </button>
+            ) : null}
           </>
         ) : (
           <span className="font-mono text-[9px] tracking-[.12em] text-[var(--wl-green)]">
@@ -141,6 +157,11 @@ export function EscalationCard({ item, index, cardId, onResolved }: Readonly<Esc
           }`}
         >
           {action.statusLine}
+        </div>
+      ) : null}
+      {item.votePending ? (
+        <div className="mt-3 font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-amber)]">
+          Vote recorded · quorum pending
         </div>
       ) : null}
       {action.contractTxHash && getArcscanTxUrl(action.contractTxHash) ? (

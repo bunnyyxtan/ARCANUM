@@ -1,5 +1,4 @@
 import { ponder } from "ponder:registry";
-import { EscalationManagerAbi } from "@arcanum/contracts";
 import { db, defaultTenantId } from "@arcanum/db";
 import {
   events,
@@ -11,14 +10,13 @@ import {
   vendors,
   wallets,
 } from "@arcanum/db/schema";
-import { ARC_CHAIN_ID, ARC_RPC_URL, IS_ARC_MAINNET } from "@arcanum/shared";
+import { ARC_CHAIN_ID, escalationReasonFromIndex, freezeSourceFromIndex } from "@arcanum/shared";
 import { and, eq } from "drizzle-orm";
-import { http, createPublicClient, fallback } from "viem";
 
 import { loadDeployment } from "./deployment";
 import {
+  syncCheckpoint as persistCheckpoint,
   syncAnomaly,
-  syncCheckpoint,
   syncEscalationApproval,
   syncEscalationStatus,
   syncGovernanceEvent,
@@ -28,9 +26,11 @@ import {
   syncWalletFrozenState,
 } from "./supabase-sync";
 
-/** Fallback expiry used only when the onchain escalation cannot be read. */
-const DEFAULT_ESCALATION_EXPIRY_SECONDS = 3_600n;
-const DEFAULT_ESCALATION_THRESHOLD = 1;
+const deployment = loadDeployment();
+
+function syncCheckpoint(blockNumber: number) {
+  return persistCheckpoint(blockNumber, deployment.startBlock);
+}
 
 /**
  * The drizzle Postgres tables are the legacy dev read model; production reads
@@ -44,54 +44,6 @@ if (pgMirrorDisabled) {
   console.warn(
     "[indexer] ARCANUM_DISABLE_PG_MIRROR=1 - the legacy Postgres mirror is off; Supabase is the only write target for this run.",
   );
-}
-
-const chainClient = createPublicClient({
-  transport: fallback(
-    [
-      process.env.ARC_RPC_URL,
-      process.env.ARC_TESTNET_RPC,
-      process.env.PONDER_RPC_URL_5042002,
-      ...(IS_ARC_MAINNET ? [] : ["https://arc-testnet.drpc.org"]),
-      ARC_RPC_URL,
-    ]
-      .filter((url): url is string => Boolean(url))
-      .map((url) => http(url)),
-  ),
-});
-
-/**
- * Reads the quorum and expiry the EscalationManager actually recorded for an
- * escalation. These are per-wallet governance settings, so hardcoding them
- * makes the approval queue show a quorum the contract never enforces (an
- * operator sees "0 / 2" on an escalation that one signature releases).
- */
-async function readEscalationTerms(escalationId: string, blockTimestamp: bigint) {
-  const fallback = {
-    threshold: DEFAULT_ESCALATION_THRESHOLD,
-    expiresAt: new Date(Number(blockTimestamp + DEFAULT_ESCALATION_EXPIRY_SECONDS) * 1000),
-  };
-
-  try {
-    const result = await chainClient.readContract({
-      abi: EscalationManagerAbi,
-      address: loadDeployment().escalationManager,
-      functionName: "getEscalation",
-      args: [escalationId as `0x${string}`],
-    });
-
-    const threshold = Number(asBigint(result[6]));
-    const expiresAtSeconds = asBigint(result[5]);
-
-    return {
-      threshold: threshold > 0 ? threshold : fallback.threshold,
-      expiresAt:
-        expiresAtSeconds > 0n ? new Date(Number(expiresAtSeconds) * 1000) : fallback.expiresAt,
-    };
-  } catch (error) {
-    console.error(`[indexer] could not read escalation ${escalationId} terms: ${String(error)}`);
-    return fallback;
-  }
 }
 
 function asString(value: unknown) {
@@ -112,6 +64,36 @@ function asNumber(value: unknown) {
 
 function blockDate(timestamp: bigint) {
   return new Date(Number(timestamp) * 1000);
+}
+
+function logIndex(value: bigint | number) {
+  return Number(value);
+}
+
+function reasonName(value: unknown) {
+  const encoded = asString(value);
+  const index = encoded ? Number(BigInt(encoded)) : asNumber(value);
+  return escalationReasonFromIndex(index) ?? `UNKNOWN_${index}`;
+}
+
+function policyPayload(value: unknown) {
+  if (!value || typeof value !== "object") {
+    return {};
+  }
+  const policy = value as Record<string, unknown>;
+  return {
+    perTxCap: asBigint(policy.perTxCap ?? policy[0]).toString(),
+    daily24hCap: asBigint(policy.daily24hCap ?? policy[1]).toString(),
+    monthlyCap: asBigint(policy.monthlyCap ?? policy[2]).toString(),
+    allowedCategories: asBigint(policy.allowedCategories ?? policy[3]).toString(),
+    escalationThreshold: asBigint(policy.escalationThreshold ?? policy[4]).toString(),
+    requireAllowlist: Boolean(policy.requireAllowlist ?? policy[5]),
+    freezeOnBlockedVendor: Boolean(policy.freezeOnBlockedVendor ?? policy[6]),
+  };
+}
+
+function addressArray(value: unknown) {
+  return Array.isArray(value) ? value.map(asAddress) : [];
 }
 
 async function findWallet(walletAddress: string, tenantId: string) {
@@ -194,11 +176,8 @@ async function findTransferByTx(tenantId: string, txHash: string) {
 }
 
 ponder.on("WalletFactory:WalletCreated", async ({ event }) => {
-  await syncWalletCreated(
-    asAddress(event.args.wallet),
-    blockDate(event.block.timestamp),
-    Number(event.block.number),
-  );
+  const createdAt = blockDate(asBigint(event.args.timestamp));
+  await syncWalletCreated(asAddress(event.args.wallet), createdAt);
   await syncCheckpoint(Number(event.block.number));
 
   const tenantId = defaultTenantId();
@@ -224,7 +203,7 @@ ponder.on("WalletFactory:WalletCreated", async ({ event }) => {
           label,
           ownerAddress: owner,
           createdBlock: Number(event.block.number),
-          factoryAddress: asAddress(event.args.factory) || asAddress(event.args.walletFactory),
+          factoryAddress: asAddress(event.log.address),
           frozen: false,
           policyVersion: 1,
         })
@@ -240,10 +219,16 @@ ponder.on("WalletFactory:WalletCreated", async ({ event }) => {
     walletId: wallet.id,
     type: "WALLET_CREATED",
     severity: "info",
-    payload: { wallet: walletAddress, owner, label },
+    payload: {
+      wallet: walletAddress,
+      owner,
+      label,
+      defaultsVersion: asBigint(event.args.defaultsVersion).toString(),
+      policyVersion: 1,
+    },
     blockNumber: Number(event.block.number),
     txHash: event.transaction.hash,
-    timestamp: blockDate(event.block.timestamp),
+    timestamp: createdAt,
   });
 });
 
@@ -251,6 +236,8 @@ ponder.on("GuardedWallet:TransferExecuted", async ({ event }) => {
   await syncTransferExecuted({
     walletAddress: asAddress(event.args.wallet),
     txHash: event.transaction.hash,
+    logIndex: logIndex(event.log.logIndex),
+    escalationId: asString(event.args.escalationId),
     toAddress: asAddress(event.args.to),
     amount: asBigint(event.args.amount),
     blockNumber: Number(event.block.number),
@@ -293,7 +280,11 @@ ponder.on("GuardedWallet:TransferExecuted", async ({ event }) => {
     walletId: wallet.id,
     type: "TRANSFER_EXECUTED",
     severity: "success",
-    payload: { transferId: transfer?.id, amount },
+    payload: {
+      transferId: transfer?.id,
+      amount,
+      escalationId: asString(event.args.escalationId),
+    },
     blockNumber: Number(event.block.number),
     txHash: event.transaction.hash,
     timestamp: blockDate(event.block.timestamp),
@@ -301,19 +292,20 @@ ponder.on("GuardedWallet:TransferExecuted", async ({ event }) => {
 });
 
 ponder.on("GuardedWallet:TransferEscalated", async ({ event }) => {
-  const terms = await readEscalationTerms(asString(event.args.escalationId), event.block.timestamp);
-
   await syncTransferEscalated({
     walletAddress: asAddress(event.args.wallet),
     txHash: event.transaction.hash,
+    logIndex: logIndex(event.log.logIndex),
     toAddress: asAddress(event.args.to),
     amount: asBigint(event.args.amount),
-    reason: asString(event.args.reason),
+    reason: reasonName(event.args.reason),
     escalationId: asString(event.args.escalationId),
     blockNumber: Number(event.block.number),
     timestamp: blockDate(event.block.timestamp),
-    expiresAt: terms.expiresAt,
-    quorumRequired: terms.threshold,
+    expiresAt: blockDate(asBigint(event.args.expiresAt)),
+    quorumRequired: asNumber(event.args.threshold),
+    policyVersion: asBigint(event.args.policyVersion).toString(),
+    councilVersion: asBigint(event.args.councilVersion).toString(),
   });
   await syncCheckpoint(Number(event.block.number));
 
@@ -339,7 +331,7 @@ ponder.on("GuardedWallet:TransferEscalated", async ({ event }) => {
           toAddress: asAddress(event.args.to),
           amount,
           verdict: "ESCALATE",
-          reason: asString(event.args.reason),
+          reason: reasonName(event.args.reason),
           vendorCategory: "compute",
           dailySpentAfter: "0",
         })
@@ -359,12 +351,12 @@ ponder.on("GuardedWallet:TransferEscalated", async ({ event }) => {
       transferId: transfer?.id,
       toAddress: asAddress(event.args.to),
       amount,
-      reason: asString(event.args.reason),
+      reason: reasonName(event.args.reason),
       createdAt: blockDate(event.block.timestamp),
-      expiresAt: terms.expiresAt,
+      expiresAt: blockDate(asBigint(event.args.expiresAt)),
       status: "PENDING",
       signaturesCount: 0,
-      threshold: terms.threshold,
+      threshold: asNumber(event.args.threshold),
       signers: [],
     });
   }
@@ -382,12 +374,7 @@ ponder.on("GuardedWallet:TransferEscalated", async ({ event }) => {
 });
 
 ponder.on("GuardedWallet:Frozen", async ({ event }) => {
-  await syncWalletFrozenState(
-    asAddress(event.args.wallet),
-    true,
-    blockDate(event.block.timestamp),
-    Number(event.block.number),
-  );
+  await syncWalletFrozenState(asAddress(event.args.wallet), true, blockDate(event.block.timestamp));
   await syncCheckpoint(Number(event.block.number));
 
   const tenantId = defaultTenantId();
@@ -406,7 +393,13 @@ ponder.on("GuardedWallet:Frozen", async ({ event }) => {
     walletId: wallet.id,
     type: "WALLET_FROZEN",
     severity: "danger",
-    payload: { reason: asNumber(event.args.reason) },
+    payload: {
+      source:
+        freezeSourceFromIndex(asNumber(event.args.source)) ??
+        `UNKNOWN_${asNumber(event.args.source)}`,
+      reason: reasonName(event.args.reason),
+      data: asString(event.args.data),
+    },
     blockNumber: Number(event.block.number),
     txHash: event.transaction.hash,
     timestamp: blockDate(event.block.timestamp),
@@ -418,7 +411,6 @@ ponder.on("GuardedWallet:Unfrozen", async ({ event }) => {
     asAddress(event.args.wallet),
     false,
     blockDate(event.block.timestamp),
-    Number(event.block.number),
   );
   await syncCheckpoint(Number(event.block.number));
 
@@ -446,7 +438,10 @@ ponder.on("GuardedWallet:PolicyUpdated", async ({ event }) => {
     walletAddress: asAddress(event.args.wallet),
     eventType: "POLICY_UPDATED",
     severity: "info",
-    payload: { source: "GuardedWallet.PolicyUpdated" },
+    payload: {
+      version: asBigint(event.args.version).toString(),
+      policy: policyPayload(event.args.policy),
+    },
     blockNumber: Number(event.block.number),
     txHash: event.transaction.hash,
     timestamp: blockDate(event.block.timestamp),
@@ -458,34 +453,77 @@ ponder.on("GuardedWallet:PolicyUpdated", async ({ event }) => {
   if (!wallet) {
     return;
   }
-  const txHash = event.transaction.hash;
-  const existingEvent = await db.query.events.findFirst({
-    where: and(
-      eq(events.tenantId, tenantId),
-      eq(events.txHash, txHash),
-      eq(events.type, "POLICY_UPDATED"),
-    ),
-  });
-  if (existingEvent) {
-    return;
-  }
+  const version = asNumber(event.args.version);
 
-  const nextPolicyVersion = wallet.policyVersion + 1;
-
-  await db
-    .update(wallets)
-    .set({ policyVersion: nextPolicyVersion })
-    .where(eq(wallets.id, wallet.id));
+  await db.update(wallets).set({ policyVersion: version }).where(eq(wallets.id, wallet.id));
   await insertEvent({
     tenantId,
     walletId: wallet.id,
     type: "POLICY_UPDATED",
     severity: "info",
-    payload: { version: nextPolicyVersion, source: "GuardedWallet.PolicyUpdated" },
+    payload: { version, policy: policyPayload(event.args.policy) },
     blockNumber: Number(event.block.number),
-    txHash,
+    txHash: event.transaction.hash,
     timestamp: blockDate(event.block.timestamp),
   });
+});
+
+ponder.on("GuardedWallet:AnomalyFreezeThresholdUpdated", async ({ event }) => {
+  await syncGovernanceEvent({
+    walletAddress: asAddress(event.args.wallet),
+    eventType: "ANOMALY_FREEZE_THRESHOLD_UPDATED",
+    severity: "info",
+    payload: { thresholdBps: asBigint(event.args.thresholdBps).toString() },
+    blockNumber: Number(event.block.number),
+    txHash: event.transaction.hash,
+    timestamp: blockDate(event.block.timestamp),
+  });
+  await syncCheckpoint(Number(event.block.number));
+});
+
+ponder.on("GuardedWallet:OwnerWithdrawal", async ({ event }) => {
+  await syncGovernanceEvent({
+    walletAddress: asAddress(event.args.wallet),
+    eventType: "OWNER_WITHDRAWAL",
+    severity: "warning",
+    payload: {
+      to: asAddress(event.args.to),
+      amount: asBigint(event.args.amount).toString(),
+    },
+    blockNumber: Number(event.block.number),
+    txHash: event.transaction.hash,
+    timestamp: blockDate(event.block.timestamp),
+  });
+  await syncCheckpoint(Number(event.block.number));
+});
+
+ponder.on("GuardedWallet:OwnershipTransferStarted", async ({ event }) => {
+  await syncGovernanceEvent({
+    walletAddress: asAddress(event.args.wallet),
+    eventType: "OWNERSHIP_TRANSFER_STARTED",
+    severity: "info",
+    payload: { pendingOwner: asAddress(event.args.pendingOwner) },
+    blockNumber: Number(event.block.number),
+    txHash: event.transaction.hash,
+    timestamp: blockDate(event.block.timestamp),
+  });
+  await syncCheckpoint(Number(event.block.number));
+});
+
+ponder.on("GuardedWallet:OwnershipTransferred", async ({ event }) => {
+  await syncGovernanceEvent({
+    walletAddress: asAddress(event.args.wallet),
+    eventType: "OWNERSHIP_TRANSFERRED",
+    severity: "info",
+    payload: {
+      previousOwner: asAddress(event.args.previousOwner),
+      newOwner: asAddress(event.args.newOwner),
+    },
+    blockNumber: Number(event.block.number),
+    txHash: event.transaction.hash,
+    timestamp: blockDate(event.block.timestamp),
+  });
+  await syncCheckpoint(Number(event.block.number));
 });
 
 ponder.on("GuardedWallet:SignerAdded", async ({ event }) => {
@@ -632,11 +670,7 @@ ponder.on("GuardedWallet:ModuleRotated", async ({ event }) => {
 });
 
 ponder.on("EscalationManager:EscalationApproved", async ({ event }) => {
-  await syncEscalationApproval(
-    asString(event.args.escalationId),
-    asNumber(event.args.count),
-    Number(event.block.number),
-  );
+  await syncEscalationApproval(asString(event.args.escalationId), asNumber(event.args.count));
   await syncCheckpoint(Number(event.block.number));
   if (pgMirrorDisabled) {
     return;
@@ -676,34 +710,68 @@ ponder.on("EscalationManager:EscalationApproved", async ({ event }) => {
   });
 });
 
+ponder.on("EscalationManager:WalletRegistered", async ({ event }) => {
+  await syncGovernanceEvent({
+    walletAddress: asAddress(event.args.wallet),
+    eventType: "WALLET_COUNCIL_REGISTERED",
+    severity: "info",
+    payload: {
+      councilVersion: asBigint(event.args.councilVersion).toString(),
+      requiredSigners: addressArray(event.args.requiredSigners),
+      threshold: asNumber(event.args.threshold),
+      expirySeconds: asBigint(event.args.expirySeconds).toString(),
+    },
+    blockNumber: Number(event.block.number),
+    txHash: event.transaction.hash,
+    timestamp: blockDate(event.block.timestamp),
+  });
+  await syncCheckpoint(Number(event.block.number));
+});
+
 ponder.on("EscalationManager:EscalationRejected", async ({ event }) => {
-  await syncEscalationStatus(
-    asString(event.args.escalationId),
-    "denied",
-    Number(event.block.number),
-    event.transaction.hash,
-  );
+  await syncEscalationStatus(asString(event.args.escalationId), "rejected", event.transaction.hash);
   await syncCheckpoint(Number(event.block.number));
   await updateEscalationStatus(asString(event.args.escalationId), "REJECTED", event);
 });
 
-ponder.on("EscalationManager:EscalationExpired", async ({ event }) => {
+ponder.on("EscalationManager:EscalationCancelled", async ({ event }) => {
   await syncEscalationStatus(
     asString(event.args.escalationId),
-    "expired",
-    Number(event.block.number),
+    "cancelled",
+    event.transaction.hash,
   );
+  await syncCheckpoint(Number(event.block.number));
+  await updateEscalationStatus(asString(event.args.escalationId), "CANCELLED", event);
+});
+
+ponder.on("EscalationManager:EscalationInvalidated", async ({ event }) => {
+  await syncEscalationStatus(
+    asString(event.args.escalationId),
+    "invalidated",
+    event.transaction.hash,
+  );
+  await syncCheckpoint(Number(event.block.number));
+  await updateEscalationStatus(asString(event.args.escalationId), "INVALIDATED", event, {
+    councilVersion: asBigint(event.args.councilVersion).toString(),
+  });
+});
+
+ponder.on("EscalationManager:EscalationDenied", async ({ event }) => {
+  await syncEscalationStatus(asString(event.args.escalationId), "denied", event.transaction.hash);
+  await syncCheckpoint(Number(event.block.number));
+  await updateEscalationStatus(asString(event.args.escalationId), "DENIED", event, {
+    reason: reasonName(event.args.reason),
+  });
+});
+
+ponder.on("EscalationManager:EscalationExpired", async ({ event }) => {
+  await syncEscalationStatus(asString(event.args.escalationId), "expired");
   await syncCheckpoint(Number(event.block.number));
   await updateEscalationStatus(asString(event.args.escalationId), "EXPIRED", event);
 });
 
 ponder.on("EscalationManager:EscalationExecuted", async ({ event }) => {
-  await syncEscalationStatus(
-    asString(event.args.escalationId),
-    "released",
-    Number(event.block.number),
-    event.transaction.hash,
-  );
+  await syncEscalationStatus(asString(event.args.escalationId), "released", event.transaction.hash);
   await syncCheckpoint(Number(event.block.number));
   if (pgMirrorDisabled) {
     return;
@@ -861,11 +929,12 @@ ponder.on("VendorRegistry:VendorRemoved", async ({ event }) => {
 
 async function updateEscalationStatus(
   escalationId: string,
-  status: "REJECTED" | "EXPIRED",
+  status: "REJECTED" | "EXPIRED" | "DENIED" | "CANCELLED" | "INVALIDATED",
   event: {
     transaction: { hash: `0x${string}` };
     block: { number: bigint; timestamp: bigint };
   },
+  extraPayload: Record<string, unknown> = {},
 ) {
   if (pgMirrorDisabled) {
     return;
@@ -886,7 +955,7 @@ async function updateEscalationStatus(
     walletId: escalation.walletId,
     type: `ESCALATION_${status}`,
     severity: status === "EXPIRED" ? "info" : "warning",
-    payload: { escalationId },
+    payload: { escalationId, ...extraPayload },
     blockNumber: Number(event.block.number),
     txHash: event.transaction.hash,
     timestamp: blockDate(event.block.timestamp),

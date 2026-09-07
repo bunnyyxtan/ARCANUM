@@ -1,13 +1,10 @@
-import { createHash } from "node:crypto";
-import { defaultTenantId } from "@arcanum/db";
 import type { Agent, Wallet } from "@arcanum/db/schema";
+import { ARC_NETWORK, decimalUsdcToBaseUnits, deploymentManifestFor } from "@arcanum/shared";
 import type { ApiContext } from "../context";
-import { forgetCallerMembership } from "./auth";
 import {
   type SupabaseRow,
   type SupabaseServiceRoleClient,
   type SupabaseWriteResult,
-  createSupabaseServiceRoleClient,
   unavailableWrite,
   unconfiguredWrite,
   warnSupabase,
@@ -22,7 +19,6 @@ import {
   workspaceSlugForWallet,
 } from "./mappers";
 import { requiredStringField } from "./scope";
-import { readSupabaseWalletByAddressUnscoped } from "./wallets";
 
 export type SupabaseCreatedWalletInput = {
   walletAddress: `0x${string}`;
@@ -30,11 +26,12 @@ export type SupabaseCreatedWalletInput = {
   label: string;
   deployTxHash: `0x${string}`;
   chainId: number;
-  perTxCap: number;
-  dailyCap: number;
-  monthlyCap: number;
-  escalationThreshold: number;
+  perTxCap: string;
+  dailyCap: string;
+  monthlyCap: string;
+  escalationThreshold: string;
   requireAllowlist: boolean;
+  freezeOnBlockedVendor: boolean;
   signers: `0x${string}`[];
   council: `0x${string}`[];
   quorum: number;
@@ -43,17 +40,18 @@ export type SupabaseCreatedWalletInput = {
 export type SupabaseDeployedPolicyInput = {
   walletAddress: `0x${string}`;
   txHash: `0x${string}`;
-  perTxCap: number;
-  dailyCap: number;
-  monthlyCap: number;
-  escalationThreshold: number;
+  perTxCap: string;
+  dailyCap: string;
+  monthlyCap: string;
+  escalationThreshold: string;
   allowedCategories: string[];
   requireAllowlist: boolean;
+  freezeOnBlockedVendor: boolean;
 };
 
 export type SupabaseEscalationDecisionInput = {
   escalationKey: `0x${string}`;
-  status: "released" | "denied" | "expired";
+  status: "released" | "denied" | "expired" | "cancelled" | "invalidated";
   txHash: `0x${string}`;
   approvalsCount: number;
 };
@@ -85,11 +83,12 @@ export async function recordSupabaseDeployedPolicy(
       .sort();
     const unchanged =
       Boolean(current) &&
-      numberField(current, ["daily_cap_usdc"], -1) === input.dailyCap &&
-      numberField(current, ["per_tx_cap_usdc"], -1) === input.perTxCap &&
-      numberField(current, ["monthly_cap_usdc"], -1) === input.monthlyCap &&
-      numberField(current, ["escalate_above_usdc"], -1) === input.escalationThreshold &&
+      moneyEquals(current, "daily_cap_usdc", input.dailyCap) &&
+      moneyEquals(current, "per_tx_cap_usdc", input.perTxCap) &&
+      moneyEquals(current, "monthly_cap_usdc", input.monthlyCap) &&
+      moneyEquals(current, "escalate_above_usdc", input.escalationThreshold) &&
       booleanField(current, ["require_vendor_allowlist"], false) === input.requireAllowlist &&
+      booleanField(current, ["freeze_on_blocked_vendor"], false) === input.freezeOnBlockedVendor &&
       currentCategories.join(",") === nextCategories.join(",");
 
     if (unchanged) {
@@ -118,6 +117,7 @@ export async function recordSupabaseDeployedPolicy(
         escalate_above_usdc: input.escalationThreshold,
         allowed_categories: input.allowedCategories,
         require_vendor_allowlist: input.requireAllowlist,
+        freeze_on_blocked_vendor: input.freezeOnBlockedVendor,
         // Signers, council and quorum are governed by their own onchain
         // transactions, so a policy deployment must carry them over untouched.
         signers: arrayField(current, ["signers"]),
@@ -200,81 +200,97 @@ export async function recordSupabaseCreatedWallet(
   const ownerAddress = input.ownerAddress.toLowerCase();
 
   try {
-    const workspace = await ensureOwnerWorkspaceForWallet(client, ownerAddress);
-    const now = new Date().toISOString();
-    const walletRow = {
-      organization_id: workspace.organizationId,
-      wallet_address: walletAddress,
-      owner_address: ownerAddress,
-      label: input.label,
-      deploy_tx_hash: input.deployTxHash.toLowerCase(),
-      chain_id: input.chainId,
-      status: "pending_indexer",
-      indexer_status: "pending",
-      data_source: "live",
-      created_at: now,
-      updated_at: now,
-      wallet_factory_address: process.env.NEXT_PUBLIC_WALLET_FACTORY,
-      policy_engine_address: process.env.NEXT_PUBLIC_POLICY_ENGINE,
-      vendor_registry_address: process.env.NEXT_PUBLIC_VENDOR_REGISTRY,
-      escalation_manager_address: process.env.NEXT_PUBLIC_ESCALATION_MANAGER,
-      anomaly_oracle_address: process.env.NEXT_PUBLIC_ANOMALY_ORACLE,
-      created_by: workspace.profileId,
-    };
-    const [writtenWallet] = await client.upsertRows(
-      "governed_wallets",
-      [walletRow],
-      "wallet_address,chain_id",
+    const deployment = deploymentManifestFor(ARC_NETWORK);
+    const postureScore = postureFromDoctrineRow(
+      {
+        per_tx_cap_usdc: input.perTxCap,
+        daily_cap_usdc: input.dailyCap,
+        monthly_cap_usdc: input.monthlyCap,
+        escalate_above_usdc: input.escalationThreshold,
+        require_vendor_allowlist: input.requireAllowlist,
+        escalation_council: input.council,
+        quorum: input.quorum,
+        version: 1,
+      },
+      false,
     );
-    const walletId = requiredStringField(writtenWallet ?? walletRow, ["id"], "governed_wallets.id");
+    const rpcResult = await client.callFunction("record_created_wallet", {
+      p_wallet_address: walletAddress,
+      p_owner_address: ownerAddress,
+      p_label: input.label,
+      p_deploy_tx_hash: input.deployTxHash.toLowerCase(),
+      p_chain_id: input.chainId,
+      p_per_tx_cap: input.perTxCap,
+      p_daily_cap: input.dailyCap,
+      p_monthly_cap: input.monthlyCap,
+      p_escalation_threshold: input.escalationThreshold,
+      p_require_allowlist: input.requireAllowlist,
+      p_freeze_on_blocked_vendor: input.freezeOnBlockedVendor,
+      p_signers: input.signers.map((address) => address.toLowerCase()),
+      p_council: input.council.map((address) => address.toLowerCase()),
+      p_quorum: input.quorum,
+      p_posture_score: postureScore,
+      p_wallet_factory: deployment.walletFactory,
+      p_policy_engine: deployment.policyEngine,
+      p_vendor_registry: deployment.vendorRegistry,
+      p_escalation_manager: deployment.escalationManager,
+      p_anomaly_oracle: deployment.anomalyOracle,
+    });
+    if (!rpcResult || typeof rpcResult !== "object" || Array.isArray(rpcResult)) {
+      throw new Error("record_created_wallet returned no result.");
+    }
+    const resultRow = rpcResult as SupabaseRow;
+    const walletRow = resultRow.wallet;
+    const doctrineRow = resultRow.doctrine;
+    const publicProfileRow = resultRow.public_profile;
+    if (
+      !walletRow ||
+      typeof walletRow !== "object" ||
+      Array.isArray(walletRow) ||
+      !doctrineRow ||
+      typeof doctrineRow !== "object" ||
+      Array.isArray(doctrineRow) ||
+      !publicProfileRow ||
+      typeof publicProfileRow !== "object" ||
+      Array.isArray(publicProfileRow)
+    ) {
+      throw new Error("record_created_wallet returned an invalid row shape.");
+    }
 
-    const doctrineRow = {
-      governed_wallet_id: walletId,
-      organization_id: workspace.organizationId,
-      name: `${input.label} Doctrine`,
-      version: 1,
-      daily_cap_usdc: input.dailyCap,
-      per_tx_cap_usdc: input.perTxCap,
-      per_vendor_daily_cap_usdc: input.perTxCap,
-      monthly_cap_usdc: input.monthlyCap,
-      escalate_above_usdc: input.escalationThreshold,
-      allowed_categories: ["api", "compute", "data", "other"],
-      require_vendor_allowlist: input.requireAllowlist,
-      signers: input.signers.map((address) => address.toLowerCase()),
-      escalation_council: input.council.map((address) => address.toLowerCase()),
-      quorum: input.quorum,
-      status: "active",
-      source: "supabase",
-      updated_at: now,
-    };
-    const publicProfileRow = {
-      governed_wallet_id: walletId,
-      wallet_address: walletAddress,
-      show_public_badge: false,
-      posture_score: postureFromDoctrineRow(doctrineRow as SupabaseRow, false),
-      health_grade: "PENDING INDEXER",
-      summary: `${input.label} is synced in Supabase. Onchain event history may lag.`,
-      updated_at: now,
-    };
-
-    await writeDoctrineRow(client, doctrineRow, walletId);
-    await writePublicWalletProfileRow(client, publicProfileRow, walletAddress);
-
-    const wallet = walletFromGovernedWalletRow(writtenWallet ?? walletRow);
-    const [primarySigner] = doctrineRow.signers;
+    const wallet = walletFromGovernedWalletRow(walletRow as SupabaseRow);
+    const doctrine = doctrineRow as SupabaseRow;
+    const profile = publicProfileRow as SupabaseRow;
+    const [primarySigner] = arrayField(doctrine, ["signers"]);
     return {
       ok: true,
       data: {
         wallet,
         agent: primarySigner
-          ? agentFromSigner(wallet, primarySigner, doctrineRow, publicProfileRow.posture_score)
+          ? agentFromSigner(
+              wallet,
+              primarySigner,
+              doctrine,
+              numberField(profile, ["posture_score"], 0),
+            )
           : null,
       },
     };
   } catch (error) {
+    if (error instanceof Error && error.message.includes("record_created_wallet: owner mismatch")) {
+      return {
+        ok: false,
+        reason: "forbidden",
+        message: "This governed wallet is already recorded for a different owner.",
+      };
+    }
     warnSupabase("created-wallet.write", error);
     return unavailableWrite("created wallet", error);
   }
+}
+
+function moneyEquals(row: SupabaseRow | undefined, key: string, expected: string) {
+  const stored = stringField(row, [key], "");
+  return Boolean(stored) && decimalUsdcToBaseUnits(stored) === decimalUsdcToBaseUnits(expected);
 }
 
 export async function ensureOwnerWorkspaceForWallet(

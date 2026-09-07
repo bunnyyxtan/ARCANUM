@@ -1,23 +1,38 @@
 import type { Anomaly, Escalation } from "@arcanum/db/schema";
+import { ARC_CHAIN_ID, ARC_NETWORK, deploymentManifestFor } from "@arcanum/shared";
 import type { ApiContext } from "../context";
+import { readCallerMembership } from "./auth";
 import {
   type SupabaseWriteResult,
-  createSupabaseServiceRoleClient,
   unavailableWrite,
   unconfiguredWrite,
   warnSupabase,
 } from "./client";
-import { stringField } from "./fields";
-import { anomalyFromRow, escalationFromRow } from "./mappers";
-import { orgScopedRowsForWallets, rowsForWallets } from "./scope";
+import { dateField, moneyBaseUnits, numberField, stringField } from "./fields";
+import { anomalyFromRow, escalationFromRow, escalationStatusFromString } from "./mappers";
+import { rowsForWallets } from "./scope";
 import { selectRows } from "./transport";
 import { readSupabaseWallets } from "./wallets";
 
-export async function readSupabaseEscalations(ctx: ApiContext, status?: Escalation["status"]) {
-  const rows = await selectRows(ctx, "escalations", {
-    order: "expires_at.asc",
-  });
+const MAX_ESCALATIONS_PER_PAGE = 200;
+const MAX_ANOMALIES_PER_PAGE = 200;
+
+export async function readSupabaseEscalations(
+  ctx: ApiContext,
+  status?: Escalation["status"],
+  cursor?: { createdAt: string; id: string },
+  limit = 50,
+) {
   const wallets = await readSupabaseWallets(ctx);
+  if (wallets.length === 0) {
+    return [];
+  }
+  const rows = await selectRows(ctx, "escalations", {
+    inFilters: { governed_wallet_id: wallets.map((wallet) => wallet.id) },
+    order: "created_at.desc,id.desc",
+    limit: Math.min(limit, MAX_ESCALATIONS_PER_PAGE),
+    before: cursor,
+  });
   const escalations = rowsForWallets(rows, wallets).map((row) => escalationFromRow(row, wallets));
   return status ? escalations.filter((item) => item.status === status) : escalations;
 }
@@ -32,11 +47,52 @@ export async function readSupabaseEscalationByTxHash(ctx: ApiContext, txHash: st
   return row ? escalationFromRow(row, wallets) : null;
 }
 
-export async function readSupabaseAnomalies(ctx: ApiContext) {
-  const rows = await selectRows(ctx, "anomalies", {
-    order: "score.desc",
+export async function readSupabasePublicEscalationByKey(ctx: ApiContext, escalationKey: string) {
+  const [row] = await selectRows(ctx, "escalations", {
+    filters: { escalation_key: escalationKey.toLowerCase() },
+    limit: 1,
   });
+  const governedWalletId = stringField(row, ["governed_wallet_id"], "");
+  if (!row || !governedWalletId) {
+    return null;
+  }
+
+  const [wallet] = await selectRows(ctx, "governed_wallets", {
+    filters: {
+      id: governedWalletId,
+      chain_id: ARC_CHAIN_ID,
+      wallet_factory_address: deploymentManifestFor(ARC_NETWORK).walletFactory.toLowerCase(),
+    },
+    limit: 1,
+  });
+  if (!wallet) {
+    return null;
+  }
+
+  return {
+    escalationKey: stringField(row, ["escalation_key"]),
+    walletAddress: stringField(wallet, ["wallet_address"]),
+    chainId: numberField(wallet, ["chain_id"]),
+    amount: moneyBaseUnits(row, ["amount_usdc", "amount"]),
+    counterparty: stringField(row, ["counterparty_address", "counterparty_name"]),
+    threshold: numberField(row, ["quorum_required"], 1),
+    signatureCount: numberField(row, ["approvals_count"], 0),
+    expiresAt: dateField(row, ["expires_at"]),
+    status: escalationStatusFromString(stringField(row, ["status"], "pending")),
+    policyVersion: numberField(row, ["policy_version"], 1),
+  };
+}
+
+export async function readSupabaseAnomalies(ctx: ApiContext) {
   const wallets = await readSupabaseWallets(ctx);
+  if (wallets.length === 0) {
+    return [];
+  }
+  const rows = await selectRows(ctx, "anomalies", {
+    inFilters: { governed_wallet_id: wallets.map((wallet) => wallet.id) },
+    order: "created_at.desc,id.desc",
+    limit: MAX_ANOMALIES_PER_PAGE,
+  });
   return (
     rowsForWallets(rows, wallets)
       // A dismissed anomaly is settled review state, so it has to stay off the
@@ -69,6 +125,7 @@ export async function recordSupabaseAnomalyDecision(
   ctx: ApiContext,
   anomalyId: string,
   decision: SupabaseAnomalyDecision,
+  decisionReason: string,
 ): Promise<SupabaseWriteResult<{ id: string; status: SupabaseAnomalyDecision } | null>> {
   const client = ctx.supabase;
   if (!client) {
@@ -88,15 +145,32 @@ export async function recordSupabaseAnomalyDecision(
       return { ok: true, data: null };
     }
 
+    const walletId = stringField(row, ["governed_wallet_id"], "");
+    const wallet = wallets.find((item) => item.id === walletId);
+    const caller = ctx.session?.walletAddress.toLowerCase();
+    const membership = await readCallerMembership(ctx);
+    const authorized =
+      Boolean(wallet && caller && wallet.ownerAddress.toLowerCase() === caller) ||
+      membership?.role === "operator";
+    if (!authorized || !caller) {
+      return {
+        ok: false,
+        reason: "forbidden",
+        message: "Only the governed wallet owner or an operator can decide an anomaly.",
+      };
+    }
+
     // Scope the write by the wallet that was just authorised rather than by id
     // alone. A service-role PATCH bypasses row-level security, so a row that is
     // reassigned or deleted between the check and the write must not be touched
     // on the strength of a check that no longer holds.
-    const walletId = stringField(row, ["governed_wallet_id"], "");
     const updated = await client.patchRows(
       "anomalies",
       {
         status: ANOMALY_DECISION_STATUS[decision],
+        decided_by: caller,
+        decided_at: new Date().toISOString(),
+        decision_reason: decisionReason,
         updated_at: new Date().toISOString(),
       },
       walletId ? { id: anomalyId, governed_wallet_id: walletId } : { id: anomalyId },

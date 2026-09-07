@@ -1,22 +1,31 @@
 # Deployments
 
-Arc testnet deployment metadata lives in:
+The committed network manifest is the source of truth for contract consumers:
 
 ```txt
 packages/contracts/deployments/arc-testnet.json
 ```
 
-Expected keys:
+A v2 manifest contains:
 
-```json
-{
-  "policyEngine": "0x...",
-  "escalationManager": "0x...",
-  "anomalyOracle": "0x...",
-  "vendorRegistry": "0x...",
-  "walletFactory": "0x...",
-  "startBlock": 0
-}
+- identity: `chainId`, `network`, `deployer`, `protocolAdmin`, `oracleSigner`
+- deterministic deployment input: `create2Salt`
+- indexing boundary: `startBlock`
+- token and modules: `usdc`, `policyEngine`, `escalationManager`, `anomalyOracle`,
+  `vendorRegistry`, `walletFactory`
+- verification evidence: `codeHashes`, `deployedAt`, `compiler`, `evmVersion`, `txHashes`
+
+The Forge deployment writes addresses, principals, salt, start block, and code hashes. After
+broadcast, the operator must finalize the manifest:
+
+```bash
+cd packages/contracts
+node scripts/finalize-manifest.mjs arc-testnet https://rpc.testnet.arc.network
 ```
 
-Self-hosted indexers read this file to start from the correct deployment block.
+Finalization matches deployment transactions to manifest addresses, checks runtime code hashes
+against the RPC, and adds compiler, EVM, timestamp, and transaction metadata. Commit the
+finalized file before restarting consumers.
+
+Self-hosted indexers load addresses and `startBlock` from this manifest. A missing `startBlock`
+is invalid deployment metadata; consumers must fail rather than silently backfill from genesis.

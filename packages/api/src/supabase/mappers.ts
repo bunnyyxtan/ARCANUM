@@ -50,11 +50,7 @@ export function walletFromGovernedWalletRow(row: SupabaseRow): Wallet {
     ownerAddress: stringField(row, ["owner_address"], ownerScopeFromEnv()),
     createdBlock: numberField(row, ["created_block", "block_number"], 0),
     createdAt: dateField(row, ["created_at", "deployed_at"]),
-    factoryAddress: stringField(
-      row,
-      ["wallet_factory_address"],
-      process.env.NEXT_PUBLIC_WALLET_FACTORY ?? zeroWallet(),
-    ),
+    factoryAddress: stringField(row, ["wallet_factory_address"], zeroWallet()),
     frozen: status.includes("frozen") || status.includes("restraint"),
     policyVersion: numberField(row, ["policy_version", "doctrine_version"], 1),
   };
@@ -102,7 +98,7 @@ export function agentFromSigner(
     // The caps the agent actually spends under, so the UI never has to guess.
     perTxCap: moneyBaseUnits(doctrine, ["per_tx_cap_usdc"]),
     daily24hCap: moneyBaseUnits(doctrine, ["daily_cap_usdc"]),
-    monthlyRollingCap: moneyBaseUnits(doctrine, ["monthly_cap_usdc"]),
+    monthlyCap: moneyBaseUnits(doctrine, ["monthly_cap_usdc"]),
     escalationThreshold: moneyBaseUnits(doctrine, ["escalate_above_usdc"]),
     policyVersion: numberField(doctrine, ["version", "policy_version"], wallet.policyVersion),
     postureScore,
@@ -120,10 +116,11 @@ export function policyFromDoctrineRow(
     version: numberField(row, ["version", "policy_version"], wallet.policyVersion),
     perTxCap: moneyBaseUnits(row, ["per_tx_cap_usdc"]),
     daily24hCap: moneyBaseUnits(row, ["daily_cap_usdc"]),
-    monthlyRollingCap: moneyBaseUnits(row, ["monthly_cap_usdc"]),
+    monthlyCap: moneyBaseUnits(row, ["monthly_cap_usdc"]),
     allowedCategories: allowedCategoryMask(row),
     escalationThreshold: moneyBaseUnits(row, ["escalate_above_usdc"]),
     requireAllowlist: booleanField(row, ["require_vendor_allowlist"], true),
+    freezeOnBlockedVendor: booleanField(row, ["freeze_on_blocked_vendor"], false),
     updatedAt: dateField(row, ["updated_at"]),
     updatedBy: wallet.ownerAddress,
     doctrineStatus: stringField(row, ["status"], "active"),
@@ -307,14 +304,23 @@ export function verdictFromString(value: string): Transfer["verdict"] {
 
 export function escalationStatusFromString(value: string): Escalation["status"] {
   const normalized = value.toLowerCase();
-  if (normalized === "executed" || normalized === "released" || normalized === "approved") {
+  if (normalized === "approved" || normalized === "executed" || normalized === "released") {
     return "EXECUTED";
   }
-  if (normalized === "rejected" || normalized === "denied") {
+  if (normalized === "rejected") {
     return "REJECTED";
   }
   if (normalized === "expired") {
     return "EXPIRED";
+  }
+  if (normalized === "denied") {
+    return "DENIED";
+  }
+  if (normalized === "cancelled") {
+    return "CANCELLED";
+  }
+  if (normalized === "invalidated") {
+    return "INVALIDATED";
   }
 
   return "PENDING";

@@ -1,7 +1,13 @@
 "use client";
 
 import { EmberMark } from "@/components/warm/EmberMark";
-import { ARC_EXPLORER_URL, ARC_NETWORK_BADGE, ARC_NETWORK_NAME, arcChain } from "@arcanum/shared";
+import {
+  ARC_EXPLORER_URL,
+  ARC_NETWORK_BADGE,
+  ARC_NETWORK_NAME,
+  arcChain,
+  escalationStatusFromIndex,
+} from "@arcanum/shared";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Link from "next/link";
 
@@ -12,7 +18,8 @@ import type { Address, Hash } from "viem";
 import { useAccount, usePublicClient, useSwitchChain, useWriteContract } from "wagmi";
 
 import { describeChainError } from "@/lib/chain-errors";
-import { escalationManagerAbi, escalationStatusLabels } from "@/lib/contracts";
+import { escalationManagerAbi } from "@/lib/contracts";
+import { contractAddresses } from "@/lib/deployment";
 import { isConfiguredAddress, isZeroAddress, shortAddress } from "@/lib/format/address";
 import { formatUsd } from "@/lib/format/money";
 import { getCountdownState } from "@/lib/format/time";
@@ -26,8 +33,8 @@ type Stage = "idle" | "checking" | "wallet" | "confirming" | "pending_indexer" |
 
 export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
   const escalationId = isTxHashValue(txHash) ? txHash : null;
-  const escalationManagerAddress = isConfiguredAddress(process.env.NEXT_PUBLIC_ESCALATION_MANAGER)
-    ? (process.env.NEXT_PUBLIC_ESCALATION_MANAGER as Address)
+  const escalationManagerAddress = isConfiguredAddress(contractAddresses.escalationManager)
+    ? (contractAddresses.escalationManager as Address)
     : null;
 
   const { address, chainId, isConnected } = useAccount();
@@ -50,8 +57,8 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
     return () => window.clearInterval(timer);
   }, []);
 
-  const approvalQuery = trpc.escalations.byTxHash.useQuery(
-    { txHash: (escalationId ?? "0x") as `0x${string}` },
+  const approvalQuery = trpc.escalations.publicByKey.useQuery(
+    { escalationKey: escalationId ?? "0x" },
     {
       enabled: Boolean(escalationId),
       retry: false,
@@ -65,21 +72,21 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
     escalation?.amount !== undefined && escalation?.amount !== null
       ? formatUsd(Number(escalation.amount) / 1_000_000)
       : "NO DATA";
-  const counterparty = escalation?.toAddress
-    ? shortAddress(escalation.toAddress)
+  const counterparty = escalation?.counterparty
+    ? shortAddress(escalation.counterparty)
     : "ESCALATION NOT FOUND";
-  const walletLabel = escalation?.walletId ?? "UNKNOWN";
-  const reason = escalation?.reason ?? "No escalation was found for this id.";
-  const quorum = escalation ? `${escalation.signaturesCount} / ${escalation.threshold}` : "N/A";
+  const walletLabel = escalation?.walletAddress ?? "UNKNOWN";
+  const reason = escalation
+    ? `Held under policy version ${escalation.policyVersion}.`
+    : "No escalation was found for this id.";
+  const quorum = escalation ? `${escalation.signatureCount} / ${escalation.threshold}` : "N/A";
   const escalationStatus = escalation?.status ?? null;
   const stateLine = escalation
     ? `ESC / ${escalationStatus}`
     : approvalQuery.isLoading
       ? "ESC / LOADING"
       : "ESC / NOT FOUND";
-  const createdLabel = escalation?.createdAt
-    ? `${new Date(escalation.createdAt).toISOString().replace("T", " · ").slice(0, 22)} UTC`
-    : "N/A";
+  const createdLabel = "WITHHELD FROM PUBLIC VIEW";
   const countdown = getCountdownState(escalation?.expiresAt ?? null, now);
 
   const isBusy =
@@ -127,7 +134,7 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
       args: [escalationId],
     });
     const wallet = detail[0] as Address;
-    const status = escalationStatusLabels[Number(detail[8])] ?? "EXPIRED";
+    const status = escalationStatusFromIndex(Number(detail[8])) ?? "INVALIDATED";
 
     if (isZeroAddress(wallet)) {
       throw new Error(`Escalation was not found on ${ARC_NETWORK_NAME}.`);
@@ -208,7 +215,7 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
         throw new Error("Escalation transaction reverted.");
       }
 
-      await utils.escalations.byTxHash.invalidate({ txHash: escalationId });
+      await utils.escalations.publicByKey.invalidate({ escalationKey: escalationId });
       setStage("done");
 
       const { toast } = await import("sonner");

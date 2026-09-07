@@ -32,7 +32,7 @@ export default function EscalationsPage() {
         errored={controller.errored}
         liveEscalations={controller.liveEscalations}
         loading={controller.loading}
-        markResolved={controller.markResolved}
+        applyChainUpdate={controller.applyChainUpdate}
         queue={controller.queue}
         readOnly={controller.readOnly}
       />

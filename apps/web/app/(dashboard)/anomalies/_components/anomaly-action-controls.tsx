@@ -6,6 +6,7 @@ export function AnomalyActionControls({
   isConnected,
   acknowledgePending,
   dismissPending,
+  restrainDisabledReason,
   onInvestigate,
   onSettle,
 }: {
@@ -14,8 +15,9 @@ export function AnomalyActionControls({
   isConnected: boolean;
   acknowledgePending: boolean;
   dismissPending: boolean;
+  restrainDisabledReason: string | null;
   onInvestigate: () => void;
-  onSettle: (next: "restrained" | "dismissed", event: ReactMouseEvent<HTMLButtonElement>) => void;
+  onSettle: (next: "frozen" | "dismissed", event: ReactMouseEvent<HTMLButtonElement>) => void;
 }) {
   return (
     <div className="flex flex-col items-start gap-1.5 md:items-end">
@@ -26,17 +28,17 @@ export function AnomalyActionControls({
         {frozen ? (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--wl-ink)] px-3 py-1.5 font-mono text-[9px] tracking-[.1em] text-[var(--wl-bg)]">
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--wl-signal)]" />
-            RESTRAINED
+            FROZEN ONCHAIN
           </span>
         ) : (
           <button
             type="button"
-            disabled={acknowledgePending || !isConnected}
-            title={!isConnected ? "Connect wallet first." : undefined}
-            onClick={(event) => onSettle("restrained", event)}
+            disabled={acknowledgePending || Boolean(restrainDisabledReason)}
+            title={restrainDisabledReason ?? undefined}
+            onClick={(event) => onSettle("frozen", event)}
             className="min-h-11 md:min-h-0 rounded-full border border-[var(--wl-signal)] px-4 py-2 font-mono text-[9px] tracking-[.1em] text-[var(--wl-signal)] transition-all duration-[220ms] hover:-translate-y-0.5 hover:bg-[var(--wl-signal)] hover:text-[var(--wl-bg)] disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Restrain
+            Freeze wallet
           </button>
         )}
         <button
@@ -61,6 +63,11 @@ export function AnomalyActionControls({
           CONNECT WALLET FIRST
         </span>
       )}
+      {isConnected && restrainDisabledReason && !frozen ? (
+        <span className="max-w-[220px] text-right font-mono text-[9px] tracking-[.08em] text-[var(--wl-mute)]">
+          {restrainDisabledReason}
+        </span>
+      ) : null}
     </div>
   );
 }

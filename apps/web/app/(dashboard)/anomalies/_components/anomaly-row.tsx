@@ -83,6 +83,7 @@ export function AnomalyRow({
         frozen={action.frozen}
         investigated={investigated}
         isConnected={action.isConnected}
+        restrainDisabledReason={action.restrainDisabledReason}
         onInvestigate={onInvestigate}
         onSettle={(next, event) => void action.settle(next, event)}
       />

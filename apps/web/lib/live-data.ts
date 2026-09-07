@@ -165,7 +165,7 @@ export function useLiveAgents() {
     }
   }
 
-  const agents: Agent[] = (enabled ? (query.data ?? []) : []).map((agent) => {
+  const agents: Agent[] = (enabled ? (query.data?.agents ?? []) : []).map((agent) => {
     const lastSeen = lastSeenByWallet.get(agent.walletId);
     return {
       id: agent.id,
@@ -184,7 +184,11 @@ export function useLiveAgents() {
       categories: [],
     };
   });
-  return { ...query, data: agents };
+  return {
+    ...query,
+    data: agents,
+    legacyWalletCount: enabled ? (query.data?.legacyWalletCount ?? 0) : 0,
+  };
 }
 
 export function useLiveLedger() {
@@ -218,7 +222,17 @@ export function useLiveLedgerByWallet(wallet: string | null | undefined) {
   return { ...query, data: ledger };
 }
 
-export function useLiveEscalations(status?: "PENDING" | "EXECUTED" | "REJECTED" | "EXPIRED") {
+function escalationExpiryPercent(createdAt: Date | string, expiresAt: Date | string): number {
+  const heldAtMs = new Date(createdAt).getTime();
+  const expiresAtMs = new Date(expiresAt).getTime();
+  const lifetimeMs = expiresAtMs - heldAtMs;
+  if (!Number.isFinite(lifetimeMs) || lifetimeMs <= 0) return 0;
+  return Math.max(0, Math.min(100, ((expiresAtMs - Date.now()) / lifetimeMs) * 100));
+}
+
+export function useLiveEscalations(
+  status?: "PENDING" | "EXECUTED" | "REJECTED" | "EXPIRED" | "DENIED" | "CANCELLED" | "INVALIDATED",
+) {
   const enabled = useLiveQueriesEnabled();
   const query = trpc.escalations.list.useQuery(status ? { status } : undefined, {
     enabled,
@@ -242,7 +256,7 @@ export function useLiveEscalations(status?: "PENDING" | "EXECUTED" | "REJECTED" 
     createdAt: toIsoTimestamp(item.createdAt),
     expiresAt: toIsoTimestamp(item.expiresAt),
     expiresIn: formatTimestampOrNA(item.expiresAt),
-    expiryPercent: item.status === "PENDING" ? 50 : 100,
+    expiryPercent: escalationExpiryPercent(item.createdAt, item.expiresAt),
   }));
   return { ...query, data: escalations };
 }
@@ -255,10 +269,19 @@ export function useLiveAnomalies() {
     retry: false,
     staleTime: 30_000,
   });
+  const walletsQuery = trpc.wallets.list.useQuery(undefined, {
+    enabled,
+    retry: false,
+    staleTime: 30_000,
+  });
+  const walletAddressById = new Map(
+    (enabled ? (walletsQuery.data ?? []) : []).map((wallet) => [wallet.id, wallet.address]),
+  );
   const anomalies: Anomaly[] = (enabled ? (query.data ?? []) : []).map((item, index) => ({
     id: item.id,
     agentId: item.agentId ?? item.walletId,
     agentName: "Agent",
+    wallet: walletAddressById.get(item.walletId) ?? "",
     score: Number(item.sigma),
     narrative: item.reason,
     suggestedAction: item.severity === "danger" ? "freeze" : "investigate",

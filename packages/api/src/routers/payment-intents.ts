@@ -3,6 +3,7 @@ import {
   ARC_CHAIN_ID,
   ARC_NETWORK_NAME,
   ARC_USDC_ADDRESS,
+  ESCALATION_REASONS,
   type NormalizedPaymentIntentInput,
   type NormalizedSignedPaymentIntentInput,
   type PaymentIntentDecision,
@@ -21,16 +22,6 @@ const VERDICTS = [
   "deny",
   "freeze",
 ] as const satisfies readonly PaymentIntentDecision[];
-const REASONS = [
-  "NONE",
-  "ALLOWLIST_REQUIRED",
-  "PER_TX_CAP",
-  "DAILY_CAP",
-  "ESCALATION_THRESHOLD",
-  "BLOCKED_VENDOR",
-  "CATEGORY_DISABLED",
-  "MONTHLY_CAP",
-] as const;
 
 export const paymentIntentsRouter = router({
   create: rateLimitedPublicProcedure
@@ -164,10 +155,11 @@ async function evaluatePaymentIntent(
     const policyEnvelope = {
       perTxCap: policy[0],
       daily24hCap: policy[1],
-      monthlyRollingCap: policy[2],
+      monthlyCap: policy[2],
       allowedCategories: policy[3],
       escalationThreshold: policy[4],
       requireAllowlist: policy[5],
+      freezeOnBlockedVendor: policy[6],
     };
 
     const [verdictIndex, reasonIndex] = await publicClient.readContract({
@@ -188,7 +180,7 @@ async function evaluatePaymentIntent(
     return intentResult(intent, {
       amount,
       decision: VERDICTS[Number(verdictIndex)] ?? "deny",
-      reason: REASONS[Number(reasonIndex)] ?? "UNKNOWN",
+      reason: ESCALATION_REASONS[Number(reasonIndex)] ?? "UNKNOWN",
       policyReference: `guarded-wallet:${intent.governedWalletAddress}`,
     });
   } catch {

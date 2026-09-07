@@ -2,6 +2,18 @@ import type { MouseEvent as ReactMouseEvent } from "react";
 
 import type { Escalation } from "@/lib/types";
 
+export function applyEscalationChainUpdate(
+  item: Escalation,
+  update: { signaturesCount: number; status: Escalation["status"] },
+): Escalation {
+  return {
+    ...item,
+    quorumCurrent: update.signaturesCount,
+    status: update.status,
+    votePending: update.status === "PENDING",
+  };
+}
+
 export function isTxHashValue(value: string | null | undefined): value is `0x${string}` {
   return Boolean(value && /^0x[a-fA-F0-9]{64}$/.test(value));
 }

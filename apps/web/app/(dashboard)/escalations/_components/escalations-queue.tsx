@@ -1,5 +1,6 @@
 import { ConnectCta } from "@/components/warm/ConnectCta";
 import type { Escalation } from "@/lib/types";
+import type { EscalationChainUpdate } from "../_hooks/use-escalation-action";
 
 import { EscalationCard } from "./escalation-card";
 
@@ -7,7 +8,7 @@ interface EscalationsQueueProps {
   errored: boolean;
   liveEscalations: { refetch: () => Promise<unknown> };
   loading: boolean;
-  markResolved: (id: string) => void;
+  applyChainUpdate: (id: string, update: EscalationChainUpdate) => void;
   queue: readonly Escalation[];
   readOnly: boolean;
 }
@@ -16,7 +17,7 @@ export function EscalationsQueue({
   errored,
   liveEscalations,
   loading,
-  markResolved,
+  applyChainUpdate,
   queue,
   readOnly,
 }: EscalationsQueueProps) {
@@ -60,7 +61,7 @@ export function EscalationsQueue({
             item={item}
             index={index}
             cardId={`escalation-${item.id}`}
-            onResolved={() => markResolved(item.id)}
+            onChainUpdate={(update) => applyChainUpdate(item.id, update)}
           />
         ))
       )}

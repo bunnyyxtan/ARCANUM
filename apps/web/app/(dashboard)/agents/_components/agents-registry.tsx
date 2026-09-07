@@ -16,10 +16,11 @@ type AgentsRegistryProps = Pick<
   | "agentsQuery"
   | "openDeploy"
   | "clearFilters"
+  | "legacyWalletCount"
 >;
 
 export function AgentsRegistry(props: AgentsRegistryProps) {
-  const { visibleAgents, agents, selectedAgent, agentsQuery } = props;
+  const { visibleAgents, agents, selectedAgent, agentsQuery, legacyWalletCount } = props;
   return (
     <div className="agents-reveal" style={{ "--i": 2 } as CSSProperties}>
       <div className="flex items-end justify-between border-b border-[var(--wl-line)] pb-4">
@@ -43,6 +44,12 @@ export function AgentsRegistry(props: AgentsRegistryProps) {
         <span>Categories</span>
         <span>Doctrine</span>
       </div>
+      {legacyWalletCount > 0 ? (
+        <p className="border-b border-[var(--wl-line-soft)] px-3 py-3 text-[11px] leading-relaxed text-[var(--wl-secondary)]">
+          {legacyWalletCount} wallet{legacyWalletCount === 1 ? "" : "s"} from the previous protocol
+          deployment are not shown. Redeploy them through the current factory to govern them here.
+        </p>
+      ) : null}
       {props.readOnly ? (
         <ConnectCta className="border-b border-[var(--wl-line)] px-6 py-16 text-center" />
       ) : agentsQuery.isLoading ? (

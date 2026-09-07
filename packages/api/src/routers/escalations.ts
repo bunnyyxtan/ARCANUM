@@ -2,16 +2,22 @@ import {
   ARC_NETWORK_NAME,
   escalationByTxHashInputSchema,
   escalationDecisionInputSchema,
+  escalationKeyInputSchema,
   escalationListInputSchema,
 } from "@arcanum/shared";
 import { TRPCError } from "@trpc/server";
 
 import { z } from "zod";
 
-import { isEscalationSigner, readEscalationChainState } from "../chain";
+import {
+  isEscalationSigner,
+  readEscalationChainState,
+  verifyEscalationDecisionReceipt,
+} from "../chain";
 import {
   readSupabaseEscalationByTxHash,
   readSupabaseEscalations,
+  readSupabasePublicEscalationByKey,
   readSupabaseWalletByAddressUnscoped,
   recordSupabaseEscalationDecision,
 } from "../supabase";
@@ -30,11 +36,21 @@ function onChainEscalationWriteOnly(): never {
 export const escalationsRouter = router({
   list: publicProcedure
     .input(escalationListInputSchema)
-    .query(({ ctx, input }) => readSupabaseEscalations(ctx, input?.status)),
+    .query(({ ctx, input }) =>
+      readSupabaseEscalations(ctx, input?.status, input?.cursor, input?.limit),
+    ),
 
   byTxHash: publicProcedure
     .input(escalationByTxHashInputSchema)
     .query(({ ctx, input }) => readSupabaseEscalationByTxHash(ctx, input.txHash)),
+
+  publicByKey: publicProcedure.input(escalationKeyInputSchema).query(async ({ ctx, input }) => {
+    const escalation = await readSupabasePublicEscalationByKey(ctx, input.escalationKey);
+    if (!escalation) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Escalation not found." });
+    }
+    return escalation;
+  }),
 
   /**
    * Mirror an approve/reject that already settled onchain into the read model.
@@ -65,6 +81,21 @@ export const escalationsRouter = router({
         });
       }
 
+      try {
+        await verifyEscalationDecisionReceipt(
+          ctx.publicClient,
+          input.txHash as `0x${string}`,
+          escalationKey,
+          chainState.status,
+        );
+      } catch (error) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "The transaction is not a successful decision for this escalation.",
+          cause: error,
+        });
+      }
+
       // Approvers are frequently council members rather than the wallet owner,
       // so resolve the wallet unscoped and authorize against the chain below.
       const wallet = await readSupabaseWalletByAddressUnscoped(ctx, chainState.wallet);
@@ -87,7 +118,12 @@ export const escalationsRouter = router({
       const result = await recordSupabaseEscalationDecision(ctx, wallet, {
         escalationKey,
         txHash: input.txHash as `0x${string}`,
-        status: chainState.status,
+        status:
+          chainState.status === "executed"
+            ? "released"
+            : chainState.status === "rejected" || chainState.status === "denied"
+              ? "denied"
+              : chainState.status,
         approvalsCount: chainState.signatures,
       });
 

@@ -7,6 +7,7 @@ declare module "ponder:registry" {
           args: Record<string, unknown>;
           transaction: { hash: `0x${string}` };
           block: { number: bigint; timestamp: bigint };
+          log: { address: `0x${string}`; logIndex: number };
         };
       }) => Promise<void> | void,
     ) => void;

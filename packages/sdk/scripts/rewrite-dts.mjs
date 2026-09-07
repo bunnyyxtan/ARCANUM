@@ -30,4 +30,28 @@ for (const file of readdirSync(dir)) {
   }
 }
 if (failed) process.exit(1);
-console.log("dts rewrite ok: type declarations are self-contained");
+
+const workspaceManifest = JSON.parse(
+  readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "package.json"), "utf8"),
+);
+const publishManifest = {
+  name: "arcanum-sdk",
+  version: workspaceManifest.version,
+  description: workspaceManifest.description,
+  license: workspaceManifest.license,
+  type: workspaceManifest.type,
+  exports: {
+    ".": {
+      import: { types: "./index.d.ts", default: "./index.js" },
+      require: { types: "./index.d.cts", default: "./index.cjs" },
+    },
+    "./chains": {
+      import: { types: "./chains.d.ts", default: "./chains.js" },
+      require: { types: "./chains.d.cts", default: "./chains.cjs" },
+    },
+    "./package.json": "./package.json",
+  },
+  peerDependencies: workspaceManifest.peerDependencies,
+};
+writeFileSync(join(dir, "package.json"), `${JSON.stringify(publishManifest, null, 2)}\n`);
+console.log("publish package prepared as arcanum-sdk with self-contained declarations");

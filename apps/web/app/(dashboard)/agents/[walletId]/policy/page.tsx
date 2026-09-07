@@ -46,9 +46,11 @@ export default function PolicyEditorPage() {
             policyDraft={controller.policyDraft}
             policyError={controller.policyError}
             policyNetworkNotice={controller.policyNetworkNotice}
+            onChainPolicyChanged={controller.onChainPolicyChanged}
             policyReadStatus={controller.policyReadStatus}
             policyWriteDisabledReason={controller.policyWriteDisabledReason}
             resetDraft={controller.resetDraft}
+            reloadOnChainPolicy={controller.reloadOnChainPolicy}
             savePolicyOnChain={controller.savePolicyOnChain}
             selectedGovernedWalletAddress={controller.selectedGovernedWalletAddress}
             selectedPolicyWalletLabel={controller.selectedPolicyWalletLabel}
@@ -56,6 +58,7 @@ export default function PolicyEditorPage() {
             unsavedCount={controller.unsavedCount}
             updatePolicyDraft={controller.updatePolicyDraft}
             walletsLoading={controller.walletsLoading}
+            validationError={controller.validationError}
           />
           <DeploymentRecord
             address={controller.address}

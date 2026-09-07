@@ -119,8 +119,8 @@ export default function GlossaryPage() {
       ),
     [letter, query],
   );
-  // biome-ignore lint/style/noNonNullAssertion: terms is a non-empty static array
-  const active: Term = terms.find((item) => item.term === selected) ?? visibleTerms[0] ?? terms[0]!;
+  const active = terms.find((item) => item.term === selected) ?? visibleTerms[0] ?? terms[0];
+  if (!active) return null;
 
   return (
     <main className="min-h-[100dvh] bg-[var(--wl-bg)] text-[var(--wl-ink)]">
@@ -170,7 +170,7 @@ export default function GlossaryPage() {
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="Search terms"
-                  className="w-full bg-transparent text-[13px] outline-none placeholder:text-[var(--wl-mute)]"
+                  className="w-full bg-transparent text-[13px] outline-none placeholder:text-[var(--wl-mute)] focus-visible:ring-2 focus-visible:ring-[var(--wl-signal)] focus-visible:ring-offset-2"
                 />
               </label>
               <div className="flex flex-wrap gap-1.5">

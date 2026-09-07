@@ -14,6 +14,19 @@
   },
   {
     "type": "function",
+    "name": "cancel",
+    "inputs": [
+      {
+        "name": "escalationId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "configureWallet",
     "inputs": [
       {
@@ -34,6 +47,25 @@
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "councilVersion",
+    "inputs": [
+      {
+        "name": "wallet",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "version",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -90,6 +122,16 @@
         "name": "status",
         "type": "uint8",
         "internalType": "enum IEscalationManager.Status"
+      },
+      {
+        "name": "policyVersion",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "heldCouncilVersion",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -112,13 +154,40 @@
         "name": "reason",
         "type": "bytes",
         "internalType": "bytes"
+      },
+      {
+        "name": "policyVersion",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "outputs": [
       {
-        "name": "escalationId",
-        "type": "bytes32",
-        "internalType": "bytes32"
+        "name": "terms",
+        "type": "tuple",
+        "internalType": "struct IEscalationManager.Terms",
+        "components": [
+          {
+            "name": "escalationId",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "threshold",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "expiresAt",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "councilVersion",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
       }
     ],
     "stateMutability": "nonpayable"
@@ -262,6 +331,38 @@
   },
   {
     "type": "event",
+    "name": "EscalationCancelled",
+    "inputs": [
+      {
+        "name": "escalationId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "EscalationDenied",
+    "inputs": [
+      {
+        "name": "escalationId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "reason",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "enum EscalationReason"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "EscalationExecuted",
     "inputs": [
       {
@@ -288,6 +389,25 @@
   },
   {
     "type": "event",
+    "name": "EscalationInvalidated",
+    "inputs": [
+      {
+        "name": "escalationId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "councilVersion",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "EscalationRejected",
     "inputs": [
       {
@@ -307,43 +427,6 @@
   },
   {
     "type": "event",
-    "name": "TransferEscalated",
-    "inputs": [
-      {
-        "name": "escalationId",
-        "type": "bytes32",
-        "indexed": true,
-        "internalType": "bytes32"
-      },
-      {
-        "name": "wallet",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "to",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "reason",
-        "type": "bytes",
-        "indexed": false,
-        "internalType": "bytes"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
     "name": "WalletRegistered",
     "inputs": [
       {
@@ -351,6 +434,18 @@
         "type": "address",
         "indexed": true,
         "internalType": "address"
+      },
+      {
+        "name": "councilVersion",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "requiredSigners",
+        "type": "address[]",
+        "indexed": false,
+        "internalType": "address[]"
       },
       {
         "name": "threshold",
@@ -370,11 +465,6 @@
   {
     "type": "error",
     "name": "AlreadySigned",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "EscalationExpiredError",
     "inputs": []
   },
   {
@@ -399,7 +489,17 @@
   },
   {
     "type": "error",
+    "name": "InvalidExpiry",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InvalidThreshold",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotEscalationWallet",
     "inputs": []
   },
   {

@@ -17,9 +17,11 @@ interface PolicyDocumentProps {
   policyDraft: PolicyDraftState;
   policyError: string | null;
   policyNetworkNotice: string | null;
+  onChainPolicyChanged: boolean;
   policyReadStatus: "idle" | "checking" | "ready" | "error";
   policyWriteDisabledReason: string | null;
   resetDraft: () => void;
+  reloadOnChainPolicy: () => void;
   savePolicyOnChain: (event: MouseEvent<HTMLButtonElement>) => Promise<void>;
   selectedGovernedWalletAddress: Address | null;
   selectedPolicyWalletLabel: string;
@@ -27,6 +29,7 @@ interface PolicyDocumentProps {
   unsavedCount: number;
   updatePolicyDraft: (patch: Partial<PolicyDraftState>) => void;
   walletsLoading: boolean;
+  validationError: string | null;
 }
 
 export function PolicyDocument(controller: PolicyDocumentProps) {
@@ -35,9 +38,11 @@ export function PolicyDocument(controller: PolicyDocumentProps) {
     policyDraft,
     policyError,
     policyNetworkNotice,
+    onChainPolicyChanged,
     policyReadStatus,
     policyWriteDisabledReason,
     resetDraft,
+    reloadOnChainPolicy,
     savePolicyOnChain,
     selectedGovernedWalletAddress,
     selectedPolicyWalletLabel,
@@ -45,6 +50,7 @@ export function PolicyDocument(controller: PolicyDocumentProps) {
     unsavedCount,
     updatePolicyDraft,
     walletsLoading,
+    validationError,
   } = controller;
   return (
     <section
@@ -169,6 +175,17 @@ export function PolicyDocument(controller: PolicyDocumentProps) {
               />
               Require vendor allowlist (blocks unlisted counterparties)
             </label>
+            <label className="mt-4 flex items-center gap-3 text-[12px] text-[var(--wl-body)]">
+              <input
+                type="checkbox"
+                checked={policyDraft.freezeOnBlockedVendor}
+                onChange={(event) =>
+                  updatePolicyDraft({ freezeOnBlockedVendor: event.target.checked })
+                }
+                className="accent-[var(--wl-signal)]"
+              />
+              Freeze the wallet when a blocked vendor is encountered
+            </label>
           </div>
 
           <div className="py-7">
@@ -192,7 +209,9 @@ export function PolicyDocument(controller: PolicyDocumentProps) {
               </label>
             </div>
             <p className="mt-4 font-mono text-[9px] leading-[1.6] text-[var(--wl-mute)]">
-              Payments above this amount route to the escalation council before settling.
+              {policyDraft.escalationThreshold.trim() === policyDraft.perTxCap.trim()
+                ? "Escalation disabled: transfers cannot exceed the per-transaction cap."
+                : "Payments above this amount route to the escalation council before settling."}
             </p>
           </div>
 
@@ -203,13 +222,33 @@ export function PolicyDocument(controller: PolicyDocumentProps) {
               </div>
             </div>
           ) : null}
+          {!policyError && validationError ? (
+            <div className="py-5">
+              <div className="border border-[var(--wl-signal)] bg-[var(--wl-bg-soft)] px-3 py-2 font-mono text-[11px] leading-[1.5] text-[var(--wl-signal)]">
+                {validationError}
+              </div>
+            </div>
+          ) : null}
         </div>
       )}
 
       <div className="flex flex-col justify-between gap-3 border-t border-[var(--wl-line)] bg-[var(--wl-bg-soft)] px-6 py-5 sm:flex-row sm:items-center md:px-9">
-        <p className="font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-secondary)]">
-          {policyNetworkNotice ?? "Unsaved changes are local until signed"}
-        </p>
+        <div>
+          <p className="font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-secondary)]">
+            {onChainPolicyChanged
+              ? "On-chain policy changed · compare the draft before reloading"
+              : (policyNetworkNotice ?? "Unsaved changes are local until signed")}
+          </p>
+          {onChainPolicyChanged ? (
+            <button
+              type="button"
+              onClick={reloadOnChainPolicy}
+              className="mt-2 font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-signal)] underline underline-offset-4"
+            >
+              Reload on-chain policy
+            </button>
+          ) : null}
+        </div>
         <div className="flex gap-2">
           <button
             type="button"

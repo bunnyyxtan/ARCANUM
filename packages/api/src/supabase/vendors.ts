@@ -2,26 +2,30 @@ import type { Vendor, Wallet } from "@arcanum/db/schema";
 import type { ApiContext } from "../context";
 import {
   type SupabaseWriteResult,
-  createSupabaseServiceRoleClient,
   unavailableWrite,
   unconfiguredWrite,
   warnSupabase,
 } from "./client";
 import { stringField } from "./fields";
 import { vendorFromRow } from "./mappers";
-import { orgScopedRowsForWallets, rowsForWallets } from "./scope";
+import { orgScopedRowsForWallets } from "./scope";
 import { selectRows } from "./transport";
 import { readSupabaseWallets } from "./wallets";
 
 // Vendor registers are intentionally bounded to keep workspace reads predictable.
 const MAX_VENDORS_PER_ORG = 1_000;
 
-export async function readSupabaseVendors(ctx: ApiContext, wallet?: Wallet | null) {
+export async function readSupabaseVendors(
+  ctx: ApiContext,
+  wallet?: Wallet | null,
+  cursor?: { createdAt: string; id: string },
+) {
   if (wallet) {
     const rows = await selectRows(ctx, "vendors", {
       filters: { organization_id: wallet.orgId },
-      order: "created_at.desc",
+      order: "created_at.desc,id.desc",
       limit: MAX_VENDORS_PER_ORG,
+      before: cursor,
     });
     return rows.map((row) => vendorFromRow(row, wallet));
   }
@@ -32,7 +36,12 @@ export async function readSupabaseVendors(ctx: ApiContext, wallet?: Wallet | nul
   }
 
   const rows = await selectRows(ctx, "vendors", {
-    order: "created_at.desc",
+    inFilters: {
+      organization_id: Array.from(new Set(wallets.map((item) => item.orgId))).filter(Boolean),
+    },
+    order: "created_at.desc,id.desc",
+    limit: MAX_VENDORS_PER_ORG,
+    before: cursor,
   });
   return orgScopedRowsForWallets(rows, wallets).map(({ row, wallet }) =>
     vendorFromRow(row, wallet),
@@ -46,7 +55,7 @@ export async function writeSupabaseVendor(
     name: string;
     address: `0x${string}`;
     category: string;
-    perVendorCap: number;
+    perVendorCap: string;
     kycStatus: "public" | "arcanevm";
     status?: Vendor["status"];
   },

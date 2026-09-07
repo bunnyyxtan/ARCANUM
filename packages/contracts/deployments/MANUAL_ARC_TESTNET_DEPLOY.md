@@ -1,198 +1,161 @@
-# Manual Arc Testnet Deploy
+# Arc Testnet v2 deployment runbook
 
-This is a deploy-readiness checklist for Arcanum contracts. Do not run the broadcast command until `forge build` and `forge test` pass locally.
+This deployment is the final protocol redeploy. Treat it as a one-shot production-style
+operation even though the target is Arc Testnet.
 
 ## Network
 
-- Network: Arc Testnet
 - Chain ID: `5042002`
 - RPC: `https://rpc.testnet.arc.network`
 - Explorer: `https://testnet.arcscan.app`
-- USDC token: `0x3600000000000000000000000000000000000000`
+- USDC: `0x3600000000000000000000000000000000000000`
 
-## Deploy Target
+Run every command below from `packages/contracts`.
 
-Run these commands from `packages/contracts`.
+## Required inputs
 
-The deploy script is:
+Set these values in the operator's secret environment. Never paste private keys into chat,
+issues, pull requests, screenshots, or shell history.
 
-```powershell
-script/DeployArcTestnet.s.sol:DeployArcTestnet
+- `DEPLOYER_PRIVATE_KEY`: signs the five deployment transactions.
+- `ARC_PROTOCOL_ADMIN`: owner of `WalletFactory` and `AnomalyOracle`. Use the final hardware
+  wallet or multisig address, not the deployer.
+- `ANOMALY_ORACLE_SIGNER_ADDRESS`: public address of the key held by the anomaly service. The
+  corresponding private key must never be present on the deployment host.
+- `ANOMALY_MAX_SCORE_AGE_SECONDS` (optional): maximum accepted score age; defaults to `86400`.
+- `ARC_DEPLOY_SALT` (optional, `bytes32` hex): overrides the fixed CREATE2 salt
+  `keccak256("arcanum.protocol.v2.<network>")`. Leave it unset unless a previous broadcast
+  stopped after creating some modules; the fixed salt would then collide. Record whatever value
+  was used - the manifest stores it as `create2Salt`.
+
+`ARC_TESTNET_RPC` is required by the readiness command. The Forge commands below use the
+canonical public RPC explicitly.
+
+## Pre-flight
+
+Do not broadcast until all of the following are true:
+
+1. `ARC_PROTOCOL_ADMIN` is the final hardware-wallet or multisig address.
+2. `ANOMALY_ORACLE_SIGNER_ADDRESS` is the anomaly service's public key and differs from the
+   deployer.
+3. The deployment salt is selected and recorded.
+4. `forge build` and `forge test` pass from this directory. If `lib/` is absent, restore it at
+   the pinned commits with `scripts/restore-foundry-deps.sh`.
+5. The readiness check confirms that the deterministic CREATE2 deployer and Arc Testnet USDC
+   both have code:
+
+   ```bash
+   node scripts/check-arc-deploy-readiness.mjs
+   ```
+
+6. A dry run without `--broadcast` succeeds:
+
+   ```bash
+   forge script script/DeployArcTestnet.s.sol --rpc-url https://rpc.testnet.arc.network
+   ```
+
+7. The dry run's predicted CREATE2 addresses for `PolicyEngine`, `EscalationManager`,
+   `AnomalyOracle`, `VendorRegistry`, and `WalletFactory` are recorded and independently
+   reviewed.
+
+The script refuses a chain-ID mismatch, zero USDC, USDC without code, zero protocol admin, zero
+oracle signer, or a non-positive score age before deployment. After deployment it asserts that
+the factory defaults point to the four new modules, the factory uses Arc Testnet USDC, the
+factory and oracle owners equal `ARC_PROTOCOL_ADMIN`, and the oracle signer matches
+`ANOMALY_ORACLE_SIGNER_ADDRESS`. It then writes the addresses, principals, salt, start block,
+and runtime code hashes to `deployments/arc-testnet.json`.
+
+## Broadcast
+
+Arc has no verifier configuration in `foundry.toml` and the documentation does not identify a
+compatible verifier API, so this runbook does not add `--verify`.
+
+```bash
+forge script script/DeployArcTestnet.s.sol --rpc-url https://rpc.testnet.arc.network --broadcast
 ```
 
-The script deploys, in order:
+Do not run the command again after a successful broadcast. If an explicitly approved recovery
+requires replacing an existing v2 manifest, rerun readiness with `--allow-redeploy`; that flag
+only acknowledges the local manifest and does not make a redeploy safe.
 
-1. `PolicyEngine`
-2. `EscalationManager`
-3. `AnomalyOracle`
-4. `VendorRegistry`
-5. `WalletFactory`
+## Finalize and publish the manifest
 
-`WalletFactory` is constructed with Arc Testnet USDC at `0x3600000000000000000000000000000000000000`.
+The Forge script writes the base manifest. Enrich it from the broadcast record and verify each
+deployed runtime code hash against the chain:
 
-The current architecture does not use a standalone `GuardedWallet` implementation address. `WalletFactory.createWallet` deploys full `GuardedWallet` instances directly with `new GuardedWallet{salt: salt}(...)`. Do not add or invent a `guardedWalletImpl` address.
-
-## Required Environment Variables
-
-Required by the Solidity script:
-
-- `DEPLOYER_PRIVATE_KEY`
-- `ANOMALY_ORACLE_PRIVATE_KEY`
-
-`DEPLOYER_PRIVATE_KEY` signs the deployment transactions. `ANOMALY_ORACLE_PRIVATE_KEY` is only used by the script to derive `anomalySigner = vm.addr(ANOMALY_ORACLE_PRIVATE_KEY)` for the `AnomalyOracle` constructor; it does not sign deployment transactions in `DeployArcTestnet`.
-
-Required by the Forge CLI command:
-
-- `ARC_TESTNET_RPC`
-
-Optional for explorer verification only, if Arcscan exposes a compatible verifier API:
-
-- `ARCSCAN_API_KEY`
-- `ETHERSCAN_API_KEY`
-
-The script does not read `PRIVATE_KEY`, `ARC_RPC_URL`, `USDC`, owner/admin address, or verifier API variables.
-
-## Set Environment Variables In PowerShell
-
-Never paste private key values into chat, issues, pull requests, screenshots, or public logs.
-
-```powershell
-$env:ARC_TESTNET_RPC = "https://rpc.testnet.arc.network"
-$env:DEPLOYER_PRIVATE_KEY = "<private key, do not commit>"
-$env:ANOMALY_ORACLE_PRIVATE_KEY = "<private key, do not commit>"
+```bash
+node scripts/finalize-manifest.mjs arc-testnet https://rpc.testnet.arc.network
 ```
 
-Optional verification variables:
+The finalized manifest contains:
 
-```powershell
-$env:ARCSCAN_API_KEY = "<optional verifier key>"
-$env:ETHERSCAN_API_KEY = "<optional verifier key>"
-```
+- `chainId`, `network`, `deployer`, `protocolAdmin`, `oracleSigner`, and `create2Salt`
+- `startBlock`, `usdc`, and all five module addresses
+- `codeHashes` for all five modules
+- `deployedAt`, `compiler`, `evmVersion`, and each deployment transaction in `txHashes`
 
-## Preflight Checks
+Do **not** run `node scripts/export-abis.mjs` after deployment. ABIs are generated from contract
+source and compiler output, not from deployed addresses; the v2 ABIs are already committed.
 
-```powershell
-forge build
-forge test
-forge test --summary
-```
+Review and commit `deployments/arc-testnet.json`. The manifest is the deployment authority for
+the app and indexer; do not copy addresses into a second source of truth.
 
-Do not deploy if any of these fail.
+## Release sequence
 
-## Dry Run
+`main` is production: every push to it deploys thearcanum.in through Vercel, and the scheduled
+top-up job indexes from it. The v2 code and the v2 manifest must therefore reach `main` in one
+push, after the database is ready for them. Work on the release branch until step 7.
 
-This simulates the script without broadcasting transactions.
+1. Deploy and finalize from the release branch as described above, then commit
+   `deployments/arc-testnet.json` to that branch. From the repository root confirm the
+   consumers accept the finalized file before pushing:
 
-```powershell
-forge script script/DeployArcTestnet.s.sol:DeployArcTestnet --rpc-url $env:ARC_TESTNET_RPC --chain-id 5042002 -vvvv
-```
+   ```bash
+   npm run test --workspace @arcanum/api -- src/deployment-manifest.test.ts
+   npm run typecheck --workspace @arcanum/web
+   ```
 
-## Broadcast Deploy
+2. Push the branch. Vercel builds a preview of it against the real manifest; do not continue
+   until that preview build is green and its `/api` health responds.
+3. Disable the scheduled top-up (`gh workflow disable indexer-topup.yml`) and confirm no run is
+   in progress. Nothing may write to `ledger_events` during step 4.
+4. Apply the pending migrations to the production database in this order, each with
+   `psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f <file>`. `20260907000000`, `20260907120000`
+   and `20260907130000` are already applied and recorded in
+   `supabase_migrations.schema_migrations`.
 
-This is the real deployment command. Run it only after the dry run and tests pass.
+   - `20260907140000_record_created_wallet_rpc.sql`
+   - `20260907142000_escalation_v2_statuses.sql` (enum values; runs outside a transaction)
+   - `20260907143000_anomaly_decision_actor.sql`
+   - `20260907150000_ledger_event_identity_log_index.sql`
 
-```powershell
-forge script script/DeployArcTestnet.s.sol:DeployArcTestnet --rpc-url $env:ARC_TESTNET_RPC --chain-id 5042002 --broadcast -vvvv
-```
+   Record each in `supabase_migrations.schema_migrations (version, name)` and run
+   `node scripts/check-definer-grants.mjs` from the repository root afterwards.
+5. Vercel production environment: `ARCANUM_SIWE_DOMAIN=thearcanum.in` is already set. Delete
+   `NEXT_PUBLIC_WALLET_FACTORY`, `NEXT_PUBLIC_POLICY_ENGINE`, `NEXT_PUBLIC_ESCALATION_MANAGER`,
+   `NEXT_PUBLIC_ANOMALY_ORACLE`, `NEXT_PUBLIC_VENDOR_REGISTRY` and `NEXT_PUBLIC_USDC`; nothing
+   reads them any more and leaving them invites a second source of truth. Keep
+   `ARC_TESTNET_RPC`, the Supabase variables and `SIWE_SECRET`.
+6. Reset the indexer state so it starts at the v2 `startBlock` instead of resuming v1
+   bookkeeping:
 
-## Capture Deployed Addresses
+   ```bash
+   psql "$INDEXER_DATABASE_URL" -v ON_ERROR_STOP=1 -c 'drop schema if exists ponder_app cascade;'
+   psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -c "delete from public.indexer_checkpoints where chain_id = 5042002 and contract_name like 'arcanum-indexer%';"
+   ```
 
-The script writes:
+   Reuse `ponder_app`; choosing another schema name also requires changing the top-up job.
+7. Fast-forward `main` to the release branch and push. Vercel deploys production from the
+   manifest; confirm `/api` health and that the agent registry loads (legacy v1 wallets are
+   counted, not listed).
+8. Run the top-up once by hand (`gh workflow run indexer-topup.yml`) and confirm the log reports
+   chain `5042002` with the v2 `startBlock` and that `indexer_checkpoints.last_block` advances.
+   Then re-enable the schedule (`gh workflow enable indexer-topup.yml`).
+9. Publish `arcanum-sdk@3.0.0` (`npm run build:publish --workspace @arcanum/sdk`, then publish
+   `dist-publish`) and `arcanum-sdk` 3.0.0 on PyPI from `packages/sdk-py`.
 
-```powershell
-.\deployments\arc-testnet.json
-```
-
-Inspect it with:
-
-```powershell
-Get-Content .\deployments\arc-testnet.json | ConvertFrom-Json | Format-List
-```
-
-Forge also writes broadcast metadata under:
-
-```powershell
-.\broadcast\DeployArcTestnet.s.sol\5042002\run-latest.json
-```
-
-Capture transaction hashes with:
-
-```powershell
-$broadcast = Get-Content .\broadcast\DeployArcTestnet.s.sol\5042002\run-latest.json | ConvertFrom-Json
-$broadcast.transactions | Select-Object contractName, contractAddress, hash
-```
-
-## Bytecode Checks
-
-After deployment, every deployed contract address should return non-empty bytecode.
-
-```powershell
-$deploy = Get-Content .\deployments\arc-testnet.json | ConvertFrom-Json
-cast code $deploy.policyEngine --rpc-url $env:ARC_TESTNET_RPC
-cast code $deploy.escalationManager --rpc-url $env:ARC_TESTNET_RPC
-cast code $deploy.anomalyOracle --rpc-url $env:ARC_TESTNET_RPC
-cast code $deploy.vendorRegistry --rpc-url $env:ARC_TESTNET_RPC
-cast code $deploy.walletFactory --rpc-url $env:ARC_TESTNET_RPC
-cast code $deploy.usdc --rpc-url $env:ARC_TESTNET_RPC
-```
-
-The `usdc` check should return bytecode for the existing Arc Testnet USDC token. There is no `guardedWalletImpl` bytecode check because this deployment does not produce one.
-
-## Update Frontend Environment
-
-After deployment, update `apps/web/.env.local` with real deployed addresses:
-
-```powershell
-NEXT_PUBLIC_WALLET_FACTORY=<walletFactory from deployments/arc-testnet.json>
-NEXT_PUBLIC_POLICY_ENGINE=<policyEngine from deployments/arc-testnet.json>
-NEXT_PUBLIC_ESCALATION_MANAGER=<escalationManager from deployments/arc-testnet.json>
-NEXT_PUBLIC_ANOMALY_ORACLE=<anomalyOracle from deployments/arc-testnet.json>
-NEXT_PUBLIC_VENDOR_REGISTRY=<vendorRegistry from deployments/arc-testnet.json>
-NEXT_PUBLIC_USDC=0x3600000000000000000000000000000000000000
-NEXT_PUBLIC_ARC_CHAIN_ID=5042002
-```
-
-Do not set any required `NEXT_PUBLIC_*` contract address to `0x0000000000000000000000000000000000000000` after deployment.
-
-## Verify No Zero Placeholders Remain
-
-```powershell
-Select-String -Path ..\..\apps\web\.env.local -Pattern "NEXT_PUBLIC_(WALLET_FACTORY|POLICY_ENGINE|ESCALATION_MANAGER|ANOMALY_ORACLE|VENDOR_REGISTRY)"
-```
-
-Every value should be a real deployed `0x` address. `NEXT_PUBLIC_GUARDED_WALLET_IMPL` is obsolete for the current factory architecture and should not be required.
-
-## Restart The Web App
-
-After changing `apps/web/.env.local`, restart the npm dev server:
-
-```powershell
-cd ..\..
-npm run dev
-```
-
-## Arc Mainnet
-
-Mainnet uses a separate script, `script/DeployArcMainnet.s.sol:DeployArcMainnet`. The testnet script is unchanged and stays testnet-only.
-
-Nothing about mainnet is hardcoded, because Circle had not published the mainnet parameters when this was written. The script reads:
-
-- `ARC_MAINNET_USDC_ADDRESS` (required) - reverts if unset, zero, or an address with no code on the connected chain
-- `ARC_MAINNET_CHAIN_ID` (optional, defaults to `5042`) - the script reverts unless the connected chain matches
-- `DEPLOYER_PRIVATE_KEY` and `ANOMALY_ORACLE_PRIVATE_KEY` - same roles as on testnet
-
-Before the first mainnet deploy, confirm two things against Circle's own launch documentation:
-
-1. The real mainnet chain id. `5042` is the strongly signalled value, not a confirmed one.
-2. The USDC token address and its decimals. Native gas USDC on Arc is 18 decimals, while the ERC-20 USDC the wallets move is 6. Arcanum's amount handling assumes 6 for the token; verify before sending value.
-
-It writes `deployments/arc-mainnet.json`, including `startBlock`, which the indexer needs so Ponder does not backfill from genesis.
-
-## Do Not Paste Publicly
-
-- `DEPLOYER_PRIVATE_KEY`
-- `ANOMALY_ORACLE_PRIVATE_KEY`
-- `SIWE_SECRET`
-- Database URLs or Redis tokens
-- RPC URLs that include private API keys
-- Raw terminal history that includes secrets
+The 14 wallets created on the v1 testnet deployment continue to work against their v1 modules.
+The app and indexer follow only the current manifest, so those wallets become legacy: the API
+excludes them from every wallet read and reports their count, and the registry shows one notice.
+Their owners must redeploy through the v2 `WalletFactory`; there is no operator-side migration
+that can replace an owner-controlled wallet.

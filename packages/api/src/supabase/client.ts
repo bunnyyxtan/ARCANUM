@@ -31,11 +31,12 @@ export type SupabaseRequestOptions = {
   // Do not project mapped tables while their mappers tolerate legacy names.
   // PostgREST rejects a projection when any named legacy column is absent.
   select?: string;
+  before?: { createdAt: string; id: string };
 };
 
 export type SupabaseWriteResult<T> =
   | { ok: true; data: T }
-  | { ok: false; reason: "unconfigured" | "unavailable"; message: string };
+  | { ok: false; reason: "unconfigured" | "unavailable" | "forbidden"; message: string };
 
 export type SupabaseServiceRoleClient = {
   configured: boolean;
@@ -95,6 +96,13 @@ export function createSupabaseServiceRoleClient(): SupabaseServiceRoleClient | n
       if (values.length > 0) {
         endpoint.searchParams.set(key, `in.(${values.join(",")})`);
       }
+    }
+
+    if (options?.before) {
+      endpoint.searchParams.set(
+        "or",
+        `(created_at.lt.${options.before.createdAt},and(created_at.eq.${options.before.createdAt},id.lt.${options.before.id}))`,
+      );
     }
 
     if (options?.onConflict) {

@@ -12,22 +12,28 @@ import {
   stringField,
 } from "./fields";
 import { transferFromRow } from "./mappers";
-import {
-  orgScopedRowsForWallets,
-  rowsForWalletIdentity,
-  rowsForWallets,
-  walletForRow,
-} from "./scope";
+import { rowsForWalletIdentity, walletForRow } from "./scope";
 import { selectRows } from "./transport";
 import { readSupabaseWalletByAddressUnscoped, readSupabaseWallets } from "./wallets";
 
 /** How many recent ledger events the public trust figures are computed over. */
 export const PUBLIC_AGGREGATE_WINDOW = 2000;
-export async function readSupabaseTransfers(ctx: ApiContext) {
-  const rows = await selectRows(ctx, "ledger_events", {
-    order: "event_time.desc",
-  });
+const MAX_LEDGER_ROWS = 1_000;
+
+export async function readSupabaseTransfers(
+  ctx: ApiContext,
+  cursor?: { createdAt: string; id: string },
+) {
   const wallets = await readSupabaseWallets(ctx);
+  if (wallets.length === 0) {
+    return [];
+  }
+  const rows = await selectRows(ctx, "ledger_events", {
+    inFilters: { governed_wallet_id: wallets.map((wallet) => wallet.id) },
+    order: "created_at.desc,id.desc",
+    limit: MAX_LEDGER_ROWS,
+    before: cursor,
+  });
   return rowsForWalletIdentity(rows, wallets).map((row) => transferFromRow(row, wallets));
 }
 
@@ -101,15 +107,19 @@ function storedGovernanceEventFromRow(row: SupabaseRow): GovernanceEventRecord {
   };
 }
 
-async function readOptionalGovernanceRows(ctx: ApiContext) {
+async function readOptionalGovernanceRows(ctx: ApiContext, walletIds: string[], limit: number) {
   if (!ctx.supabase) {
     return selectRows(ctx, "governance_events", {
-      order: "event_time.desc",
+      inFilters: { governed_wallet_id: walletIds },
+      order: "created_at.desc,id.desc",
+      limit,
     });
   }
   try {
     return await ctx.supabase.selectRows("governance_events", {
-      order: "event_time.desc",
+      inFilters: { governed_wallet_id: walletIds },
+      order: "created_at.desc,id.desc",
+      limit,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -147,9 +157,21 @@ export async function readSupabaseEvents(
 
   const [rows, governanceRows] = await Promise.all([
     selectRows(ctx, "ledger_events", {
-      order: "event_time.desc",
+      inFilters: { governed_wallet_id: wallets.map((wallet) => wallet.id) },
+      order: "created_at.desc,id.desc",
+      limit: Math.min(
+        (options?.page ?? 0) * (options?.pageSize ?? 50) + (options?.pageSize ?? 50),
+        MAX_LEDGER_ROWS,
+      ),
     }),
-    readOptionalGovernanceRows(ctx),
+    readOptionalGovernanceRows(
+      ctx,
+      wallets.map((wallet) => wallet.id),
+      Math.min(
+        (options?.page ?? 0) * (options?.pageSize ?? 50) + (options?.pageSize ?? 50),
+        MAX_LEDGER_ROWS,
+      ),
+    ),
   ]);
 
   const page = options?.page ?? 0;

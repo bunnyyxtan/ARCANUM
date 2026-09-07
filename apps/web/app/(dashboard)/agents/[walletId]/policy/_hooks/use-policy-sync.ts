@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 import type { Address } from "viem";
 
@@ -8,7 +8,7 @@ import { errorText } from "@/lib/chain-errors";
 import { isEvmAddress, isSameAddress } from "@/lib/format/address";
 import { trpc } from "@/lib/trpc";
 
-import { policyDraftFromServerRead } from "../_lib/policy-helpers";
+import { policyDraftFromServerRead, reconcilePolicyDraft } from "../_lib/policy-helpers";
 import type { usePolicyDeployment } from "./use-policy-deployment";
 import type { usePolicyDraft } from "./use-policy-draft";
 
@@ -25,6 +25,8 @@ export function usePolicySync(
   stopPendingIndexer: () => void,
 ) {
   const utils = trpc.useUtils();
+  const hydratedWallet = useRef<string | null>(null);
+  const hydratedPolicy = useRef<string | null>(null);
   useEffect(() => {
     if (
       draft.selectedPolicyWalletAddress &&
@@ -81,9 +83,22 @@ export function usePolicySync(
     }
     if (onChainPolicyQuery.data) {
       const nextDraft = policyDraftFromServerRead(onChainPolicyQuery.data.policy);
+      const policyFingerprint = JSON.stringify(onChainPolicyQuery.data.policy);
+      const walletChanged =
+        hydratedWallet.current?.toLowerCase() !== selectedGovernedWalletAddress.toLowerCase();
+      const chainPolicyChanged =
+        hydratedPolicy.current !== null && hydratedPolicy.current !== policyFingerprint;
       deployment.setPolicyWalletOwner(onChainPolicyQuery.data.owner as Address);
       draft.setActivePolicyDraft(nextDraft);
-      draft.setPolicyDraft(nextDraft);
+      const reconciled = reconcilePolicyDraft(draft.policyDraft, nextDraft, walletChanged);
+      if (walletChanged) {
+        draft.setPolicyDraft(reconciled.draft);
+        draft.setOnChainPolicyChanged(false);
+      } else if (chainPolicyChanged && reconciled.onChainChanged) {
+        draft.setOnChainPolicyChanged(true);
+      }
+      hydratedWallet.current = selectedGovernedWalletAddress;
+      hydratedPolicy.current = policyFingerprint;
       stopPendingIndexer();
       deployment.setPolicyReadStatus("ready");
     }
@@ -99,6 +114,8 @@ export function usePolicySync(
     draft.setActivePolicyDraft,
     draft.setPolicyDraft,
     draft.setPolicyError,
+    draft.setOnChainPolicyChanged,
+    draft.policyDraft,
     stopPendingIndexer,
   ]);
 

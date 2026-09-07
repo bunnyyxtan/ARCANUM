@@ -70,6 +70,7 @@ function usePolicyControllerInternal(routeWalletId: string) {
     policyDraft: draft.policyDraft,
     policyError: draft.policyError,
     policyNetworkNotice: write.policyNetworkNotice,
+    onChainPolicyChanged: draft.onChainPolicyChanged,
     policyPendingIndexer: writeState.policyPendingIndexer,
     policyReadStatus: deployment.policyReadStatus,
     policyTxHash: writeState.policyTxHash,
@@ -77,6 +78,7 @@ function usePolicyControllerInternal(routeWalletId: string) {
     policyWalletOwner: deployment.policyWalletOwner,
     policyWriteDisabledReason: write.policyWriteDisabledReason,
     resetDraft: draft.resetDraft,
+    reloadOnChainPolicy: draft.reloadOnChainPolicy,
     savePolicyOnChain: write.savePolicyOnChain,
     selectedGovernedWalletAddress,
     selectedPolicyWalletAddress: draft.selectedPolicyWalletAddress,
@@ -84,6 +86,7 @@ function usePolicyControllerInternal(routeWalletId: string) {
     setSelectedPolicyWalletAddress: draft.setSelectedPolicyWalletAddress,
     toggleCategory: draft.toggleCategory,
     unsavedCount: draft.unsavedCount,
+    validationError: draft.validationError,
     updatePolicyDraft: draft.updatePolicyDraft,
     walletsLoading: walletsQuery.isLoading,
   };

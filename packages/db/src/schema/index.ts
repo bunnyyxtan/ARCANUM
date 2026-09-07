@@ -32,6 +32,9 @@ export const escalationStatusEnum = pgEnum("escalation_status", [
   "EXECUTED",
   "REJECTED",
   "EXPIRED",
+  "DENIED",
+  "CANCELLED",
+  "INVALIDATED",
 ]);
 export const vendorStatusEnum = pgEnum("vendor_status", ["allowed", "blocked", "removed"]);
 export const anomalySeverityEnum = pgEnum("anomaly_severity", ["info", "warning", "danger"]);
@@ -270,10 +273,11 @@ export const policies = pgTable("policies", {
   version: integer("version").notNull(),
   perTxCap: numeric("per_tx_cap", { precision: 78, scale: 0 }).notNull(),
   daily24hCap: numeric("daily_24h_cap", { precision: 78, scale: 0 }).notNull(),
-  monthlyRollingCap: numeric("monthly_rolling_cap", { precision: 78, scale: 0 }).notNull(),
+  monthlyCap: numeric("monthly_rolling_cap", { precision: 78, scale: 0 }).notNull(),
   allowedCategories: integer("allowed_categories").notNull(),
   escalationThreshold: numeric("escalation_threshold", { precision: 78, scale: 0 }).notNull(),
   requireAllowlist: boolean("require_allowlist").notNull(),
+  freezeOnBlockedVendor: boolean("freeze_on_blocked_vendor").notNull().default(false),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   updatedBy: varchar("updated_by", { length: 42 }).notNull(),
 });

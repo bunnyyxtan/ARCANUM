@@ -19,7 +19,7 @@
             "internalType": "uint256"
           },
           {
-            "name": "monthlyRollingCap",
+            "name": "monthlyCap",
             "type": "uint256",
             "internalType": "uint256"
           },
@@ -35,6 +35,97 @@
           },
           {
             "name": "requireAllowlist",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "freezeOnBlockedVendor",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      },
+      {
+        "name": "to",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "dailySpent",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "monthlySpent",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "vendorRegistry",
+        "type": "address",
+        "internalType": "contract IVendorRegistry"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "verdict",
+        "type": "uint8",
+        "internalType": "enum Verdict"
+      },
+      {
+        "name": "reason",
+        "type": "uint8",
+        "internalType": "enum EscalationReason"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "evaluateRelease",
+    "inputs": [
+      {
+        "name": "policy",
+        "type": "tuple",
+        "internalType": "struct PolicyEnvelope",
+        "components": [
+          {
+            "name": "perTxCap",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "daily24hCap",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "monthlyCap",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "allowedCategories",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "escalationThreshold",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "requireAllowlist",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "freezeOnBlockedVendor",
             "type": "bool",
             "internalType": "bool"
           }

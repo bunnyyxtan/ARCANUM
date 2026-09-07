@@ -18,7 +18,7 @@ export const ledgerRouter = router({
   list: publicProcedure.input(ledgerListInputSchema).query(async ({ ctx, input }) => {
     const page = input?.page ?? defaultPage.page;
     const pageSize = input?.pageSize ?? defaultPage.pageSize;
-    const rows = await readSupabaseTransfers(ctx);
+    const rows = await readSupabaseTransfers(ctx, input?.cursor);
 
     return rows.slice(page * pageSize, page * pageSize + pageSize);
   }),
@@ -29,7 +29,9 @@ export const ledgerRouter = router({
     const pageSize = input.pageSize ?? defaultPage.pageSize;
 
     const scopedRows = wallet
-      ? (await readSupabaseTransfers(ctx)).filter((transfer) => transfer.walletId === wallet.id)
+      ? (await readSupabaseTransfers(ctx, input.cursor)).filter(
+          (transfer) => transfer.walletId === wallet.id,
+        )
       : [];
 
     if (scopedRows.length > 0) {
@@ -52,7 +54,7 @@ export const ledgerRouter = router({
       const page = input.page ?? defaultPage.page;
       const pageSize = input.pageSize ?? defaultPage.pageSize;
       const counterparty = input.counterparty.toLowerCase();
-      const rows = (await readSupabaseTransfers(ctx)).filter(
+      const rows = (await readSupabaseTransfers(ctx, input.cursor)).filter(
         (transfer) => transfer.toAddress.toLowerCase() === counterparty,
       );
 
@@ -62,7 +64,7 @@ export const ledgerRouter = router({
   byTimeRange: publicProcedure.input(ledgerByTimeRangeInputSchema).query(async ({ ctx, input }) => {
     const page = input.page ?? defaultPage.page;
     const pageSize = input.pageSize ?? defaultPage.pageSize;
-    const rows = (await readSupabaseTransfers(ctx)).filter(
+    const rows = (await readSupabaseTransfers(ctx, input.cursor)).filter(
       (transfer) => transfer.timestamp >= input.since && transfer.timestamp <= input.until,
     );
 

@@ -1,4 +1,5 @@
 import type { Agent, Policy, Wallet } from "@arcanum/db/schema";
+import { ARC_NETWORK, deploymentManifestFor } from "@arcanum/shared";
 import type { ApiContext } from "../context";
 import { computePostureScore } from "../posture";
 import { readCallerMembership } from "./auth";
@@ -32,7 +33,7 @@ export type AgentWithDoctrine = Agent & {
   walletAddress: string | null;
   perTxCap: string | null;
   daily24hCap: string | null;
-  monthlyRollingCap: string | null;
+  monthlyCap: string | null;
   escalationThreshold: string | null;
   policyVersion: number | null;
   postureScore: number | null;
@@ -48,7 +49,7 @@ export function agentWithoutDoctrine(agent: Agent): AgentWithDoctrine {
     walletAddress: null,
     perTxCap: null,
     daily24hCap: null,
-    monthlyRollingCap: null,
+    monthlyCap: null,
     escalationThreshold: null,
     policyVersion: null,
     postureScore: null,
@@ -62,6 +63,7 @@ export async function readSupabaseWallets(ctx: ApiContext): Promise<Wallet[]> {
   }
 
   const membership = await readCallerMembership(ctx);
+  const walletFactory = deploymentManifestFor(ARC_NETWORK).walletFactory.toLowerCase();
 
   // Everything in the caller's workspace, plus anything the caller owns
   // directly. The union matters in both directions: a teammate owns none of the
@@ -70,13 +72,16 @@ export async function readSupabaseWallets(ctx: ApiContext): Promise<Wallet[]> {
   const [orgRows, ownedRows] = await Promise.all([
     membership
       ? selectRows(ctx, "governed_wallets", {
-          filters: { organization_id: membership.orgId },
+          filters: {
+            organization_id: membership.orgId,
+            wallet_factory_address: walletFactory,
+          },
           order: "created_at.desc",
           limit: MAX_WALLETS_PER_ORG,
         })
       : Promise.resolve([] as SupabaseRow[]),
     selectRows(ctx, "governed_wallets", {
-      filters: { owner_address: owner },
+      filters: { owner_address: owner, wallet_factory_address: walletFactory },
       order: "created_at.desc",
       limit: MAX_WALLETS_PER_ORG,
     }),
@@ -102,6 +107,42 @@ export async function readSupabaseWallets(ctx: ApiContext): Promise<Wallet[]> {
   return merged.map(walletFromGovernedWalletRow);
 }
 
+export async function readSupabaseLegacyWalletCount(ctx: ApiContext) {
+  const owner = ownerScope(ctx);
+  if (!owner) {
+    return 0;
+  }
+
+  const membership = await readCallerMembership(ctx);
+  const walletFactory = deploymentManifestFor(ARC_NETWORK).walletFactory.toLowerCase();
+  const [orgRows, ownedRows] = await Promise.all([
+    membership
+      ? selectRows(ctx, "governed_wallets", {
+          filters: { organization_id: membership.orgId },
+          limit: MAX_WALLETS_PER_ORG,
+        })
+      : Promise.resolve([] as SupabaseRow[]),
+    selectRows(ctx, "governed_wallets", {
+      filters: { owner_address: owner },
+      limit: MAX_WALLETS_PER_ORG,
+    }),
+  ]);
+
+  const legacyWalletIds = new Set<string>();
+  for (const row of [...orgRows, ...scopedRows(ctx, ownedRows)]) {
+    if (stringField(row, ["wallet_factory_address"], "").toLowerCase() !== walletFactory) {
+      legacyWalletIds.add(
+        stringField(
+          row,
+          ["id"],
+          `${stringField(row, ["chain_id"])}:${stringField(row, ["wallet_address"])}`,
+        ),
+      );
+    }
+  }
+  return legacyWalletIds.size;
+}
+
 /**
  * Resolve a governed wallet by its onchain address WITHOUT scoping to the
  * signed-in owner. An escalation approver is often a council member rather than
@@ -110,8 +151,12 @@ export async function readSupabaseWallets(ctx: ApiContext): Promise<Wallet[]> {
  * before acting on the result.
  */
 export async function readSupabaseWalletByAddressUnscoped(ctx: ApiContext, address: string) {
+  const walletFactory = deploymentManifestFor(ARC_NETWORK).walletFactory.toLowerCase();
   const rows = await selectRows(ctx, "governed_wallets", {
-    filters: { wallet_address: address.toLowerCase() },
+    filters: {
+      wallet_address: address.toLowerCase(),
+      wallet_factory_address: walletFactory,
+    },
     limit: 1,
   });
   const [row] = rows;

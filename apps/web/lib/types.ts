@@ -61,7 +61,7 @@ export type Escalation = {
   counterparty: string;
   category: Category;
   reason: string;
-  status: "PENDING" | "EXECUTED" | "REJECTED" | "EXPIRED";
+  status: "PENDING" | "EXECUTED" | "REJECTED" | "EXPIRED" | "DENIED" | "CANCELLED" | "INVALIDATED";
   quorumCurrent: number;
   quorumRequired: number;
   deviation: number;
@@ -69,12 +69,14 @@ export type Escalation = {
   expiresAt: string | null;
   expiresIn: string;
   expiryPercent: number;
+  votePending?: boolean;
 };
 
 export type Anomaly = {
   id: string;
   agentId: string;
   agentName: string;
+  wallet: string;
   score: number;
   narrative: string;
   suggestedAction: "freeze" | "investigate" | "dismiss";

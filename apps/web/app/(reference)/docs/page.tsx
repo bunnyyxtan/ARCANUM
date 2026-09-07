@@ -454,10 +454,11 @@ const WALLET_FACTORY = "0x51A560589e23AcD2e57173641267f4583e0e65E7";
 const policy = {
   perTxCap: parseUnits("50", 6),
   daily24hCap: parseUnits("500", 6),
-  monthlyRollingCap: parseUnits("5000", 6),
+  monthlyCap: parseUnits("5000", 6),
   allowedCategories: 0b11111n,
-  escalationThreshold: parseUnits("100", 6),
+  escalationThreshold: parseUnits("25", 6),
   requireAllowlist: true,
+  freezeOnBlockedVendor: true,
 };
 
 const agentSigner = "0xYourAgentSignerAddress"; // your AI agent's signing address
@@ -467,7 +468,7 @@ const txHash = await walletClient.writeContract({
   address: WALLET_FACTORY,
   abi: WalletFactoryAbi,
   functionName: "createWallet",
-  args: [account.address, "ResearchAgent", policy, [agentSigner], council, 1],
+  args: [account.address, "ResearchAgent", policy, [agentSigner], council, 1, 3600],
 });
 console.log("Deployed:", txHash);`}</CodeBlock>
                 <div className="mt-8 space-y-3">

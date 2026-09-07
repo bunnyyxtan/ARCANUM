@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { Agent } from "@arcanum/db/schema";
+import { decimalUsdcToBaseUnits } from "@arcanum/shared";
 import type { SupabaseRow } from "./client";
 
 export function stableUuid(seed: string) {
@@ -126,18 +127,26 @@ export function moneyBaseUnits(
   for (const key of keys) {
     const value = row?.[key];
     if (typeof value === "number") {
-      return String(Math.round(value * 1_000_000));
+      if (!Number.isSafeInteger(value * 1_000_000)) {
+        throw new Error(`USDC amount ${String(value)} cannot be represented exactly.`);
+      }
+      return BigInt(Math.round(value * 1_000_000)).toString();
     }
     if (typeof value === "string" && value.trim()) {
       if (/^\d+$/.test(value) && value.length > 6) {
         return value;
       }
-      const parsed = Number(value);
-      if (Number.isFinite(parsed)) {
-        return String(Math.round(parsed * 1_000_000));
+      if (/^(0|[1-9]\d*)(\.\d{1,6})?$/.test(value)) {
+        return decimalUsdcToBaseUnits(value).toString();
       }
     }
   }
 
-  return typeof fallback === "number" ? String(Math.round(fallback * 1_000_000)) : fallback;
+  if (typeof fallback !== "number") {
+    return fallback;
+  }
+  if (!Number.isSafeInteger(fallback * 1_000_000)) {
+    throw new Error(`USDC fallback ${String(fallback)} cannot be represented exactly.`);
+  }
+  return BigInt(Math.round(fallback * 1_000_000)).toString();
 }

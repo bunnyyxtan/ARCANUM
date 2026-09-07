@@ -78,7 +78,9 @@ export function usePolicyWrite(
               ? "Only the governed wallet owner can update policy."
               : draft.unsavedCount === 0
                 ? "No policy changes to submit."
-                : null;
+                : draft.validationError
+                  ? draft.validationError
+                  : null;
 
   useEffect(() => {
     if (!state.policyPendingIndexer) return;
@@ -128,12 +130,13 @@ export function usePolicyWrite(
         const syncPromise = recordDeployedPolicy.mutateAsync({
           walletAddress: governedWallet,
           txHash: hash,
-          perTxCap: Number(nextPolicy.perTxCap) / 1e6,
-          dailyCap: Number(nextPolicy.daily24hCap) / 1e6,
-          monthlyCap: Number(nextPolicy.monthlyRollingCap) / 1e6,
-          escalationThreshold: Number(nextPolicy.escalationThreshold) / 1e6,
+          perTxCap: draft.policyDraft.perTxCap,
+          dailyCap: draft.policyDraft.dailyCap,
+          monthlyCap: draft.policyDraft.monthlyCap,
+          escalationThreshold: draft.policyDraft.escalationThreshold,
           allowedCategories: draftCategoryNames(draft.policyDraft),
           requireAllowlist: nextPolicy.requireAllowlist,
+          freezeOnBlockedVendor: nextPolicy.freezeOnBlockedVendor,
         });
         syncPromise
           .then(() => {

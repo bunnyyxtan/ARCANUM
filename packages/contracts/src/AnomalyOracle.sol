@@ -1,13 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.24;
 
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { MessageHashUtils } from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 import { IAnomalyOracle } from "./interfaces/IAnomalyOracle.sol";
 import { IGuardedWallet } from "./interfaces/IGuardedWallet.sol";
 import {
+    InvalidExpiry,
     OracleOptOut,
+    ScoreStale,
     SignatureExpired,
     SignatureInvalid,
     ThresholdNotMet,
@@ -16,17 +20,19 @@ import {
 import { Events } from "./libraries/Events.sol";
 
 /// @notice Verifies signed anomaly scores and freezes opted-in wallets above threshold.
-contract AnomalyOracle is IAnomalyOracle {
-    address public immutable oracleSigner;
+/// @dev The signer and the score freshness bound are owner-rotatable so a key compromise
+///      or a stalled scorer is handled here, not by redeploying and re-pointing wallets.
+contract AnomalyOracle is IAnomalyOracle, Ownable2Step {
+    address public oracleSigner;
+    uint256 public maxScoreAge;
     mapping(address wallet => uint256 sigmaBps) public latestSigmaBps;
+    mapping(address wallet => uint256 timestamp) public latestScoreAt;
     mapping(address wallet => uint256 nonce) public scoreNonce;
 
-    /// @notice Sets the immutable signer that authorizes anomaly scores.
-    constructor(address oracleSigner_) {
-        if (oracleSigner_ == address(0)) {
-            revert ZeroAddress();
-        }
-        oracleSigner = oracleSigner_;
+    /// @notice Sets the owner, the initial score signer and the score freshness bound.
+    constructor(address owner_, address oracleSigner_, uint256 maxScoreAge_) Ownable(owner_) {
+        _setSigner(oracleSigner_);
+        _setMaxScoreAge(maxScoreAge_);
     }
 
     /// @inheritdoc IAnomalyOracle
@@ -63,6 +69,7 @@ contract AnomalyOracle is IAnomalyOracle {
 
         scoreNonce[wallet] = nonce + 1;
         latestSigmaBps[wallet] = sigmaBps;
+        latestScoreAt[wallet] = block.timestamp;
         emit Events.AnomalyScoreSubmitted(wallet, sigmaBps, block.timestamp);
     }
 
@@ -79,10 +86,40 @@ contract AnomalyOracle is IAnomalyOracle {
         if (latestSigmaBps[wallet] <= guardedWallet.anomalyFreezeThresholdBps()) {
             revert ThresholdNotMet();
         }
+        if (block.timestamp > latestScoreAt[wallet] + maxScoreAge) {
+            revert ScoreStale();
+        }
 
         // Consume the score so one signed score cannot re-freeze after an owner unfreeze.
         latestSigmaBps[wallet] = 0;
 
         guardedWallet.triggerFreeze(reason);
+    }
+
+    /// @notice Replaces the address whose score signatures are accepted.
+    function setSigner(address newSigner) external onlyOwner {
+        _setSigner(newSigner);
+    }
+
+    /// @notice Sets how old a submitted score may be and still authorise a freeze.
+    function setMaxScoreAge(uint256 maxScoreAge_) external onlyOwner {
+        _setMaxScoreAge(maxScoreAge_);
+    }
+
+    function _setSigner(address newSigner) private {
+        if (newSigner == address(0)) {
+            revert ZeroAddress();
+        }
+        address previousSigner = oracleSigner;
+        oracleSigner = newSigner;
+        emit Events.OracleSignerRotated(previousSigner, newSigner);
+    }
+
+    function _setMaxScoreAge(uint256 maxScoreAge_) private {
+        if (maxScoreAge_ == 0) {
+            revert InvalidExpiry();
+        }
+        maxScoreAge = maxScoreAge_;
+        emit Events.MaxScoreAgeUpdated(maxScoreAge_);
     }
 }

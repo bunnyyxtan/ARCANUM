@@ -38,10 +38,10 @@ export function BadgePublicPage({ wallet }: Readonly<{ wallet: string }>) {
 
   const badgePath = `/badge/${encodeURIComponent(wallet)}`;
   const explorerPath = `/explorer/${encodeURIComponent(wallet)}`;
-  const publicBadgeUrl = `${publicOrigin}${badgePath}`;
+  const publicBadgeUrl = `${publicOrigin}${badgePath}/image.svg`;
   const embedSnippet = useMemo(
     () =>
-      `<a href="${publicOrigin}${explorerPath}"><img src="${publicBadgeUrl}.svg" alt="Governed by ARCANUM" /></a>`,
+      `<a href="${publicOrigin}${explorerPath}"><img src="${publicBadgeUrl}" alt="Governed by ARCANUM" /></a>`,
     [publicOrigin, explorerPath, publicBadgeUrl],
   );
 

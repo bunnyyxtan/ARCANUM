@@ -9,11 +9,11 @@ const amountDecimalSchema = z
   .regex(/^(?:0|[1-9]\d*)(?:\.\d{1,6})?$/, "Use a positive USDC amount with up to 6 decimals")
   .refine((value) => !/^0(?:\.0{1,6})?$/.test(value), "Amount must be greater than zero");
 
-const idempotencyKeySchema = z
+const referenceSchema = z
   .string()
   .trim()
-  .min(8, "Idempotency key is required")
-  .max(128, "Idempotency key is too long")
+  .min(8, "Reference is required")
+  .max(128, "Reference is too long")
   .regex(/^[A-Za-z0-9._:-]+$/, "Use letters, numbers, dots, underscores, colons, or dashes");
 
 const signatureSchema = z
@@ -41,7 +41,7 @@ export const paymentIntentInputSchema = z.object({
   tokenSymbol: supportedPaymentTokenSchema.optional(),
   amount: amountDecimalSchema,
   purpose: z.string().trim().min(1, "Purpose is required").max(280, "Purpose is too long"),
-  idempotencyKey: idempotencyKeySchema,
+  reference: referenceSchema,
 });
 
 export const signedPaymentIntentInputSchema = paymentIntentInputSchema.extend({
@@ -66,7 +66,7 @@ export type PaymentIntentResult = Readonly<{
   amount: string;
   amountBaseUnits?: string;
   purpose: string;
-  idempotencyKey: string;
+  reference: string;
   escalationId?: `0x${string}`;
   policyReference?: string;
   txHash?: `0x${string}`;
@@ -87,7 +87,7 @@ export function createPaymentIntentMessage(input: PaymentIntentInput): string {
     `tokenSymbol=${intent.tokenSymbol ?? ""}`,
     `amount=${intent.amount}`,
     `purpose=${intent.purpose}`,
-    `idempotencyKey=${intent.idempotencyKey}`,
+    `reference=${intent.reference}`,
   ].join("\n");
 }
 
@@ -117,7 +117,7 @@ export function createPaymentIntentResult(
     amount: parsedIntent.amount,
     amountBaseUnits: input.amountBaseUnits?.toString(),
     purpose: parsedIntent.purpose,
-    idempotencyKey: parsedIntent.idempotencyKey,
+    reference: parsedIntent.reference,
     escalationId: input.escalationId,
     policyReference: input.policyReference,
     txHash: input.txHash,

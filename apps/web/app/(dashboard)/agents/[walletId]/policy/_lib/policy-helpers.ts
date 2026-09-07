@@ -20,6 +20,14 @@ function parseUsdcInput(value: string, label: string): bigint {
   return parsed;
 }
 
+function parseMonthlyCap(value: string): bigint {
+  const trimmed = value.trim();
+  if (!/^\d+(\.\d{1,6})?$/.test(trimmed)) {
+    throw new Error("Monthly cap must be a USDC amount with up to 6 decimals.");
+  }
+  return parseUnits(trimmed, 6);
+}
+
 function usdcInputValue(value: bigint): string {
   const formatted = formatUnits(value, 6);
   return formatted.includes(".") ? formatted.replace(/\.?0+$/, "") : formatted;
@@ -62,7 +70,7 @@ export function buildPolicyEnvelope(draft: PolicyDraftState): PolicyEnvelopeValu
   const normalized = normalizePolicyDraft(draft);
   const perTxCap = parseUsdcInput(normalized.perTxCap, "Per transaction cap");
   const daily24hCap = parseUsdcInput(normalized.dailyCap, "Daily cap");
-  const monthlyRollingCap = parseUsdcInput(normalized.monthlyCap, "Monthly cap");
+  const monthlyCap = parseMonthlyCap(normalized.monthlyCap);
   const escalationThreshold = parseUsdcInput(
     normalized.escalationThreshold,
     "Escalation threshold",
@@ -72,7 +80,7 @@ export function buildPolicyEnvelope(draft: PolicyDraftState): PolicyEnvelopeValu
   if (perTxCap > daily24hCap) {
     throw new Error("Per transaction cap must be less than or equal to the daily cap.");
   }
-  if (daily24hCap > monthlyRollingCap) {
+  if (monthlyCap !== 0n && daily24hCap > monthlyCap) {
     throw new Error("Daily cap must be less than or equal to the monthly cap.");
   }
   if (escalationThreshold > perTxCap) {
@@ -86,9 +94,30 @@ export function buildPolicyEnvelope(draft: PolicyDraftState): PolicyEnvelopeValu
     allowedCategories,
     daily24hCap,
     escalationThreshold,
-    monthlyRollingCap,
+    monthlyCap,
     perTxCap,
     requireAllowlist: normalized.requireAllowlist,
+    freezeOnBlockedVendor: normalized.freezeOnBlockedVendor,
+  };
+}
+
+export function policyValidationError(draft: PolicyDraftState): string | null {
+  try {
+    buildPolicyEnvelope(draft);
+    return null;
+  } catch (error) {
+    return error instanceof Error ? error.message : "Policy values are invalid.";
+  }
+}
+
+export function reconcilePolicyDraft(
+  currentDraft: PolicyDraftState,
+  nextOnChainDraft: PolicyDraftState,
+  walletChanged: boolean,
+) {
+  return {
+    draft: walletChanged ? nextOnChainDraft : currentDraft,
+    onChainChanged: !walletChanged && policyDiffRows(nextOnChainDraft, currentDraft).length > 0,
   };
 }
 
@@ -104,10 +133,11 @@ function safeBigInt(value: string | undefined, fallback: bigint): bigint {
 export function policyDraftFromServerRead(policy: {
   perTxCap: string;
   daily24hCap: string;
-  monthlyRollingCap: string;
+  monthlyCap: string;
   allowedCategories: string;
   escalationThreshold: string;
   requireAllowlist: boolean;
+  freezeOnBlockedVendor: boolean;
 }): PolicyDraftState {
   const allowedCategories = safeBigInt(policy.allowedCategories, allPolicyCategoriesMask);
   return {
@@ -118,9 +148,10 @@ export function policyDraftFromServerRead(policy: {
         .map((category) => category.value),
     ),
     escalationThreshold: usdcInputValue(safeBigInt(policy.escalationThreshold, 0n)),
-    monthlyCap: usdcInputValue(safeBigInt(policy.monthlyRollingCap, 0n)),
+    monthlyCap: usdcInputValue(safeBigInt(policy.monthlyCap, 0n)),
     perTxCap: usdcInputValue(safeBigInt(policy.perTxCap, 0n)),
     requireAllowlist: policy.requireAllowlist,
+    freezeOnBlockedVendor: policy.freezeOnBlockedVendor,
   };
 }
 
@@ -167,6 +198,13 @@ export function policyDiffRows(active: PolicyDraftState, draft: PolicyDraftState
       "VENDOR ALLOWLIST",
       normalizedActive.requireAllowlist ? "required" : "optional",
       normalizedDraft.requireAllowlist ? "required" : "optional",
+    ]);
+  }
+  if (normalizedActive.freezeOnBlockedVendor !== normalizedDraft.freezeOnBlockedVendor) {
+    rows.push([
+      "BLOCKED VENDOR RESPONSE",
+      normalizedActive.freezeOnBlockedVendor ? "freeze wallet" : "deny transfer",
+      normalizedDraft.freezeOnBlockedVendor ? "freeze wallet" : "deny transfer",
     ]);
   }
   return rows;

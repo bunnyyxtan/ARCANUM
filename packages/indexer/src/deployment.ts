@@ -2,25 +2,26 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { ARC_NETWORK } from "@arcanum/shared";
+import { ARC_CHAIN_ID, ARC_NETWORK } from "@arcanum/shared";
 import { z } from "zod";
 
 const addressSchema = z.custom<`0x${string}`>(
-  (value) => typeof value === "string" && /^0x[a-fA-F0-9]{40}$/.test(value),
+  (value) =>
+    typeof value === "string" && /^0x[a-fA-F0-9]{40}$/.test(value) && !/^0x0{40}$/i.test(value),
 );
 
 const deploymentSchema = z.object({
-  walletFactory: addressSchema.optional(),
-  escalationManager: addressSchema.optional(),
-  anomalyOracle: addressSchema.optional(),
-  vendorRegistry: addressSchema.optional(),
-  startBlock: z.number().optional(),
+  chainId: z.number().int().positive(),
+  network: z.string().min(1),
+  usdc: addressSchema,
+  walletFactory: addressSchema,
+  policyEngine: addressSchema,
+  escalationManager: addressSchema,
+  anomalyOracle: addressSchema,
+  vendorRegistry: addressSchema,
+  startBlock: z.number().int().nonnegative(),
 });
 
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
-
-// One manifest per network: arc-testnet.json today, arc-mainnet.json once the
-// mainnet contracts are deployed. The active network picks which one is read.
 const DEPLOYMENT_RELATIVE_PATH = `packages/contracts/deployments/arc-${ARC_NETWORK}.json`;
 
 /**
@@ -53,24 +54,32 @@ function findDeploymentFile() {
     }
   }
 
-  return undefined;
+  throw new Error(
+    `[indexer] deployment manifest ${DEPLOYMENT_RELATIVE_PATH} was not found from ${process.cwd()}`,
+  );
 }
 
 export function loadDeployment() {
   const path = findDeploymentFile();
-  const parsed = path ? deploymentSchema.parse(JSON.parse(readFileSync(path, "utf8"))) : {};
+  let parsed: z.infer<typeof deploymentSchema>;
+  try {
+    parsed = deploymentSchema.parse(JSON.parse(readFileSync(path, "utf8")));
+  } catch (error) {
+    throw new Error(`[indexer] invalid deployment manifest ${path}: ${String(error)}`, {
+      cause: error,
+    });
+  }
 
-  if (!path) {
-    console.error(
-      `[indexer] ${DEPLOYMENT_RELATIVE_PATH} not found from ${process.cwd()} - refusing to index zero addresses from genesis.`,
+  if (parsed.chainId !== ARC_CHAIN_ID) {
+    throw new Error(
+      `[indexer] deployment manifest ${path} has chainId ${parsed.chainId}; configured ${ARC_NETWORK} network requires ${ARC_CHAIN_ID}`,
+    );
+  }
+  if (parsed.network !== `arc-${ARC_NETWORK}`) {
+    throw new Error(
+      `[indexer] deployment manifest ${path} identifies network ${parsed.network}; configured network is arc-${ARC_NETWORK}`,
     );
   }
 
-  return {
-    walletFactory: parsed.walletFactory ?? ZERO_ADDRESS,
-    escalationManager: parsed.escalationManager ?? ZERO_ADDRESS,
-    anomalyOracle: parsed.anomalyOracle ?? ZERO_ADDRESS,
-    vendorRegistry: parsed.vendorRegistry ?? ZERO_ADDRESS,
-    startBlock: parsed.startBlock ?? 0,
-  };
+  return parsed;
 }

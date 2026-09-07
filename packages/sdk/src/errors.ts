@@ -1,4 +1,4 @@
-import type { Address } from "viem";
+import type { Address, Hash } from "viem";
 
 export type ArcanumVerdict = "ALLOW" | "ESCALATE" | "DENY" | "FREEZE";
 
@@ -9,6 +9,7 @@ export type ArcanumErrorCode =
   | "AGENT_NOT_AUTHORIZED"
   | "AGENT_SIGNER_REQUIRED"
   | "INSUFFICIENT_USDC"
+  | "TRANSFER_REVERTED"
   | "RPC_ERROR";
 
 export class ArcanumError extends Error {
@@ -27,6 +28,25 @@ export class ArcanumError extends Error {
     this.code = input.code;
     this.verdict = input.verdict;
     this.reason = input.reason;
+  }
+}
+
+export class TransferRevertedError extends ArcanumError {
+  readonly txHash: Hash;
+  readonly customErrorName?: string;
+
+  constructor(txHash: Hash, customErrorName?: string) {
+    super({
+      code: "TRANSFER_REVERTED",
+      message: customErrorName
+        ? `Transaction ${txHash} reverted with ${customErrorName}`
+        : `Transaction ${txHash} reverted`,
+      verdict: "DENY",
+      reason: customErrorName,
+    });
+    this.name = "TransferRevertedError";
+    this.txHash = txHash;
+    this.customErrorName = customErrorName;
   }
 }
 

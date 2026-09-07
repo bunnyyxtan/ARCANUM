@@ -168,7 +168,7 @@ describe("workspace ownership", () => {
     const readModel = createReadModel();
 
     await expect(callerAs(OUTSIDER, readModel, "owner").update(renameInput)).rejects.toThrow(
-      /owner/i,
+      /workspace/i,
     );
     expect(readModel.tables.organizations[0]?.name).toBe("Arcanum Workspace");
   });

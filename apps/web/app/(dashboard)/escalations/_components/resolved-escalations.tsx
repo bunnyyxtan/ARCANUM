@@ -23,7 +23,7 @@ export function ResolvedEscalations({ items }: Readonly<{ items: readonly Escala
           >
             <div className="flex min-w-0 items-center gap-4">
               <span
-                className={`inline-block w-[86px] shrink-0 border px-2 py-1 text-center font-mono text-[9px] tracking-[.12em] ${
+                className={`inline-block w-[96px] shrink-0 border px-2 py-1 text-center font-mono text-[9px] tracking-[.12em] ${
                   item.status === "EXECUTED"
                     ? "border-[var(--wl-green)] text-[var(--wl-green)]"
                     : item.status === "REJECTED"
@@ -31,20 +31,20 @@ export function ResolvedEscalations({ items }: Readonly<{ items: readonly Escala
                       : "border-[var(--wl-line-bold)] text-[var(--wl-mute)]"
                 }`}
               >
-                {item.status === "EXECUTED"
-                  ? "APPROVED"
-                  : item.status === "REJECTED"
-                    ? "REJECTED"
-                    : "EXPIRED"}
+                {item.status}
               </span>
               <span className="truncate text-[13px]">
                 {formatUsd(item.amount)} <span className="text-[var(--wl-mute)]">→</span>{" "}
                 {item.counterparty}
               </span>
             </div>
-            <div className="flex items-baseline gap-5 pl-[102px] md:pl-0">
+            <div className="flex items-baseline gap-5 pl-[112px] md:pl-0">
               <span className="line-clamp-2 max-w-[360px] text-[11px] leading-[1.4] text-[var(--wl-secondary2)] lg:truncate">
-                {item.reason}
+                {item.status === "REJECTED"
+                  ? `Council rejected the request · ${item.reason}`
+                  : item.status === "DENIED"
+                    ? `Policy re-evaluation denied release · ${item.reason}`
+                    : item.reason}
               </span>
               <span className="shrink-0 font-mono text-[9px] tracking-[.12em] text-[var(--wl-mute)]">
                 {formatFooterTimestamp(item.createdAt)}

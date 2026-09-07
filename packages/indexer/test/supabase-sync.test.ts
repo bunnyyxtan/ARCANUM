@@ -1,3 +1,9 @@
+import {
+  ESCALATION_REASONS,
+  ESCALATION_STATUSES,
+  escalationReasonFromIndex,
+  escalationStatusFromIndex,
+} from "@arcanum/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 type Row = Record<string, unknown>;
@@ -55,6 +61,7 @@ async function fakeFetch(input: string | URL | Request, init?: RequestInit) {
 const transfer = {
   walletAddress: "0x1111111111111111111111111111111111111111",
   txHash: "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  logIndex: 7,
   toAddress: "0x2222222222222222222222222222222222222222",
   amount: 1_000_000n,
   blockNumber: 20,
@@ -79,6 +86,7 @@ describe("Supabase synchronization", () => {
       ],
       public_wallet_profiles: [],
       ledger_events: [],
+      escalations: [],
       unlinked_ledger_events: [],
       indexer_checkpoints: [],
     };
@@ -98,7 +106,11 @@ describe("Supabase synchronization", () => {
     await syncTransferExecuted(transfer);
     await syncTransferExecuted(transfer);
     expect(tableRows("ledger_events")).toHaveLength(1);
-    expect(tableRows("ledger_events")[0]).toMatchObject({ tx_hash: transfer.txHash.toLowerCase() });
+    expect(tableRows("ledger_events")[0]).toMatchObject({
+      chain_id: 5042002,
+      tx_hash: transfer.txHash.toLowerCase(),
+      log_index: transfer.logIndex,
+    });
   });
 
   it("stages an event when its wallet row does not exist", async () => {
@@ -110,30 +122,97 @@ describe("Supabase synchronization", () => {
     expect(tableRows("unlinked_ledger_events")[0]).toMatchObject({
       wallet_address: transfer.walletAddress,
       event_kind: "transfer_executed",
-      event_key: transfer.txHash.toLowerCase(),
+      event_key: `${transfer.txHash.toLowerCase()}:${transfer.logIndex}`,
     });
   });
 
-  it("retains a failed write and stops the checkpoint before it", async () => {
+  it("throws on a failed handler write without advancing the checkpoint", async () => {
     failLedgerWrites = true;
     const { syncCheckpoint, syncTransferExecuted } = await import("../src/supabase-sync");
+    const handler = async () => {
+      await syncTransferExecuted(transfer);
+      await syncCheckpoint(transfer.blockNumber, 1);
+    };
+    await expect(handler()).rejects.toThrow("temporary outage");
+    expect(tableRows("indexer_checkpoints")).toHaveLength(0);
+    expect(tableRows("ledger_events")).toHaveLength(0);
+  });
+
+  it("stores two transfer logs from one transaction as distinct ledger rows", async () => {
+    const { syncTransferExecuted } = await import("../src/supabase-sync");
     await syncTransferExecuted(transfer);
-    await syncCheckpoint(30);
-    expect(tableRows("indexer_checkpoints")[0]).toMatchObject({
-      last_block: transfer.blockNumber - 1,
-      status: "degraded",
+    await syncTransferExecuted({
+      ...transfer,
+      logIndex: transfer.logIndex + 1,
+      amount: 2_000_000n,
     });
-    expect(console.error).toHaveBeenCalledWith(expect.stringContaining("temporary outage"));
+    expect(tableRows("ledger_events")).toHaveLength(2);
+    expect(tableRows("ledger_events").map((row) => row.log_index)).toEqual([7, 8]);
   });
 
   it("advances a successful checkpoint to the indexed block", async () => {
     const { syncCheckpoint, syncTransferExecuted } = await import("../src/supabase-sync");
     await syncTransferExecuted(transfer);
-    await syncCheckpoint(30);
+    await syncCheckpoint(30, 1);
     expect(tableRows("indexer_checkpoints")[0]).toMatchObject({
       last_block: 30,
       status: "synced",
       error_note: null,
     });
+  });
+
+  it("cuts over when the deployment starts above the stored checkpoint", async () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
+    tables.indexer_checkpoints = [
+      {
+        id: "checkpoint-1",
+        chain_id: 5042002,
+        contract_name: "arcanum-indexer",
+        last_block: 10,
+        last_seen_block: 12,
+        status: "synced",
+      },
+    ];
+    const { syncCheckpoint } = await import("../src/supabase-sync");
+    await syncCheckpoint(25, 20);
+    expect(tableRows("indexer_checkpoints")[0]).toMatchObject({
+      last_block: 25,
+      last_seen_block: null,
+      status: "synced",
+    });
+    expect(info).toHaveBeenCalledWith(expect.stringContaining("cutting over"));
+  });
+
+  it.each([
+    ["rejected", "deny_tx_hash"],
+    ["denied", "deny_tx_hash"],
+    ["cancelled", "deny_tx_hash"],
+    ["invalidated", "deny_tx_hash"],
+    ["expired", undefined],
+    ["released", "release_tx_hash"],
+  ] as const)("stores escalation status %s without collapsing it", async (status, hashField) => {
+    tables.escalations = [{ id: "esc-row", escalation_key: "0x01", status: "pending" }];
+    const { syncEscalationStatus } = await import("../src/supabase-sync");
+    await syncEscalationStatus("0x01", status, transfer.txHash);
+    expect(tableRows("escalations")[0]?.status).toBe(status);
+    if (hashField) {
+      expect(tableRows("escalations")[0]?.[hashField]).toBe(transfer.txHash.toLowerCase());
+    }
+  });
+});
+
+describe("contract enum mappings", () => {
+  it("round-trips every escalation status ordinal", () => {
+    for (const [index, status] of ESCALATION_STATUSES.entries()) {
+      expect(escalationStatusFromIndex(index)).toBe(status);
+      expect(ESCALATION_STATUSES.indexOf(status)).toBe(index);
+    }
+  });
+
+  it("round-trips every escalation reason ordinal", () => {
+    for (const [index, reason] of ESCALATION_REASONS.entries()) {
+      expect(escalationReasonFromIndex(index)).toBe(reason);
+      expect(ESCALATION_REASONS.indexOf(reason)).toBe(index);
+    }
   });
 });

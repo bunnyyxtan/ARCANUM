@@ -17,10 +17,11 @@ export type RestraintCategory = "API" | "COMPUTE" | "DATA" | "SUBCONTRACTING" | 
 export type PolicyEnvelope = Readonly<{
   perTxCap: bigint;
   daily24hCap: bigint;
-  monthlyRollingCap: bigint;
+  monthlyCap: bigint;
   allowedCategories: bigint;
   escalationThreshold: bigint;
   requireAllowlist: boolean;
+  freezeOnBlockedVendor: boolean;
 }>;
 
 export type VendorInfo = Readonly<{
@@ -67,7 +68,21 @@ export type SimulationResult = Readonly<{
 
 export type EscalationResolved = Readonly<{
   escalationId: Hex;
-  status: "PENDING" | "EXECUTED" | "REJECTED" | "EXPIRED";
+  status: "PENDING" | "EXECUTED" | "REJECTED" | "EXPIRED" | "DENIED" | "CANCELLED" | "INVALIDATED";
+}>;
+
+export type Escalation = Readonly<{
+  wallet: Address;
+  to: Address;
+  amount: bigint;
+  reason: Hex;
+  createdAt: bigint;
+  expiresAt: bigint;
+  threshold: bigint;
+  signaturesCount: number;
+  status: EscalationResolved["status"];
+  policyVersion: bigint;
+  heldCouncilVersion: bigint;
 }>;
 
 export type Unwatch = () => void;

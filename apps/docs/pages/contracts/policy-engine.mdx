@@ -1,16 +1,37 @@
 # PolicyEngine
 
-PolicyEngine evaluates a transfer proposal against a wallet policy and vendor registry namespace.
+`GuardedWallet.executeUSDC` rejects a zero amount and a frozen wallet before asking
+`PolicyEngine` for a verdict. The engine then evaluates policy rules in this fixed order:
 
-Decision order:
+1. A blocked vendor returns `FREEZE` when `freezeOnBlockedVendor` is true, otherwise `DENY`.
+2. A required but missing allowlist entry denies.
+3. A disabled category denies for registered vendors.
+4. The per-transaction cap denies.
+5. A registered vendor's non-zero per-vendor cap denies.
+6. The daily cap denies.
+7. A non-zero monthly cap denies.
+8. The escalation threshold returns `ESCALATE`.
+9. A transfer that reaches no earlier verdict returns `ALLOW`.
 
-1. Blocked vendor freezes.
-2. Missing allowlist denies.
-3. Per-transfer cap denies.
-4. Vendor cap denies.
-5. Daily cap denies.
-6. Escalation threshold escalates.
-7. Remaining transfers allow.
+Budget caps are evaluated before escalation, so council approval cannot override a cap.
+
+The spend counters use fixed calendar indices: the daily counter resets when
+`block.timestamp / 1 days` changes, and the monthly counter resets when
+`block.timestamp / 30 days` changes. These are fixed UTC-aligned one-day and 30-day windows,
+not trailing 24-hour or rolling monthly windows.
+
+## Release re-evaluation
+
+An approval reaching quorum does not blindly execute the held transfer. The wallet calls
+`evaluateRelease` against the **current** policy, vendor state, and spend counters.
+`evaluateRelease` applies every rule above except the escalation threshold:
+
+- `ALLOW` executes and charges the current spend window.
+- `DENY` leaves funds in the wallet and the manager records `DENIED`.
+- `FREEZE` freezes the wallet and the manager records `DENIED`.
+
+This means a policy update, vendor block, or intervening spend can prevent a previously held
+transfer from being released.
 
 ```ts
 const decision = await arc.simulate({

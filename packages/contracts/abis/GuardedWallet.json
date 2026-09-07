@@ -48,7 +48,7 @@
             "internalType": "uint256"
           },
           {
-            "name": "monthlyRollingCap",
+            "name": "monthlyCap",
             "type": "uint256",
             "internalType": "uint256"
           },
@@ -64,6 +64,11 @@
           },
           {
             "name": "requireAllowlist",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "freezeOnBlockedVendor",
             "type": "bool",
             "internalType": "bool"
           }
@@ -83,8 +88,20 @@
         "name": "escalationThreshold",
         "type": "uint8",
         "internalType": "uint8"
+      },
+      {
+        "name": "escalationExpirySeconds",
+        "type": "uint64",
+        "internalType": "uint64"
       }
     ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "acceptOwnership",
+    "inputs": [],
+    "outputs": [],
     "stateMutability": "nonpayable"
   },
   {
@@ -188,6 +205,19 @@
   },
   {
     "type": "function",
+    "name": "cancelEscalation",
+    "inputs": [
+      {
+        "name": "escalationId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "configureEscalation",
     "inputs": [
       {
@@ -240,6 +270,11 @@
     "name": "executeEscalatedTransfer",
     "inputs": [
       {
+        "name": "escalationId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
         "name": "to",
         "type": "address",
         "internalType": "address"
@@ -250,7 +285,18 @@
         "internalType": "uint256"
       }
     ],
-    "outputs": [],
+    "outputs": [
+      {
+        "name": "executed",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "reason",
+        "type": "uint8",
+        "internalType": "enum EscalationReason"
+      }
+    ],
     "stateMutability": "nonpayable"
   },
   {
@@ -278,6 +324,19 @@
   },
   {
     "type": "function",
+    "name": "freeze",
+    "inputs": [
+      {
+        "name": "reason",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "frozen",
     "inputs": [],
     "outputs": [
@@ -285,32 +344,6 @@
         "name": "",
         "type": "bool",
         "internalType": "bool"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "lastMonthlyReset",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "lastSpendReset",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -343,6 +376,19 @@
   },
   {
     "type": "function",
+    "name": "pendingOwner",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "policy",
     "inputs": [],
     "outputs": [
@@ -357,7 +403,7 @@
         "internalType": "uint256"
       },
       {
-        "name": "monthlyRollingCap",
+        "name": "monthlyCap",
         "type": "uint256",
         "internalType": "uint256"
       },
@@ -375,6 +421,11 @@
         "name": "requireAllowlist",
         "type": "bool",
         "internalType": "bool"
+      },
+      {
+        "name": "freezeOnBlockedVendor",
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
     "stateMutability": "view"
@@ -388,6 +439,19 @@
         "name": "",
         "type": "address",
         "internalType": "contract IPolicyEngine"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "policyVersion",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -469,7 +533,7 @@
             "internalType": "uint256"
           },
           {
-            "name": "monthlyRollingCap",
+            "name": "monthlyCap",
             "type": "uint256",
             "internalType": "uint256"
           },
@@ -487,12 +551,43 @@
             "name": "requireAllowlist",
             "type": "bool",
             "internalType": "bool"
+          },
+          {
+            "name": "freezeOnBlockedVendor",
+            "type": "bool",
+            "internalType": "bool"
           }
         ]
       }
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "spendDay",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "spendMonth",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -512,6 +607,19 @@
         "name": "amount",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "transferOwnership",
+    "inputs": [
+      {
+        "name": "newOwner",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "outputs": [],
@@ -564,6 +672,43 @@
     "stateMutability": "view"
   },
   {
+    "type": "function",
+    "name": "withdrawUSDC",
+    "inputs": [
+      {
+        "name": "to",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "AnomalyFreezeThresholdUpdated",
+    "inputs": [
+      {
+        "name": "wallet",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "thresholdBps",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
     "type": "event",
     "name": "Frozen",
     "inputs": [
@@ -574,9 +719,15 @@
         "internalType": "address"
       },
       {
-        "name": "reason",
+        "name": "source",
         "type": "uint8",
         "indexed": true,
+        "internalType": "enum FreezeSource"
+      },
+      {
+        "name": "reason",
+        "type": "uint8",
+        "indexed": false,
         "internalType": "enum EscalationReason"
       },
       {
@@ -646,6 +797,75 @@
   },
   {
     "type": "event",
+    "name": "OwnerWithdrawal",
+    "inputs": [
+      {
+        "name": "wallet",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "to",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OwnershipTransferStarted",
+    "inputs": [
+      {
+        "name": "wallet",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "pendingOwner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OwnershipTransferred",
+    "inputs": [
+      {
+        "name": "wallet",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "previousOwner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "newOwner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "PolicyUpdated",
     "inputs": [
       {
@@ -653,6 +873,55 @@
         "type": "address",
         "indexed": true,
         "internalType": "address"
+      },
+      {
+        "name": "version",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "policy",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct PolicyEnvelope",
+        "components": [
+          {
+            "name": "perTxCap",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "daily24hCap",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "monthlyCap",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "allowedCategories",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "escalationThreshold",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "requireAllowlist",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "freezeOnBlockedVendor",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
       }
     ],
     "anonymous": false
@@ -728,6 +997,30 @@
         "type": "bytes",
         "indexed": false,
         "internalType": "bytes"
+      },
+      {
+        "name": "threshold",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "expiresAt",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "policyVersion",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "councilVersion",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
       }
     ],
     "anonymous": false
@@ -759,6 +1052,12 @@
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
+      },
+      {
+        "name": "escalationId",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
       }
     ],
     "anonymous": false
@@ -825,12 +1124,22 @@
   },
   {
     "type": "error",
+    "name": "NotContract",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "NotEscalationManager",
     "inputs": []
   },
   {
     "type": "error",
     "name": "NotOwner",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotPendingOwner",
     "inputs": []
   },
   {
@@ -873,6 +1182,11 @@
   {
     "type": "error",
     "name": "ZeroAddress",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ZeroAmount",
     "inputs": []
   }
 ]

@@ -5,6 +5,7 @@ import {
   vendorUpdateInputSchema,
 } from "@arcanum/shared";
 import { TRPCError } from "@trpc/server";
+import { formatUnits } from "viem";
 
 import { z } from "zod";
 
@@ -100,7 +101,7 @@ export const vendorsRouter = router({
           address: input.vendorAddress.toLowerCase() as `0x${string}`,
           category: vendorCategoryFromIndex(chainState.category),
           kycStatus: chainState.perVendorCap > 0n ? "arcanevm" : "public",
-          perVendorCap: Number(chainState.perVendorCap) / 1e6,
+          perVendorCap: formatUnits(chainState.perVendorCap, 6),
           status,
         },
         wallet,

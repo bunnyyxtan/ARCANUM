@@ -11,9 +11,11 @@ import {
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
+import { verifyCreatedWalletReceipt } from "../chain";
 import {
   readSupabaseAgents,
   readSupabaseEvents,
+  readSupabaseLegacyWalletCount,
   readSupabasePolicy,
   readSupabaseTransfers,
   readSupabaseWalletByLooseId,
@@ -44,7 +46,13 @@ const zeroAddress = "0x0000000000000000000000000000000000000000";
 export const agentsRouter = router({
   list: publicProcedure
     .input(z.object({ status: agentStatusSchema.optional() }).optional())
-    .query(({ ctx, input }) => readSupabaseAgents(ctx, input?.status)),
+    .query(async ({ ctx, input }) => {
+      const [agents, legacyWalletCount] = await Promise.all([
+        readSupabaseAgents(ctx, input?.status),
+        readSupabaseLegacyWalletCount(ctx),
+      ]);
+      return { agents, legacyWalletCount };
+    }),
 
   byWalletId: publicProcedure.input(agentByWalletInputSchema).query(async ({ ctx, input }) => {
     return findAgentByWalletLooseId(ctx, input.walletId);
@@ -124,6 +132,22 @@ export const agentsRouter = router({
         });
       }
 
+      try {
+        await verifyCreatedWalletReceipt(ctx.publicClient, {
+          deployTxHash: input.deployTxHash,
+          ownerAddress: ctx.session.walletAddress as `0x${string}`,
+          walletAddress: input.walletAddress,
+          chainId: input.chainId,
+        });
+      } catch (error) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "The deployment transaction is not a successful WalletCreated event for this owner and wallet.",
+          cause: error,
+        });
+      }
+
       const result = await recordSupabaseCreatedWallet(ctx, {
         ...input,
         ownerAddress: ctx.session.walletAddress as `0x${string}`,
@@ -135,6 +159,10 @@ export const agentsRouter = router({
           wallet: result.data.wallet,
           agent: result.data.agent,
         };
+      }
+
+      if (result.reason === "forbidden") {
+        throw new TRPCError({ code: "FORBIDDEN", message: result.message });
       }
 
       return {

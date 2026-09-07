@@ -1,22 +1,15 @@
-/**
- * Onchain contract surface for ARCANUM governed wallets.
- *
- * Extracted verbatim from the old frontend (components/arcanum/canvas/pages.tsx)
- * before the UI was removed, so the contract logic survives the frontend
- * replacement. The full old UI lives on the `pre-frontend-delete-backup` branch.
- */
-
+import { contractAddresses } from "@/lib/deployment";
 import type { Address } from "viem";
 
 export const zeroEvmAddress = "0x0000000000000000000000000000000000000000" as const;
 
 /** Deployed contract addresses come from the configured Arc network env. */
 export const deployedContracts = [
-  { label: "WalletFactory", value: process.env.NEXT_PUBLIC_WALLET_FACTORY },
-  { label: "PolicyEngine", value: process.env.NEXT_PUBLIC_POLICY_ENGINE },
-  { label: "EscalationManager", value: process.env.NEXT_PUBLIC_ESCALATION_MANAGER },
-  { label: "AnomalyOracle", value: process.env.NEXT_PUBLIC_ANOMALY_ORACLE },
-  { label: "VendorRegistry", value: process.env.NEXT_PUBLIC_VENDOR_REGISTRY },
+  { label: "WalletFactory", value: contractAddresses.walletFactory },
+  { label: "PolicyEngine", value: contractAddresses.policyEngine },
+  { label: "EscalationManager", value: contractAddresses.escalationManager },
+  { label: "AnomalyOracle", value: contractAddresses.anomalyOracle },
+  { label: "VendorRegistry", value: contractAddresses.vendorRegistry },
 ] as const;
 
 export const walletFactoryAbi = [
@@ -32,15 +25,17 @@ export const walletFactoryAbi = [
         components: [
           { name: "perTxCap", type: "uint256" },
           { name: "daily24hCap", type: "uint256" },
-          { name: "monthlyRollingCap", type: "uint256" },
+          { name: "monthlyCap", type: "uint256" },
           { name: "allowedCategories", type: "uint256" },
           { name: "escalationThreshold", type: "uint256" },
           { name: "requireAllowlist", type: "bool" },
+          { name: "freezeOnBlockedVendor", type: "bool" },
         ],
       },
       { name: "initialSigners", type: "address[]" },
       { name: "escalationCouncil", type: "address[]" },
       { name: "escalationThreshold", type: "uint8" },
+      { name: "escalationExpirySeconds", type: "uint64" },
     ],
     outputs: [{ name: "wallet", type: "address" }],
     stateMutability: "nonpayable",
@@ -66,15 +61,17 @@ export const walletFactoryAbi = [
         components: [
           { name: "perTxCap", type: "uint256" },
           { name: "daily24hCap", type: "uint256" },
-          { name: "monthlyRollingCap", type: "uint256" },
+          { name: "monthlyCap", type: "uint256" },
           { name: "allowedCategories", type: "uint256" },
           { name: "escalationThreshold", type: "uint256" },
           { name: "requireAllowlist", type: "bool" },
+          { name: "freezeOnBlockedVendor", type: "bool" },
         ],
       },
       { name: "initialSigners", type: "address[]" },
       { name: "escalationCouncil", type: "address[]" },
       { name: "escalationThreshold", type: "uint8" },
+      { name: "escalationExpirySeconds", type: "uint64" },
     ],
     outputs: [{ name: "predicted", type: "address" }],
     stateMutability: "view",
@@ -86,6 +83,7 @@ export const walletFactoryAbi = [
       { name: "wallet", type: "address", indexed: true },
       { name: "owner", type: "address", indexed: true },
       { name: "label", type: "string", indexed: false },
+      { name: "defaultsVersion", type: "uint256", indexed: false },
       { name: "timestamp", type: "uint256", indexed: false },
     ],
     anonymous: false,
@@ -114,10 +112,11 @@ export const guardedWalletControlAbi = [
     outputs: [
       { name: "perTxCap", type: "uint256" },
       { name: "daily24hCap", type: "uint256" },
-      { name: "monthlyRollingCap", type: "uint256" },
+      { name: "monthlyCap", type: "uint256" },
       { name: "allowedCategories", type: "uint256" },
       { name: "escalationThreshold", type: "uint256" },
       { name: "requireAllowlist", type: "bool" },
+      { name: "freezeOnBlockedVendor", type: "bool" },
     ],
     stateMutability: "view",
   },
@@ -138,13 +137,35 @@ export const guardedWalletControlAbi = [
         components: [
           { name: "perTxCap", type: "uint256" },
           { name: "daily24hCap", type: "uint256" },
-          { name: "monthlyRollingCap", type: "uint256" },
+          { name: "monthlyCap", type: "uint256" },
           { name: "allowedCategories", type: "uint256" },
           { name: "escalationThreshold", type: "uint256" },
           { name: "requireAllowlist", type: "bool" },
+          { name: "freezeOnBlockedVendor", type: "bool" },
         ],
       },
     ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "frozen",
+    inputs: [],
+    outputs: [{ name: "frozen", type: "bool" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "freeze",
+    inputs: [{ name: "reason", type: "bytes" }],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "cancelEscalation",
+    inputs: [{ name: "escalationId", type: "bytes32" }],
     outputs: [],
     stateMutability: "nonpayable",
   },
@@ -219,6 +240,8 @@ export const escalationManagerAbi = [
       { name: "threshold", type: "uint256" },
       { name: "signaturesCount", type: "uint8" },
       { name: "status", type: "uint8" },
+      { name: "policyVersion", type: "uint256" },
+      { name: "heldCouncilVersion", type: "uint256" },
     ],
     stateMutability: "view",
   },
@@ -243,8 +266,6 @@ export const escalationManagerAbi = [
     stateMutability: "view",
   },
 ] as const;
-
-export const escalationStatusLabels = ["PENDING", "EXECUTED", "REJECTED", "EXPIRED"] as const;
 
 /** Bitmask enabling all five vendor spend categories. */
 export const allPolicyCategoriesMask = 31n;
@@ -283,6 +304,7 @@ export type DeployWalletFormState = {
   councilAddresses: string;
   quorum: string;
   requireAllowlist: boolean;
+  freezeOnBlockedVendor: boolean;
 };
 
 export const initialDeployWalletForm: DeployWalletFormState = {
@@ -295,6 +317,7 @@ export const initialDeployWalletForm: DeployWalletFormState = {
   councilAddresses: "",
   quorum: "1",
   requireAllowlist: true,
+  freezeOnBlockedVendor: true,
 };
 
 export type AddVendorFormState = {
@@ -322,6 +345,7 @@ export type PolicyDraftState = {
   monthlyCap: string;
   perTxCap: string;
   requireAllowlist: boolean;
+  freezeOnBlockedVendor: boolean;
 };
 
 export const initialPolicyDraft: PolicyDraftState = {
@@ -331,15 +355,17 @@ export const initialPolicyDraft: PolicyDraftState = {
   monthlyCap: "15000",
   perTxCap: "50",
   requireAllowlist: true,
+  freezeOnBlockedVendor: true,
 };
 
 export type PolicyEnvelopeValue = {
   allowedCategories: bigint;
   daily24hCap: bigint;
   escalationThreshold: bigint;
-  monthlyRollingCap: bigint;
+  monthlyCap: bigint;
   perTxCap: bigint;
   requireAllowlist: boolean;
+  freezeOnBlockedVendor: boolean;
 };
 
 export type { Address };

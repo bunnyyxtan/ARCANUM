@@ -1,3 +1,4 @@
+import { GuardedWalletAbi } from "@arcanum/contracts";
 import {
   ARC_NETWORK_NAME,
   agentByWalletInputSchema,
@@ -5,10 +6,10 @@ import {
   policyUpdateInputSchema,
 } from "@arcanum/shared";
 import { TRPCError } from "@trpc/server";
-import { http, createPublicClient, isAddress } from "viem";
+import { http, createPublicClient, formatUnits, isAddress } from "viem";
 import { z } from "zod";
 
-import { readWalletPolicyChainState } from "../chain";
+import { verifyPolicyUpdatedReceipt } from "../chain";
 import {
   categoryNamesFromMask,
   readSupabasePolicies,
@@ -27,30 +28,6 @@ function onChainPolicyWriteOnly(): never {
   });
 }
 
-const guardedWalletReadAbi = [
-  {
-    type: "function",
-    name: "owner",
-    inputs: [],
-    outputs: [{ name: "owner", type: "address" }],
-    stateMutability: "view",
-  },
-  {
-    type: "function",
-    name: "policy",
-    inputs: [],
-    outputs: [
-      { name: "perTxCap", type: "uint256" },
-      { name: "daily24hCap", type: "uint256" },
-      { name: "monthlyRollingCap", type: "uint256" },
-      { name: "allowedCategories", type: "uint256" },
-      { name: "escalationThreshold", type: "uint256" },
-      { name: "requireAllowlist", type: "bool" },
-    ],
-    stateMutability: "view",
-  },
-] as const;
-
 const arcReadClient = createPublicClient({
   chain: arcChain,
   transport: http(undefined, { retryCount: 2, timeout: 15_000 }),
@@ -67,12 +44,13 @@ const deployedPolicyInputSchema = z.object({
     .string()
     .refine((value) => isAddress(value), { message: "Invalid wallet address" }),
   txHash: z.string().regex(/^0x[0-9a-fA-F]{64}$/, "Invalid transaction hash"),
-  perTxCap: z.number().nonnegative(),
-  dailyCap: z.number().nonnegative(),
-  monthlyCap: z.number().nonnegative(),
-  escalationThreshold: z.number().nonnegative(),
+  perTxCap: z.string(),
+  dailyCap: z.string(),
+  monthlyCap: z.string(),
+  escalationThreshold: z.string(),
   allowedCategories: z.array(z.string().min(1)).max(8),
   requireAllowlist: z.boolean(),
+  freezeOnBlockedVendor: z.boolean(),
 });
 
 export const policiesRouter = router({
@@ -98,12 +76,12 @@ export const policiesRouter = router({
       const [owner, policy] = await Promise.all([
         arcReadClient.readContract({
           address,
-          abi: guardedWalletReadAbi,
+          abi: GuardedWalletAbi,
           functionName: "owner",
         }),
         arcReadClient.readContract({
           address,
-          abi: guardedWalletReadAbi,
+          abi: GuardedWalletAbi,
           functionName: "policy",
         }),
       ]);
@@ -112,10 +90,11 @@ export const policiesRouter = router({
         policy: {
           perTxCap: policy[0].toString(),
           daily24hCap: policy[1].toString(),
-          monthlyRollingCap: policy[2].toString(),
+          monthlyCap: policy[2].toString(),
           allowedCategories: policy[3].toString(),
           escalationThreshold: policy[4].toString(),
           requireAllowlist: policy[5],
+          freezeOnBlockedVendor: policy[6],
         },
       };
     } catch (error) {
@@ -169,28 +148,33 @@ export const policiesRouter = router({
         });
       }
 
-      // Never trust the caps the client claims to have deployed: read back what
-      // the wallet actually enforces and mirror that.
-      const chainPolicy = await readWalletPolicyChainState(walletAddress as `0x${string}`);
-
-      if (!chainPolicy) {
+      let policyEvent: Awaited<ReturnType<typeof verifyPolicyUpdatedReceipt>>;
+      try {
+        policyEvent = await verifyPolicyUpdatedReceipt(
+          ctx.publicClient,
+          input.txHash as `0x${string}`,
+          walletAddress as `0x${string}`,
+        );
+      } catch (error) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message: `The wallet policy could not be read from ${ARC_NETWORK_NAME}; nothing was recorded.`,
+          message: `The transaction is not a successful policy update on ${ARC_NETWORK_NAME}; nothing was recorded.`,
+          cause: error,
         });
       }
 
-      const toUsdc = (value: bigint) => Number(value) / 1e6;
+      const chainPolicy = policyEvent.policy;
 
       const result = await recordSupabaseDeployedPolicy(ctx, wallet, {
         walletAddress: walletAddress as `0x${string}`,
         txHash: input.txHash as `0x${string}`,
-        perTxCap: toUsdc(chainPolicy.perTxCap),
-        dailyCap: toUsdc(chainPolicy.daily24hCap),
-        monthlyCap: toUsdc(chainPolicy.monthlyRollingCap),
-        escalationThreshold: toUsdc(chainPolicy.escalationThreshold),
+        perTxCap: formatUnits(chainPolicy.perTxCap, 6),
+        dailyCap: formatUnits(chainPolicy.daily24hCap, 6),
+        monthlyCap: formatUnits(chainPolicy.monthlyCap, 6),
+        escalationThreshold: formatUnits(chainPolicy.escalationThreshold, 6),
         allowedCategories: categoryNamesFromMask(Number(chainPolicy.allowedCategories)),
         requireAllowlist: chainPolicy.requireAllowlist,
+        freezeOnBlockedVendor: chainPolicy.freezeOnBlockedVendor,
       });
 
       if (!result.ok) {

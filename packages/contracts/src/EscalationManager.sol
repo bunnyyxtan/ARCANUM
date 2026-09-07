@@ -5,19 +5,25 @@ import { IEscalationManager } from "./interfaces/IEscalationManager.sol";
 import { IGuardedWallet } from "./interfaces/IGuardedWallet.sol";
 import {
     AlreadySigned,
-    EscalationExpiredError,
     EscalationMissing,
     EscalationNotExpired,
     EscalationNotPending,
     InvalidCouncil,
+    InvalidExpiry,
     InvalidThreshold,
+    NotEscalationWallet,
     NotRequiredSigner,
     WalletNotRegistered,
     ZeroAddress
 } from "./libraries/Errors.sol";
 import { Events } from "./libraries/Events.sol";
+import { EscalationReason } from "./libraries/PolicyTypes.sol";
 
-/// @notice Stores escalated transfers and executes only after wallet-selected quorum.
+/// @notice Stores escalated transfers and releases them only after wallet-selected quorum.
+/// @dev An escalation is bound to the council version it was held under. Touching it after
+///      the council changed settles it as INVALIDATED rather than letting a council that
+///      never saw the request decide it. Expiry is likewise settled on touch, so the
+///      stored status is always the one an observer would compute.
 contract EscalationManager is IEscalationManager {
     struct WalletConfig {
         uint8 threshold;
@@ -35,10 +41,13 @@ contract EscalationManager is IEscalationManager {
         uint256 threshold;
         uint8 signaturesCount;
         Status status;
+        uint256 policyVersion;
+        uint256 councilVersion;
     }
 
     mapping(address wallet => WalletConfig config) private _configs;
     mapping(address wallet => mapping(address signer => bool required)) private _requiredSigners;
+    mapping(address wallet => uint256 version) public councilVersion;
     mapping(address wallet => uint256 nonce) public walletNonces;
     mapping(bytes32 escalationId => Escalation escalation) private _escalations;
     mapping(bytes32 escalationId => mapping(address signer => bool signed)) public signed;
@@ -53,7 +62,7 @@ contract EscalationManager is IEscalationManager {
             revert InvalidThreshold();
         }
         if (expirySeconds == 0) {
-            revert InvalidThreshold();
+            revert InvalidExpiry();
         }
 
         WalletConfig storage config = _configs[msg.sender];
@@ -74,14 +83,15 @@ contract EscalationManager is IEscalationManager {
 
         config.threshold = threshold;
         config.expirySeconds = expirySeconds;
+        uint256 version = ++councilVersion[msg.sender];
 
-        emit Events.WalletRegistered(msg.sender, threshold, expirySeconds);
+        emit Events.WalletRegistered(msg.sender, version, requiredSigners, threshold, expirySeconds);
     }
 
     /// @inheritdoc IEscalationManager
-    function holdTransfer(address to, uint256 amount, bytes calldata reason)
+    function holdTransfer(address to, uint256 amount, bytes calldata reason, uint256 policyVersion)
         external
-        returns (bytes32 escalationId)
+        returns (Terms memory terms)
     {
         WalletConfig storage config = _configs[msg.sender];
         if (config.threshold == 0) {
@@ -92,8 +102,9 @@ contract EscalationManager is IEscalationManager {
         }
 
         uint256 nonce = ++walletNonces[msg.sender];
-        escalationId = keccak256(abi.encode(msg.sender, to, amount, nonce, block.timestamp));
+        bytes32 escalationId = keccak256(abi.encode(msg.sender, to, amount, nonce, block.timestamp));
         uint256 expiresAt = block.timestamp + config.expirySeconds;
+        uint256 heldCouncilVersion = councilVersion[msg.sender];
 
         _escalations[escalationId] = Escalation({
             wallet: msg.sender,
@@ -104,19 +115,24 @@ contract EscalationManager is IEscalationManager {
             expiresAt: expiresAt,
             threshold: config.threshold,
             signaturesCount: 0,
-            status: Status.PENDING
+            status: Status.PENDING,
+            policyVersion: policyVersion,
+            councilVersion: heldCouncilVersion
         });
 
-        emit Events.TransferEscalated(escalationId, msg.sender, to, amount, reason);
+        terms = Terms({
+            escalationId: escalationId,
+            threshold: config.threshold,
+            expiresAt: expiresAt,
+            councilVersion: heldCouncilVersion
+        });
     }
 
     /// @inheritdoc IEscalationManager
     function approve(bytes32 escalationId) external {
         Escalation storage escalation = _pendingEscalation(escalationId);
-        if (block.timestamp >= escalation.expiresAt) {
-            escalation.status = Status.EXPIRED;
-            emit Events.EscalationExpired(escalationId);
-            revert EscalationExpiredError();
+        if (_settleIfStale(escalationId, escalation)) {
+            return;
         }
         if (!_requiredSigners[escalation.wallet][msg.sender]) {
             revert NotRequiredSigner();
@@ -129,21 +145,30 @@ contract EscalationManager is IEscalationManager {
         escalation.signaturesCount += 1;
         emit Events.EscalationApproved(escalationId, msg.sender, escalation.signaturesCount);
 
-        if (escalation.signaturesCount >= escalation.threshold) {
-            escalation.status = Status.EXECUTED;
-            IGuardedWallet(escalation.wallet)
-                .executeEscalatedTransfer(escalation.to, escalation.amount);
-            emit Events.EscalationExecuted(escalationId);
+        if (escalation.signaturesCount < escalation.threshold) {
+            return;
         }
+
+        // The status leaves PENDING before the wallet is called, so a re-entrant approve
+        // on the same id fails the pending check regardless of what the wallet does.
+        escalation.status = Status.EXECUTED;
+        (bool executed, EscalationReason reason) = IGuardedWallet(escalation.wallet)
+            .executeEscalatedTransfer(escalationId, escalation.to, escalation.amount);
+
+        if (executed) {
+            emit Events.EscalationExecuted(escalationId);
+            return;
+        }
+
+        escalation.status = Status.DENIED;
+        emit Events.EscalationDenied(escalationId, reason);
     }
 
     /// @inheritdoc IEscalationManager
     function reject(bytes32 escalationId) external {
         Escalation storage escalation = _pendingEscalation(escalationId);
-        if (block.timestamp >= escalation.expiresAt) {
-            escalation.status = Status.EXPIRED;
-            emit Events.EscalationExpired(escalationId);
-            revert EscalationExpiredError();
+        if (_settleIfStale(escalationId, escalation)) {
+            return;
         }
         if (!_requiredSigners[escalation.wallet][msg.sender]) {
             revert NotRequiredSigner();
@@ -151,6 +176,20 @@ contract EscalationManager is IEscalationManager {
 
         escalation.status = Status.REJECTED;
         emit Events.EscalationRejected(escalationId, msg.sender);
+    }
+
+    /// @inheritdoc IEscalationManager
+    function cancel(bytes32 escalationId) external {
+        Escalation storage escalation = _pendingEscalation(escalationId);
+        if (msg.sender != escalation.wallet) {
+            revert NotEscalationWallet();
+        }
+        if (_settleIfStale(escalationId, escalation)) {
+            return;
+        }
+
+        escalation.status = Status.CANCELLED;
+        emit Events.EscalationCancelled(escalationId);
     }
 
     /// @inheritdoc IEscalationManager
@@ -182,7 +221,9 @@ contract EscalationManager is IEscalationManager {
             uint256 expiresAt,
             uint256 threshold,
             uint8 signaturesCount,
-            Status status
+            Status status,
+            uint256 policyVersion,
+            uint256 heldCouncilVersion
         )
     {
         Escalation storage escalation = _escalations[escalationId];
@@ -195,7 +236,9 @@ contract EscalationManager is IEscalationManager {
             escalation.expiresAt,
             escalation.threshold,
             escalation.signaturesCount,
-            escalation.status
+            escalation.status,
+            escalation.policyVersion,
+            escalation.councilVersion
         );
     }
 
@@ -206,6 +249,25 @@ contract EscalationManager is IEscalationManager {
         returns (bool required)
     {
         return _requiredSigners[wallet][signer];
+    }
+
+    /// @dev Settles an escalation that can no longer be decided: expired, or held under a
+    ///      council that has since been replaced. Returns true when it did so.
+    function _settleIfStale(bytes32 escalationId, Escalation storage escalation)
+        private
+        returns (bool settled)
+    {
+        if (block.timestamp >= escalation.expiresAt) {
+            escalation.status = Status.EXPIRED;
+            emit Events.EscalationExpired(escalationId);
+            return true;
+        }
+        if (escalation.councilVersion != councilVersion[escalation.wallet]) {
+            escalation.status = Status.INVALIDATED;
+            emit Events.EscalationInvalidated(escalationId, councilVersion[escalation.wallet]);
+            return true;
+        }
+        return false;
     }
 
     function _pendingEscalation(bytes32 escalationId)

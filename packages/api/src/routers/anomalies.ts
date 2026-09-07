@@ -1,4 +1,4 @@
-import { anomalyDecisionInputSchema } from "@arcanum/shared";
+import { anomalyDecideInputSchema, anomalyDecisionInputSchema } from "@arcanum/shared";
 import { TRPCError } from "@trpc/server";
 
 import {
@@ -19,11 +19,15 @@ async function decide(
   ctx: Parameters<typeof recordSupabaseAnomalyDecision>[0],
   anomalyId: string,
   decision: SupabaseAnomalyDecision,
+  decisionReason: string,
 ) {
-  const result = await recordSupabaseAnomalyDecision(ctx, anomalyId, decision);
+  const result = await recordSupabaseAnomalyDecision(ctx, anomalyId, decision, decisionReason);
 
   if (!result.ok) {
-    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: result.message });
+    throw new TRPCError({
+      code: result.reason === "forbidden" ? "FORBIDDEN" : "INTERNAL_SERVER_ERROR",
+      message: result.message,
+    });
   }
 
   if (!result.data) {
@@ -37,15 +41,30 @@ export const anomaliesRouter = router({
   // Reads the Supabase read model, which fails closed on outage.
   list: publicProcedure.query(({ ctx }) => readSupabaseAnomalies(ctx)),
 
+  decide: protectedProcedure.input(anomalyDecideInputSchema).mutation(async ({ ctx, input }) => {
+    const anomaly = await decide(ctx, input.anomalyId, input.decision, input.decisionReason);
+    return { anomaly, decision: input.decision };
+  }),
+
   acknowledge: protectedProcedure
     .input(anomalyDecisionInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const anomaly = await decide(ctx, input.anomalyId, "acknowledged");
+      const anomaly = await decide(
+        ctx,
+        input.anomalyId,
+        "acknowledged",
+        input.decisionReason ?? "Acknowledged for operator review.",
+      );
       return { anomaly, acknowledged: true };
     }),
 
   dismiss: protectedProcedure.input(anomalyDecisionInputSchema).mutation(async ({ ctx, input }) => {
-    const anomaly = await decide(ctx, input.anomalyId, "dismissed");
+    const anomaly = await decide(
+      ctx,
+      input.anomalyId,
+      "dismissed",
+      input.decisionReason ?? "Dismissed by an authorized operator.",
+    );
     return { anomaly, dismissed: true };
   }),
 });

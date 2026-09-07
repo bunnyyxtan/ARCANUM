@@ -15,33 +15,52 @@ import {
     InvalidModule,
     InvalidPolicy,
     NotAnomalyOracle,
+    NotContract,
     NotEscalationManager,
     NotOwner,
+    NotPendingOwner,
     NotSigner,
     ProtectedUSDC,
     TransferDenied,
-    ZeroAddress
+    ZeroAddress,
+    ZeroAmount
 } from "./libraries/Errors.sol";
 import { Events } from "./libraries/Events.sol";
-import { EscalationReason, ModuleKeys, PolicyEnvelope, Verdict } from "./libraries/PolicyTypes.sol";
+import {
+    EscalationReason,
+    FreezeSource,
+    ModuleKeys,
+    PolicyEnvelope,
+    Verdict
+} from "./libraries/PolicyTypes.sol";
 
-/// @notice Immutable per-agent wallet that enforces policy before moving USDC.
+/// @notice Per-agent wallet that enforces policy before moving USDC.
+/// @dev The owner is the root of trust: it can rotate every module, so nothing in this
+///      contract tries to constrain the owner. What it does guarantee is that agent
+///      signers, the council and the oracle can each do exactly one thing.
 contract GuardedWallet is IGuardedWallet, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
-    address public immutable owner;
+    uint256 private constant DAY_WINDOW = 1 days;
+    uint256 private constant MONTH_WINDOW = 30 days;
+
     address public immutable usdc;
+    address public owner;
+    address public pendingOwner;
     IPolicyEngine public policyEngine;
     IEscalationManager public escalationManager;
     IAnomalyOracle public anomalyOracle;
     IVendorRegistry public vendorRegistry;
     PolicyEnvelope public policy;
+    uint256 public policyVersion;
     mapping(address signer => bool authorized) public agentSigners;
     bool public frozen;
     uint256 public dailySpent;
-    uint256 public lastSpendReset;
     uint256 public monthlySpent;
-    uint256 public lastMonthlyReset;
+    /// @notice Index of the 24-hour window `dailySpent` belongs to (`timestamp / 1 days`).
+    uint256 public spendDay;
+    /// @notice Index of the 30-day window `monthlySpent` belongs to (`timestamp / 30 days`).
+    uint256 public spendMonth;
     uint256 public anomalyFreezeThresholdBps;
 
     modifier onlyOwner() {
@@ -58,7 +77,14 @@ contract GuardedWallet is IGuardedWallet, ReentrancyGuard {
         _;
     }
 
-    /// @notice Initializes a governed wallet with immutable owner and USDC address.
+    modifier notFrozen() {
+        if (frozen) {
+            revert FrozenWallet();
+        }
+        _;
+    }
+
+    /// @notice Initializes a governed wallet with its owner, USDC address and modules.
     constructor(
         address owner_,
         address usdc_,
@@ -69,22 +95,19 @@ contract GuardedWallet is IGuardedWallet, ReentrancyGuard {
         PolicyEnvelope memory initialPolicy,
         address[] memory initialSigners,
         address[] memory escalationCouncil,
-        uint8 escalationThreshold
+        uint8 escalationThreshold,
+        uint64 escalationExpirySeconds
     ) {
-        // The anomaly oracle is required here even though rotateModule lets the owner
-        // drop it later, and the difference is how visible the choice is. Opting out
-        // after deployment emits ModuleRotated, which indexers already follow; a wallet
-        // born with a zero oracle carries that only in its stored module and its
-        // constructor arguments, where nobody is watching. Same end state either way,
-        // but this ordering puts it on the record.
-        if (
-            owner_ == address(0) || usdc_ == address(0) || address(policyEngine_) == address(0)
-                || address(escalationManager_) == address(0)
-                || address(anomalyOracle_) == address(0)
-                || address(vendorRegistry_) == address(0)
-        ) {
+        // A zero oracle is accepted by rotateModule (the recorded opt-out) but not here:
+        // a wallet born opted out would carry that only in its constructor arguments.
+        if (owner_ == address(0)) {
             revert ZeroAddress();
         }
+        _requireContract(usdc_);
+        _requireContract(address(policyEngine_));
+        _requireContract(address(escalationManager_));
+        _requireContract(address(anomalyOracle_));
+        _requireContract(address(vendorRegistry_));
         _validatePolicy(initialPolicy);
 
         owner = owner_;
@@ -94,15 +117,21 @@ contract GuardedWallet is IGuardedWallet, ReentrancyGuard {
         anomalyOracle = anomalyOracle_;
         vendorRegistry = vendorRegistry_;
         policy = initialPolicy;
-        lastSpendReset = block.timestamp;
-        lastMonthlyReset = block.timestamp;
+        policyVersion = 1;
+        spendDay = block.timestamp / DAY_WINDOW;
+        spendMonth = block.timestamp / MONTH_WINDOW;
         anomalyFreezeThresholdBps = 500;
+
+        emit Events.OwnershipTransferred(address(this), address(0), owner_);
+        emit Events.PolicyUpdated(address(this), 1, initialPolicy);
 
         for (uint256 i = 0; i < initialSigners.length; ++i) {
             _addSigner(initialSigners[i]);
         }
 
-        escalationManager_.configureWallet(escalationCouncil, escalationThreshold, 1 hours);
+        escalationManager_.configureWallet(
+            escalationCouncil, escalationThreshold, escalationExpirySeconds
+        );
     }
 
     /// @inheritdoc IGuardedWallet
@@ -110,12 +139,13 @@ contract GuardedWallet is IGuardedWallet, ReentrancyGuard {
         external
         nonReentrant
         onlySigner
+        notFrozen
     {
-        if (frozen) {
-            revert FrozenWallet();
-        }
         if (to == address(0)) {
             revert ZeroAddress();
+        }
+        if (amount == 0) {
+            revert ZeroAmount();
         }
 
         _rollSpendWindow();
@@ -123,22 +153,29 @@ contract GuardedWallet is IGuardedWallet, ReentrancyGuard {
             policyEngine.evaluate(policy, to, amount, dailySpent, monthlySpent, vendorRegistry);
 
         if (verdict == Verdict.ALLOW) {
-            dailySpent += amount;
-            monthlySpent += amount;
-            IERC20(usdc).safeTransfer(to, amount);
-            emit Events.TransferExecuted(address(this), msg.sender, to, amount);
+            _spend(msg.sender, to, amount, bytes32(0));
             return;
         }
 
         if (verdict == Verdict.ESCALATE) {
-            bytes32 escalationId = escalationManager.holdTransfer(to, amount, reason);
-            emit Events.TransferEscalated(escalationId, address(this), to, amount, reason);
+            IEscalationManager.Terms memory terms =
+                escalationManager.holdTransfer(to, amount, reason, policyVersion);
+            emit Events.TransferEscalated(
+                terms.escalationId,
+                address(this),
+                to,
+                amount,
+                reason,
+                terms.threshold,
+                terms.expiresAt,
+                policyVersion,
+                terms.councilVersion
+            );
             return;
         }
 
         if (verdict == Verdict.FREEZE) {
-            frozen = true;
-            emit Events.Frozen(address(this), decisionReason, reason);
+            _freeze(FreezeSource.POLICY, decisionReason, reason);
             return;
         }
 
@@ -146,22 +183,35 @@ contract GuardedWallet is IGuardedWallet, ReentrancyGuard {
     }
 
     /// @inheritdoc IGuardedWallet
-    function executeEscalatedTransfer(address to, uint256 amount) external nonReentrant {
+    function executeEscalatedTransfer(bytes32 escalationId, address to, uint256 amount)
+        external
+        nonReentrant
+        notFrozen
+        returns (bool executed, EscalationReason reason)
+    {
         if (msg.sender != address(escalationManager)) {
             revert NotEscalationManager();
-        }
-        if (frozen) {
-            revert FrozenWallet();
         }
         if (to == address(0)) {
             revert ZeroAddress();
         }
 
         _rollSpendWindow();
-        dailySpent += amount;
-        monthlySpent += amount;
-        IERC20(usdc).safeTransfer(to, amount);
-        emit Events.TransferExecuted(address(this), msg.sender, to, amount);
+        Verdict verdict;
+        (verdict, reason) = policyEngine.evaluateRelease(
+            policy, to, amount, dailySpent, monthlySpent, vendorRegistry
+        );
+
+        if (verdict == Verdict.ALLOW) {
+            _spend(msg.sender, to, amount, escalationId);
+            return (true, EscalationReason.NONE);
+        }
+
+        if (verdict == Verdict.FREEZE) {
+            _freeze(FreezeSource.POLICY, reason, abi.encodePacked(escalationId));
+        }
+
+        return (false, reason);
     }
 
     /// @inheritdoc IGuardedWallet
@@ -169,15 +219,26 @@ contract GuardedWallet is IGuardedWallet, ReentrancyGuard {
         if (msg.sender != address(anomalyOracle)) {
             revert NotAnomalyOracle();
         }
-        frozen = true;
-        emit Events.Frozen(address(this), EscalationReason.NONE, reason);
+        _freeze(FreezeSource.ORACLE, EscalationReason.NONE, reason);
+    }
+
+    /// @notice Freezes the wallet on the owner's authority.
+    function freeze(bytes calldata reason) external onlyOwner {
+        _freeze(FreezeSource.OWNER, EscalationReason.NONE, reason);
+    }
+
+    /// @notice Clears a frozen state after owner review.
+    function unfreeze() external onlyOwner {
+        frozen = false;
+        emit Events.Unfrozen(address(this));
     }
 
     /// @inheritdoc IGuardedWallet
     function setPolicy(PolicyEnvelope calldata nextPolicy) external onlyOwner {
         _validatePolicy(nextPolicy);
         policy = nextPolicy;
-        emit Events.PolicyUpdated(address(this));
+        uint256 version = ++policyVersion;
+        emit Events.PolicyUpdated(address(this), version, nextPolicy);
     }
 
     /// @notice Adds an agent signer that may request governed transfers.
@@ -194,30 +255,21 @@ contract GuardedWallet is IGuardedWallet, ReentrancyGuard {
     /// @notice Rotates a wallet module by key.
     function rotateModule(bytes32 module, address newModule) external onlyOwner {
         if (module == ModuleKeys.POLICY_ENGINE) {
-            if (newModule == address(0)) {
-                revert ZeroAddress();
-            }
+            _requireContract(newModule);
             policyEngine = IPolicyEngine(newModule);
         } else if (module == ModuleKeys.ESCALATION_MANAGER) {
-            if (newModule == address(0)) {
-                revert ZeroAddress();
-            }
+            _requireContract(newModule);
             escalationManager = IEscalationManager(newModule);
         } else if (module == ModuleKeys.ANOMALY_ORACLE) {
-            // Zero is permitted on purpose: this is how an owner opts out of
-            // oracle-driven freezes, and AnomalyOracle.triggerFreeze reads the value
-            // back to detect exactly that. The other three are rejected at zero because
-            // the wallet calls into them - the policy engine and vendor registry on
-            // every transfer, the escalation manager whenever a verdict escalates - so
-            // emptying one takes a working path away. This module is only ever read to
-            // authorise a freeze, and triggerFreeze compares it against msg.sender,
-            // which can never be zero, so an empty oracle closes that path rather than
-            // opening it to callers.
+            // Zero is the owner's opt-out from oracle freezes; AnomalyOracle.triggerFreeze
+            // reads it back to refuse. The other modules sit on the transfer path and
+            // cannot be emptied.
+            if (newModule != address(0)) {
+                _requireContract(newModule);
+            }
             anomalyOracle = IAnomalyOracle(newModule);
         } else if (module == ModuleKeys.VENDOR_REGISTRY) {
-            if (newModule == address(0)) {
-                revert ZeroAddress();
-            }
+            _requireContract(newModule);
             vendorRegistry = IVendorRegistry(newModule);
         } else {
             revert InvalidModule();
@@ -229,6 +281,7 @@ contract GuardedWallet is IGuardedWallet, ReentrancyGuard {
     /// @notice Updates the anomaly score threshold that permits oracle freezes.
     function setAnomalyFreezeThresholdBps(uint256 thresholdBps) external onlyOwner {
         anomalyFreezeThresholdBps = thresholdBps;
+        emit Events.AnomalyFreezeThresholdUpdated(address(this), thresholdBps);
     }
 
     /// @notice Reconfigures the wallet's human escalation council.
@@ -238,6 +291,11 @@ contract GuardedWallet is IGuardedWallet, ReentrancyGuard {
         uint64 expirySeconds
     ) external onlyOwner {
         escalationManager.configureWallet(requiredSigners, threshold, expirySeconds);
+    }
+
+    /// @notice Withdraws a pending escalation before the council resolves it.
+    function cancelEscalation(bytes32 escalationId) external onlyOwner {
+        escalationManager.cancel(escalationId);
     }
 
     /// @notice Adds or updates a vendor in this wallet's registry namespace.
@@ -258,10 +316,19 @@ contract GuardedWallet is IGuardedWallet, ReentrancyGuard {
         vendorRegistry.removeVendor(vendor);
     }
 
-    /// @notice Clears a frozen state after owner review.
-    function unfreeze() external onlyOwner {
-        frozen = false;
-        emit Events.Unfrozen(address(this));
+    /// @notice Moves USDC out on the owner's authority, outside the agent policy.
+    /// @dev Does not count against the agent's budget windows; the event keeps owner
+    ///      exits distinguishable from agent spend in the ledger.
+    function withdrawUSDC(address to, uint256 amount) external onlyOwner nonReentrant {
+        if (to == address(0)) {
+            revert ZeroAddress();
+        }
+        if (amount == 0) {
+            revert ZeroAmount();
+        }
+
+        IERC20(usdc).safeTransfer(to, amount);
+        emit Events.OwnerWithdrawal(address(this), to, amount);
     }
 
     /// @notice Sweeps non-USDC ERC20 tokens accidentally sent to this wallet.
@@ -277,6 +344,36 @@ contract GuardedWallet is IGuardedWallet, ReentrancyGuard {
         emit Events.NonUSDCSwept(address(this), token, to, amount);
     }
 
+    /// @notice Starts a two-step ownership transfer. Passing zero cancels a pending one.
+    function transferOwnership(address newOwner) external onlyOwner {
+        pendingOwner = newOwner;
+        emit Events.OwnershipTransferStarted(address(this), newOwner);
+    }
+
+    /// @notice Completes an ownership transfer; only the pending owner may call.
+    function acceptOwnership() external {
+        if (msg.sender != pendingOwner) {
+            revert NotPendingOwner();
+        }
+
+        address previousOwner = owner;
+        owner = msg.sender;
+        pendingOwner = address(0);
+        emit Events.OwnershipTransferred(address(this), previousOwner, msg.sender);
+    }
+
+    function _spend(address signer, address to, uint256 amount, bytes32 escalationId) private {
+        dailySpent += amount;
+        monthlySpent += amount;
+        IERC20(usdc).safeTransfer(to, amount);
+        emit Events.TransferExecuted(address(this), signer, to, amount, escalationId);
+    }
+
+    function _freeze(FreezeSource source, EscalationReason reason, bytes memory data) private {
+        frozen = true;
+        emit Events.Frozen(address(this), source, reason, data);
+    }
+
     function _addSigner(address signer) private {
         if (signer == address(0)) {
             revert ZeroAddress();
@@ -287,13 +384,24 @@ contract GuardedWallet is IGuardedWallet, ReentrancyGuard {
     }
 
     function _rollSpendWindow() private {
-        if (block.timestamp >= lastSpendReset + 1 days) {
+        uint256 day = block.timestamp / DAY_WINDOW;
+        if (day != spendDay) {
             dailySpent = 0;
-            lastSpendReset = block.timestamp;
+            spendDay = day;
         }
-        if (block.timestamp >= lastMonthlyReset + 30 days) {
+        uint256 month = block.timestamp / MONTH_WINDOW;
+        if (month != spendMonth) {
             monthlySpent = 0;
-            lastMonthlyReset = block.timestamp;
+            spendMonth = month;
+        }
+    }
+
+    function _requireContract(address target) private view {
+        if (target == address(0)) {
+            revert ZeroAddress();
+        }
+        if (target.code.length == 0) {
+            revert NotContract();
         }
     }
 
@@ -304,7 +412,10 @@ contract GuardedWallet is IGuardedWallet, ReentrancyGuard {
         if (envelope.perTxCap > envelope.daily24hCap) {
             revert InvalidPolicy();
         }
-        if (envelope.escalationThreshold == 0) {
+        if (envelope.monthlyCap != 0 && envelope.monthlyCap < envelope.daily24hCap) {
+            revert InvalidPolicy();
+        }
+        if (envelope.escalationThreshold == 0 || envelope.escalationThreshold > envelope.perTxCap) {
             revert InvalidPolicy();
         }
     }

@@ -18,7 +18,7 @@
 <p align="center">
   <a href="https://github.com/bunnyyxtan/ARCANUM/actions/workflows/ci.yml"><img src="https://github.com/bunnyyxtan/ARCANUM/actions/workflows/ci.yml/badge.svg" alt="CI status" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-2f3542" alt="AGPL-3.0 license" /></a>
-  <a href="https://github.com/bunnyyxtan/ARCANUM/releases/tag/v2.0.0"><img src="https://img.shields.io/badge/release-v2.0.0-ff5a1f" alt="Latest release v2.0.0" /></a>
+  <a href="https://github.com/bunnyyxtan/ARCANUM/releases/tag/v3.0.0"><img src="https://img.shields.io/badge/release-v3.0.0-ff5a1f" alt="Latest release v3.0.0" /></a>
   <img src="https://img.shields.io/badge/network-Arc%20Testnet-6e9e7c" alt="Arc Testnet" />
 </p>
 
@@ -39,9 +39,9 @@ AI agents are starting to pay for APIs, compute, data, and tools on their own. A
 It combines:
 
 - Smart-contract wallets with owner-defined policy envelopes, called doctrines
-- Vendor allowlists, category controls, and per-transaction, daily, and monthly caps
-- Human quorum escalation for payments that cross a policy boundary
-- Anomaly detection that can flag or freeze unusual agent behaviour
+- Vendor allowlists, category controls, per-vendor limits, and fixed-window spend caps
+- Versioned human councils with expiring, cancellable, and release-time re-evaluated escalations
+- Freshness-bounded anomaly scores with rotatable service signers
 - A public explorer and badge layer so anyone can verify an agent is governed
 
 Unlike an off-chain spend dashboard that an agent can bypass, the enforcement lives where the funds live: in the wallet contract on Arc.
@@ -123,7 +123,10 @@ Network: **Arc Testnet** · Explorer: [testnet.arcscan.app](https://testnet.arcs
 | AnomalyOracle | `0x4ee7c78afFd9C5d9e0FD4EFEaEe82BEe32E8C0DC` | Anomaly signals for the policy layer |
 | VendorRegistry | `0x0fAe8E2Cd6f22aa9715E256B61f58b42357ABd1b` | Vendor allowlist, categories, and caps |
 
-These are testnet contracts. They are not audited and must not hold production funds.
+These addresses are the legacy v1 testnet deployment. The app and indexer move to the committed
+v2 manifest after the one-time redeploy; owners must redeploy v1 wallets through the v2 factory.
+Neither deployment has received an independent third-party audit and neither should hold
+production funds.
 
 ## Architecture
 
@@ -198,7 +201,9 @@ Fill in the variables before starting. The essentials:
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes | Server-only Supabase key, never client-side |
 | `SIWE_SECRET` | Yes | Server-side session secret |
 | `NEXT_PUBLIC_APP_URL` | Yes | Canonical app URL |
-| `NEXT_PUBLIC_WALLET_FACTORY` and other contract addresses | Yes | Deployed Arc Testnet addresses, see the table above |
+
+Contract addresses are not configured through the environment. Every runtime reads
+`packages/contracts/deployments/arc-<network>.json`, the manifest written by the deploy script.
 
 The full annotated list lives in `apps/web/.env.example`. Never commit `.env.local`, private keys, or service-role keys.
 
@@ -231,7 +236,8 @@ Open the URL printed by Next.js.
 
 Arcanum is a working Arc Testnet build, running publicly at [thearcanum.in](https://thearcanum.in).
 
-- Contracts are deployed on Arc Testnet and listed above. They are not audited.
+- The listed Arc Testnet contracts are the legacy v1 deployment pending the committed v2 cutover.
+- The contracts have internal tests and automated analyzers, but no independent third-party audit.
 - The dashboard, public explorer, badge routes, and approver portal are live.
 - Advanced write paths and indexer reconciliation are still being hardened.
 - A formal audit is required before any mainnet or production-funds use.

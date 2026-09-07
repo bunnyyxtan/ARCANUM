@@ -1,0 +1,22 @@
+{
+  "anomalyOracle": "0xB2b4D67d8720fFA58efecc2ac4F41984B37E718e",
+  "chainId": 5042002,
+  "codeHashes": {
+    "anomalyOracle": "0x1f08bb53762009cd5913330b9053f26894dd565e77bba3fd0f0edc82d5b9e8a9",
+    "escalationManager": "0x753d752fb7162fca58a034b3df420abaac5009b2b23d202b0e90eb2133ea464a",
+    "policyEngine": "0x38fe29e4a8c388faca2b21ad9dfc33790711baf6966518f617aa86da6e0f21f0",
+    "vendorRegistry": "0x140f2bc854cbffce5fe1d067b1dde55d02f717656bea952a64e3578813842ae5",
+    "walletFactory": "0x3ca640481890f6efddf0ab47fff28070827fc537fff272018d1e5d0f9175f9fd"
+  },
+  "create2Salt": "0x663d114a69c8dabd7a4aa705da43d14d1b3a913d9119c13d54e0687e1414fcd7",
+  "deployer": "0xE1E781575330f3a1e2C4fE8c1181aD4E394275B4",
+  "escalationManager": "0x048ECa45cdD3bdecE247b1bd4114FDC11265B78A",
+  "network": "arc-testnet",
+  "oracleSigner": "0x0000000000000000000000000000000000000516",
+  "policyEngine": "0x7777ac24A19202E619bF67B92375E714e72033A4",
+  "protocolAdmin": "0x0000000000000000000000000000000000000adD",
+  "startBlock": 12345,
+  "usdc": "0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f",
+  "vendorRegistry": "0xeA4597b02Ea2958A80afc47c417422598b9c548C",
+  "walletFactory": "0x8ea0AA95EB2725021d384Bc07e49e09298120c10"
+}

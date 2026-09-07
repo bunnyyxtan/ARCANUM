@@ -1,9 +1,20 @@
 # AnomalyOracle
 
-AnomalyOracle receives signed deviation scores. Wallets opt into this module and set their own freeze threshold.
+`AnomalyOracle` records scores signed by its configured service signer. Wallets set their own
+freeze thresholds; a score at or above the threshold allows the oracle to trigger a freeze.
+The wallet owner controls unfreeze.
 
-The oracle can trigger a freeze after threshold breach. The wallet owner controls unfreeze.
+Scores are time-bounded. `triggerFreeze` reverts with `ScoreStale` when the latest score is
+older than `maxScoreAge`, so an old high score cannot freeze a wallet indefinitely.
+
+The oracle owner can rotate the service key with `setSigner` and change freshness policy with
+`setMaxScoreAge`. Both changes emit onchain events. Use two-step ownership transfer when moving
+oracle administration to a hardware wallet or multisig.
+
+A wallet owner can opt out by rotating that wallet's anomaly-oracle module to the zero address.
+The global `AnomalyOracle` signer itself cannot be set to zero.
 
 <div className="callout amber">
-Use anomaly defense for containment and review. Keep signer policy and vendor allowlists tight even when anomaly defense is disabled.
+Use anomaly defense for containment and review. A valid score is not a substitute for policy
+caps and vendor controls.
 </div>
