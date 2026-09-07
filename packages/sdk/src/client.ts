@@ -19,6 +19,7 @@ import {
   createPublicClient,
   createWalletClient,
   decodeEventLog,
+  encodeEventTopics,
   encodeFunctionData,
   erc20Abi,
   parseUnits,
@@ -498,19 +499,25 @@ function reasonBytes(
   return stringToHex(payload);
 }
 
+const TRANSFER_ESCALATED_TOPIC = encodeEventTopics({
+  abi: GuardedWalletAbi,
+  eventName: "TransferEscalated",
+})[0];
+
 function findEscalationId(logs: ReadonlyArray<{ data: Hex; topics: readonly Hex[] }>) {
   for (const log of logs) {
-    try {
-      const decoded = decodeEventLog({
-        abi: GuardedWalletAbi,
-        data: log.data,
-        topics: [...log.topics] as [`0x${string}`, ...`0x${string}`[]],
-      });
+    if (log.topics[0]?.toLowerCase() !== TRANSFER_ESCALATED_TOPIC?.toLowerCase()) {
+      continue;
+    }
 
-      if (decoded.eventName === "TransferEscalated") {
-        return decoded.args.escalationId as Hex;
-      }
-    } catch {}
+    const decoded = decodeEventLog({
+      abi: GuardedWalletAbi,
+      data: log.data,
+      topics: [...log.topics] as [`0x${string}`, ...`0x${string}`[]],
+    });
+    if (decoded.eventName === "TransferEscalated") {
+      return decoded.args.escalationId as Hex;
+    }
   }
 
   return undefined;
@@ -529,6 +536,7 @@ function parsePaymentIntentAmount(amount: string) {
     const parsed = parseUnits(amount, 6);
     return parsed > 0n ? parsed : null;
   } catch {
+    // Invalid decimal input is an expected validation outcome for this public API.
     return null;
   }
 }

@@ -72,6 +72,7 @@ export function Header({ children }: HeaderProps) {
       const raw = window.localStorage.getItem(readStorageKey);
       setReadKeys(new Set(raw ? (JSON.parse(raw) as string[]) : []));
     } catch {
+      // Corrupt or unavailable browser storage means no notices are marked read.
       setReadKeys(new Set());
     }
   }, [readStorageKey]);

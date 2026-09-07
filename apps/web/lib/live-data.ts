@@ -1,5 +1,6 @@
 "use client";
 
+import { ARC_NETWORK_NAME } from "@arcanum/shared";
 import { useEffect, useMemo, useState } from "react";
 
 import { useWorkspaceMode } from "@/lib/auth-session";
@@ -449,7 +450,7 @@ export function useLiveEvents() {
     return {
       id: event.id,
       label: event.type,
-      actor: event.walletId ?? "Arc Testnet",
+      actor: event.walletId ?? ARC_NETWORK_NAME,
       counterparty: event.txHash,
       category: "other",
       amount: Number.isFinite(payloadAmount) ? payloadAmount : 0,

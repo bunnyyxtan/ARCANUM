@@ -43,8 +43,11 @@ export function WalletAuthBridge() {
 
       try {
         if (!force) {
-          const existingUser = await fetchAuthSession();
-          if (existingUser?.walletAddress.toLowerCase() === address.toLowerCase()) {
+          const existingSession = await fetchAuthSession();
+          if (existingSession.status === "unavailable") {
+            throw existingSession.error;
+          }
+          if (existingSession.user?.walletAddress.toLowerCase() === address.toLowerCase()) {
             authedAddressRef.current = address;
             failedAddressRef.current = null;
             return;
@@ -84,11 +87,16 @@ export function WalletAuthBridge() {
         });
 
         if (!verifyResponse.ok) {
+          // Error responses from intermediaries are not guaranteed to contain JSON.
           const body = (await verifyResponse.json().catch(() => null)) as AuthErrorResponse | null;
           throw new Error(body?.message ?? "SIWE verification failed");
         }
 
-        const sessionUser = await fetchAuthSession({ force: true });
+        const session = await fetchAuthSession({ force: true });
+        if (session.status === "unavailable") {
+          throw session.error;
+        }
+        const sessionUser = session.user;
         if (sessionUser?.walletAddress.toLowerCase() !== address.toLowerCase()) {
           throw new Error(
             "Signature verified, but session could not be established. Retry sign-in.",

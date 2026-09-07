@@ -12,37 +12,61 @@ type AuthSessionResponse = {
   user: AuthSessionUser | null;
 };
 
-type AuthStatus = "checking" | "authenticated" | "unauthenticated";
+type AuthStatus = "checking" | "authenticated" | "unauthenticated" | "unavailable";
+
+export type AuthSessionResult =
+  | { status: "authenticated"; user: AuthSessionUser }
+  | { status: "anonymous"; user: null }
+  | { status: "unavailable"; user: null; error: Error };
 
 let cachedUser: AuthSessionUser | null = null;
 let cachedAt = 0;
-let inFlight: Promise<AuthSessionUser | null> | null = null;
+let inFlight: Promise<AuthSessionResult> | null = null;
 
 export async function fetchAuthSession(options?: { force?: boolean }) {
   if (!options?.force && Date.now() - cachedAt < 5_000) {
-    return cachedUser;
+    return cachedUser
+      ? { status: "authenticated" as const, user: cachedUser }
+      : { status: "anonymous" as const, user: null };
   }
 
-  inFlight ??= fetch("/api/auth/session", {
-    cache: "no-store",
-    credentials: "include",
-  })
-    .then(async (response) => {
-      if (!response.ok) {
-        return null;
-      }
+  inFlight ??= readAuthSession().finally(() => {
+    inFlight = null;
+  });
 
-      const body = (await response.json()) as AuthSessionResponse;
-      return body.user ?? null;
-    })
-    .catch(() => null)
-    .finally(() => {
-      inFlight = null;
+  const result = await inFlight;
+  if (result.status !== "unavailable") {
+    cachedUser = result.user;
+    cachedAt = Date.now();
+  }
+  return result;
+}
+
+async function readAuthSession(): Promise<AuthSessionResult> {
+  try {
+    const response = await fetch("/api/auth/session", {
+      cache: "no-store",
+      credentials: "include",
     });
+    if (!response.ok) {
+      return {
+        status: "unavailable",
+        user: null,
+        error: new Error(`Session request failed with status ${response.status}.`),
+      };
+    }
 
-  cachedUser = await inFlight;
-  cachedAt = Date.now();
-  return cachedUser;
+    const body = (await response.json()) as AuthSessionResponse;
+    return body.user
+      ? { status: "authenticated", user: body.user }
+      : { status: "anonymous", user: null };
+  } catch (error) {
+    return {
+      status: "unavailable",
+      user: null,
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
 }
 
 export function publishAuthSession(user: AuthSessionUser | null) {
@@ -53,18 +77,26 @@ export function publishAuthSession(user: AuthSessionUser | null) {
 
 export function useAuthSession() {
   const [user, setUser] = useState<AuthSessionUser | null>(cachedUser);
-  const [status, setStatus] = useState<AuthStatus>(cachedAt ? "authenticated" : "checking");
+  const [status, setStatus] = useState<AuthStatus>(
+    cachedAt ? (cachedUser ? "authenticated" : "unauthenticated") : "checking",
+  );
 
   useEffect(() => {
     let cancelled = false;
 
-    fetchAuthSession().then((nextUser) => {
+    fetchAuthSession().then((result) => {
       if (cancelled) {
         return;
       }
 
-      setUser(nextUser);
-      setStatus(nextUser ? "authenticated" : "unauthenticated");
+      setUser(result.user);
+      setStatus(
+        result.status === "anonymous"
+          ? "unauthenticated"
+          : result.status === "unavailable"
+            ? "unavailable"
+            : "authenticated",
+      );
     });
 
     const onAuthUpdated = (event: Event) => {
@@ -96,6 +128,9 @@ export function useWorkspaceMode() {
   if (isConnected && !signedForConnectedWallet) {
     dataMode = "connected_unsigned";
   } else if (signedForConnectedWallet) {
+    dataMode = "live_empty";
+  } else if (session.status === "unavailable") {
+    // Existing read-model error states are safer than presenting an outage as a signed-out session.
     dataMode = "live_empty";
   }
 

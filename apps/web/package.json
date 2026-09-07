@@ -9,6 +9,7 @@
     "dev": "next dev",
     "lint": "biome check .",
     "start": "next start",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
