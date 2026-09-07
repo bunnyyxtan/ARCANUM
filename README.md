@@ -223,7 +223,8 @@ Open the URL printed by Next.js.
 ## Testing
 
 - **Contract tests** with Foundry cover policy enforcement, escalation, and wallet behaviour.
-- **API and SDK tests** with Vitest cover session-aware reads, governance writes, and client behaviour.
+- **Auth, API, indexer, SDK, and web tests** with Vitest cover session-aware reads, governance writes, indexing, and client behaviour:
+  `npm test -w @arcanum/auth`, `npm test -w @arcanum/api`, `npm test -w @arcanum/indexer`, `npm test -w @arcanum/sdk`, and `npm test -w @arcanum/web`.
 - **CI** runs build, lint, typecheck, contract, and SDK checks on every push.
 
 ## Status

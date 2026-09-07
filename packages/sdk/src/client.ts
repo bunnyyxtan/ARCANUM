@@ -180,7 +180,7 @@ export class ArcanumClient {
       return paymentIntentResult(intent, {
         amount,
         decision: "unsupported",
-        reason: "GuardedWallet is not configured for Arc Testnet USDC.",
+        reason: `GuardedWallet is not configured for ${ARC_NETWORK_NAME} USDC.`,
         errorCode: "UNSUPPORTED_WALLET_TOKEN",
       });
     }

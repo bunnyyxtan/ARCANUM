@@ -65,9 +65,10 @@ export default createConfig({
   // Run this app with `ponder start --schema ponder_app` (the `start` script /
   // the "ARCANUM Indexer" workflow), NOT `ponder dev`. `ponder dev` drops the
   // schema and re-indexes from the deployment start block on every restart,
-  // which grows unboundedly (~86K Arc Testnet blocks/day). `ponder start`
-  // against a persistent DATABASE_URL resumes from its checkpoint in the
-  // `ponder_app` schema, returning to live indexing in under a minute.
+  // which grows unboundedly (~86K blocks/day on the configured Arc network).
+  // `ponder start` against a persistent DATABASE_URL resumes from its
+  // checkpoint in the `ponder_app` schema, returning to live indexing in under
+  // a minute.
   database: {
     kind: "postgres",
     connectionString: databaseUrl,

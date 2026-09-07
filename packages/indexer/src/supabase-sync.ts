@@ -4,8 +4,8 @@
  * The dashboard API reads activity from the Supabase tables `ledger_events`,
  * `escalations`, `anomalies`, and `indexer_checkpoints`. The indexer is the
  * only writer of onchain activity into those tables. Every handler in
- * `index.ts` calls into this module so real Arc Testnet activity shows up in
- * the ledger and escalation queue.
+ * `index.ts` calls into this module so real activity on the configured Arc
+ * network shows up in the ledger and escalation queue.
  *
  * All writes are idempotent (select-then-insert keyed on tx_hash /
  * escalation_key) so re-indexing after a restart never duplicates rows.

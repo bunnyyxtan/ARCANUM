@@ -10,7 +10,7 @@ import type { Address } from "viem";
 
 export const zeroEvmAddress = "0x0000000000000000000000000000000000000000" as const;
 
-/** Deployed contract addresses come from env (Arc Testnet). */
+/** Deployed contract addresses come from the configured Arc network env. */
 export const deployedContracts = [
   { label: "WalletFactory", value: process.env.NEXT_PUBLIC_WALLET_FACTORY },
   { label: "PolicyEngine", value: process.env.NEXT_PUBLIC_POLICY_ENGINE },

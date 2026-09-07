@@ -1,7 +1,7 @@
 {
   "name": "@arcanum/indexer",
   "version": "2.0.0",
-  "description": "Ponder indexer for Arc Testnet contract events",
+  "description": "Ponder indexer for configured Arc network contract events",
   "private": true,
   "type": "module",
   "scripts": {
