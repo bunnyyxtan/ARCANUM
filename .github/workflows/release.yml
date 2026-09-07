@@ -20,6 +20,18 @@ jobs:
           python-version: "3.11"
       - uses: astral-sh/setup-uv@v7
       - run: npm ci
-      - run: npm run build --workspace @arcanum/sdk
+      - run: npm test --workspace @arcanum/sdk
+      - run: npm run build:publish --workspace @arcanum/sdk
+      - run: npm pack --dry-run --json ./packages/sdk/dist-publish
       - run: uv build
         working-directory: packages/sdk-py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arcanum-sdk-npm
+          path: packages/sdk/dist-publish
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arcanum-sdk-pypi
+          path: packages/sdk-py/dist
+          if-no-files-found: error
