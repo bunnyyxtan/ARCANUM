@@ -9,6 +9,9 @@ on:
 permissions:
   contents: read
 
+# Solidity lint/test runs in contracts.yml (needs Foundry); SDK publish checks
+# run in sdk.yml. Everything TypeScript is gated here, in the order a reviewer
+# would want failures reported: formatting, types, behaviour, then the build.
 jobs:
   workspace:
     runs-on: ubuntu-latest
@@ -19,6 +22,35 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm run build
+      - name: Lint
+        run: >-
+          npm run lint
+          --workspace @arcanum/web
+          --workspace @arcanum/docs
+          --workspace @arcanum/api
+          --workspace @arcanum/auth
+          --workspace @arcanum/db
+          --workspace @arcanum/indexer
+          --workspace @arcanum/sdk
+          --workspace @arcanum/shared
+      - name: Typecheck
+        run: >-
+          npm run typecheck
+          --workspace @arcanum/shared
+          --workspace @arcanum/db
+          --workspace @arcanum/auth
+          --workspace @arcanum/api
+          --workspace @arcanum/sdk
+          --workspace @arcanum/indexer
+          --workspace @arcanum/web
+          --workspace @arcanum/docs
+      - name: Test
+        run: >-
+          npm run test
+          --workspace @arcanum/web
+          --workspace @arcanum/auth
+          --workspace @arcanum/api
+          --workspace @arcanum/indexer
+          --workspace @arcanum/sdk
+      - name: Build
+        run: npm run build
