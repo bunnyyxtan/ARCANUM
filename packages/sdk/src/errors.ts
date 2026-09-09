@@ -10,7 +10,9 @@ export type ArcanumErrorCode =
   | "AGENT_SIGNER_REQUIRED"
   | "INSUFFICIENT_USDC"
   | "TRANSFER_REVERTED"
-  | "RPC_ERROR";
+  | "RPC_ERROR"
+  | "API_URL_REQUIRED"
+  | "WALLET_MISMATCH";
 
 export class ArcanumError extends Error {
   readonly code: ArcanumErrorCode;
