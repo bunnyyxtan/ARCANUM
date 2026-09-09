@@ -111,6 +111,47 @@ the API still evaluates policy from chain state and does not custody keys. Use
 the SDK execution method only from an agent runtime that controls the authorized
 testnet signer.
 
+## Payment decision receipts
+
+`requestPaymentReceipt` asks the Arcanum API for a signed receipt: the verdict
+the wallet's policy gives the intent, evaluated at one pinned block and signed
+by the published Arcanum issuer key. Nothing moves onchain. The receipt is an
+offline-verifiable record of a preflight, not an authorization; the contract
+still decides at execution time.
+
+`executePaymentIntentWithReceipt` obtains the receipt first, submits
+`executeUSDC` only for `allow` and `escalate` with the receipt id in the reason
+metadata, then links the transaction hash back to the receipt. When execution
+returns a hash, the result carries it even if linking fails (`evidenceError`
+sits next to it). If the RPC drops out while waiting for inclusion, the
+execution error has no hash; link the transaction later with
+`attachPaymentReceiptEvidence`.
+
+```ts
+const arcanum = new ArcanumClient({
+  walletAddress,
+  agentSigner,
+  chain: arcTestnet,
+  rpcUrl: ARC_TESTNET_RPC_URL,
+  apiUrl: "https://thearcanum.in",
+});
+
+const { receipt, replayed } = await arcanum.requestPaymentReceipt(intent);
+console.log(receipt.receipt.decision.verdict, receipt.receipt.decision.reasonCode);
+
+const outcome = await arcanum.executePaymentIntentWithReceipt(intent);
+console.log(outcome.result.txHash, outcome.evidence?.map((row) => row.outcome));
+
+const verification = await verifyPaymentReceipt(receipt);
+console.log(verification.ok, verification.issuer.status);
+```
+
+`verifyPaymentReceipt` runs entirely offline against the issuer registry
+bundled in the SDK. The same `reference` returns the same receipt
+(`replayed: true`); reusing a reference for a different payment is rejected.
+See the repository's `docs/PAYMENT-RECEIPTS.md` for the format, the trust
+model and the API.
+
 ## Public exports
 
 - `ArcanumClient`
@@ -121,5 +162,10 @@ testnet signer.
   `SimulationResult`
 - Payment intent types such as `PaymentIntentInput`, `SignedPaymentIntentInput`,
   and `PaymentIntentResult`
+- Receipt helpers `verifyPaymentReceipt`, `paymentReceiptDigest`,
+  `paymentReceiptEnvelopeSchema`, `PAYMENT_RECEIPT_ISSUERS`, the `ReceiptApi`
+  REST client, `ReceiptRequestError`, and types such as
+  `PaymentReceiptEnvelope`, `PaymentReceiptEvidence`, and
+  `PaymentIntentWithReceiptResult`
 - Arc Testnet helpers from `arcanum-sdk/chains`, including `arcTestnet`,
   `ARC_TESTNET_RPC_URL`, `ARC_TESTNET_USDC_ADDRESS`, `usdcErc20`, and `usdcGas`
