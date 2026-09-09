@@ -8,6 +8,7 @@ import {
   ARC_CHAIN_ID,
   ARC_NETWORK_NAME,
   ARC_USDC_ADDRESS,
+  type PaymentReceiptEnvelope,
   createPaymentIntentMessage,
   createPaymentIntentResult,
   paymentIntentInputSchema,
@@ -37,6 +38,7 @@ import {
   TransferRevertedError,
   WalletFrozenError,
 } from "./errors";
+import { type AttachedReceiptEvidence, ReceiptApi, type RequestedReceipt } from "./receipts";
 import type {
   ArcanumClientConfig,
   Escalation,
@@ -45,6 +47,7 @@ import type {
   ExecuteUSDCResult,
   PaymentIntentInput,
   PaymentIntentResult,
+  PaymentIntentWithReceiptResult,
   PolicyEnvelope,
   SignedPaymentIntentInput,
   SimulateInput,
@@ -81,11 +84,15 @@ export class ArcanumClient {
   private readonly pollingIntervalMs: number;
   private readonly publicClient;
   private readonly walletClient;
+  private readonly receiptApi: ReceiptApi | null;
 
   constructor(config: ArcanumClientConfig) {
     this.walletAddress = config.walletAddress;
     this.dashboardUrl = config.dashboardUrl;
     this.pollingIntervalMs = config.pollingIntervalMs ?? 4_000;
+    this.receiptApi = config.apiUrl
+      ? new ReceiptApi({ apiUrl: config.apiUrl, fetch: config.fetch })
+      : null;
     const transport = http(config.rpcUrl);
 
     this.publicClient = createPublicClient({
@@ -97,6 +104,19 @@ export class ArcanumClient {
       chain: config.chain,
       transport,
     });
+  }
+
+  private requireReceiptApi() {
+    if (!this.receiptApi) {
+      throw new ArcanumError({
+        code: "API_URL_REQUIRED",
+        message:
+          "Payment decision receipts need the Arcanum API. Construct ArcanumClient with apiUrl.",
+        verdict: "DENY",
+        reason: "API_URL_REQUIRED",
+      });
+    }
+    return this.receiptApi;
   }
 
   private requireSigner() {
@@ -259,6 +279,107 @@ export class ArcanumClient {
       return paymentIntentExecutionResult(intent, preflight, execution);
     } catch (error) {
       return paymentIntentExecutionErrorResult(intent, preflight, error);
+    }
+  }
+
+  /**
+   * Ask the Arcanum API for a signed Payment Decision Receipt: the verdict
+   * this wallet's policy gives the intent, evaluated at one pinned block and
+   * signed by the Arcanum issuer. Nothing moves onchain.
+   */
+  async requestPaymentReceipt(input: PaymentIntentInput): Promise<RequestedReceipt> {
+    const api = this.requireReceiptApi();
+    const intent = paymentIntentInputSchema.parse(input);
+    if (!sameAddress(intent.governedWalletAddress, this.walletAddress)) {
+      throw new ArcanumError({
+        code: "WALLET_MISMATCH",
+        message: "Intent governed wallet does not match this SDK client.",
+        verdict: "DENY",
+        reason: "WALLET_MISMATCH",
+      });
+    }
+    return api.requestReceipt(await this.signPaymentIntent(intent));
+  }
+
+  /** Link the transaction that acted on a receipt; the API verifies the link onchain. */
+  async attachPaymentReceiptEvidence(
+    receiptId: string,
+    txHash: Hash,
+  ): Promise<AttachedReceiptEvidence> {
+    return this.requireReceiptApi().attachEvidence(receiptId, txHash);
+  }
+
+  /**
+   * Receipt-first payment: obtain the receipt, act on its verdict, and link
+   * the resulting transaction back to it. The receipt id travels in the
+   * executeUSDC reason bytes, so the chain itself names the decision it acted
+   * on. Denied and frozen verdicts never reach the chain.
+   */
+  async executePaymentIntentWithReceipt(
+    input: PaymentIntentInput,
+  ): Promise<PaymentIntentWithReceiptResult> {
+    const intent = paymentIntentInputSchema.parse(input);
+    const { receipt, replayed } = await this.requestPaymentReceipt(intent);
+    const decision = receipt.receipt.decision;
+    const preflight = createPaymentIntentResult(intent, {
+      decision: decision.verdict,
+      reason: decision.reasonCode,
+      amountBaseUnits: receipt.receipt.amountBaseUnits,
+      policyReference: `payment-receipt:${receipt.receipt.receiptId}`,
+    });
+
+    if (decision.verdict !== "allow" && decision.verdict !== "escalate") {
+      return { receipt, replayed, result: preflight, evidence: null };
+    }
+
+    let result: PaymentIntentResult;
+    try {
+      const execution = await this.executeUSDC({
+        to: intent.vendorAddress,
+        amount: BigInt(receipt.receipt.amountBaseUnits),
+        reason: intent.purpose,
+        metadata: {
+          reference: intent.reference,
+          tokenSymbol: intent.tokenSymbol ?? "USDC",
+          receiptId: receipt.receipt.receiptId,
+        },
+      });
+      result = paymentIntentExecutionResult(intent, preflight, execution);
+    } catch (error) {
+      if (error instanceof TransferRevertedError) {
+        // The call reached the chain and reverted: that is evidence too.
+        result = createPaymentIntentResult(intent, {
+          decision: "deny",
+          reason: error.reason ?? error.message,
+          amountBaseUnits: preflight.amountBaseUnits,
+          policyReference: preflight.policyReference,
+          txHash: error.txHash,
+          errorCode: error.code,
+        });
+      } else {
+        result = paymentIntentExecutionErrorResult(intent, preflight, error);
+      }
+    }
+    return this.linkExecution(receipt, replayed, result);
+  }
+
+  private async linkExecution(
+    receipt: PaymentReceiptEnvelope,
+    replayed: boolean,
+    result: PaymentIntentResult,
+  ): Promise<PaymentIntentWithReceiptResult> {
+    if (!result.txHash) {
+      return { receipt, replayed, result, evidence: null };
+    }
+    try {
+      const attached = await this.attachPaymentReceiptEvidence(
+        receipt.receipt.receiptId,
+        result.txHash,
+      );
+      return { receipt, replayed, result, evidence: attached.evidence };
+    } catch (error) {
+      // The payment already happened; report the linkage failure, never hide the tx.
+      return { receipt, replayed, result, evidence: null, evidenceError: asError(error) };
     }
   }
 
@@ -706,6 +827,10 @@ function paymentIntentResult(
     policyReference: input.policyReference,
     errorCode: input.errorCode,
   });
+}
+
+function asError(error: unknown): Error {
+  return error instanceof Error ? error : new Error(String(error));
 }
 
 function sameAddress(a: Address | string, b: Address | string) {
