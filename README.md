@@ -93,6 +93,10 @@ Payments that cross a policy boundary go to a restraint queue where human approv
 
 An anomaly layer scores agent behaviour and can flag, restrain, or freeze wallets whose activity deviates from the expected pattern.
 
+### Payment decision receipts
+
+Before an agent pays, it can ask the API for a receipt: an issuer-signed, offline-verifiable snapshot of the policy verdict for that exact signed intent at one pinned block. The transaction that acts on the receipt names it in its calldata, and the API links the two afterwards, so the decision and its consequence can be audited side by side. Anyone can verify a receipt at `/verify` without an account. Details in [docs/PAYMENT-RECEIPTS.md](./docs/PAYMENT-RECEIPTS.md).
+
 ### Public proof surfaces
 
 Every governed wallet has public explorer and badge pages, so anyone can show that an agent is governed and link to its live decision record.
@@ -201,6 +205,7 @@ Fill in the variables before starting. The essentials:
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes | Server-only Supabase key, never client-side |
 | `SIWE_SECRET` | Yes | Server-side session secret |
 | `NEXT_PUBLIC_APP_URL` | Yes | Canonical app URL |
+| `ARCANUM_RECEIPT_ISSUER_PRIVATE_KEY` | For receipts | Signing key for payment decision receipts; must match an active entry in the published issuer registry |
 
 Contract addresses are not configured through the environment. Every runtime reads
 `packages/contracts/deployments/arc-<network>.json`, the manifest written by the deploy script.
