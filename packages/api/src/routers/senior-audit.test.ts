@@ -50,6 +50,7 @@ function context(input: {
     supabase: {
       configured: true,
       selectRows: input.selectRows ?? (() => Promise.resolve([])),
+      insertRows: () => Promise.resolve([]),
       upsertRows: () => Promise.resolve([]),
       patchRows: input.patchRows ?? (() => Promise.resolve([])),
       callFunction: input.callFunction ?? (() => Promise.resolve(null)),

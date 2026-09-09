@@ -289,3 +289,23 @@ export async function isEscalationSigner(wallet: Address, signer: Address): Prom
     args: [wallet, signer],
   });
 }
+
+/**
+ * Council membership as the wallet itself defines it: the check goes through
+ * the manager the wallet currently points at, so a rotated module neither
+ * keeps the old council authorized nor locks the new one out.
+ */
+export async function isWalletCouncilMember(wallet: Address, signer: Address): Promise<boolean> {
+  const client = publicClient();
+  const manager = await client.readContract({
+    address: wallet,
+    abi: GuardedWalletAbi,
+    functionName: "escalationManager",
+  });
+  return client.readContract({
+    address: manager,
+    abi: EscalationManagerAbi,
+    functionName: "isRequiredSigner",
+    args: [wallet, signer],
+  });
+}

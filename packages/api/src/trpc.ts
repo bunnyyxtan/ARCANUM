@@ -5,9 +5,18 @@ import superjson from "superjson";
 
 import type { ApiContext } from "./context";
 import { enforceRateLimit } from "./rate-limit";
+import { isReceiptError } from "./receipts/errors";
 
 const t = initTRPC.context<ApiContext>().create({
   transformer: superjson,
+  // Domain failures carry a stable machine-readable code so clients can branch
+  // on it (an idempotency conflict is handled differently from an outage)
+  // without parsing human-readable messages.
+  errorFormatter({ shape, error }) {
+    return isReceiptError(error.cause)
+      ? { ...shape, data: { ...shape.data, domainCode: error.cause.code } }
+      : shape;
+  },
 });
 
 export const router = t.router;

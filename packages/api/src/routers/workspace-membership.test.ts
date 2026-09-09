@@ -99,6 +99,9 @@ function createReadModel() {
       }
       return hits.map((row) => ({ ...row }));
     },
+    insertRows: async () => {
+      throw new Error("these paths must not insert rows directly");
+    },
     upsertRows: async () => {
       throw new Error("these paths must not insert rows directly");
     },

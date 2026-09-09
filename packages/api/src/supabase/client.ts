@@ -38,9 +38,29 @@ export type SupabaseWriteResult<T> =
   | { ok: true; data: T }
   | { ok: false; reason: "unconfigured" | "unavailable" | "forbidden"; message: string };
 
+/**
+ * A PostgREST call that came back with a non-2xx status. Carries the status so
+ * callers can tell a unique-key conflict (409) from an outage without parsing
+ * the message.
+ */
+export class SupabaseRequestError extends Error {
+  readonly status: number;
+  readonly table: string;
+
+  constructor(table: string, method: string, status: number, detail: string) {
+    super(`${table} ${method} failed with ${status}: ${detail}`);
+    this.name = "SupabaseRequestError";
+    this.status = status;
+    this.table = table;
+  }
+}
+
 export type SupabaseServiceRoleClient = {
   configured: boolean;
   selectRows: (table: string, options?: SupabaseRequestOptions) => Promise<SupabaseRow[]>;
+  // Plain insert: a duplicate key is reported as a 409 SupabaseRequestError
+  // instead of silently merging into the existing row.
+  insertRows: (table: string, rows: SupabaseRow[]) => Promise<SupabaseRow[]>;
   upsertRows: (table: string, rows: SupabaseRow[], onConflict?: string) => Promise<SupabaseRow[]>;
   patchRows: (
     table: string,
@@ -73,6 +93,7 @@ export function createSupabaseServiceRoleClient(): SupabaseServiceRoleClient | n
     options?: SupabaseRequestOptions & {
       body?: SupabaseRow | SupabaseRow[];
       onConflict?: string;
+      resolution?: "merge-duplicates" | "none";
     },
   ) {
     const endpoint = new URL(`${baseUrl}/rest/v1/${table}`);
@@ -116,7 +137,7 @@ export function createSupabaseServiceRoleClient(): SupabaseServiceRoleClient | n
         Authorization: `Bearer ${adminKey}`,
         "Content-Type": "application/json",
         Prefer:
-          method === "GET"
+          method === "GET" || options?.resolution === "none"
             ? "return=representation"
             : "return=representation,resolution=merge-duplicates",
       },
@@ -126,9 +147,7 @@ export function createSupabaseServiceRoleClient(): SupabaseServiceRoleClient | n
 
     if (!response.ok) {
       const body = await response.text().catch(() => "");
-      throw new Error(
-        `${table} ${method} failed with ${response.status}: ${safeSupabaseError(body)}`,
-      );
+      throw new SupabaseRequestError(table, method, response.status, safeSupabaseError(body));
     }
 
     return (await response.json()) as SupabaseRow[];
@@ -158,6 +177,7 @@ export function createSupabaseServiceRoleClient(): SupabaseServiceRoleClient | n
   return {
     configured: true,
     selectRows: (table, options) => request("GET", table, options),
+    insertRows: (table, rows) => request("POST", table, { body: rows, resolution: "none" }),
     upsertRows: (table, rows, onConflict) => request("POST", table, { body: rows, onConflict }),
     patchRows: (table, patch, filters) => request("PATCH", table, { body: patch, filters }),
     callFunction,

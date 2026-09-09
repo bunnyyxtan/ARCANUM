@@ -111,6 +111,9 @@ function createReadModel(options: FakeOptions = {}) {
       return rows.map((row) => ({ ...row }));
     },
 
+    insertRows: async () => {
+      throw new Error("vendor flag paths must not insert rows directly");
+    },
     upsertRows: async (table: string, rows: Row[], onConflict?: string) => {
       if (table === "vendor_flags" && options.failFlagWrites) {
         throw new Error("vendor_flags write rejected");

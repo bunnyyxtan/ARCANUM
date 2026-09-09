@@ -152,7 +152,49 @@ export const paymentReceiptEnvelopeSchema = z
   })
   .strict();
 
+/**
+ * Evidence links a receipt to what later happened onchain. `execution`
+ * evidence comes from the agent's `executeUSDC` transaction; `escalation`
+ * evidence tracks the council's outcome for an escalated payment.
+ */
+export const PAYMENT_RECEIPT_EVIDENCE_KINDS = ["execution", "escalation"] as const;
+export const PAYMENT_RECEIPT_EVIDENCE_OUTCOMES = [
+  "executed",
+  "escalated",
+  "frozen",
+  "reverted",
+  "pending",
+  "released",
+  "rejected",
+  "expired",
+  "denied",
+  "cancelled",
+  "invalidated",
+] as const;
+
+export const paymentReceiptEvidenceSchema = z
+  .object({
+    id: z.string().uuid(),
+    receiptId: z.string().uuid(),
+    kind: z.enum(PAYMENT_RECEIPT_EVIDENCE_KINDS),
+    outcome: z.enum(PAYMENT_RECEIPT_EVIDENCE_OUTCOMES),
+    txHash: bytes32Schema.nullable(),
+    logIndex: z.number().int().nonnegative().nullable(),
+    blockNumber: z.number().int().nonnegative().nullable(),
+    escalationKey: bytes32Schema.nullable(),
+    // Whether the transaction's reason bytes carried this receipt id. Absent
+    // means the agent did not opt in, not that the link is doubtful: the
+    // wallet, signer, vendor and amount were still matched against the chain.
+    calldataNamesReceipt: z.boolean().nullable(),
+    observedAt: isoTimestampSchema,
+    details: z.record(z.string(), z.unknown()),
+  })
+  .strict();
+
 export type PaymentReceiptVerdict = (typeof PAYMENT_RECEIPT_VERDICTS)[number];
+export type PaymentReceiptEvidenceKind = (typeof PAYMENT_RECEIPT_EVIDENCE_KINDS)[number];
+export type PaymentReceiptEvidenceOutcome = (typeof PAYMENT_RECEIPT_EVIDENCE_OUTCOMES)[number];
+export type PaymentReceiptEvidence = z.infer<typeof paymentReceiptEvidenceSchema>;
 export type PaymentReceiptRequest = z.infer<typeof paymentReceiptRequestSchema>;
 export type PaymentReceiptPolicy = z.infer<typeof paymentReceiptPolicySchema>;
 export type PaymentReceiptVendor = z.infer<typeof paymentReceiptVendorSchema>;
