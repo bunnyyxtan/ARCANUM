@@ -12,6 +12,10 @@
     "./chains/arc-testnet": {
       "types": "./src/chains/arc-testnet.ts",
       "import": "./src/chains/arc-testnet.ts"
+    },
+    "./testing": {
+      "types": "./src/receipts/test-fixtures.ts",
+      "import": "./src/receipts/test-fixtures.ts"
     }
   },
   "scripts": {
