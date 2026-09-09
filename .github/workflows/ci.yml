@@ -52,5 +52,6 @@ jobs:
           --workspace @arcanum/api
           --workspace @arcanum/indexer
           --workspace @arcanum/sdk
+          --workspace @arcanum/shared
       - name: Build
         run: npm run build
