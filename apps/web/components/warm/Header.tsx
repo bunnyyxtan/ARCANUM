@@ -23,6 +23,7 @@ const links = [
   { label: "AGENTS", href: "/agents" },
   { label: "VENDORS", href: "/vendors" },
   { label: "LEDGER", href: "/ledger" },
+  { label: "RECEIPTS", href: "/receipts" },
   { label: "ESCALATIONS", href: "/escalations" },
   { label: "ANOMALIES", href: "/anomalies" },
 ] as const;

@@ -45,6 +45,7 @@ export function CommandPalette() {
       { label: "Inspect agents", meta: "NAVIGATE", href: "/agents" },
       { label: "Browse vendors", meta: "NAVIGATE", href: "/vendors" },
       { label: "Read ledger", meta: "NAVIGATE", href: "/ledger" },
+      { label: "Read receipts", meta: "NAVIGATE", href: "/receipts" },
       { label: "Review escalations", meta: "NAVIGATE", href: "/escalations" },
       { label: "Review anomalies", meta: "NAVIGATE", href: "/anomalies" },
       { label: "Open settings", meta: "NAVIGATE", href: "/settings" },
