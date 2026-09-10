@@ -237,6 +237,24 @@ describe("issuePaymentReceipt", () => {
     expect(tables.payment_receipts).toHaveLength(0);
   });
 
+  it("still replays an issued receipt when the issuer key is gone", async () => {
+    const ctx = context({ tables });
+    const intent = normalized(await signedIntent());
+    const first = await issuePaymentReceipt(ctx, intent, deps());
+
+    const replay = await issuePaymentReceipt(
+      ctx,
+      intent,
+      deps({
+        issuer: () => {
+          throw new ReceiptError("RECEIPT_ISSUER_NOT_CONFIGURED", "key rotated out");
+        },
+      }),
+    );
+
+    expect(replay).toEqual({ receipt: first.receipt, replayed: true });
+  });
+
   it("reports a store outage instead of inventing an empty result", async () => {
     const ctx = context({ tables });
     const supabase = ctx.supabase as NonNullable<ApiContext["supabase"]>;

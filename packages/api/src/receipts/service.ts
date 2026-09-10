@@ -54,9 +54,11 @@ export type IssuedReceipt = Readonly<{
  * Issue a signed decision receipt for a signed payment intent.
  *
  * The order matters: the request is authenticated (agent signature), the
- * issuer is resolved, the idempotency key is checked, the wallet must be one
- * the read model knows, and only then is the chain consulted. Nothing is
- * persisted unless the policy engine produced a verdict this build can name.
+ * idempotency key is checked, the issuer is resolved, the wallet must be one
+ * the read model knows, and only then is the chain consulted. A replay never
+ * needs the signing key, so a receipt already issued stays retrievable even
+ * while the key is missing or retired. Nothing is persisted unless the policy
+ * engine produced a verdict this build can name.
  */
 export async function issuePaymentReceipt(
   ctx: ApiContext,
@@ -70,7 +72,6 @@ export async function issuePaymentReceipt(
     );
   }
 
-  const issuer = deps.issuer();
   const requestDigest = paymentRequestDigest(intent);
   const requestKey = {
     chainId: intent.chainId,
@@ -84,6 +85,7 @@ export async function issuePaymentReceipt(
     return replayOrConflict(existing, requestDigest);
   }
 
+  const issuer = deps.issuer();
   if (intent.tokenSymbol !== undefined && intent.tokenSymbol !== "USDC") {
     // The receipt attests the token by symbol as well as address; the two
     // must agree before anything is signed.

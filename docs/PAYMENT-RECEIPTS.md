@@ -161,7 +161,9 @@ The signed `reference` is the idempotency key, namespaced by chain, wallet and
 signer. Re-posting the same signed intent returns the stored receipt
 (`replayed: true`, HTTP 200). Posting a different intent under an already
 used reference is `REQUEST_KEY_CONFLICT` (409). Two concurrent first requests
-race on the database unique key and both receive the winning row.
+race on the database unique key and both receive the winning row. A replay
+is answered before the issuer key is looked up, so a receipt already issued
+stays retrievable while the key is being rotated.
 
 ### Errors
 
