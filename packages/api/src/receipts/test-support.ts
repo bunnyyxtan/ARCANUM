@@ -36,6 +36,8 @@ export type ChainState = {
   verdict: number;
   reason: number;
   walletToken: Address;
+  /** Hash the chain reports for the pinned block once the reads are done; differs after a reorg. */
+  confirmedBlockHash?: Hex;
 };
 
 export function defaultChain(): ChainState {
@@ -53,7 +55,15 @@ export function defaultChain(): ChainState {
 /** A GuardedWallet, VendorRegistry, PolicyEngine and USDC contract, in memory. */
 export function fakePublicClient(chain: ChainState, log: { policyEngineCalls: unknown[] }) {
   return {
-    async getBlock() {
+    async getBlock(args?: { blockNumber?: bigint }) {
+      if (args?.blockNumber !== undefined) {
+        expect(args.blockNumber).toBe(61_000_000n);
+        return {
+          number: 61_000_000n,
+          hash: chain.confirmedBlockHash ?? BLOCK_HASH,
+          timestamp: BLOCK_TIMESTAMP,
+        };
+      }
       return { number: 61_000_000n, hash: BLOCK_HASH, timestamp: BLOCK_TIMESTAMP };
     },
     async readContract(call: {

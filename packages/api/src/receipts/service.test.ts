@@ -276,6 +276,21 @@ describe("issuePaymentReceipt", () => {
     ).rejects.toMatchObject({ code: "CHAIN_READ_FAILED", httpStatus: 502 });
     expect(tables.payment_receipts).toHaveLength(0);
   });
+
+  it("discards the snapshot when the pinned block is replaced mid-read", async () => {
+    const ctx = context({
+      tables,
+      chain: { ...defaultChain(), confirmedBlockHash: `0x${"cd".repeat(32)}` },
+    });
+
+    await expect(
+      issuePaymentReceipt(ctx, normalized(await signedIntent()), deps()),
+    ).rejects.toMatchObject({
+      code: "CHAIN_READ_FAILED",
+      message: expect.stringContaining("was replaced"),
+    });
+    expect(tables.payment_receipts).toHaveLength(0);
+  });
 });
 
 describe("receipt access", () => {

@@ -120,6 +120,11 @@ export function requireSupportedIntent(intent: NormalizedPaymentIntentInput): bi
  * Read the wallet exactly as `executeUSDC` would see it at one block. The
  * block is fixed first and every read is pinned to it, so the snapshot cannot
  * straddle a policy update or a spend that lands between two calls.
+ *
+ * Reads are pinned by block number, which is all `eth_call` accepts, so the
+ * block is fetched again by number once the reads are done: if its hash is no
+ * longer the one recorded, the chain replaced that block underneath the reads
+ * and the snapshot is discarded rather than signed.
  */
 export async function readPinnedWalletState(
   publicClient: PublicClient,
@@ -127,95 +132,9 @@ export async function readPinnedWalletState(
 ): Promise<PinnedWalletState> {
   const wallet = intent.governedWalletAddress;
 
+  let state: PinnedWalletState;
   try {
-    const latest = await publicClient.getBlock({ blockTag: "latest" });
-    const block: PinnedBlock = {
-      number: latest.number,
-      hash: latest.hash,
-      timestamp: latest.timestamp,
-    };
-    const guardedWallet = {
-      address: wallet,
-      abi: GuardedWalletAbi,
-      blockNumber: block.number,
-    } as const;
-
-    const [
-      walletToken,
-      signerAuthorized,
-      frozen,
-      policy,
-      policyVersion,
-      dailySpent,
-      monthlySpent,
-      spendDay,
-      spendMonth,
-      policyEngine,
-      vendorRegistry,
-      escalationManager,
-    ] = await Promise.all([
-      publicClient.readContract({ ...guardedWallet, functionName: "usdc" }),
-      publicClient.readContract({
-        ...guardedWallet,
-        functionName: "agentSigners",
-        args: [intent.agentSignerAddress],
-      }),
-      publicClient.readContract({ ...guardedWallet, functionName: "frozen" }),
-      publicClient.readContract({ ...guardedWallet, functionName: "policy" }),
-      publicClient.readContract({ ...guardedWallet, functionName: "policyVersion" }),
-      publicClient.readContract({ ...guardedWallet, functionName: "dailySpent" }),
-      publicClient.readContract({ ...guardedWallet, functionName: "monthlySpent" }),
-      publicClient.readContract({ ...guardedWallet, functionName: "spendDay" }),
-      publicClient.readContract({ ...guardedWallet, functionName: "spendMonth" }),
-      publicClient.readContract({ ...guardedWallet, functionName: "policyEngine" }),
-      publicClient.readContract({ ...guardedWallet, functionName: "vendorRegistry" }),
-      publicClient.readContract({ ...guardedWallet, functionName: "escalationManager" }),
-    ]);
-
-    const [vendor, usdcBalance] = await Promise.all([
-      publicClient.readContract({
-        address: vendorRegistry,
-        abi: VendorRegistryAbi,
-        functionName: "getVendorFor",
-        args: [wallet, intent.vendorAddress],
-        blockNumber: block.number,
-      }),
-      publicClient.readContract({
-        address: walletToken,
-        abi: erc20Abi,
-        functionName: "balanceOf",
-        args: [wallet],
-        blockNumber: block.number,
-      }),
-    ]);
-
-    return {
-      block,
-      walletToken,
-      signerAuthorized,
-      frozen,
-      policy: {
-        perTxCap: policy[0],
-        daily24hCap: policy[1],
-        monthlyCap: policy[2],
-        allowedCategories: policy[3],
-        escalationThreshold: policy[4],
-        requireAllowlist: policy[5],
-        freezeOnBlockedVendor: policy[6],
-      },
-      policyVersion,
-      policyEngine,
-      vendorRegistry,
-      escalationManager,
-      vendor: {
-        allowed: vendor.allowed,
-        blocked: vendor.blocked,
-        category: Number(vendor.category),
-        perVendorCap: vendor.perVendorCap,
-      },
-      spend: rollSpendWindow({ spendDay, spendMonth, dailySpent, monthlySpent }, block.timestamp),
-      usdcBalance,
-    };
+    state = await readWalletStateAtLatestBlock(publicClient, intent);
   } catch (error) {
     throw new ReceiptError(
       "CHAIN_READ_FAILED",
@@ -223,6 +142,119 @@ export async function readPinnedWalletState(
       { cause: error },
     );
   }
+
+  let confirmedHash: Hex;
+  try {
+    confirmedHash = (await publicClient.getBlock({ blockNumber: state.block.number })).hash;
+  } catch (error) {
+    throw new ReceiptError(
+      "CHAIN_READ_FAILED",
+      `Unable to confirm block ${state.block.number} on ${ARC_NETWORK_NAME} after reading wallet ${wallet}.`,
+      { cause: error },
+    );
+  }
+  if (confirmedHash.toLowerCase() !== state.block.hash.toLowerCase()) {
+    throw new ReceiptError(
+      "CHAIN_READ_FAILED",
+      `Block ${state.block.number} was replaced on ${ARC_NETWORK_NAME} while the wallet state was being read. Retry the request.`,
+    );
+  }
+  return state;
+}
+
+async function readWalletStateAtLatestBlock(
+  publicClient: PublicClient,
+  intent: NormalizedPaymentIntentInput,
+): Promise<PinnedWalletState> {
+  const wallet = intent.governedWalletAddress;
+  const latest = await publicClient.getBlock({ blockTag: "latest" });
+  const block: PinnedBlock = {
+    number: latest.number,
+    hash: latest.hash,
+    timestamp: latest.timestamp,
+  };
+  const guardedWallet = {
+    address: wallet,
+    abi: GuardedWalletAbi,
+    blockNumber: block.number,
+  } as const;
+
+  const [
+    walletToken,
+    signerAuthorized,
+    frozen,
+    policy,
+    policyVersion,
+    dailySpent,
+    monthlySpent,
+    spendDay,
+    spendMonth,
+    policyEngine,
+    vendorRegistry,
+    escalationManager,
+  ] = await Promise.all([
+    publicClient.readContract({ ...guardedWallet, functionName: "usdc" }),
+    publicClient.readContract({
+      ...guardedWallet,
+      functionName: "agentSigners",
+      args: [intent.agentSignerAddress],
+    }),
+    publicClient.readContract({ ...guardedWallet, functionName: "frozen" }),
+    publicClient.readContract({ ...guardedWallet, functionName: "policy" }),
+    publicClient.readContract({ ...guardedWallet, functionName: "policyVersion" }),
+    publicClient.readContract({ ...guardedWallet, functionName: "dailySpent" }),
+    publicClient.readContract({ ...guardedWallet, functionName: "monthlySpent" }),
+    publicClient.readContract({ ...guardedWallet, functionName: "spendDay" }),
+    publicClient.readContract({ ...guardedWallet, functionName: "spendMonth" }),
+    publicClient.readContract({ ...guardedWallet, functionName: "policyEngine" }),
+    publicClient.readContract({ ...guardedWallet, functionName: "vendorRegistry" }),
+    publicClient.readContract({ ...guardedWallet, functionName: "escalationManager" }),
+  ]);
+
+  const [vendor, usdcBalance] = await Promise.all([
+    publicClient.readContract({
+      address: vendorRegistry,
+      abi: VendorRegistryAbi,
+      functionName: "getVendorFor",
+      args: [wallet, intent.vendorAddress],
+      blockNumber: block.number,
+    }),
+    publicClient.readContract({
+      address: walletToken,
+      abi: erc20Abi,
+      functionName: "balanceOf",
+      args: [wallet],
+      blockNumber: block.number,
+    }),
+  ]);
+
+  return {
+    block,
+    walletToken,
+    signerAuthorized,
+    frozen,
+    policy: {
+      perTxCap: policy[0],
+      daily24hCap: policy[1],
+      monthlyCap: policy[2],
+      allowedCategories: policy[3],
+      escalationThreshold: policy[4],
+      requireAllowlist: policy[5],
+      freezeOnBlockedVendor: policy[6],
+    },
+    policyVersion,
+    policyEngine,
+    vendorRegistry,
+    escalationManager,
+    vendor: {
+      allowed: vendor.allowed,
+      blocked: vendor.blocked,
+      category: Number(vendor.category),
+      perVendorCap: vendor.perVendorCap,
+    },
+    spend: rollSpendWindow({ spendDay, spendMonth, dailySpent, monthlySpent }, block.timestamp),
+    usdcBalance,
+  };
 }
 
 /**
