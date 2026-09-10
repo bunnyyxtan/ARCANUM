@@ -120,21 +120,13 @@ export function requireSupportedIntent(intent: NormalizedPaymentIntentInput): bi
  * Read the wallet exactly as `executeUSDC` would see it at one block. The
  * block is fixed first and every read is pinned to it, so the snapshot cannot
  * straddle a policy update or a spend that lands between two calls.
- *
- * Reads are pinned by block number, which is all `eth_call` accepts, so the
- * block is fetched again by number once the reads are done: if its hash is no
- * longer the one recorded, the chain replaced that block underneath the reads
- * and the snapshot is discarded rather than signed.
  */
 export async function readPinnedWalletState(
   publicClient: PublicClient,
   intent: NormalizedPaymentIntentInput,
 ): Promise<PinnedWalletState> {
-  const wallet = intent.governedWalletAddress;
-
-  let state: PinnedWalletState;
   try {
-    state = await readWalletStateAtLatestBlock(publicClient, intent);
+    return await readWalletStateAtLatestBlock(publicClient, intent);
   } catch (error) {
     throw new ReceiptError(
       "CHAIN_READ_FAILED",
@@ -142,24 +134,34 @@ export async function readPinnedWalletState(
       { cause: error },
     );
   }
+}
 
+/**
+ * Reads are pinned by block number, which is all `eth_call` accepts, so once
+ * every pinned read is done the block is fetched again by number: if its hash
+ * is no longer the one about to be signed, the chain replaced that block
+ * underneath the reads and the snapshot is discarded rather than attested.
+ */
+export async function confirmPinnedBlock(
+  publicClient: PublicClient,
+  block: PinnedBlock,
+): Promise<void> {
   let confirmedHash: Hex;
   try {
-    confirmedHash = (await publicClient.getBlock({ blockNumber: state.block.number })).hash;
+    confirmedHash = (await publicClient.getBlock({ blockNumber: block.number })).hash;
   } catch (error) {
     throw new ReceiptError(
       "CHAIN_READ_FAILED",
-      `Unable to confirm block ${state.block.number} on ${ARC_NETWORK_NAME} after reading wallet ${wallet}.`,
+      `Unable to confirm block ${block.number} on ${ARC_NETWORK_NAME} after evaluating the intent.`,
       { cause: error },
     );
   }
-  if (confirmedHash.toLowerCase() !== state.block.hash.toLowerCase()) {
+  if (confirmedHash.toLowerCase() !== block.hash.toLowerCase()) {
     throw new ReceiptError(
       "CHAIN_READ_FAILED",
-      `Block ${state.block.number} was replaced on ${ARC_NETWORK_NAME} while the wallet state was being read. Retry the request.`,
+      `Block ${block.number} was replaced on ${ARC_NETWORK_NAME} while the intent was being evaluated. Retry the request.`,
     );
   }
-  return state;
 }
 
 async function readWalletStateAtLatestBlock(
@@ -362,6 +364,8 @@ export async function evaluatePaymentIntentAtBlock(
   }
 
   const decision = await evaluatePinnedDecision(publicClient, intent, amount, state);
+  // The policy call above is the last pinned read; confirm the block after it.
+  await confirmPinnedBlock(publicClient, state.block);
   return { amount, state, decision, evaluatedAt: new Date() };
 }
 

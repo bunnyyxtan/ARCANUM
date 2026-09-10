@@ -53,11 +53,18 @@ export function defaultChain(): ChainState {
 }
 
 /** A GuardedWallet, VendorRegistry, PolicyEngine and USDC contract, in memory. */
-export function fakePublicClient(chain: ChainState, log: { policyEngineCalls: unknown[] }) {
+export type ChainCallLog = {
+  policyEngineCalls: unknown[];
+  /** Order of the reads that matter for pinning, e.g. `["evaluate", "confirmBlock"]`. */
+  sequence?: string[];
+};
+
+export function fakePublicClient(chain: ChainState, log: ChainCallLog) {
   return {
     async getBlock(args?: { blockNumber?: bigint }) {
       if (args?.blockNumber !== undefined) {
         expect(args.blockNumber).toBe(61_000_000n);
+        log.sequence?.push("confirmBlock");
         return {
           number: 61_000_000n,
           hash: chain.confirmedBlockHash ?? BLOCK_HASH,
@@ -108,6 +115,7 @@ export function fakePublicClient(chain: ChainState, log: { policyEngineCalls: un
           return 250_000_000n;
         case "evaluate":
           log.policyEngineCalls.push(call.args);
+          log.sequence?.push("evaluate");
           return [chain.verdict, chain.reason];
         default:
           throw new Error(`unexpected read ${call.functionName}`);
@@ -231,7 +239,7 @@ export function context(input: {
   chain?: ChainState;
   tables?: Record<string, SupabaseRow[]>;
   session?: ApiContext["session"];
-  log?: { policyEngineCalls: unknown[] };
+  log?: ChainCallLog;
 }): ApiContext {
   return {
     db: null as never,

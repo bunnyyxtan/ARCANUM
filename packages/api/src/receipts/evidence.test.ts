@@ -342,6 +342,55 @@ describe("attachPaymentReceiptEvidence", () => {
         },
         "emitted 2 wallet events",
       ],
+      [
+        {
+          logs: [
+            eventLog("TransferEscalated", {
+              escalationId: ESCALATION_ID,
+              wallet: WALLET,
+              to: "0x9999999999999999999999999999999999999999",
+              amount: AMOUNT,
+              reason: stringToHex("Monthly API quota"),
+              threshold: 2n,
+              expiresAt: 1_789_100_000n,
+              policyVersion: 3n,
+              councilVersion: 1n,
+            }),
+          ],
+        },
+        "does not name the receipt's wallet, signer, vendor and amount",
+      ],
+      [
+        {
+          logs: [
+            eventLog("TransferEscalated", {
+              escalationId: ESCALATION_ID,
+              wallet: WALLET,
+              to: VENDOR,
+              amount: AMOUNT + 1n,
+              reason: stringToHex("Monthly API quota"),
+              threshold: 2n,
+              expiresAt: 1_789_100_000n,
+              policyVersion: 3n,
+              councilVersion: 1n,
+            }),
+          ],
+        },
+        "does not name the receipt's wallet, signer, vendor and amount",
+      ],
+      [
+        {
+          logs: [
+            eventLog("Frozen", {
+              wallet: "0x9999999999999999999999999999999999999999",
+              source: 0,
+              reason: 5,
+              data: stringToHex("Monthly API quota"),
+            }),
+          ],
+        },
+        "does not name the receipt's wallet, signer, vendor and amount",
+      ],
     ];
     for (const [overrides, message] of cases) {
       const ctx = withTransaction(context({ tables }), executedTx(overrides));

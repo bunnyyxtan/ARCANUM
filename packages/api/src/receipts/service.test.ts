@@ -277,10 +277,12 @@ describe("issuePaymentReceipt", () => {
     expect(tables.payment_receipts).toHaveLength(0);
   });
 
-  it("discards the snapshot when the pinned block is replaced mid-read", async () => {
+  it("discards the snapshot when the pinned block is replaced during evaluation", async () => {
+    const log = { policyEngineCalls: [] as unknown[], sequence: [] as string[] };
     const ctx = context({
       tables,
       chain: { ...defaultChain(), confirmedBlockHash: `0x${"cd".repeat(32)}` },
+      log,
     });
 
     await expect(
@@ -289,6 +291,8 @@ describe("issuePaymentReceipt", () => {
       code: "CHAIN_READ_FAILED",
       message: expect.stringContaining("was replaced"),
     });
+    // The confirmation has to come after the policy call, the last pinned read.
+    expect(log.sequence).toEqual(["evaluate", "confirmBlock"]);
     expect(tables.payment_receipts).toHaveLength(0);
   });
 });

@@ -152,10 +152,10 @@ Evaluation order, all at one block:
    and its verdict and reason become the decision.
 
 Reads are pinned to one block by number, which is all `eth_call` offers, so
-after the reads the block is fetched again and its hash compared with the one
-about to be signed. A block replaced in between fails the request with
-`CHAIN_READ_FAILED` instead of producing a receipt for a chain state that no
-longer exists.
+after the last pinned read (the policy call) the block is fetched again and
+its hash compared with the one about to be signed. A block replaced in
+between fails the request with `CHAIN_READ_FAILED` instead of producing a
+receipt for a chain state that no longer exists.
 
 Receipts attest decisions only. Infrastructure failures (`CHAIN_READ_FAILED`,
 `RECEIPT_STORE_UNAVAILABLE`, `RECEIPT_ISSUER_NOT_CONFIGURED`) are errors and
