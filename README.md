@@ -133,14 +133,16 @@ Network: **Arc Testnet** · Explorer: [testnet.arcscan.app](https://testnet.arcs
 
 | Module | Address | Responsibility |
 | --- | --- | --- |
-| WalletFactory | `0x51A560589e23AcD2e57173641267f4583e0e65E7` | Deploys GuardedWallet instances |
-| PolicyEngine | `0x67f3731280e1Dfcc38B8a388412FE0c971a4A215` | Evaluates doctrine rules on every spend |
-| EscalationManager | `0x9dc6C86469650A3859e7CA9A03adDfE9C964D134` | Quorum approvals for sensitive actions |
-| AnomalyOracle | `0x4ee7c78afFd9C5d9e0FD4EFEaEe82BEe32E8C0DC` | Anomaly signals for the policy layer |
-| VendorRegistry | `0x0fAe8E2Cd6f22aa9715E256B61f58b42357ABd1b` | Vendor allowlist, categories, and caps |
+| WalletFactory | `0xbE1bC48F26e7166D872828d40e82A6407dbD350C` | Deploys GuardedWallet instances |
+| PolicyEngine | `0x7777ac24A19202E619bF67B92375E714e72033A4` | Evaluates doctrine rules on every spend |
+| EscalationManager | `0xb5907700Df79B9030FafDaA48C26AE355512cCcd` | Quorum approvals for sensitive actions |
+| AnomalyOracle | `0x2eae369C3f93ebf5Bbe62FBE6d2CD976977f7AE8` | Anomaly signals for the policy layer |
+| VendorRegistry | `0xeA4597b02Ea2958A80afc47c417422598b9c548C` | Vendor allowlist, categories, and caps |
 
-These addresses are the legacy v1 testnet deployment. The app and indexer move to the committed
-v2 manifest after the one-time redeploy; owners must redeploy v1 wallets through the v2 factory.
+These are the protocol v2 contracts recorded in the committed manifest
+`packages/contracts/deployments/arc-testnet.json` (deployed 7 September 2026, indexed from block
+60,951,839); the app and indexer read addresses from that manifest. The earlier v1 deployment is
+retired and owners must redeploy v1 wallets through the v2 factory.
 Neither deployment has received an independent third-party audit and neither should hold
 production funds.
 
