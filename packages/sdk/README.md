@@ -153,6 +153,10 @@ console.log(verification.ok, verification.issuer.status);
 `verifyPaymentReceipt` runs entirely offline against the issuer registry
 bundled in the SDK. The same `reference` returns the same receipt
 (`replayed: true`); reusing a reference for a different payment is rejected.
+`executePaymentIntentWithReceipt` does not act on a replayed receipt, since
+the earlier attempt may already have paid and the contract does not
+deduplicate references: it returns `errorCode: "RECEIPT_REPLAYED"` unless
+called with `{ executeReplayedReceipt: true }` or a fresh reference.
 See the repository's `docs/PAYMENT-RECEIPTS.md` for the format, the trust
 model and the API.
 

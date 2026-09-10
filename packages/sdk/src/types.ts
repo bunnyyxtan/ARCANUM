@@ -60,6 +60,14 @@ export type ArcanumClientConfig = Readonly<{
   pollingIntervalMs?: number;
 }>;
 
+export type ExecutePaymentIntentWithReceiptOptions = Readonly<{
+  /**
+   * Act on a receipt that was already issued for this reference. Off by
+   * default, because the earlier attempt may already have paid.
+   */
+  executeReplayedReceipt?: boolean;
+}>;
+
 export type ExecuteUSDCInput = Readonly<{
   to: Address;
   amount: bigint;

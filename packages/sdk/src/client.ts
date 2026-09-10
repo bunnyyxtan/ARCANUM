@@ -47,6 +47,7 @@ import type {
   ArcanumClientConfig,
   Escalation,
   EscalationResolved,
+  ExecutePaymentIntentWithReceiptOptions,
   ExecuteUSDCInput,
   ExecuteUSDCResult,
   PaymentIntentInput,
@@ -354,9 +355,16 @@ export class ArcanumClient {
    * the resulting transaction back to it. The receipt id travels in the
    * executeUSDC reason bytes, so the chain itself names the decision it acted
    * on. Denied and frozen verdicts never reach the chain.
+   *
+   * A replayed receipt (one this reference already obtained earlier) is not
+   * acted on by default: the earlier attempt may already have paid, and the
+   * contract does not deduplicate references. Pass `executeReplayedReceipt`
+   * only when you know the receipt has not been acted on, for example after
+   * inspecting it with `requestPaymentReceipt` first.
    */
   async executePaymentIntentWithReceipt(
     input: PaymentIntentInput,
+    options: ExecutePaymentIntentWithReceiptOptions = {},
   ): Promise<PaymentIntentWithReceiptResult> {
     const intent = paymentIntentInputSchema.parse(input);
     const { receipt, replayed } = await this.requestPaymentReceipt(intent);
@@ -370,6 +378,22 @@ export class ArcanumClient {
 
     if (decision.verdict !== "allow" && decision.verdict !== "escalate") {
       return { receipt, replayed, result: preflight, evidence: null };
+    }
+
+    if (replayed && !options.executeReplayedReceipt) {
+      return {
+        receipt,
+        replayed,
+        result: createPaymentIntentResult(intent, {
+          decision: "validation_error",
+          reason:
+            "A receipt for this reference was already issued, so the payment may already have been sent. Inspect the receipt's evidence, then retry with executeReplayedReceipt or a new reference.",
+          amountBaseUnits: receipt.receipt.amountBaseUnits,
+          policyReference: preflight.policyReference,
+          errorCode: "RECEIPT_REPLAYED",
+        }),
+        evidence: null,
+      };
     }
 
     let result: PaymentIntentResult;
