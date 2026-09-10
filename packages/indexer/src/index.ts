@@ -14,6 +14,7 @@ import { ARC_CHAIN_ID, escalationReasonFromIndex, freezeSourceFromIndex } from "
 import { and, eq } from "drizzle-orm";
 
 import { loadDeployment } from "./deployment";
+import { transferReasonText } from "./reason-text";
 import {
   syncCheckpoint as persistCheckpoint,
   syncAnomaly,
@@ -292,13 +293,14 @@ ponder.on("GuardedWallet:TransferExecuted", async ({ event }) => {
 });
 
 ponder.on("GuardedWallet:TransferEscalated", async ({ event }) => {
+  const reason = transferReasonText(event.args.reason);
   await syncTransferEscalated({
     walletAddress: asAddress(event.args.wallet),
     txHash: event.transaction.hash,
     logIndex: logIndex(event.log.logIndex),
     toAddress: asAddress(event.args.to),
     amount: asBigint(event.args.amount),
-    reason: reasonName(event.args.reason),
+    reason,
     escalationId: asString(event.args.escalationId),
     blockNumber: Number(event.block.number),
     timestamp: blockDate(event.block.timestamp),
@@ -331,7 +333,7 @@ ponder.on("GuardedWallet:TransferEscalated", async ({ event }) => {
           toAddress: asAddress(event.args.to),
           amount,
           verdict: "ESCALATE",
-          reason: reasonName(event.args.reason),
+          reason,
           vendorCategory: "compute",
           dailySpentAfter: "0",
         })
@@ -351,7 +353,7 @@ ponder.on("GuardedWallet:TransferEscalated", async ({ event }) => {
       transferId: transfer?.id,
       toAddress: asAddress(event.args.to),
       amount,
-      reason: reasonName(event.args.reason),
+      reason,
       createdAt: blockDate(event.block.timestamp),
       expiresAt: blockDate(asBigint(event.args.expiresAt)),
       status: "PENDING",
