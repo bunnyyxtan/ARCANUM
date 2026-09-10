@@ -324,12 +324,18 @@ agent signer, some Arc Testnet USDC in it, and Node 24.
 3. From an agent runtime, request a receipt for a small payment inside the
    per-transaction cap, then one above the escalation threshold, then one to a
    vendor outside the allowed categories. Expect `allow`, `escalate`, `deny`.
+   `scripts/receipts-demo.ts` does this with the SDK
+   (`npx tsx scripts/receipts-demo.ts allow|deny|escalate`; the environment
+   it reads is listed at the top of the file) and writes each envelope to
+   `demo-output/`.
 4. Run `executePaymentIntentWithReceipt` for the allowed and the escalated
-   intents. The allowed one transfers USDC and is linked as
-   `execution/executed`; the escalated one creates an onchain hold and is
-   linked as `execution/escalated` plus `escalation/pending`.
+   intents (`receipts-demo.ts allow --execute`, `escalate --execute`). The
+   allowed one transfers USDC and is linked as `execution/executed`; the
+   escalated one creates an onchain hold and is linked as
+   `execution/escalated` plus `escalation/pending`.
 5. Approve or reject the hold from the approver portal, then post the same
-   transaction hash again to `/api/receipts/<id>/evidence`. The new
+   transaction hash again to `/api/receipts/<id>/evidence`
+   (`receipts-demo.ts link <receiptId> <txHash>`). The new
    `escalation/<status>` row appears on the receipt.
 6. Open `/receipts` and each receipt's detail page; every check in the
    verification panel is computed in the browser. Download the JSON, then
