@@ -244,13 +244,6 @@ export default function LandingPage() {
                     <Arrow />
                   </button>
                   <MagneticAnchor
-                    href="/dashboard?preview=1"
-                    className="warm-pill warm-pill-ghost inline-flex items-center gap-2 rounded-full border border-[var(--wl-line)] px-6 py-3.5 text-[12px] font-semibold text-[var(--wl-ink)]"
-                  >
-                    Preview read-only
-                    <Arrow />
-                  </MagneticAnchor>
-                  <MagneticAnchor
                     href="/docs"
                     className="warm-pill warm-pill-ghost inline-flex items-center gap-2 rounded-full border border-[var(--wl-line)] px-6 py-3.5 text-[12px] font-semibold text-[var(--wl-ink)]"
                   >
