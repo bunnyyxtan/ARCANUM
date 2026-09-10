@@ -117,7 +117,11 @@ testnet signer.
 the wallet's policy gives the intent, evaluated at one pinned block and signed
 by the published Arcanum issuer key. Nothing moves onchain. The receipt is an
 offline-verifiable record of a preflight, not an authorization; the contract
-still decides at execution time.
+still decides at execution time. The client verifies every receipt it
+receives (issuer signature, digest, its own request signature, and that the
+receipt answers the intent it just signed) before returning it; a receipt
+that fails is a `RECEIPT_UNVERIFIED` or `RECEIPT_MISMATCH` error, never a
+result. Pass `receiptIssuers` in the config to trust a self-hosted issuer.
 
 `executePaymentIntentWithReceipt` obtains the receipt first, submits
 `executeUSDC` only for `allow` and `escalate` with the receipt id in the reason
