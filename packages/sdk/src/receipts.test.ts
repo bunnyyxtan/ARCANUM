@@ -104,7 +104,27 @@ describe("payment decision receipts", () => {
     const fetch = async () =>
       jsonResponse(201, { receipt: { ...envelope, signature: "0x00" }, replayed: false });
 
-    await expect(clientWith(fetch).requestPaymentReceipt(intent)).rejects.toThrow();
+    await expect(clientWith(fetch).requestPaymentReceipt(intent)).rejects.toMatchObject({
+      name: "ReceiptRequestError",
+      code: "MALFORMED_RESPONSE",
+      status: 201,
+      message: expect.stringContaining("signature"),
+    });
+  });
+
+  it("treats a missing replayed flag as a malformed response, not as a fresh receipt", async () => {
+    const { envelope, intent } = await fixtures();
+    const execute = vi.fn();
+    const client = clientWith(
+      async () => jsonResponse(201, { receipt: envelope }),
+      execute as unknown as ArcanumClient["executeUSDC"],
+    );
+
+    await expect(client.executePaymentIntentWithReceipt(intent)).rejects.toMatchObject({
+      code: "MALFORMED_RESPONSE",
+      message: expect.stringContaining("replayed"),
+    });
+    expect(execute).not.toHaveBeenCalled();
   });
 
   it("refuses a receipt whose issuer signature does not verify", async () => {
