@@ -30,6 +30,18 @@
   <sub>The operator dashboard: capital under governance, active agents, a live decision stream, and the human restraint queue.</sub>
 </p>
 
+## ETHOnline 2026
+
+Arcanum is entered as a Continuity project (Extend Open Source). The repository, its history and the production app predate the event; the feature built during it is **payment decision receipts**.
+
+| | |
+| --- | --- |
+| What is new | Issuer-signed, offline-verifiable receipts of the policy verdict for a signed payment intent, linked to the transaction that acts on them: `/receipts` in the dashboard, the public `/verify` page, and `requestPaymentReceipt` / `executePaymentIntentWithReceipt` in the SDK |
+| Event work in one view | [`pre-ethonline-2026...ethonline-2026`](https://github.com/bunnyyxtan/ARCANUM/compare/pre-ethonline-2026...ethonline-2026): every commit after the baseline tag, with real dates |
+| What existed before, what was built during, how AI was used | [PRE-EXISTING.md](./PRE-EXISTING.md) |
+| Feature documentation | [docs/PAYMENT-RECEIPTS.md](./docs/PAYMENT-RECEIPTS.md) |
+| Try it | [thearcanum.in/verify](https://thearcanum.in/verify), no account needed |
+
 ## Overview
 
 Arcanum lets you give AI agents real USDC wallets without giving them unrestricted control of funds. It works for anyone who runs agents that spend money: individuals, teams, DAOs, and companies.
