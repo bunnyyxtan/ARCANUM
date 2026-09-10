@@ -18,6 +18,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `attachPaymentReceiptEvidence`. Built during ETHOnline 2026; see
   [`PAYMENT-RECEIPTS.md`](./PAYMENT-RECEIPTS.md).
 
+### Changed
+
+- Protocol v2 contracts (policy and escalation changes across GuardedWallet,
+  PolicyEngine, EscalationManager, AnomalyOracle and WalletFactory),
+  redeployed on Arc Testnet on 7 September 2026 and recorded in
+  `packages/contracts/deployments/arc-testnet.json`, which the app and the
+  indexer now read addresses from. The v1 deployment is retired; owners
+  redeploy v1 wallets through the v2 factory.
+- TypeScript SDK 3.0.0 (published as `arcanum-sdk`) and Python SDK 3.0.0:
+  ABIs and types for contracts v2, the payment intent `idempotencyKey` renamed
+  to `reference` (references do not make retries idempotent), transaction
+  receipt status enforced with `confirm(txHash)` and `TransferRevertedError`.
+
 ## [2.1.0] - 2026-08-11
 
 Arc Testnet redeploy and SDK 2.1.0.
