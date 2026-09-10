@@ -76,32 +76,89 @@ sent on to policy evaluation); its behaviour is otherwise unchanged.
 
 ## AI-use disclosure
 
-The receipts feature was designed and built by the maintainer working with an
-AI coding agent (Replit Agent) in a pair-programming loop, which is also how
-the pre-existing codebase was developed. Concretely:
+Arcanum is a maintainer-owned product that was built, before and during the
+event, by the maintainer directing an AI coding agent (Replit Agent). This
+section answers the event's three questions in order: what the maintainer
+contributed, which files the agent wrote, and where the directing artifacts
+are.
 
-- **Planning.** The maintainer wrote the feature brief and the trust model
-  (an agent signature is not a signature over the verdict; preflight is not
-  settlement; a revert leaves no logs; a receipt never authorizes a transfer)
-  and reviewed every design decision, including the ones that were changed
-  after review (wallet-local escalation manager resolution, no deny gate on
-  evidence, zero-recipient rejection). The planning document
-  [`docs/ethonline-2026/plan.md`](./docs/ethonline-2026/plan.md) and the build
-  log [`docs/ethonline-2026/build-log.md`](./docs/ethonline-2026/build-log.md)
-  are included as required.
-- **Implementation.** Code in `packages/shared/src/receipts`,
-  `packages/api/src/receipts`, `packages/sdk/src/receipts.ts`, the receipt
-  routes, the migration, the receipts UI and the documentation was written
-  with AI assistance under the maintainer's direction, then read, run and
-  adjusted by the maintainer. Each slice went through an independent
-  code-review pass whose findings were fixed before commit.
-- **Verification.** Unit and API tests (shared, api, sdk), Biome, TypeScript
-  and the production migration were run before each commit. The testnet
-  demonstration referenced by the submission is run by the maintainer against
-  the deployed API; its transactions are real Arc Testnet transactions.
-- **Not AI-generated.** The submission video is narrated by the maintainer.
-  No credentials, hidden instructions or private material are included in the
-  repository.
+### Maintainer's involvement
+
+- **Product and scope.** The maintainer owns Arcanum: the contracts (v2
+  deployed on 7 September), API, indexer, SDKs, dashboard, production
+  database, deployment and domain. The maintainer chose Payment Decision
+  Receipts as the one feature to build for the event, with the constraints
+  that it must not change the contracts and must never become a spending
+  gate.
+- **Trust model and rules.** The maintainer's brief
+  ([`docs/ethonline-2026/plan.md`](./docs/ethonline-2026/plan.md)) fixes the
+  rules the feature is built on: an agent signature is a signature over the
+  intent, not the verdict; preflight is not settlement; a revert leaves no
+  logs; a receipt never authorizes a transfer; nothing is claimed that the
+  API or the chain does not actually provide.
+- **Direction and review.** Work was done in slices under ground rules set by
+  the maintainer: no new dependencies, no scope expansion, real incremental
+  commits, and lint, typecheck, tests plus a separate code-review pass before
+  each commit. The maintainer reviewed each slice's result and directed the
+  changes. Every design decision was made or approved by the maintainer,
+  including the ones reversed after review (wallet-local escalation manager
+  resolution, no deny gate on evidence, zero-recipient rejection); they are
+  numbered, with reasons, in
+  [`docs/ethonline-2026/build-log.md`](./docs/ethonline-2026/build-log.md).
+- **Operation and demonstration.** The issuer key, the production migration
+  and the deployment live on the maintainer's infrastructure and were rolled
+  out under the maintainer's authority. The testnet demonstration referenced
+  by the submission is run by the maintainer against the deployed API; its
+  transactions are real Arc Testnet transactions. The submission video is
+  narrated by the maintainer.
+
+### Attribution: what the agent wrote
+
+All code, tests, migration and documentation changed on the event branch
+(`git diff pre-ethonline-2026..ethonline-2026`) were written by the AI agent
+under the direction described above. The maintainer did not hand-write files
+in this diff. Specifically:
+
+- `packages/shared/src/receipts/**`: schema, canonical JSON, digests, EIP-191
+  signing, issuer registry, verifier and their tests.
+- `packages/api/src/receipts/**` and `packages/api/src/routers/receipts.ts`,
+  plus the touched `chain.ts`, `router.ts`, `server.ts`, `trpc.ts`,
+  `supabase/client.ts`, `routers/payment-intents.ts` and the test adjustments
+  in `routers/*.test.ts`.
+- `apps/web/app/api/receipts/**` (REST routes),
+  `apps/web/app/(dashboard)/receipts/**`, `apps/web/app/(public)/verify/**`,
+  `apps/web/lib/receipts.ts` and the navigation entries in
+  `apps/web/components/**`.
+- `packages/sdk/src/receipts.ts` and the touched `client.ts`, `errors.ts`,
+  `index.ts`, `types.ts`, `receipts.test.ts`.
+- `supabase/migrations/20260910120000_payment_receipts.sql`.
+- Documentation: `docs/PAYMENT-RECEIPTS.md`, `docs/ethonline-2026/*`, the
+  README and SDK README sections, `apps/docs/pages/concepts/receipts.mdx`,
+  `apps/docs/pages/api-reference.mdx`, the `.env.example` entries, the CI
+  workflow change, and this file.
+
+The code-review pass on each slice was performed by a second AI reviewer
+working from the diff, and its findings were fixed before commit. Unit and
+API tests (shared, api, sdk), Biome and TypeScript were run before each
+commit; the migration was applied to production before the feature was
+deployed. The pre-existing codebase listed above was developed the same way.
+
+### Spec-driven artifacts
+
+The feature was directed through two documents that are included in the
+repository as required:
+
+- [`docs/ethonline-2026/plan.md`](./docs/ethonline-2026/plan.md): the brief,
+  with scope, trust model, out-of-scope list and submission requirements.
+- [`docs/ethonline-2026/build-log.md`](./docs/ethonline-2026/build-log.md):
+  the working record, with the numbered design decisions and their reasons,
+  the receipt envelope and the slice status.
+
+Direction between those documents happened in interactive sessions with the
+agent; those conversational prompts are not reproduced verbatim in the
+repository, and the two documents are the written record of that direction.
+No credentials, hidden instructions or private material are included in the
+repository.
 
 ## Licence
 
