@@ -6,12 +6,19 @@
  * "agent runtime" step of the walkthrough in docs/PAYMENT-RECEIPTS.md.
  *
  *   npx tsx scripts/receipts-demo.ts allow              receipt only, nothing onchain
- *   npx tsx scripts/receipts-demo.ts allow --execute    receipt, executeUSDC, evidence link
- *   npx tsx scripts/receipts-demo.ts deny               receipt only (a deny never executes)
- *   npx tsx scripts/receipts-demo.ts escalate --execute receipt, onchain hold, evidence link
+ *   npx tsx scripts/receipts-demo.ts allow --execute    receipt, then executeUSDC, evidence link
+ *   npx tsx scripts/receipts-demo.ts deny               receipt only (--execute is refused)
+ *   npx tsx scripts/receipts-demo.ts escalate --execute receipt, then onchain hold, evidence link
+ *   npx tsx scripts/receipts-demo.ts all [--execute]    the three above; deny stays receipt-only
  *   npx tsx scripts/receipts-demo.ts link <receiptId> <txHash>
  *                                                        re-post a hold's tx after the council
  *                                                        decided, to record escalation/<status>
+ *
+ * With --execute the receipt is requested and shown first, and the payment is
+ * sent only when that receipt is newly issued and its verdict is the one the
+ * scenario expects. A different verdict stops the run with exit code 1, so a
+ * misconfigured policy can never turn the deny or escalate scenario into a
+ * transfer.
  *
  * Environment:
  *   AGENT_PRIVATE_KEY   agent signer authorized on the governed wallet (never commit it)
@@ -137,7 +144,12 @@ async function describe(envelope: PaymentReceiptEnvelope, replayed: boolean): Pr
   console.log(`dashboard   ${apiUrl}/receipts/${receipt.receiptId}`);
 }
 
+class ScenarioMismatch extends Error {}
+
 async function runScenario(scenario: Scenario, execute: boolean): Promise<void> {
+  if (execute && scenario === "deny") {
+    throw new Error("The deny scenario is receipt-only; run it without --execute.");
+  }
   const arcanum = client();
   const intent = intentFor(scenario, privateKeyToAccount(hexEnv("AGENT_PRIVATE_KEY")).address);
   console.log(`\n== ${scenario}${execute ? " (execute)" : ""}`);
@@ -145,19 +157,34 @@ async function runScenario(scenario: Scenario, execute: boolean): Promise<void> 
   console.log(`amount      ${intent.amount} USDC`);
   console.log(`reference   ${intent.reference}`);
 
-  if (!execute) {
-    const { receipt, replayed } = await arcanum.requestPaymentReceipt(intent);
-    await describe(receipt, replayed);
-    if (receipt.receipt.decision.verdict !== scenario) {
-      console.log(
-        `note        the policy answered ${receipt.receipt.decision.verdict}, not ${scenario}; adjust the vendor or amount for this scenario`,
-      );
+  const { receipt, replayed } = await arcanum.requestPaymentReceipt(intent);
+  await describe(receipt, replayed);
+  const verdict = receipt.receipt.decision.verdict;
+  if (verdict !== scenario) {
+    const advice = execute ? "nothing was sent onchain" : "adjust the vendor or amount";
+    const message = `the policy answered ${verdict}, not ${scenario}; ${advice}`;
+    if (execute) {
+      throw new ScenarioMismatch(message);
     }
+    console.log(`note        ${message}`);
     return;
   }
+  if (!execute) {
+    return;
+  }
+  if (replayed) {
+    throw new ScenarioMismatch("this reference already had a receipt; nothing was sent onchain");
+  }
 
-  const outcome = await arcanum.executePaymentIntentWithReceipt(intent);
-  await describe(outcome.receipt, outcome.replayed);
+  // The receipt above is the one being acted on: same reference, inspected,
+  // newly issued and never executed, which is the documented reason to allow
+  // the replay.
+  const outcome = await arcanum.executePaymentIntentWithReceipt(intent, {
+    executeReplayedReceipt: true,
+  });
+  if (outcome.receipt.receipt.receiptId !== receipt.receipt.receiptId) {
+    console.log(`receipt     ${outcome.receipt.receipt.receiptId} (acted on)`);
+  }
   console.log(`execution   ${outcome.result.decision} ${outcome.result.reason}`);
   if (outcome.result.txHash) {
     console.log(`tx          ${outcome.result.txHash}`);
@@ -201,7 +228,7 @@ async function main(): Promise<void> {
   }
   if (command === "all") {
     for (const scenario of SCENARIOS) {
-      await runScenario(scenario, execute);
+      await runScenario(scenario, execute && scenario !== "deny");
     }
     return;
   }
@@ -214,6 +241,11 @@ async function main(): Promise<void> {
 }
 
 main().catch((error: unknown) => {
+  if (error instanceof ScenarioMismatch) {
+    console.error(`\nstopped: ${error.message}`);
+    process.exitCode = 1;
+    return;
+  }
   const message = error instanceof Error ? error.message : String(error);
   const code =
     error && typeof error === "object" && "code" in error && typeof error.code === "string"
