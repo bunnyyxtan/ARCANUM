@@ -18,7 +18,10 @@
  * sent only when that receipt is newly issued and its verdict is the one the
  * scenario expects. A different verdict stops the run with exit code 1, so a
  * misconfigured policy can never turn the deny or escalate scenario into a
- * transfer.
+ * transfer. The transaction acts on that inspected receipt, not on a second
+ * request: its recipient and amount come from the receipt body and its id
+ * travels in the executeUSDC reason bytes, the same way the SDK's
+ * executePaymentIntentWithReceipt sends it.
  *
  * Environment:
  *   AGENT_PRIVATE_KEY   agent signer authorized on the governed wallet (never commit it)
@@ -38,6 +41,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { getAddress } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 
 import {
@@ -49,6 +53,7 @@ import {
   ArcanumClient,
   type PaymentIntentInput,
   type PaymentReceiptEnvelope,
+  TransferRevertedError,
   verifyPaymentReceipt,
 } from "../packages/sdk/src/index";
 
@@ -176,30 +181,59 @@ async function runScenario(scenario: Scenario, execute: boolean): Promise<void> 
     throw new ScenarioMismatch("this reference already had a receipt; nothing was sent onchain");
   }
 
-  // The receipt above is the one being acted on: same reference, inspected,
-  // newly issued and never executed, which is the documented reason to allow
-  // the replay.
-  const outcome = await arcanum.executePaymentIntentWithReceipt(intent, {
-    executeReplayedReceipt: true,
-  });
-  if (outcome.receipt.receipt.receiptId !== receipt.receipt.receiptId) {
-    console.log(`receipt     ${outcome.receipt.receipt.receiptId} (acted on)`);
+  const txHash = await executeInspected(arcanum, receipt);
+  if (!txHash) {
+    console.log("tx          none; nothing reached the chain");
+    return;
   }
-  console.log(`execution   ${outcome.result.decision} ${outcome.result.reason}`);
-  if (outcome.result.txHash) {
-    console.log(`tx          ${outcome.result.txHash}`);
-  }
-  if (outcome.result.escalationId) {
-    console.log(`escalation  ${outcome.result.escalationId}`);
-  }
-  if (outcome.evidence) {
-    for (const row of outcome.evidence) {
+  console.log(`tx          ${txHash}`);
+  try {
+    const attached = await arcanum.attachPaymentReceiptEvidence(receipt.receipt.receiptId, txHash);
+    for (const row of attached.evidence) {
       console.log(`evidence    ${row.kind}/${row.outcome} ${row.txHash ?? ""}`);
     }
-  }
-  if (outcome.evidenceError) {
-    console.log(`evidence    NOT LINKED: ${outcome.evidenceError.message}`);
+  } catch (error) {
+    console.log(
+      `evidence    NOT LINKED: ${error instanceof Error ? error.message : String(error)}`,
+    );
     console.log("            rerun as: link <receiptId> <txHash>");
+  }
+}
+
+/**
+ * Sends the payment the inspected receipt describes. Requesting again through
+ * executePaymentIntentWithReceipt would act on whatever the second response
+ * says, so the checks above would no longer cover the transaction.
+ */
+async function executeInspected(
+  arcanum: ArcanumClient,
+  envelope: PaymentReceiptEnvelope,
+): Promise<`0x${string}` | undefined> {
+  const { receiptId, request, amountBaseUnits } = envelope.receipt;
+  try {
+    const execution = await arcanum.executeUSDC({
+      to: getAddress(request.vendorAddress),
+      amount: BigInt(amountBaseUnits),
+      reason: request.purpose,
+      metadata: {
+        reference: request.reference,
+        tokenSymbol: request.tokenSymbol ?? "USDC",
+        receiptId,
+      },
+    });
+    const detail = execution.error ? ` ${execution.error.message}` : "";
+    console.log(`execution   ${execution.verdict.toLowerCase()}${detail}`);
+    if (execution.escalationId) {
+      console.log(`escalation  ${execution.escalationId}`);
+    }
+    return execution.txHash;
+  } catch (error) {
+    if (error instanceof TransferRevertedError) {
+      // The call reached the chain and reverted; the revert is evidence too.
+      console.log(`execution   reverted ${error.reason ?? error.message}`);
+      return error.txHash;
+    }
+    throw error;
   }
 }
 
