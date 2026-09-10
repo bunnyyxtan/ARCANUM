@@ -323,6 +323,23 @@ describe("receipt access", () => {
     expect(listed.nextCursor).toBeNull();
   });
 
+  it("reports a stored row that no longer matches its signed digest", async () => {
+    const row = tables.payment_receipts[0] as SupabaseRow & { envelope: PaymentReceiptEnvelope };
+    row.envelope = {
+      ...row.envelope,
+      receipt: {
+        ...row.envelope.receipt,
+        decision: { ...row.envelope.receipt.decision, verdict: "deny" },
+      },
+    };
+    const ctx = context({ tables, session: session(OWNER) });
+
+    await expect(readPaymentReceipt(ctx, RECEIPT_ID, deps())).rejects.toMatchObject({
+      code: "RECEIPT_STORE_UNAVAILABLE",
+      message: expect.stringContaining("no longer matches its signed digest"),
+    });
+  });
+
   it("lets the requesting agent signer see its own receipt", async () => {
     const ctx = context({ tables, session: session(testAgentAccount.address) });
 

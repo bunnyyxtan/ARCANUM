@@ -10,6 +10,7 @@ import {
   type Address,
   type Hex,
   type Log,
+  type ParseEventLogsReturnType,
   type TransactionReceipt,
   decodeFunctionData,
   hexToString,
@@ -23,6 +24,7 @@ import { ReceiptError } from "./errors";
 import {
   type NewEvidence,
   type StoredReceipt,
+  findReceiptsLinkedToTransaction,
   insertReceiptEvidence,
   readReceiptEvidence,
   readStoredReceipt,
@@ -88,15 +90,21 @@ const ESCALATION_OUTCOMES: Record<EscalationChainStatus, PaymentReceiptEvidenceO
  * The caller proves nothing but a transaction hash; everything else is read
  * from the chain and must agree with the receipt: the transaction has to be
  * an `executeUSDC` call from the receipt's agent signer to the receipt's
- * wallet, for the receipt's vendor and amount. A reverted call is recorded as
- * such. A successful call is classified from the wallet's own events, and a
- * held transfer additionally records the escalation's current status, so
- * posting the same hash again later appends the resolution.
+ * wallet, for the receipt's vendor and amount, and the single wallet event it
+ * emitted has to name the same signer, vendor and amount. Reason bytes that
+ * name another receipt disqualify it, and a transaction already linked to
+ * another receipt cannot be linked again: one call acted on one decision.
+ *
+ * A reverted call is recorded as such; the chain keeps no reason for it, so
+ * the record says the transfer did not happen, not why. A successful call is
+ * classified from the wallet's own event, and a held transfer additionally
+ * records the escalation's current status, so posting the same hash again
+ * later appends the resolution.
  *
  * Denied receipts are linkable too: an agent that ignores a "deny" and sends
  * anyway leaves a reverted call, and a policy loosened after issuance leaves
  * an executed one. Both are worth recording; `details.verdictMatches` says
- * which happened.
+ * whether the chain did what the receipt predicted.
  */
 export async function attachPaymentReceiptEvidence(
   ctx: ApiContext,
@@ -137,6 +145,24 @@ export async function attachPaymentReceiptEvidence(
     throw new ReceiptError(
       "EVIDENCE_MISMATCH",
       "Transaction pays a different vendor or amount than the receipt attests.",
+    );
+  }
+
+  const named = receiptNamedInCalldata(call.reason);
+  if (named && named !== body.receiptId) {
+    throw new ReceiptError(
+      "EVIDENCE_MISMATCH",
+      `Transaction names receipt ${named} in its reason bytes, not ${body.receiptId}.`,
+    );
+  }
+
+  const linkedElsewhere = (await findReceiptsLinkedToTransaction(ctx, txHash)).filter(
+    (receiptId) => receiptId !== body.receiptId,
+  );
+  if (linkedElsewhere.length > 0) {
+    throw new ReceiptError(
+      "EVIDENCE_CONFLICT",
+      `Transaction ${txHash} is already linked to receipt ${linkedElsewhere[0]}; one call acted on one decision.`,
     );
   }
 
@@ -244,6 +270,20 @@ async function classifyExecution(
       "Transaction succeeded but the wallet emitted no transfer, escalation or freeze event.",
     );
   }
+  if (events.length > 1) {
+    // One executeUSDC call emits exactly one of these; more means this is not
+    // the single decision the receipt describes.
+    throw new ReceiptError(
+      "EVIDENCE_MISMATCH",
+      `Transaction emitted ${events.length} wallet events; a receipt links to exactly one decision.`,
+    );
+  }
+  if (!eventMatchesReceipt(event, body)) {
+    throw new ReceiptError(
+      "EVIDENCE_MISMATCH",
+      `Wallet ${event.eventName} event does not name the receipt's wallet, signer, vendor and amount.`,
+    );
+  }
 
   switch (event.eventName) {
     case "TransferExecuted":
@@ -324,10 +364,69 @@ async function readStatus(
   }
 }
 
+type WalletEvent = ParseEventLogsReturnType<
+  typeof GuardedWalletAbi,
+  ["TransferExecuted", "TransferEscalated", "Frozen"],
+  true
+>[number];
+
+/**
+ * The calldata already proved signer, vendor and amount; the event the wallet
+ * emitted must say the same, so evidence never rests on the calldata alone.
+ */
+function eventMatchesReceipt(event: WalletEvent, body: StoredReceipt["envelope"]["receipt"]) {
+  const request = body.request;
+  if (event.args.wallet.toLowerCase() !== request.governedWalletAddress) {
+    return false;
+  }
+  switch (event.eventName) {
+    case "TransferExecuted":
+      return (
+        event.args.signer.toLowerCase() === request.agentSignerAddress &&
+        event.args.to.toLowerCase() === request.vendorAddress &&
+        event.args.amount.toString() === body.amountBaseUnits
+      );
+    case "TransferEscalated":
+      return (
+        event.args.to.toLowerCase() === request.vendorAddress &&
+        event.args.amount.toString() === body.amountBaseUnits
+      );
+    case "Frozen":
+      return true;
+  }
+}
+
 /** Whether the agent named the receipt in the executeUSDC reason bytes. */
 function calldataNamesReceipt(reasonBytes: Hex, receiptId: string, stored: StoredReceipt) {
   const text = safeHexToString(reasonBytes).toLowerCase();
   return text.includes(receiptId.toLowerCase()) || text.includes(stored.envelope.receiptDigest);
+}
+
+/**
+ * The receipt id the SDK puts in the reason metadata (`{ reason, metadata:
+ * { receiptId } }`), when the calldata carries one. Free-text reasons name
+ * nothing, so they neither confirm nor contradict a receipt.
+ */
+function receiptNamedInCalldata(reasonBytes: Hex): string | null {
+  const text = safeHexToString(reasonBytes);
+  if (!text.startsWith("{")) {
+    return null;
+  }
+  try {
+    const parsed: unknown = JSON.parse(text);
+    const metadata =
+      typeof parsed === "object" && parsed !== null
+        ? (parsed as { metadata?: unknown }).metadata
+        : undefined;
+    const receiptId =
+      typeof metadata === "object" && metadata !== null
+        ? (metadata as { receiptId?: unknown }).receiptId
+        : undefined;
+    return typeof receiptId === "string" && receiptId.length > 0 ? receiptId.toLowerCase() : null;
+  } catch {
+    // Reason bytes that merely start with a brace are free text, not metadata.
+    return null;
+  }
 }
 
 function safeHexToString(value: Hex) {
@@ -338,7 +437,12 @@ function safeHexToString(value: Hex) {
   }
 }
 
-/** The receipt predicted a verdict; the chain either agreed or the policy changed in between. */
+/**
+ * Whether the chain did what the receipt predicted. A revert only shows that
+ * the transfer did not happen: for a `deny` that is consistent but unproven
+ * (the call may have failed for gas, balance or any other reason), so it is
+ * left `null`; for every other verdict it is a plain disagreement.
+ */
 function verdictMatches(verdict: string, outcome: string) {
   switch (outcome) {
     case "executed":
@@ -348,7 +452,7 @@ function verdictMatches(verdict: string, outcome: string) {
     case "frozen":
       return verdict === "freeze";
     case "reverted":
-      return verdict === "deny";
+      return verdict === "deny" ? null : false;
     default:
       return null;
   }

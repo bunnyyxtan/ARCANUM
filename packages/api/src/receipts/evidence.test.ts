@@ -294,6 +294,54 @@ describe("attachPaymentReceiptEvidence", () => {
       ],
       [{ input: "0x12345678" }, "not call a GuardedWallet function"],
       [{ logs: [] }, "emitted no transfer"],
+      [
+        {
+          input: executeCall({
+            reason: JSON.stringify({
+              reason: "Monthly API quota",
+              metadata: { receiptId: "0f0f0f0f-0f0f-4f0f-8f0f-0f0f0f0f0f0f" },
+            }),
+          }),
+        },
+        "names receipt 0f0f0f0f-0f0f-4f0f-8f0f-0f0f0f0f0f0f",
+      ],
+      [
+        {
+          logs: [
+            eventLog("TransferExecuted", {
+              wallet: WALLET,
+              signer: "0x9999999999999999999999999999999999999999",
+              to: VENDOR,
+              amount: AMOUNT,
+              escalationId: `0x${"00".repeat(32)}`,
+            }),
+          ],
+        },
+        "does not name the receipt's wallet, signer, vendor and amount",
+      ],
+      [
+        {
+          logs: [
+            eventLog("TransferExecuted", {
+              wallet: WALLET,
+              signer: testAgentAccount.address,
+              to: VENDOR,
+              amount: AMOUNT - 1n,
+              escalationId: `0x${"00".repeat(32)}`,
+            }),
+          ],
+        },
+        "does not name the receipt's wallet, signer, vendor and amount",
+      ],
+      [
+        {
+          logs: [
+            ...executedTx().logs,
+            ...executedTx().logs.map((log) => ({ ...log, logIndex: 4 })),
+          ],
+        },
+        "emitted 2 wallet events",
+      ],
     ];
     for (const [overrides, message] of cases) {
       const ctx = withTransaction(context({ tables }), executedTx(overrides));
@@ -309,6 +357,34 @@ describe("attachPaymentReceiptEvidence", () => {
       });
     }
     expect(tables.payment_receipt_evidence).toHaveLength(0);
+  });
+
+  it("links one transaction to one receipt only", async () => {
+    const ctx = withTransaction(context({ tables }), executedTx());
+    await attachPaymentReceiptEvidence(
+      ctx,
+      { receiptId: RECEIPT_ID, txHash: TX_HASH },
+      evidenceDeps(),
+    );
+    // A second receipt for the same wallet, signer, vendor and amount under a new reference.
+    const other = await issuePaymentReceipt(
+      ctx,
+      normalized(await signedIntent({ reference: "inv-2026-09-0002" })),
+      deps({ receiptId: () => "aaaaaaaa-1111-4222-8333-444444444444" }),
+    );
+
+    await expect(
+      attachPaymentReceiptEvidence(
+        ctx,
+        { receiptId: other.receipt.receipt.receiptId, txHash: TX_HASH },
+        evidenceDeps(),
+      ),
+    ).rejects.toMatchObject({
+      code: "EVIDENCE_CONFLICT",
+      httpStatus: 409,
+      message: expect.stringContaining(`already linked to receipt ${RECEIPT_ID}`),
+    });
+    expect(tables.payment_receipt_evidence).toHaveLength(1);
   });
 
   it("tells the caller to wait when the transaction is not mined yet", async () => {
@@ -345,9 +421,10 @@ describe("attachPaymentReceiptEvidence", () => {
       { receiptId: RECEIPT_ID, txHash: TX_HASH },
       evidenceDeps(),
     );
+    // A revert shows the transfer did not happen, not that the policy denied it.
     expect(ignored.evidence[0]).toMatchObject({
       outcome: "reverted",
-      details: { receiptVerdict: "deny", verdictMatches: true },
+      details: { receiptVerdict: "deny", verdictMatches: null },
     });
 
     // The policy was loosened after issuance and the same call went through.

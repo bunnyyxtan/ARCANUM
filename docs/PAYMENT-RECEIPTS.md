@@ -189,6 +189,7 @@ surface as tRPC's own `BAD_REQUEST` and `TOO_MANY_REQUESTS`.
 | `RECEIPT_NOT_FOUND` | 404 | unknown id, or not visible to the caller (indistinguishable on purpose) |
 | `TRANSACTION_NOT_FOUND` | 404 | evidence: transaction not found or not yet mined |
 | `REQUEST_KEY_CONFLICT` | 409 | reference reused for a different intent |
+| `EVIDENCE_CONFLICT` | 409 | evidence: the transaction is already linked to another receipt |
 | `EVIDENCE_MISMATCH` | 412 | evidence: the transaction is not this receipt's `executeUSDC` call |
 | `RATE_LIMITED` | 429 | shared rate limit |
 | `INTERNAL_ERROR` | 500 | REST only: an unexpected failure; the details stay in the server log |
@@ -222,7 +223,17 @@ receipt and requires that:
 
 - the transaction is an `executeUSDC` call **to the receipt's wallet**, **from
   the receipt's agent signer**, for the receipt's vendor and amount; otherwise
-  `EVIDENCE_MISMATCH`.
+  `EVIDENCE_MISMATCH`;
+- a successful call emitted **exactly one** wallet event, and that event names
+  the receipt's wallet, signer, vendor and amount (as far as each event
+  carries them); otherwise `EVIDENCE_MISMATCH`;
+- if the reason bytes carry SDK metadata naming a receipt, it is this one;
+  otherwise `EVIDENCE_MISMATCH`;
+- no other receipt already holds an execution row for the hash; otherwise
+  `EVIDENCE_CONFLICT`. One call acted on one decision. The check is a lookup
+  before the insert, not a database constraint, so two receipts linking the
+  same hash in the same instant can both succeed; the rows are append-only
+  and carry the hash, so the duplication is visible rather than hidden.
 
 It then records, append-only:
 
@@ -242,8 +253,12 @@ the receipt id or digest). Execution rows also carry `details.verdictMatches`,
 whether the chain did what the receipt said it would; escalation status rows
 describe a later resolution, so theirs is `null`.
 
+A reverted call keeps no reason onchain, so for a `deny` receipt it is
+consistent but unproven and `verdictMatches` stays `null`; for any other
+verdict a revert is a plain disagreement (`false`).
+
 Denied receipts are linkable too. An agent that ignores a `deny` and sends
-anyway leaves a reverted call (`verdictMatches: true`); a policy loosened after
+anyway leaves a reverted call (`verdictMatches: null`); a policy loosened after
 issuance leaves an executed one (`verdictMatches: false`). Both are worth
 recording.
 

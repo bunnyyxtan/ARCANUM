@@ -1,6 +1,7 @@
 import {
   type PaymentReceiptEnvelope,
   type PaymentReceiptEvidence,
+  paymentReceiptDigest,
   paymentReceiptEnvelopeSchema,
   paymentReceiptEvidenceSchema,
 } from "@arcanum/shared";
@@ -39,9 +40,13 @@ export type ReceiptRequestKey = Readonly<{
 export type NewEvidence = Omit<PaymentReceiptEvidence, "id" | "observedAt">;
 
 /**
- * Receipts are persisted exactly as issued: the envelope is stored whole and
- * verified again on the way out, so a row the database could corrupt or a
- * client could tamper with is reported, never rendered as a valid receipt.
+ * Receipts are persisted exactly as issued: the envelope is stored whole in a
+ * table only the service role can write, and every row read back is parsed
+ * against the envelope schema with its digest recomputed from the body, so a
+ * row that no longer says what was signed is reported as a store fault rather
+ * than served. Issuer and agent signatures are checked by the consumers that
+ * act on a receipt (the SDK before it pays, the browser on the receipt page,
+ * the public verifier), which is where a forged signature would matter.
  */
 export async function insertStoredReceipt(
   ctx: ApiContext,
@@ -191,6 +196,18 @@ export async function insertReceiptEvidence(
   }
 }
 
+/** Receipts that already hold an execution row for this transaction hash. */
+export async function findReceiptsLinkedToTransaction(
+  ctx: ApiContext,
+  txHash: string,
+): Promise<string[]> {
+  const rows = await select(ctx, EVIDENCE_TABLE, {
+    filters: { tx_hash: txHash, kind: "execution" },
+    limit: MAX_EVIDENCE_PER_RECEIPT,
+  });
+  return [...new Set(rows.map((row) => stringField(row, ["receipt_id"])))];
+}
+
 export async function readReceiptEvidence(
   ctx: ApiContext,
   receiptId: string,
@@ -210,6 +227,12 @@ export function storedReceiptFromRow(row: SupabaseRow): StoredReceipt {
       "RECEIPT_STORE_UNAVAILABLE",
       `Stored receipt ${stringField(row, ["id"], "?")} is not a valid receipt envelope.`,
       { cause: parsed.error },
+    );
+  }
+  if (paymentReceiptDigest(parsed.data.receipt) !== parsed.data.receiptDigest) {
+    throw new ReceiptError(
+      "RECEIPT_STORE_UNAVAILABLE",
+      `Stored receipt ${stringField(row, ["id"], "?")} no longer matches its signed digest.`,
     );
   }
   const walletId = stringField(row, ["governed_wallet_id"], "");
