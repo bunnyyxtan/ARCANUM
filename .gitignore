@@ -32,3 +32,6 @@ test-results/
 # os
 .DS_Store
 Thumbs.db
+
+# receipts demo runner output (scripts/receipts-demo.ts)
+demo-output/
