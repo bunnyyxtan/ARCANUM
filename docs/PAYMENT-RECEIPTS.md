@@ -286,9 +286,24 @@ outcome.evidence;       // rows the API linked, or null when nothing was sent
 outcome.evidenceError;  // set when the payment happened but linking failed
 ```
 
+Both methods verify the receipt before returning it: issuer signature against
+the registry (`receiptIssuers` in the client config overrides it for a
+self-hosted issuer), receipt digest, the agent's own request signature, and
+that the receipt's `requestDigest` is the digest of the intent just signed.
+A receipt that fails is an `ArcanumError` with code `RECEIPT_UNVERIFIED`, and
+a valid receipt for some other intent is `RECEIPT_MISMATCH`; neither is acted
+on. A body that is not a receipt envelope at all, or that lacks a boolean
+`replayed` flag, is a `ReceiptRequestError` with code `MALFORMED_RESPONSE`.
+The API transports receipts; it is not trusted to say what they contain.
+
 `executePaymentIntentWithReceipt` puts the receipt id into the `executeUSDC`
 reason metadata, so the chain itself names the decision it acted on. `deny`
-and `freeze` verdicts never reach the chain. A transaction that reverts is
+and `freeze` verdicts never reach the chain. A receipt that comes back
+`replayed: true` is not acted on either: the earlier attempt may already have
+paid, and the contract does not deduplicate references, so the result is a
+`validation_error` with `errorCode: "RECEIPT_REPLAYED"` until the caller passes
+`{ executeReplayedReceipt: true }` (after checking the receipt's evidence) or
+uses a new reference. A transaction that reverts is
 still linked as evidence, and when execution returns a hash but linking fails,
 the hash is reported next to the linkage error rather than dropped. One gap
 remains: if the RPC fails while the SDK waits for inclusion, the execution
@@ -341,6 +356,14 @@ agent signer, some Arc Testnet USDC in it, and Node 24.
 - **Evidence trusts the RPC.** Linking re-reads the transaction from the
   configured Arc Testnet RPC; a lying RPC could misclassify evidence. The
   transaction hash is stored so anyone can re-check it independently.
+- **Replay protection is client-side.** The contract does not know about
+  receipts or references, so a second `executeUSDC` for the same reference
+  is a second payment onchain. The SDK refuses to act on a replayed receipt
+  by default; a caller using the REST API directly has to keep that rule.
+  The `replayed` flag itself is the API's statement about its own store and
+  is not covered by the signature: the SDK requires it to be present, but an
+  API you do not operate could omit the truth. Against such an API, keep your
+  own record of references you have already paid.
 - **Council membership is a point-in-time read.** Access for approvers is
   evaluated against the wallet's manager at request time. Evidence status for
   a hold is read from the manager the wallet used in the block of the

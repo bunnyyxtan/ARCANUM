@@ -105,10 +105,11 @@ appended later from verified chain data.
     is only a default (the older `escalations` router still uses it; left
     unchanged, noted in docs). Found in code review of slice b/d.
 14. **Evidence has no deny gate.** A denied receipt can still be linked: a
-    reverted call = the agent ignored the verdict (`verdictMatches: true`);
-    an executed call = policy loosened after issuance (`verdictMatches:
-    false`). `EVIDENCE_NOT_APPLICABLE` was removed. Unused
-    `RECEIPT_ACCESS_DENIED` removed too.
+    reverted call = the agent ignored the verdict; an executed call = policy
+    loosened after issuance (`verdictMatches: false`).
+    `EVIDENCE_NOT_APPLICABLE` was removed. Unused `RECEIPT_ACCESS_DENIED`
+    removed too. Amended by decision 20: a revert no longer counts as
+    `verdictMatches: true` for a deny.
 15. **Input rejection order.** Zero vendor address → `INVALID_RECIPIENT`
     (400) before evaluation (the contract reverts `ZeroAddress`, a receipt
     would attest nothing). Side effect: the legacy `paymentIntents.create`
@@ -122,6 +123,61 @@ appended later from verified chain data.
     The test fake emits PostgREST-shaped values.
 17. **`orgId` is non-null.** Production `governed_wallets.organization_id`
     is NOT NULL; a wallet row without a workspace is `WALLET_NOT_REGISTERED`.
+
+Decisions 18–23 come from the hardening pass on 2026-09-10, an adversarial
+review of the finished feature that asked where the trust claims in the docs
+were not enforced by the code. Each finding became its own commit with a
+failing test first.
+
+18. **The SDK verifies what it is handed.** `requestPaymentReceipt` ran
+    `verifyPaymentReceipt` nowhere and executed on whatever the API
+    returned. It now verifies issuer signature, digest and request signature
+    and requires `requestDigest` to equal the digest of the intent it just
+    signed (`RECEIPT_UNVERIFIED`, `RECEIPT_MISMATCH`). `receiptIssuers` in
+    the client config overrides the bundled registry for self-hosting and
+    tests. The API is a transport for receipts, not the authority on them.
+19. **Replayed receipts are not executed by default.** The contract has no
+    notion of a reference, so re-running `executePaymentIntentWithReceipt`
+    after a replay was a second payment. A `replayed: true` receipt now
+    yields `validation_error` / `RECEIPT_REPLAYED` unless the caller passes
+    `executeReplayedReceipt: true`. Protection is client-side only; the doc
+    says so under limitations.
+20. **A revert proves nothing about why.** `verdictMatches` for a reverted
+    call was `true` whenever the verdict was `deny`, which credited the
+    policy for reverts caused by gas, balance or anything else. It is now
+    `null` for `deny` + revert and `false` for any other verdict + revert.
+21. **Evidence matches the event, not just the calldata.** The first parsed
+    wallet event was accepted as-is. A successful call must now emit exactly
+    one `TransferExecuted` / `TransferEscalated` / `Frozen`, and its args
+    must name the receipt's wallet, signer, vendor and amount (as far as the
+    event carries them). Reason bytes that carry SDK metadata naming a
+    *different* receipt are rejected; free-text reasons remain neutral, per
+    decision 8 (`calldataNamesReceipt` is recorded, not required).
+22. **One transaction, one receipt.** Two receipts with the same wallet,
+    signer, vendor and amount under different references could both claim
+    the same hash. Linking now looks up existing execution rows by hash and
+    answers `EVIDENCE_CONFLICT` (409) when another receipt holds it. This is
+    a lookup, not a unique index: a partial unique index over
+    `(tx_hash, kind)` would turn a cross-receipt race into a silently
+    swallowed "duplicate" inside the idempotent insert path, which is worse
+    than two visible rows. The race window is documented.
+23. **Reorg check on the pinned block.** `eth_call` pins by number, so the
+    snapshot could straddle a reorg with no trace. After the last pinned read
+    (the policy call, not just the wallet reads; the second review caught the
+    first placement) the block is fetched again by number and its hash
+    compared; a mismatch is `CHAIN_READ_FAILED` and nothing is signed. The
+    second review also caught that the SDK turned a missing `replayed` flag
+    into `false`, which would have paid; the flag is now required to be a
+    boolean and a body that is not an envelope is `MALFORMED_RESPONSE`
+    instead of a raw parser error. Also from the same pass: the
+    issuer key is resolved after the idempotency lookup so a replay works
+    while the key is rotated; `storedReceiptFromRow` recomputes the digest
+    and the store comment no longer claims a re-verification it did not do;
+    the receipts list waits for SIWE like the detail page instead of showing
+    a connected-but-unsigned wallet "NO RECEIPTS YET". Kept as-is:
+    `ReceiptRequestError` stays a separate class from `ArcanumError` because
+    API domain codes are open-ended strings and folding them into the closed
+    `ArcanumErrorCode` union would loosen it for every existing caller.
 
 ### Receipt envelope (v1)
 
@@ -171,11 +227,13 @@ appended later from verified chain data.
 | g | docs: PRE-EXISTING.md, docs/PAYMENT-RECEIPTS.md (Mermaid, trust model, walkthrough, limitations), AI disclosure, .env.example sync, README + SDK README sections, docs/ethonline-2026 planning artifacts | done (reviewed; overclaims on tx-hash retention, key retirement and demo status corrected) |
 | h | production: issuer key in Vercel env (done 2026-09-10); branch commits on `main`; production build verified 2026-09-10 (`/receipts`, `/verify`, `GET /api/receipts/issuers` on thearcanum.in) | done |
 | i | needs user: demo runs on testnet, video, submission form | blocked on user |
+| j | hardening pass: adversarial review of a–g, decisions 18–23, one commit per finding with a failing test first | done 2026-09-10 |
 
 Test state after slices a–g: shared 18/18, api 94/94, sdk 18/18; biome +
-tsc clean in shared/api/sdk/web; web `next build` passes. Code-review
-subagent had two internal failures this session before a retry succeeded;
-budget time for that.
+tsc clean in shared/api/sdk/web; web `next build` passes. After slice j:
+shared 18/18, api 98/98, sdk 22/22, web 34/34. Code-review subagent had two
+internal failures this session before a retry succeeded; budget time for
+that.
 
 Each slice: implement → lint/typecheck/test in touched workspaces → code
 review pass → fix severe findings → commit → push both remotes.

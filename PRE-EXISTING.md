@@ -66,6 +66,18 @@ All of it is on `ethonline-2026` after `pre-ethonline-2026`:
 | `12c527c` `feat: receipt-first payments in sdk` | `packages/sdk`: `requestPaymentReceipt`, `attachPaymentReceiptEvidence`, `executePaymentIntentWithReceipt`, the REST client, re-exported verifier; tests |
 | `80cccd5` `feat: payment receipt pages` | `apps/web`: dashboard `/receipts` and `/receipts/[id]` (browser-side verification, evidence timeline), public `/verify`, navigation entries |
 | `1a3168d` `docs: payment decision receipts` | `docs/PAYMENT-RECEIPTS.md`, README and SDK README sections, docs-site concept page, `.env.example` entries, `docs/ethonline-2026` planning artifacts, this file |
+| `de3b12d`, `0b488d0`, `19a6b7c` `docs: …` | deployment record, the AI-use disclosure below, the version-control note |
+| `46aa164` `fix: verify receipts in the sdk before acting on them` | the SDK verifies issuer signature, digest and request signature and binds the receipt to the intent it just signed; `receiptIssuers` config; `RECEIPT_UNVERIFIED` / `RECEIPT_MISMATCH` |
+| `440674e` `fix: fail closed on replayed receipts during execution` | a replayed receipt is not executed unless `executeReplayedReceipt` is passed |
+| `7ddaed0` `fix: resolve the issuer after the replay check` | replays no longer need the signing key |
+| `5a1706d` `fix: confirm the pinned block after reading wallet state` | block hash re-checked after the pinned reads; a reorg is `CHAIN_READ_FAILED` |
+| `62f29ba` `fix: match wallet events and named receipts when linking evidence` | exactly one wallet event with matching args; SDK metadata naming another receipt rejected; one transaction links to one receipt (`EVIDENCE_CONFLICT`); `deny` + revert is `verdictMatches: null`; stored rows re-digested on read |
+| `52e9745` `fix: gate the receipts list on the signed-in workspace` | list waits for SIWE like the detail page |
+| `67af2fb` `fix: confirm the pinned block after the policy call` | the block-hash check moved after the last pinned read, plus mismatch tests for `TransferEscalated` and `Frozen` events |
+| `2941f40` `fix: require a boolean replayed flag from the receipt api` | a missing `replayed` flag is `MALFORMED_RESPONSE`, not "not replayed"; malformed envelopes surface as `ReceiptRequestError` |
+
+The `fix:` commits are the hardening pass of 2026-09-10, described as
+decisions 18–23 in [`docs/ethonline-2026/build-log.md`](docs/ethonline-2026/build-log.md).
 
 Nothing in `packages/contracts` changed. Receipts sit beside the existing
 preflight: the contract still decides at execution time and the receipt
