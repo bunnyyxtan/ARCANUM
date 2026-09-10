@@ -74,6 +74,25 @@ records what the policy said at a pinned block beforehand. The existing
 (a zero vendor address is now reported as a validation error instead of being
 sent on to policy evaluation); its behaviour is otherwise unchanged.
 
+## Version control and dependencies
+
+- The repository history is the original one: the baseline tag points at the
+  genuine pre-event commit, nothing was squashed or rewritten, and the
+  timestamps are the real ones. Later commits on the branch (deployment
+  record, disclosure, demo links, fixes) continue that history.
+- Commits on the branch are one per slice, made after that slice's tests and
+  review pass. That is why they are few and large rather than many and
+  small; the slice sequence and its decisions are in
+  [`docs/ethonline-2026/build-log.md`](./docs/ethonline-2026/build-log.md).
+- `main` was fast-forwarded to the branch tip so the deployed application
+  matches it.
+- No new third-party dependency was added. The feature uses libraries the
+  repository already depended on (viem for EIP-191 signatures and chain
+  reads, zod, tRPC, Next.js, Supabase), all declared in the package manifests.
+  The only manifest change is `vitest` added to `packages/shared`'s
+  devDependencies, at the version already in the lockfile, so that workspace's
+  tests run. No starter kit or boilerplate was used.
+
 ## AI-use disclosure
 
 Arcanum is a maintainer-owned product that was built, before and during the
