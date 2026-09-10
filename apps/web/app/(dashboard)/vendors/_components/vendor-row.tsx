@@ -45,6 +45,11 @@ export function VendorRow(props: VendorRowProps) {
   const { vendor, index, registry } = props;
   const flag = props.vendorFlagDetail(vendor.address);
   const unflag = props.vendorUnflagDetail(vendor.address);
+  // The entrance animation leaves a transform on every row, so each row is its
+  // own stacking context and the next row paints over this row's open menu. It
+  // is transparent, so the menu stays visible but the row takes the clicks.
+  // Lifting the row that owns the open menu keeps the menu above later rows.
+  const menuOpen = registry.menu === vendor.id;
   return (
     <div
       onClick={() => {
@@ -57,7 +62,7 @@ export function VendorRow(props: VendorRowProps) {
       style={{ "--row": index } as CSSProperties}
       className={`vendor-row relative grid w-full gap-3 px-4 py-5 text-left max-md:gap-4 lg:grid-cols-[1.1fr_.7fr_1fr_1.2fr_.8fr_.65fr] lg:items-center ${
         props.selected?.id === vendor.id ? "bg-[var(--wl-bg-soft)]" : ""
-      }`}
+      } ${menuOpen ? "z-30" : ""}`}
     >
       <span className="min-w-0">
         <strong className="block truncate text-[13px] font-medium">{vendor.name}</strong>
@@ -139,13 +144,13 @@ export function VendorRow(props: VendorRowProps) {
           <button
             type="button"
             aria-label={`Actions for ${vendor.name}`}
-            aria-expanded={registry.menu === vendor.id}
-            onClick={() => registry.setMenu(registry.menu === vendor.id ? null : vendor.id)}
+            aria-expanded={menuOpen}
+            onClick={() => registry.setMenu(menuOpen ? null : vendor.id)}
             className="flex h-11 w-11 items-center justify-center font-mono text-[16px] text-[var(--wl-secondary)] transition-colors hover:text-[var(--wl-signal)]"
           >
             ⋯
           </button>
-          {registry.menu === vendor.id && (
+          {menuOpen && (
             <div
               role="menu"
               className="absolute right-0 top-8 z-20 w-[190px] border border-[var(--wl-line-bold)] bg-[var(--wl-bg-raised)] p-1 shadow-[8px_10px_0_var(--wl-line-faint)]"
