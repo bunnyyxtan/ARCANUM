@@ -76,9 +76,11 @@ the receipt is the auditable record of the decision, not a permission slip.
 
 ### Demonstration
 
-_fill in_ from `demo-evidence.md`: the allowed payment, the denied intent, the
-escalated hold and the council decision, each with the receipt id, the Arc
-Testnet transaction hash and the evidence entry.
+_fill in_ from `demo-evidence.md`: the allowed payment and the escalated hold
+with their receipt ids, Arc Testnet transaction hashes and evidence rows; the
+council's decision on the hold as a further evidence row on the same receipt;
+and the denied intent as a receipt only, since a deny never reaches the chain
+and has no transaction or evidence.
 
 ## How it's made
 
