@@ -13,6 +13,7 @@ what is new.
 | Public repository | https://github.com/bunnyyxtan/ARCANUM |
 | Event branch | [`ethonline-2026`](https://github.com/bunnyyxtan/ARCANUM/tree/ethonline-2026) |
 | Baseline tag | [`pre-ethonline-2026`](https://github.com/bunnyyxtan/ARCANUM/releases/tag/pre-ethonline-2026) at commit `d2cdb33` |
+| Event work in one view | [compare `pre-ethonline-2026...ethonline-2026`](https://github.com/bunnyyxtan/ARCANUM/compare/pre-ethonline-2026...ethonline-2026); the same diff as review-only pull request [#6](https://github.com/bunnyyxtan/ARCANUM/pull/6), whose base branch is frozen at the tag |
 | Existing application | https://thearcanum.in |
 | Deployed feature | [`/receipts`](https://thearcanum.in/receipts) (dashboard, wallet sign-in), [`/verify`](https://thearcanum.in/verify) (public verifier), [`/api/receipts/issuers`](https://thearcanum.in/api/receipts/issuers) (issuer registry) |
 | New feature documentation | [`docs/PAYMENT-RECEIPTS.md`](./docs/PAYMENT-RECEIPTS.md) |

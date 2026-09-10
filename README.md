@@ -37,7 +37,7 @@ Arcanum is entered as a Continuity project (Extend Open Source). The repository,
 | | |
 | --- | --- |
 | What is new | Issuer-signed, offline-verifiable receipts of the policy verdict for a signed payment intent, linked to the transaction that acts on them: `/receipts` in the dashboard, the public `/verify` page, and `requestPaymentReceipt` / `executePaymentIntentWithReceipt` in the SDK |
-| Event work in one view | [`pre-ethonline-2026...ethonline-2026`](https://github.com/bunnyyxtan/ARCANUM/compare/pre-ethonline-2026...ethonline-2026): every commit after the baseline tag, with real dates |
+| Event work in one view | [`pre-ethonline-2026...ethonline-2026`](https://github.com/bunnyyxtan/ARCANUM/compare/pre-ethonline-2026...ethonline-2026): every commit after the baseline tag, with real dates. The same diff as a review-only pull request: [#6](https://github.com/bunnyyxtan/ARCANUM/pull/6) |
 | What existed before, what was built during, how AI was used | [PRE-EXISTING.md](./PRE-EXISTING.md) |
 | Feature documentation | [docs/PAYMENT-RECEIPTS.md](./docs/PAYMENT-RECEIPTS.md) |
 | Try it | [thearcanum.in/verify](https://thearcanum.in/verify), no account needed |
