@@ -131,8 +131,8 @@ export function ConnectModal({ open, onClose }: { open: boolean; onClose: () => 
         await disconnectAsync();
       }
       await connectAsync({ connector });
-      // WalletAuthBridge (mounted in providers) performs the SIWE ceremony.
-      // The isConnected effect above pushes to /dashboard on success.
+      // The isConnected effect above pushes to /dashboard, where the
+      // WalletAuthBridge mounted by the dashboard layout runs the SIWE ceremony.
     } catch (error) {
       setConnecting(false);
       if (

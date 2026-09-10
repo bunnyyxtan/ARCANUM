@@ -8,7 +8,6 @@ import { useState } from "react";
 import { Toaster } from "sonner";
 import { WagmiProvider } from "wagmi";
 
-import { WalletAuthBridge } from "@/components/arcanum/WalletAuthBridge";
 import { TestWalletBridge } from "@/components/dev/TestWalletBridge";
 import { TelemetryProvider } from "@/lib/telemetry";
 import { createTrpcClient, trpc } from "@/lib/trpc";
@@ -53,7 +52,6 @@ export function Providers({ children }: ProvidersProps) {
           >
             <TelemetryProvider>
               {testWalletEnabled ? <TestWalletBridge /> : null}
-              <WalletAuthBridge />
               {children}
               <Toaster
                 theme="dark"
