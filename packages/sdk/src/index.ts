@@ -37,6 +37,7 @@ export type {
   ArcanumClientConfig,
   Escalation,
   EscalationResolved,
+  ExecutePaymentIntentWithReceiptOptions,
   ExecuteUSDCInput,
   ExecuteUSDCResult,
   NormalizedPaymentIntentInput,

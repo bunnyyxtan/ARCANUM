@@ -196,6 +196,43 @@ describe("payment decision receipts", () => {
     expect(outcome.evidenceError).toBeUndefined();
   });
 
+  it("does not act on a replayed receipt unless told to", async () => {
+    const { envelope, intent } = await fixtures();
+    const execute = vi.fn(
+      async (): Promise<ExecuteUSDCResult> => ({
+        verdict: "ALLOW",
+        txHash: TX_HASH,
+      }),
+    );
+    const posts: string[] = [];
+    const fetch = async (url: string | URL | Request) => {
+      posts.push(String(url));
+      return String(url).endsWith("/evidence")
+        ? jsonResponse(200, {
+            receiptId: envelope.receipt.receiptId,
+            evidence: [evidenceRow(envelope.receipt.receiptId, "executed")],
+          })
+        : jsonResponse(200, { receipt: envelope, replayed: true });
+    };
+    const client = clientWith(fetch, execute);
+
+    const heldBack = await client.executePaymentIntentWithReceipt(intent);
+    expect(execute).not.toHaveBeenCalled();
+    expect(heldBack.replayed).toBe(true);
+    expect(heldBack.result).toMatchObject({
+      decision: "validation_error",
+      errorCode: "RECEIPT_REPLAYED",
+    });
+    expect(heldBack.evidence).toBeNull();
+
+    const executed = await client.executePaymentIntentWithReceipt(intent, {
+      executeReplayedReceipt: true,
+    });
+    expect(execute).toHaveBeenCalledTimes(1);
+    expect(executed.result).toMatchObject({ decision: "allow", txHash: TX_HASH });
+    expect(posts.filter((url) => url.endsWith("/evidence"))).toHaveLength(1);
+  });
+
   it("never sends a denied or frozen decision onchain", async () => {
     const { envelope: denied, intent } = await fixtures({
       decision: { verdict: "deny", reasonCode: "PER_TX_CAP", explanation: "cap" },
