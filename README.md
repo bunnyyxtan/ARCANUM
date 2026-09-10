@@ -18,7 +18,7 @@
 <p align="center">
   <a href="https://github.com/bunnyyxtan/ARCANUM/actions/workflows/ci.yml"><img src="https://github.com/bunnyyxtan/ARCANUM/actions/workflows/ci.yml/badge.svg" alt="CI status" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-2f3542" alt="AGPL-3.0 license" /></a>
-  <a href="https://github.com/bunnyyxtan/ARCANUM/releases/tag/v3.0.0"><img src="https://img.shields.io/badge/release-v3.0.0-ff5a1f" alt="Latest release v3.0.0" /></a>
+  <a href="https://github.com/bunnyyxtan/ARCANUM/releases/latest"><img src="https://img.shields.io/github/v/release/bunnyyxtan/ARCANUM?label=release&color=ff5a1f" alt="Latest release" /></a>
   <img src="https://img.shields.io/badge/network-Arc%20Testnet-6e9e7c" alt="Arc Testnet" />
 </p>
 
