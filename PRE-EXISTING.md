@@ -92,9 +92,11 @@ sent on to policy evaluation); its behaviour is otherwise unchanged.
   genuine pre-event commit, nothing was squashed or rewritten, and the
   timestamps are the real ones. Later commits on the branch (deployment
   record, disclosure, demo links, fixes) continue that history.
-- Commits on the branch are one per slice, made after that slice's tests and
-  review pass. That is why they are few and large rather than many and
-  small; the slice sequence and its decisions are in
+- The five feature commits are one per slice, made after that slice's tests
+  and review pass, which is why they are large. Everything after them is one
+  commit per change: one fix per review finding with its failing test first,
+  one docs change per topic, and one evidence entry per testnet run. The
+  slice sequence and its decisions are in
   [`docs/ethonline-2026/build-log.md`](./docs/ethonline-2026/build-log.md).
 - `main` was fast-forwarded to the branch tip so the deployed application
   matches it.
