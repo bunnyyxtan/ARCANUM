@@ -169,7 +169,7 @@ appended later from verified chain data.
 | e | web: receipts list/detail/verify, nav, export, states | done, `80cccd5` (reviewed; auth gating, verifier hardening and stale-result fixes applied before commit) |
 | f | sdk: apiUrl, receipt methods, tests | done, `12c527c`; tsup/size-limit not runnable here (deps blocked), CI builds web only |
 | g | docs: PRE-EXISTING.md, docs/PAYMENT-RECEIPTS.md (Mermaid, trust model, walkthrough, limitations), AI disclosure, .env.example sync, README + SDK README sections, docs/ethonline-2026 planning artifacts | done (reviewed; overclaims on tx-hash retention, key retirement and demo status corrected) |
-| h | production: issuer key in Vercel env (done 2026-09-10); `main` fast-forwarded to the branch tip so Vercel deploys it | done |
+| h | production: issuer key in Vercel env (done 2026-09-10); branch commits on `main`; production build verified 2026-09-10 (`/receipts`, `/verify`, `GET /api/receipts/issuers` on thearcanum.in) | done |
 | i | needs user: demo runs on testnet, video, submission form | blocked on user |
 
 Test state after slices a–g: shared 18/18, api 94/94, sdk 18/18; biome +

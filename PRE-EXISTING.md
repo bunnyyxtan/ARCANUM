@@ -14,6 +14,7 @@ what is new.
 | Event branch | [`ethonline-2026`](https://github.com/bunnyyxtan/ARCANUM/tree/ethonline-2026) |
 | Baseline tag | [`pre-ethonline-2026`](https://github.com/bunnyyxtan/ARCANUM/releases/tag/pre-ethonline-2026) at commit `d2cdb33` |
 | Existing application | https://thearcanum.in |
+| Deployed feature | [`/receipts`](https://thearcanum.in/receipts) (dashboard, wallet sign-in), [`/verify`](https://thearcanum.in/verify) (public verifier), [`/api/receipts/issuers`](https://thearcanum.in/api/receipts/issuers) (issuer registry) |
 | New feature documentation | [`docs/PAYMENT-RECEIPTS.md`](./docs/PAYMENT-RECEIPTS.md) |
 
 ## Baseline
@@ -64,7 +65,7 @@ All of it is on `ethonline-2026` after `pre-ethonline-2026`:
 | `6724ca3` `feat: payment receipt issuance and evidence api` | `packages/api/src/receipts`: pinned-block evaluation with spend-window parity, issuance, idempotency, access rules, evidence linkage from transaction hashes; tRPC `receipts` router; REST routes under `apps/web/app/api/receipts`; the `payment_receipts` / `payment_receipt_evidence` migration; tests |
 | `12c527c` `feat: receipt-first payments in sdk` | `packages/sdk`: `requestPaymentReceipt`, `attachPaymentReceiptEvidence`, `executePaymentIntentWithReceipt`, the REST client, re-exported verifier; tests |
 | `80cccd5` `feat: payment receipt pages` | `apps/web`: dashboard `/receipts` and `/receipts/[id]` (browser-side verification, evidence timeline), public `/verify`, navigation entries |
-| `docs: payment decision receipts` | `docs/PAYMENT-RECEIPTS.md`, README and SDK README sections, docs-site concept page, `.env.example` entries, `docs/ethonline-2026` planning artifacts, this file |
+| `1a3168d` `docs: payment decision receipts` | `docs/PAYMENT-RECEIPTS.md`, README and SDK README sections, docs-site concept page, `.env.example` entries, `docs/ethonline-2026` planning artifacts, this file |
 
 Nothing in `packages/contracts` changed. Receipts sit beside the existing
 preflight: the contract still decides at execution time and the receipt
