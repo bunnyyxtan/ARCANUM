@@ -1,4 +1,4 @@
-import { signedTestReceipt, testAgentAccount } from "@arcanum/shared/testing";
+import { signedTestReceipt, testAgentAccount, testIssuer } from "@arcanum/shared/testing";
 import { describe, expect, it, vi } from "vitest";
 
 import { ArcanumClient } from "./client";
@@ -16,8 +16,8 @@ function jsonResponse(status: number, body: unknown) {
   });
 }
 
-async function fixtures() {
-  const envelope = await signedTestReceipt();
+async function fixtures(overrides: Parameters<typeof signedTestReceipt>[0] = {}) {
+  const envelope = await signedTestReceipt(overrides);
   const request = envelope.receipt.request;
   const intent: PaymentIntentInput = {
     chainId: request.chainId,
@@ -25,6 +25,7 @@ async function fixtures() {
     agentSignerAddress: request.agentSignerAddress,
     vendorAddress: request.vendorAddress,
     tokenAddress: request.tokenAddress,
+    tokenSymbol: request.tokenSymbol,
     amount: request.amount,
     purpose: request.purpose,
     reference: request.reference,
@@ -53,6 +54,7 @@ function clientWith(fetch: typeof globalThis.fetch, execute?: ArcanumClient["exe
   const client = Object.create(ArcanumClient.prototype) as ArcanumClient;
   Reflect.set(client, "walletAddress", "0x1000000000000000000000000000000000000001");
   Reflect.set(client, "receiptApi", new ReceiptApi({ apiUrl: `${API_URL}/`, fetch }));
+  Reflect.set(client, "receiptIssuers", [testIssuer]);
   Reflect.set(client, "walletClient", {
     account: testAgentAccount,
     signMessage: (args: { message: string }) =>
@@ -105,6 +107,48 @@ describe("payment decision receipts", () => {
     await expect(clientWith(fetch).requestPaymentReceipt(intent)).rejects.toThrow();
   });
 
+  it("refuses a receipt whose issuer signature does not verify", async () => {
+    const { envelope, intent } = await fixtures();
+    const forged = {
+      ...envelope,
+      receipt: {
+        ...envelope.receipt,
+        decision: { verdict: "allow", reasonCode: "OK", explanation: "edited after signing" },
+      },
+    };
+    const fetch = async () => jsonResponse(201, { receipt: forged, replayed: false });
+
+    await expect(clientWith(fetch).requestPaymentReceipt(intent)).rejects.toMatchObject({
+      name: "ArcanumError",
+      code: "RECEIPT_UNVERIFIED",
+      message: expect.stringContaining("digest mismatch"),
+    } satisfies Partial<ArcanumError>);
+  });
+
+  it("refuses a receipt signed by an issuer it does not trust", async () => {
+    const { envelope, intent } = await fixtures();
+    const client = clientWith(async () =>
+      jsonResponse(201, { receipt: envelope, replayed: false }),
+    );
+    Reflect.set(client, "receiptIssuers", undefined);
+
+    await expect(client.requestPaymentReceipt(intent)).rejects.toMatchObject({
+      code: "RECEIPT_UNVERIFIED",
+      message: expect.stringContaining("issuer unknown_issuer"),
+    } satisfies Partial<ArcanumError>);
+  });
+
+  it("refuses a valid receipt that answers a different intent", async () => {
+    const { envelope, intent } = await fixtures();
+    const fetch = async () => jsonResponse(201, { receipt: envelope, replayed: false });
+
+    await expect(
+      clientWith(fetch).requestPaymentReceipt({ ...intent, reference: "inv-2026-09-0002" }),
+    ).rejects.toMatchObject({
+      code: "RECEIPT_MISMATCH",
+    } satisfies Partial<ArcanumError>);
+  });
+
   it("requires apiUrl for the receipt methods", async () => {
     const { intent } = await fixtures();
     const client = Object.create(ArcanumClient.prototype) as ArcanumClient;
@@ -153,14 +197,9 @@ describe("payment decision receipts", () => {
   });
 
   it("never sends a denied or frozen decision onchain", async () => {
-    const { envelope, intent } = await fixtures();
-    const denied = {
-      ...envelope,
-      receipt: {
-        ...envelope.receipt,
-        decision: { verdict: "deny", reasonCode: "PER_TX_CAP", explanation: "cap" },
-      },
-    };
+    const { envelope: denied, intent } = await fixtures({
+      decision: { verdict: "deny", reasonCode: "PER_TX_CAP", explanation: "cap" },
+    });
     const execute = vi.fn();
     const client = clientWith(
       async () => jsonResponse(201, { receipt: denied, replayed: true }),

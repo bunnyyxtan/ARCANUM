@@ -12,7 +12,9 @@ export type ArcanumErrorCode =
   | "TRANSFER_REVERTED"
   | "RPC_ERROR"
   | "API_URL_REQUIRED"
-  | "WALLET_MISMATCH";
+  | "WALLET_MISMATCH"
+  | "RECEIPT_UNVERIFIED"
+  | "RECEIPT_MISMATCH";
 
 export class ArcanumError extends Error {
   readonly code: ArcanumErrorCode;

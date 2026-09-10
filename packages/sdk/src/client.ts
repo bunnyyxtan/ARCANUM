@@ -9,9 +9,13 @@ import {
   ARC_NETWORK_NAME,
   ARC_USDC_ADDRESS,
   type PaymentReceiptEnvelope,
+  type PaymentReceiptIssuer,
+  type PaymentReceiptVerification,
   createPaymentIntentMessage,
   createPaymentIntentResult,
   paymentIntentInputSchema,
+  paymentRequestDigest,
+  verifyPaymentReceipt,
 } from "@arcanum/shared";
 import {
   http,
@@ -85,6 +89,7 @@ export class ArcanumClient {
   private readonly publicClient;
   private readonly walletClient;
   private readonly receiptApi: ReceiptApi | null;
+  private readonly receiptIssuers: readonly PaymentReceiptIssuer[] | undefined;
 
   constructor(config: ArcanumClientConfig) {
     this.walletAddress = config.walletAddress;
@@ -93,6 +98,7 @@ export class ArcanumClient {
     this.receiptApi = config.apiUrl
       ? new ReceiptApi({ apiUrl: config.apiUrl, fetch: config.fetch })
       : null;
+    this.receiptIssuers = config.receiptIssuers;
     const transport = http(config.rpcUrl);
 
     this.publicClient = createPublicClient({
@@ -286,6 +292,11 @@ export class ArcanumClient {
    * Ask the Arcanum API for a signed Payment Decision Receipt: the verdict
    * this wallet's policy gives the intent, evaluated at one pinned block and
    * signed by the Arcanum issuer. Nothing moves onchain.
+   *
+   * The receipt is verified before it is returned: issuer signature against
+   * the trusted registry, digest, and the agent's own request signature, and
+   * it must describe exactly the intent that was just signed. The API is the
+   * transport for a receipt, never the authority on what one says.
    */
   async requestPaymentReceipt(input: PaymentIntentInput): Promise<RequestedReceipt> {
     const api = this.requireReceiptApi();
@@ -298,7 +309,36 @@ export class ArcanumClient {
         reason: "WALLET_MISMATCH",
       });
     }
-    return api.requestReceipt(await this.signPaymentIntent(intent));
+    const requested = await api.requestReceipt(await this.signPaymentIntent(intent));
+    await this.assertReceiptDescribesIntent(requested.receipt, intent);
+    return requested;
+  }
+
+  private async assertReceiptDescribesIntent(
+    envelope: PaymentReceiptEnvelope,
+    intent: PaymentIntentInput,
+  ): Promise<void> {
+    const verification = await verifyPaymentReceipt(envelope, {
+      ...(this.receiptIssuers ? { issuers: this.receiptIssuers } : {}),
+    });
+    if (!verification.ok) {
+      throw new ArcanumError({
+        code: "RECEIPT_UNVERIFIED",
+        message: `Receipt ${envelope.receipt.receiptId} failed verification (${describeVerification(verification)}).`,
+        verdict: "DENY",
+        reason: "RECEIPT_UNVERIFIED",
+      });
+    }
+    // The request digest covers every field of the signed intent, so equal
+    // digests mean the receipt answers this payment and no other.
+    if (envelope.receipt.requestDigest !== paymentRequestDigest(intent)) {
+      throw new ArcanumError({
+        code: "RECEIPT_MISMATCH",
+        message: `Receipt ${envelope.receipt.receiptId} describes a different payment intent than the one requested.`,
+        verdict: "DENY",
+        reason: "RECEIPT_MISMATCH",
+      });
+    }
   }
 
   /** Link the transaction that acted on a receipt; the API verifies the link onchain. */
@@ -737,6 +777,19 @@ export function encodeExecuteUSDC(input: ExecuteUSDCInput) {
     functionName: "executeUSDC",
     args: [input.to, input.amount, reasonBytes(input.reason, input.metadata)],
   });
+}
+
+/** One line naming the checks that failed, for the error a caller sees. */
+function describeVerification(verification: PaymentReceiptVerification): string {
+  const failed = [
+    verification.format.status !== "valid" ? `format ${verification.format.status}` : null,
+    verification.receiptDigest.status !== "verified"
+      ? `digest ${verification.receiptDigest.status}`
+      : null,
+    verification.issuer.status !== "verified" ? `issuer ${verification.issuer.status}` : null,
+    verification.request.status !== "verified" ? `request ${verification.request.status}` : null,
+  ].filter((item): item is string => item !== null);
+  return failed.join(", ");
 }
 
 function parsePaymentIntentAmount(amount: string) {

@@ -2,6 +2,7 @@ import type {
   PaymentIntentResult,
   PaymentReceiptEnvelope,
   PaymentReceiptEvidence,
+  PaymentReceiptIssuer,
 } from "@arcanum/shared";
 import type { Account, Address, Chain, Hash, Hex } from "viem";
 
@@ -51,6 +52,11 @@ export type ArcanumClientConfig = Readonly<{
   apiUrl?: string;
   /** Overrides the global fetch used for the receipt API. */
   fetch?: typeof fetch;
+  /**
+   * Issuer keys the client trusts for payment decision receipts. Defaults to
+   * the registry published with the SDK; set it for a self-hosted Arcanum.
+   */
+  receiptIssuers?: readonly PaymentReceiptIssuer[];
   pollingIntervalMs?: number;
 }>;
 
