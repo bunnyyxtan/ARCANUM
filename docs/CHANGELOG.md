@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-08-11
+
+Arc Testnet redeploy and SDK 2.1.0.
+
+### Changed
+
+- Fresh contract deployment with hardened oracle signatures, bound to a nonce
+  and a deadline.
+- Monthly rolling spend caps with a hard deny.
+- The escalation threshold is checked before the daily caps.
+- Deployer-scoped wallet address prediction.
+- TypeScript SDK 2.1.0, aligned with the new ABIs.
+
 ## [2.0.0] - 2026-08-06
 
 Major upgrade of the entire product. The web app was rebuilt from scratch on
@@ -66,6 +79,7 @@ build before the version 2 rewrite.
 - TypeScript SDK (`@arcanum/sdk`) and Python SDK (`packages/sdk-py`).
 - Documentation site workspace (`apps/docs`).
 
-[Unreleased]: https://github.com/bunnyyxtan/ARCANUM/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/bunnyyxtan/ARCANUM/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/bunnyyxtan/ARCANUM/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/bunnyyxtan/ARCANUM/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/bunnyyxtan/ARCANUM/releases/tag/v1.0.0
