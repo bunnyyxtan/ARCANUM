@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Payment decision receipts: issuer-signed, offline-verifiable snapshots of a
+  wallet's policy verdict for a signed payment intent, evaluated at a pinned
+  Arc Testnet block, with evidence that links each receipt to the transaction
+  that acted on it. New `/api/receipts` routes, the `/receipts` dashboard
+  pages, the public `/verify` page and the SDK methods
+  `requestPaymentReceipt`, `executePaymentIntentWithReceipt` and
+  `attachPaymentReceiptEvidence`. Built during ETHOnline 2026; see
+  [`PAYMENT-RECEIPTS.md`](./PAYMENT-RECEIPTS.md).
+
 ## [2.1.0] - 2026-08-11
 
 Arc Testnet redeploy and SDK 2.1.0.
