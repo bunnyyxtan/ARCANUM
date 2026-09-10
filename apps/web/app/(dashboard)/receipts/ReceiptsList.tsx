@@ -3,6 +3,7 @@
 import { Arrow } from "@/components/arcanum/arrow";
 import { StatusPill } from "@/components/arcanum/status-pill";
 import { ConnectCta } from "@/components/warm/ConnectCta";
+import { SignInCta } from "@/components/warm/SignInCta";
 import { useWorkspaceMode } from "@/lib/auth-session";
 import { formatUsd, truncateAddress } from "@/lib/format";
 import { verdictTone } from "@/lib/receipts";
@@ -15,8 +16,11 @@ export function ReceiptsList() {
   const workspace = useWorkspaceMode();
 
   // The list is scoped to the signed-in identity, so it waits for SIWE like
-  // the detail page does: a connected but unsigned wallet sees a skeleton,
-  // not an empty list it would read as "no receipts".
+  // the detail page does. A connected but unsigned wallet never sees an empty
+  // list it would read as "no receipts": while wagmi and the session are
+  // still resolving it sees a skeleton, and once they have settled without a
+  // signature it is asked to sign, because a dismissed prompt would otherwise
+  // leave the skeleton on screen forever.
   const { data, isLoading, isError, hasNextPage, fetchNextPage, isFetchingNextPage } =
     trpc.receipts.list.useInfiniteQuery(
       { limit: 25 },
@@ -27,9 +31,10 @@ export function ReceiptsList() {
     );
 
   const settling =
-    !workspace.isAuthenticated &&
-    (workspace.isResolving || workspace.dataMode === "connected_unsigned");
-  const signedOut = !workspace.isAuthenticated && !settling;
+    !workspace.isAuthenticated && (workspace.isResolving || workspace.sessionStatus === "checking");
+  const unsigned =
+    !workspace.isAuthenticated && !settling && workspace.dataMode === "connected_unsigned";
+  const signedOut = !workspace.isAuthenticated && !settling && !unsigned;
   const pending = settling || (workspace.isAuthenticated && isLoading);
 
   const allItems = data?.pages.flatMap((page) => page.items) ?? [];
@@ -73,6 +78,8 @@ export function ReceiptsList() {
           <div>
             {signedOut ? (
               <ConnectCta note="Sign in with the wallet that owns your workspace to see its receipts." />
+            ) : unsigned ? (
+              <SignInCta note="Sign in with the connected wallet to see its workspace's receipts. Approve the signature in your wallet, or request it again." />
             ) : pending ? (
               Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="border-b border-[var(--wl-line-faint)] px-5 py-4">

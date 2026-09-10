@@ -3,6 +3,7 @@
 import { Arrow } from "@/components/arcanum/arrow";
 import { StatusPill } from "@/components/arcanum/status-pill";
 import { ConnectCta } from "@/components/warm/ConnectCta";
+import { SignInCta } from "@/components/warm/SignInCta";
 import { getArcscanAddressUrl, getArcscanBaseUrl, getArcscanTxUrl } from "@/lib/arcscan";
 import { useWorkspaceMode } from "@/lib/auth-session";
 import { formatUSDCFromBaseUnits, formatUsd, truncateAddress } from "@/lib/format";
@@ -118,11 +119,14 @@ export function ReceiptDetail({ receiptId }: { receiptId: string }) {
   }, [data?.receipt]);
 
   if (!workspace.isAuthenticated) {
-    const settling = workspace.isResolving || workspace.dataMode === "connected_unsigned";
+    const settling = workspace.isResolving || workspace.sessionStatus === "checking";
+    const unsigned = !settling && workspace.dataMode === "connected_unsigned";
     return (
       <main className="mx-auto max-w-[1400px] px-5 py-8 md:px-8 md:py-10">
         {settling ? (
           <div className="h-14 w-72 animate-pulse rounded bg-[var(--wl-bg-deep)]" />
+        ) : unsigned ? (
+          <SignInCta note="Sign in with the connected wallet to read this receipt. Approve the signature in your wallet, or request it again." />
         ) : (
           <ConnectCta note="Sign in with the wallet that owns this workspace to read the receipt." />
         )}
