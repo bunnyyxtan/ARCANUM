@@ -9,13 +9,14 @@ import { verdictTone } from "@/lib/receipts";
 import { trpc } from "@/lib/trpc";
 import { ARC_NETWORK_BADGE } from "@arcanum/shared";
 import Link from "next/link";
-import { useAccount } from "wagmi";
 import { datePart, timePart } from "../ledger/_lib/helpers";
 
 export function ReceiptsList() {
-  const { isConnected, isConnecting, isReconnecting } = useAccount();
   const workspace = useWorkspaceMode();
 
+  // The list is scoped to the signed-in identity, so it waits for SIWE like
+  // the detail page does: a connected but unsigned wallet sees a skeleton,
+  // not an empty list it would read as "no receipts".
   const { data, isLoading, isError, hasNextPage, fetchNextPage, isFetchingNextPage } =
     trpc.receipts.list.useInfiniteQuery(
       { limit: 25 },
@@ -25,7 +26,11 @@ export function ReceiptsList() {
       },
     );
 
-  const readOnly = !isConnected && !isConnecting && !isReconnecting;
+  const settling =
+    !workspace.isAuthenticated &&
+    (workspace.isResolving || workspace.dataMode === "connected_unsigned");
+  const signedOut = !workspace.isAuthenticated && !settling;
+  const pending = settling || (workspace.isAuthenticated && isLoading);
 
   const allItems = data?.pages.flatMap((page) => page.items) ?? [];
 
@@ -66,9 +71,9 @@ export function ReceiptsList() {
           </div>
 
           <div>
-            {readOnly ? (
-              <ConnectCta />
-            ) : isLoading ? (
+            {signedOut ? (
+              <ConnectCta note="Sign in with the wallet that owns your workspace to see its receipts." />
+            ) : pending ? (
               Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="border-b border-[var(--wl-line-faint)] px-5 py-4">
                   <div className="h-4 w-full animate-pulse rounded bg-[var(--wl-bg-soft)]" />
@@ -140,7 +145,7 @@ export function ReceiptsList() {
               })
             )}
           </div>
-          {hasNextPage && !readOnly && !isLoading && (
+          {hasNextPage && workspace.isAuthenticated && !isLoading && (
             <div className="border-t border-[var(--wl-line)] p-4 text-center">
               <button
                 type="button"
