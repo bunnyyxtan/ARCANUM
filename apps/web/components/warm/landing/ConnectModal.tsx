@@ -158,7 +158,7 @@ export function ConnectModal({ open, onClose }: { open: boolean; onClose: () => 
     <dialog
       ref={dialogRef}
       open
-      className="warm-modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-[rgba(var(--wl-ink-rgb),.32)] p-5"
+      className="warm-modal-backdrop fixed inset-0 z-50 flex h-full w-full items-center justify-center bg-[rgba(var(--wl-ink-rgb),.32)] p-5"
       aria-modal="true"
       aria-label="Connect wallet"
     >

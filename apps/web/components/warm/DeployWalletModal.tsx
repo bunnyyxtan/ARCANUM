@@ -492,7 +492,7 @@ export function DeployWalletModal({
   return (
     <dialog
       open
-      className="warm-modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-[rgba(var(--wl-ink-rgb),.28)] p-2 sm:p-4"
+      className="warm-modal-backdrop fixed inset-0 z-50 flex h-full w-full items-center justify-center bg-[rgba(var(--wl-ink-rgb),.28)] p-2 sm:p-4"
       aria-modal="true"
     >
       <button
