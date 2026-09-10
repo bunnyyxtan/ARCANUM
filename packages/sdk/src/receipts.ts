@@ -50,32 +50,61 @@ export class ReceiptApi {
     }
   }
 
+  /**
+   * The envelope is parsed strictly and `replayed` must be a boolean: the
+   * caller decides whether to pay on that flag, so a response that leaves it
+   * out is malformed, not "not replayed".
+   */
   async requestReceipt(intent: SignedPaymentIntentInput): Promise<RequestedReceipt> {
-    const body = asRecord(await this.post("/api/receipts", intent));
-    return {
-      receipt: paymentReceiptEnvelopeSchema.parse(body.receipt),
-      replayed: body.replayed === true,
-    };
+    const { status, json } = await this.post("/api/receipts", intent);
+    const body = asRecord(json, status);
+    const envelope = paymentReceiptEnvelopeSchema.safeParse(body.receipt);
+    if (!envelope.success) {
+      throw new ReceiptRequestError({
+        code: "MALFORMED_RESPONSE",
+        message: `Arcanum receipt API returned a body that is not a receipt envelope (${issueSummary(envelope.error)}).`,
+        status,
+      });
+    }
+    if (typeof body.replayed !== "boolean") {
+      throw new ReceiptRequestError({
+        code: "MALFORMED_RESPONSE",
+        message: "Arcanum receipt API returned a receipt without a boolean replayed flag.",
+        status,
+      });
+    }
+    return { receipt: envelope.data, replayed: body.replayed };
   }
 
   async attachEvidence(receiptId: string, txHash: `0x${string}`): Promise<AttachedReceiptEvidence> {
-    const body = asRecord(
-      await this.post(`/api/receipts/${encodeURIComponent(receiptId)}/evidence`, { txHash }),
+    const { status, json } = await this.post(
+      `/api/receipts/${encodeURIComponent(receiptId)}/evidence`,
+      { txHash },
     );
+    const body = asRecord(json, status);
     if (typeof body.receiptId !== "string" || !Array.isArray(body.evidence)) {
       throw new ReceiptRequestError({
         code: "MALFORMED_RESPONSE",
         message: "Arcanum receipt API returned an evidence payload without receiptId/evidence.",
-        status: 200,
+        status,
+      });
+    }
+    const evidence = body.evidence.map((item) => paymentReceiptEvidenceSchema.safeParse(item));
+    const broken = evidence.find((item) => !item.success);
+    if (broken && !broken.success) {
+      throw new ReceiptRequestError({
+        code: "MALFORMED_RESPONSE",
+        message: `Arcanum receipt API returned an evidence row that does not parse (${issueSummary(broken.error)}).`,
+        status,
       });
     }
     return {
       receiptId: body.receiptId,
-      evidence: body.evidence.map((item) => paymentReceiptEvidenceSchema.parse(item)),
+      evidence: evidence.flatMap((item) => (item.success ? [item.data] : [])),
     };
   }
 
-  private async post(path: string, payload: unknown): Promise<unknown> {
+  private async post(path: string, payload: unknown): Promise<{ status: number; json: unknown }> {
     const response = await this.fetchImpl(`${this.baseUrl}${path}`, {
       method: "POST",
       headers: { "content-type": "application/json", accept: "application/json" },
@@ -98,19 +127,26 @@ export class ReceiptApi {
         status: response.status,
       });
     }
-    return json;
+    return { status: response.status, json };
   }
 }
 
-function asRecord(value: unknown): Record<string, unknown> {
+function asRecord(value: unknown, status: number): Record<string, unknown> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     throw new ReceiptRequestError({
       code: "MALFORMED_RESPONSE",
       message: "Arcanum receipt API returned a non-object body.",
-      status: 200,
+      status,
     });
   }
   return value as Record<string, unknown>;
+}
+
+function issueSummary(error: { issues: readonly { path: PropertyKey[]; message: string }[] }) {
+  return error.issues
+    .slice(0, 3)
+    .map((issue) => `${issue.path.join(".") || "body"}: ${issue.message}`)
+    .join("; ");
 }
 
 function apiError(json: unknown): { code: string; message: string } | null {
