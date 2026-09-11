@@ -10,9 +10,11 @@ const targets = [
   ["index.d.ts", ".js"],
   ["chains.d.ts", ".js"],
   ["circle.d.ts", ".js"],
+  ["cctp.d.ts", ".js"],
   ["index.d.cts", ".cjs"],
   ["chains.d.cts", ".cjs"],
   ["circle.d.cts", ".cjs"],
+  ["cctp.d.cts", ".cjs"],
 ];
 
 for (const [name, ext] of targets) {
@@ -61,6 +63,10 @@ const publishManifest = {
     "./circle": {
       import: { types: "./circle.d.ts", default: "./circle.js" },
       require: { types: "./circle.d.cts", default: "./circle.cjs" },
+    },
+    "./cctp": {
+      import: { types: "./cctp.d.ts", default: "./cctp.js" },
+      require: { types: "./cctp.d.cts", default: "./cctp.cjs" },
     },
     "./package.json": "./package.json",
   },
