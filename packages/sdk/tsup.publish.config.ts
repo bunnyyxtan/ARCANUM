@@ -2,7 +2,7 @@ import { defineConfig } from "tsup";
 
 // npm publish build: bundles workspace deps so the public package is self-contained.
 export default defineConfig({
-  entry: ["src/index.ts", "src/chains.ts"],
+  entry: ["src/index.ts", "src/chains.ts", "src/circle.ts"],
   format: ["esm", "cjs"],
   dts: true,
   clean: true,
