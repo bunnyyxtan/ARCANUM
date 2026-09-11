@@ -529,7 +529,7 @@ receipt feature is deployed.
 | ERC-8004 agent identity and reputation | Separate product integration; not needed to deliver receipts |
 | x402 payment execution | Additional payment protocol, settlement and vendor-service work |
 | Circle Agent Marketplace listing | External integration/approval dependency; not proof of functionality by itself |
-| Circle Agent Wallets beneath GuardedWallet | Adds an unnecessary custody/control layer |
+| Circle Agent Wallets beneath GuardedWallet | Adds an unnecessary custody/control layer. (A Circle developer-controlled wallet as the agent's *signer*, with funds and policy still in GuardedWallet, was added later as `arcanum-sdk/circle`; see `docs/CIRCLE-WALLETS.md`) |
 | Arc mainnet deployment | Separate operational and security decision; this demo uses testnet |
 | Chainlink/ENS or other partner integration | Must solve a real additional need and qualify independently |
 | Invoice/merchant onboarding product | Adds another user and payment lifecycle |

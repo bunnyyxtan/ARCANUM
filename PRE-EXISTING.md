@@ -77,10 +77,15 @@ All of it is on `ethonline-2026` after `pre-ethonline-2026`:
 | `67af2fb` `fix: confirm the pinned block after the policy call` | the block-hash check moved after the last pinned read, plus mismatch tests for `TransferEscalated` and `Frozen` events |
 | `2941f40` `fix: require a boolean replayed flag from the receipt api` | a missing `replayed` flag is `MALFORMED_RESPONSE`, not "not replayed"; malformed envelopes surface as `ReceiptRequestError` |
 | `98323f7` `chore: add the receipts testnet demo runner`, `1fc5398` `fix: stop the demo runner when the verdict differs from the scenario`, `06d408a` `fix: act on the inspected receipt in the demo runner` | `scripts/receipts-demo.ts`: the agent-runtime side of the testnet walkthrough; with `--execute` it pays only when the receipt is newly issued and its verdict is the one the scenario expects, and the transaction acts on that inspected receipt rather than on a second request |
+| `efc9302` `feat: sign as the agent with a circle developer-controlled wallet` | `packages/sdk/src/circle.ts`, `circle-api.ts` and tests: the `arcanum-sdk/circle` subpath, a viem local account whose `signMessage`, `signTransaction` and `signTypedData` are delegated to a Circle developer-controlled wallet, with every answer verified before use; package exports and build entries for the subpath |
+| `ee0cfed` `feat: add the circle wallet setup script` | `scripts/circle-wallet-setup.ts` (create the Circle wallet, authorize it on a governed wallet, fund gas) and the demo runner's signer switch |
 | later `docs:` commits | the testnet evidence record ([`docs/ethonline-2026/demo-evidence.md`](./docs/ethonline-2026/demo-evidence.md)), the showcase submission text ([`docs/ethonline-2026/submission.md`](./docs/ethonline-2026/submission.md)), the README event section and this file; every one of them is in the compare view above |
 
 The `fix:` commits are the hardening pass of 2026-09-10, described as
 decisions 18–23 in [`docs/ethonline-2026/build-log.md`](docs/ethonline-2026/build-log.md).
+The two Circle commits of 2026-09-11 are decision 24: a Circle
+developer-controlled wallet becomes the agent's signer and nothing else;
+custody, policy and evidence are unchanged ([`docs/CIRCLE-WALLETS.md`](./docs/CIRCLE-WALLETS.md)).
 
 Nothing in `packages/contracts` changed. Receipts sit beside the existing
 preflight: the contract still decides at execution time and the receipt
@@ -98,14 +103,16 @@ sent on to policy evaluation); its behaviour is otherwise unchanged.
 - The five feature commits are one per slice, made after that slice's tests
   and review pass, which is why they are large. Everything after them is one
   commit per change: one fix per review finding with its failing test first,
-  one docs change per topic, and one evidence entry per testnet run. The
+  one docs change per topic, one evidence entry per testnet run, and the
+  Circle signer as one commit for the adapter and one for its setup script. The
   slice sequence and its decisions are in
   [`docs/ethonline-2026/build-log.md`](./docs/ethonline-2026/build-log.md).
 - `main` was fast-forwarded to the branch tip so the deployed application
   matches it.
 - No new third-party dependency was added. The feature uses libraries the
   repository already depended on (viem for EIP-191 signatures and chain
-  reads, zod, tRPC, Next.js, Supabase), all declared in the package manifests.
+  reads, zod, tRPC, Next.js, Supabase), all declared in the package manifests;
+  the Circle adapter talks to Circle's REST API with `fetch` and `node:crypto`.
   The only manifest change is `vitest` added to `packages/shared`'s
   devDependencies, at the version already in the lockfile, so that workspace's
   tests run. No starter kit or boilerplate was used.
@@ -167,10 +174,15 @@ in this diff. Specifically:
   `apps/web/components/**`.
 - `packages/sdk/src/receipts.ts` and the touched `client.ts`, `errors.ts`,
   `index.ts`, `types.ts`, `receipts.test.ts`.
+- `packages/sdk/src/circle.ts`, `circle-api.ts`, `circle.test.ts`, the
+  `./circle` entries in the SDK manifest, tsup config and `rewrite-dts.mjs`;
+  `scripts/circle-wallet-setup.ts` and the signer switch in
+  `scripts/receipts-demo.ts`.
 - `supabase/migrations/20260910120000_payment_receipts.sql`.
-- Documentation: `docs/PAYMENT-RECEIPTS.md`, `docs/ethonline-2026/*`, the
-  README and SDK README sections, `apps/docs/pages/concepts/receipts.mdx`,
-  `apps/docs/pages/api-reference.mdx`, the `.env.example` entries, the CI
+- Documentation: `docs/PAYMENT-RECEIPTS.md`, `docs/CIRCLE-WALLETS.md`,
+  `docs/ethonline-2026/*`, the README and SDK README sections,
+  `apps/docs/pages/concepts/receipts.mdx`, `apps/docs/pages/api-reference.mdx`,
+  `apps/docs/pages/sdk/typescript.mdx`, the `.env.example` entries, the CI
   workflow change, and this file.
 
 The code-review pass on each slice was performed by a second AI reviewer

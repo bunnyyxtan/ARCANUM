@@ -53,7 +53,7 @@ flowchart TB
 
   subgraph onchain["Onchain: Arc Testnet"]
     direction TB
-    H["Authorized agent signer"] -->|"executeUSDC(to, amount, reason{receiptId})"| I["GuardedWallet"]
+    H["Authorized agent signer<br/>host-held key or Circle Wallet"] -->|"executeUSDC(to, amount, reason{receiptId})"| I["GuardedWallet"]
     I -->|"allow"| J["USDC transfer<br/>TransferExecuted"]
     I -->|"escalate"| K["EscalationManager hold<br/>TransferEscalated → council outcome"]
     I -->|"freeze"| L["Frozen"]
@@ -70,6 +70,11 @@ The API, the database and the issuer key are offchain. Policy enforcement,
 transfers, holds and council decisions are onchain and unchanged by this
 feature. The chain reads used to build a receipt are ordinary `eth_call`s at a
 pinned block; nothing is written onchain to issue a receipt.
+
+The agent signer is any address the owner authorized. Its key can be held
+on the agent host or in a Circle developer-controlled wallet through
+`arcanum-sdk/circle`; receipts, execution and evidence are the same either
+way. See [CIRCLE-WALLETS.md](./CIRCLE-WALLETS.md).
 
 ## The receipt format
 

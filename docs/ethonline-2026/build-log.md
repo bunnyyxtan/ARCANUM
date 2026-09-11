@@ -178,6 +178,23 @@ failing test first.
     `ReceiptRequestError` stays a separate class from `ArcanumError` because
     API domain codes are open-ended strings and folding them into the closed
     `ArcanumErrorCode` union would loosen it for every existing caller.
+24. **Circle Wallets is the agent's signer, nothing more.** A Circle
+    developer-controlled wallet (EOA on the generic `EVM-TESTNET` identifier;
+    Circle's `sign/transaction` refuses named-chain wallets such as
+    `ARC-TESTNET` with code 156027, found on the first live run, while the
+    same wallet set gives the same address on both) holds the agent's key;
+    its address is authorized with `addSigner` like any other. Funds, policy,
+    escalation and evidence stay where they were; no Circle policy features,
+    no Circle-side broadcast, no Agent Wallets, no smart-contract account.
+    The SDK adapter (`arcanum-sdk/circle`) is a viem local account that
+    delegates `signMessage`, `signTransaction` and `signTypedData` to Circle
+    and verifies every answer: signatures must recover to the wallet, a
+    signed transaction must parse back to exactly the requested fields, and
+    anything the Circle request shape cannot carry is refused rather than
+    dropped. Trust model written down honestly in `docs/CIRCLE-WALLETS.md`:
+    the signer's compromise surface moves from a host key to an API key plus
+    entity secret, availability now depends on Circle, Circle sees signing
+    payloads, and receipts cannot attest Circle provenance.
 
 ### Receipt envelope (v1)
 
@@ -228,6 +245,7 @@ failing test first.
 | h | production: issuer key in Vercel env (done 2026-09-10); branch commits on `main`; production build verified 2026-09-10 (`/receipts`, `/verify`, `GET /api/receipts/issuers` on thearcanum.in) | done |
 | i | demo runs on testnet (recorded in [`demo-evidence.md`](./demo-evidence.md) as each row is verified), video, submission form | runs done 2026-09-10; video and form need user |
 | j | hardening pass: adversarial review of a–g, decisions 18–23, one commit per finding with a failing test first | done 2026-09-10 |
+| k | Circle Wallets as the agent signer (decision 24): `arcanum-sdk/circle` adapter + tests, `scripts/circle-wallet-setup.ts`, demo runner signer switch, `docs/CIRCLE-WALLETS.md`; a Circle-signed allowed run recorded in `demo-evidence.md` | done 2026-09-11: wallet `0xbf4be36c…675c39` authorized in `0x0069221c…7a89a2`, receipt `d6cd633b-…` paid in `0x7e62f73b…d619a3` |
 
 Test state after slices a–g: shared 18/18, api 94/94, sdk 18/18; biome +
 tsc clean in shared/api/sdk/web; web `next build` passes. After slice j:

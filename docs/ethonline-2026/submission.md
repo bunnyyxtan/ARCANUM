@@ -69,6 +69,10 @@ Built during the event, all on the `ethonline-2026` branch after the tag:
 - Dashboard pages `/receipts` and `/receipts/[id]` with browser-side
   verification and an evidence timeline, and the public `/verify` page.
 - Documentation, a testnet walkthrough and a demo runner.
+- A Circle signer: `arcanum-sdk/circle` lets the agent sign its payment
+  intents and transactions with a Circle developer-controlled wallet instead
+  of a key file on the host, with every Circle answer verified before use;
+  the governed wallet, its policy and the receipts are unchanged.
 
 A receipt never authorizes a transfer. The contract does not know receipts
 exist and re-evaluates policy in the block that includes the transaction;
@@ -111,8 +115,21 @@ The web layer is the existing Next.js app: the dashboard pages verify
 receipts in the browser with the same verifier the SDK uses, and `/verify`
 accepts any pasted envelope without an account.
 
+The Circle signer is a viem local account backed by Circle's
+developer-controlled wallets API (`sign/message`, `sign/transaction`,
+`sign/typedData` with the entity-secret ciphertext). Circle holds the agent's
+key and only signs; the SDK builds the transaction, checks that every
+signature recovers to the wallet address and that a signed transaction parses
+back to exactly the requested fields, then broadcasts to Arc itself. The wallet's address is
+authorized on the governed wallet like any other signer, so nothing in the
+contracts, the policy or the receipts knows or cares that Circle is behind
+it. The wallet has to be created on Circle's generic `EVM-TESTNET`
+identifier, since Circle's transaction signing is not offered for named
+chains such as `ARC-TESTNET`.
+
 Stack: Solidity and Foundry (unchanged during the event), TypeScript, viem,
-tRPC, Next.js, Supabase, Ponder, Arc Testnet.
+tRPC, Next.js, Supabase, Ponder, Circle Developer-Controlled Wallets, Arc
+Testnet.
 
 ## Disclosures
 
