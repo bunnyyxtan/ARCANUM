@@ -226,7 +226,7 @@ failing test first.
 | f | sdk: apiUrl, receipt methods, tests | done, `12c527c`; tsup/size-limit not runnable here (deps blocked), CI builds web only |
 | g | docs: PRE-EXISTING.md, docs/PAYMENT-RECEIPTS.md (Mermaid, trust model, walkthrough, limitations), AI disclosure, .env.example sync, README + SDK README sections, docs/ethonline-2026 planning artifacts | done (reviewed; overclaims on tx-hash retention, key retirement and demo status corrected) |
 | h | production: issuer key in Vercel env (done 2026-09-10); branch commits on `main`; production build verified 2026-09-10 (`/receipts`, `/verify`, `GET /api/receipts/issuers` on thearcanum.in) | done |
-| i | needs user: demo runs on testnet (recorded in [`demo-evidence.md`](./demo-evidence.md) as they happen), video, submission form | blocked on user |
+| i | demo runs on testnet (recorded in [`demo-evidence.md`](./demo-evidence.md) as each row is verified), video, submission form | runs done 2026-09-10; video and form need user |
 | j | hardening pass: adversarial review of a–g, decisions 18–23, one commit per finding with a failing test first | done 2026-09-10 |
 
 Test state after slices a–g: shared 18/18, api 94/94, sdk 18/18; biome +
