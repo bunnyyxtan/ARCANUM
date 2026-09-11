@@ -25,6 +25,10 @@
  *
  * Environment:
  *   AGENT_PRIVATE_KEY   agent signer authorized on the governed wallet (never commit it)
+ *   CIRCLE_API_KEY, CIRCLE_ENTITY_SECRET, CIRCLE_WALLET_ID, CIRCLE_WALLET_ADDRESS
+ *                       set all four to sign with a Circle developer-controlled wallet
+ *                       instead of AGENT_PRIVATE_KEY (see docs/CIRCLE-WALLETS.md);
+ *                       a partial set is an error, never a silent fallback
  *   GUARDED_WALLET      the governed wallet address
  *   VENDOR_ALLOWED      a vendor the policy permits
  *   VENDOR_DENIED       a vendor the policy refuses (default: a fresh random address)
@@ -41,7 +45,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { getAddress } from "viem";
+import { type LocalAccount, getAddress } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 
 import {
@@ -49,6 +53,7 @@ import {
   ARC_TESTNET_USDC_ADDRESS,
   arcTestnet,
 } from "../packages/sdk/src/chains";
+import { circleWalletAccount } from "../packages/sdk/src/circle";
 import {
   ArcanumClient,
   type PaymentIntentInput,
@@ -82,10 +87,40 @@ function isScenario(value: string | undefined): value is Scenario {
   return SCENARIOS.includes(value as Scenario);
 }
 
-function client(): ArcanumClient {
+const CIRCLE_ENV = [
+  "CIRCLE_API_KEY",
+  "CIRCLE_ENTITY_SECRET",
+  "CIRCLE_WALLET_ID",
+  "CIRCLE_WALLET_ADDRESS",
+] as const;
+
+/**
+ * The agent signer: a Circle developer-controlled wallet when all four
+ * CIRCLE_* variables are set, otherwise the AGENT_PRIVATE_KEY account. Half a
+ * Circle configuration is a mistake, so it stops the run instead of quietly
+ * signing with the private key.
+ */
+function agentSigner(): LocalAccount {
+  const configured = CIRCLE_ENV.filter((name) => process.env[name]?.trim());
+  if (configured.length === 0) {
+    return privateKeyToAccount(hexEnv("AGENT_PRIVATE_KEY"));
+  }
+  if (configured.length !== CIRCLE_ENV.length) {
+    const missing = CIRCLE_ENV.filter((name) => !configured.includes(name));
+    throw new Error(`Circle signer is half configured; also set ${missing.join(", ")}.`);
+  }
+  return circleWalletAccount({
+    apiKey: requireEnv("CIRCLE_API_KEY"),
+    entitySecret: requireEnv("CIRCLE_ENTITY_SECRET"),
+    walletId: requireEnv("CIRCLE_WALLET_ID"),
+    address: hexEnv("CIRCLE_WALLET_ADDRESS"),
+  });
+}
+
+function client(signer: LocalAccount): ArcanumClient {
   return new ArcanumClient({
     walletAddress: hexEnv("GUARDED_WALLET"),
-    agentSigner: privateKeyToAccount(hexEnv("AGENT_PRIVATE_KEY")),
+    agentSigner: signer,
     chain: arcTestnet,
     rpcUrl: process.env.ARC_TESTNET_RPC?.trim() || ARC_TESTNET_RPC_URL,
     apiUrl: process.env.ARCANUM_API_URL?.trim() || "https://thearcanum.in",
@@ -155,9 +190,13 @@ async function runScenario(scenario: Scenario, execute: boolean): Promise<void> 
   if (execute && scenario === "deny") {
     throw new Error("The deny scenario is receipt-only; run it without --execute.");
   }
-  const arcanum = client();
-  const intent = intentFor(scenario, privateKeyToAccount(hexEnv("AGENT_PRIVATE_KEY")).address);
+  const signer = agentSigner();
+  const arcanum = client(signer);
+  const intent = intentFor(scenario, signer.address);
   console.log(`\n== ${scenario}${execute ? " (execute)" : ""}`);
+  console.log(
+    `signer      ${signer.address}${signer.source === "custom" ? " (Circle wallet)" : ""}`,
+  );
   console.log(`vendor      ${intent.vendorAddress}`);
   console.log(`amount      ${intent.amount} USDC`);
   console.log(`reference   ${intent.reference}`);
@@ -241,7 +280,10 @@ async function link(receiptId: string, txHash: string): Promise<void> {
   if (!/^0x[0-9a-fA-F]{64}$/.test(txHash)) {
     throw new Error("txHash must be a 32-byte hex hash.");
   }
-  const attached = await client().attachPaymentReceiptEvidence(receiptId, txHash as `0x${string}`);
+  const attached = await client(agentSigner()).attachPaymentReceiptEvidence(
+    receiptId,
+    txHash as `0x${string}`,
+  );
   console.log(`receipt     ${attached.receiptId}`);
   for (const row of attached.evidence) {
     console.log(`evidence    ${row.kind}/${row.outcome} ${row.txHash ?? ""} ${row.observedAt}`);
