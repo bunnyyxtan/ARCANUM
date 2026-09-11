@@ -196,6 +196,23 @@ failing test first.
     entity secret, availability now depends on Circle, Circle sees signing
     payloads, and receipts cannot attest Circle provenance.
 
+25. **CCTP funding is inbound and separate from spending.** One testnet route:
+    Ethereum Sepolia to Arc, standard CCTP V2 with Circle forwarding. Quotes
+    disclose the fee cap and minimum received. The source burn hash is the
+    recovery identifier; status refresh never submits a second burn.
+    Settlement is verified on Arc, not inferred from attestation completion.
+    Browser/CLI submission guards survive ambiguous responses and reloads.
+    No new custody account, contract, policy or database schema is introduced.
+    Circle signs agent payments through the existing adapter; Circle
+    forwarding broadcasts only the separate CCTP mint.
+    If forwarding has not completed, an explicitly approved operator relay
+    may submit the same attestation on Arc, without another source burn.
+    The demo relay caps destination gas at 0.01 native USDC, journals the
+    signed hash before broadcast and never automatically resubmits.
+    Operator-supplied mint hashes are candidates for the same full settlement
+    verification, not overrides of Circle or onchain evidence. Demo claims
+    distinguish manual settlement from automatic forwarding.
+
 ### Receipt envelope (v1)
 
 ```
@@ -243,9 +260,10 @@ failing test first.
 | f | sdk: apiUrl, receipt methods, tests | done, `12c527c`; tsup/size-limit not runnable here (deps blocked), CI builds web only |
 | g | docs: PRE-EXISTING.md, docs/PAYMENT-RECEIPTS.md (Mermaid, trust model, walkthrough, limitations), AI disclosure, .env.example sync, README + SDK README sections, docs/ethonline-2026 planning artifacts | done (reviewed; overclaims on tx-hash retention, key retirement and demo status corrected) |
 | h | production: issuer key in Vercel env (done 2026-09-10); branch commits on `main`; production build verified 2026-09-10 (`/receipts`, `/verify`, `GET /api/receipts/issuers` on thearcanum.in) | done |
-| i | demo runs on testnet (recorded in [`demo-evidence.md`](./demo-evidence.md) as each row is verified), video, submission form | runs done 2026-09-10; video and form need user |
+| i | demo runs on testnet (recorded in [`demo-evidence.md`](./demo-evidence.md) as each row is verified), video, submission form | runs done 2026-09-10, all rows and the tamper test recorded 2026-09-11; video and form need user |
 | j | hardening pass: adversarial review of a–g, decisions 18–23, one commit per finding with a failing test first | done 2026-09-10 |
 | k | Circle Wallets as the agent signer (decision 24): `arcanum-sdk/circle` adapter + tests, `scripts/circle-wallet-setup.ts`, demo runner signer switch, `docs/CIRCLE-WALLETS.md`; a Circle-signed allowed run recorded in `demo-evidence.md` | done 2026-09-11: wallet `0xbf4be36c…675c39` authorized in `0x0069221c…7a89a2`, receipt `d6cd633b-…` paid in `0x7e62f73b…d619a3` |
+| l | CCTP V2 inbound funding (decision 25): browser-safe SDK, read-only quote/status API, wallet funding panel, CLI, intent-bound recovery and `docs/CCTP-FUNDING.md` | live 5 USDC settled on 2026-09-11: Sepolia burn `0xe53412c4…a28bbd9`, manually relayed Arc mint `0xe0e35685…2219103`; wallet 0.5 → 5.5 USDC, CCTP fee 0, separate relay gas 0.003565276 USDC; no reburn; automatic forwarding not proven; fixes tested and reviewed; code in `c7ea5ba`, `d7918c7`, `3f5631a`; production deployment is separate |
 
 Test state after slices a–g: shared 18/18, api 94/94, sdk 18/18; biome +
 tsc clean in shared/api/sdk/web; web `next build` passes. After slice j:

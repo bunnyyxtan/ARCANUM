@@ -79,7 +79,19 @@ All of it is on `ethonline-2026` after `pre-ethonline-2026`:
 | `98323f7` `chore: add the receipts testnet demo runner`, `1fc5398` `fix: stop the demo runner when the verdict differs from the scenario`, `06d408a` `fix: act on the inspected receipt in the demo runner` | `scripts/receipts-demo.ts`: the agent-runtime side of the testnet walkthrough; with `--execute` it pays only when the receipt is newly issued and its verdict is the one the scenario expects, and the transaction acts on that inspected receipt rather than on a second request |
 | `efc9302` `feat: sign as the agent with a circle developer-controlled wallet` | `packages/sdk/src/circle.ts`, `circle-api.ts` and tests: the `arcanum-sdk/circle` subpath, a viem local account whose `signMessage`, `signTransaction` and `signTypedData` are delegated to a Circle developer-controlled wallet, with every answer verified before use; package exports and build entries for the subpath |
 | `ee0cfed` `feat: add the circle wallet setup script` | `scripts/circle-wallet-setup.ts` (create the Circle wallet, authorize it on a governed wallet, fund gas) and the demo runner's signer switch |
+| `c7ea5ba` `feat: add cctp funding sdk` | Browser-safe CCTP V2 quote, source transaction builders and strict source/destination settlement verification, including protocol regression tests |
+| `d7918c7` `feat: add wallet funding dashboard` | Read-only quote/status API, governed-wallet funding panel and intent-bound browser recovery |
+| `3f5631a` `feat: add cctp funding and recovery cli` | Circle-signed source funding, durable transfer state and separately approved, gas-capped manual destination recovery |
 | later `docs:` commits | the testnet evidence record ([`docs/ethonline-2026/demo-evidence.md`](./docs/ethonline-2026/demo-evidence.md)), the showcase submission text ([`docs/ethonline-2026/submission.md`](./docs/ethonline-2026/submission.md)), the README event section and this file; every one of them is in the compare view above |
+
+Additional event work: the CCTP V2 inbound
+funding SDK, dashboard flow, CLI and [`docs/CCTP-FUNDING.md`](docs/CCTP-FUNDING.md).
+This is a new Sepolia-to-Arc deposit path, not a change to the pre-existing
+wallet contracts or to the payment receipt format. The first live 5-USDC source
+burn and Arc mint are recorded in the event evidence. Settlement used an
+explicitly approved manual relay; automatic forwarding is not claimed proven.
+The implementation commits are listed above; deployment of this event-branch
+work is separate from its inclusion in the repository.
 
 The `fix:` commits are the hardening pass of 2026-09-10, described as
 decisions 18–23 in [`docs/ethonline-2026/build-log.md`](docs/ethonline-2026/build-log.md).
@@ -178,6 +190,11 @@ in this diff. Specifically:
   `./circle` entries in the SDK manifest, tsup config and `rewrite-dts.mjs`;
   `scripts/circle-wallet-setup.ts` and the signer switch in
   `scripts/receipts-demo.ts`.
+- The additional CCTP work described above: the browser-safe SDK
+  subpath and protocol tests, read-only quote/status routes, wallet funding
+  panel and recovery controls, CLI and state tests, and funding documentation.
+  The implementation was checked against Circle's V2 contract sources; no
+  existing wallet contract or payment receipt format was replaced.
 - `supabase/migrations/20260910120000_payment_receipts.sql`.
 - Documentation: `docs/PAYMENT-RECEIPTS.md`, `docs/CIRCLE-WALLETS.md`,
   `docs/ethonline-2026/*`, the README and SDK README sections,

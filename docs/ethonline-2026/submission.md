@@ -73,6 +73,16 @@ Built during the event, all on the `ethonline-2026` branch after the tag:
   intents and transactions with a Circle developer-controlled wallet instead
   of a key file on the host, with every Circle answer verified before use;
   the governed wallet, its policy and the receipts are unchanged.
+- An inbound CCTP V2 funding flow: Sepolia USDC is burned with Circle's
+  Forwarding Service hook and minted to an Arc Testnet governed wallet.
+  The dashboard and CLI expose fee quotes, source-hash recovery and
+  onchain-verified settlement status. Funding is separate from payment
+  receipts and leaves spending policy unchanged; see
+  [`CCTP-FUNDING.md`](../CCTP-FUNDING.md). A live 5 USDC burn and Arc mint are
+  recorded in [`demo-evidence.md`](./demo-evidence.md#cctp-inbound-funding-2026-09-11);
+  this run completed through an explicitly approved manual relay after
+  automatic forwarding did not finish during observation. It proves CCTP
+  settlement, not successful automatic forwarding.
 
 A receipt never authorizes a transfer. The contract does not know receipts
 exist and re-evaluates policy in the block that includes the transaction;
