@@ -207,6 +207,32 @@ and nothing is broadcast. The API key and entity secret never appear in
 errors. See the repository's `docs/CIRCLE-WALLETS.md` for setup and the
 trust model.
 
+## CCTP inbound funding
+
+The browser-safe `arcanum-sdk/cctp` subpath supports one testnet route:
+Ethereum Sepolia USDC to an Arc Testnet governed wallet, using CCTP V2 and
+Circle's Forwarding Service. It needs no Circle API key and does not load
+the Node-only signing adapter.
+
+```ts
+import { getCctpQuote, buildCctpTransactions, getCctpStatus } from "arcanum-sdk/cctp";
+
+const quote = await getCctpQuote("5"); // total debit, including the fee
+const { approval, burn } = buildCctpTransactions({ recipient: guardedWallet, quote });
+// Submit approval on Sepolia and require success. Revalidate the quote,
+// account and chain before submitting burn; the helpers do not send funds.
+const transfer = await getCctpStatus({ burnTxHash, recipient: guardedWallet });
+```
+
+Quotes report the maximum fee and minimum received in six-decimal USDC base
+units. `expiresAt` is a Unix timestamp in milliseconds. A new quote requires
+the payer's review. Store the burn
+hash before waiting for settlement, then resume status checks with that hash,
+never by repeating the burn. A completed attestation is not a completed mint.
+Funding neither changes the wallet's spending policy nor issues a payment
+receipt. See `docs/CCTP-FUNDING.md` in the repository for the CLI, dashboard,
+recovery rules and Circle trust boundary.
+
 ## Public exports
 
 - `ArcanumClient`
@@ -226,3 +252,5 @@ trust model.
   `ARC_TESTNET_RPC_URL`, `ARC_TESTNET_USDC_ADDRESS`, `usdcErc20`, and `usdcGas`
 - `circleWalletAccount`, `CircleSignerError` and `CircleWalletAccountConfig`
   from `arcanum-sdk/circle` (Node.js only)
+- `CCTP_ROUTE`, `getCctpQuote`, `buildCctpTransactions`, `getCctpStatus`,
+  `CctpQuote` and `CctpStatus` from `arcanum-sdk/cctp` (browser-safe)
