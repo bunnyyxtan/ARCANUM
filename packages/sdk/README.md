@@ -162,6 +162,51 @@ called with `{ executeReplayedReceipt: true }` or a fresh reference.
 See the repository's `docs/PAYMENT-RECEIPTS.md` for the format, the trust
 model and the API.
 
+## Circle Wallets as the agent signer
+
+`arcanum-sdk/circle` turns a Circle developer-controlled wallet into the
+agent signer, so no private key has to sit on the agent host. The wallet's
+key lives in Circle's MPC service; the adapter is a viem local account that
+sends payment-intent messages (EIP-191) and prepared transactions to Circle's
+signing API and hands the signatures back to `ArcanumClient`. viem still
+prepares nonce, gas and fees over your Arc RPC and broadcasts the signed
+transaction itself, so policy, escalation and receipt evidence behave exactly
+as with a private key. Node.js only (the entity secret ciphertext needs
+`node:crypto`).
+
+```ts
+import { ArcanumClient } from "arcanum-sdk";
+import { arcTestnet, ARC_TESTNET_RPC_URL } from "arcanum-sdk/chains";
+import { circleWalletAccount } from "arcanum-sdk/circle";
+
+const agentSigner = circleWalletAccount({
+  apiKey: process.env.CIRCLE_API_KEY!,
+  entitySecret: process.env.CIRCLE_ENTITY_SECRET!,
+  walletId: process.env.CIRCLE_WALLET_ID!,
+  address: process.env.CIRCLE_WALLET_ADDRESS as `0x${string}`,
+});
+
+const arcanum = new ArcanumClient({
+  walletAddress: process.env.GUARDED_WALLET as `0x${string}`,
+  agentSigner,
+  chain: arcTestnet,
+  rpcUrl: ARC_TESTNET_RPC_URL,
+  apiUrl: "https://thearcanum.in",
+});
+```
+
+Create the wallet as an EOA on Circle's generic `EVM-TESTNET` (or `EVM`)
+identifier, since Circle's transaction-signing endpoint is not available for
+named chains such as `ARC-TESTNET`, then authorise its address on the
+governed wallet like any signer (`GuardedWallet.addSigner`) and give it a
+little USDC for gas. Every answer from Circle is checked
+before use: a signature must recover to the wallet address, and a signed
+transaction must parse back to exactly the requested recipient, calldata,
+value, nonce, chain, gas and fees; otherwise a `CircleSignerError` is thrown
+and nothing is broadcast. The API key and entity secret never appear in
+errors. See the repository's `docs/CIRCLE-WALLETS.md` for setup and the
+trust model.
+
 ## Public exports
 
 - `ArcanumClient`
@@ -179,3 +224,5 @@ model and the API.
   `PaymentIntentWithReceiptResult`
 - Arc Testnet helpers from `arcanum-sdk/chains`, including `arcTestnet`,
   `ARC_TESTNET_RPC_URL`, `ARC_TESTNET_USDC_ADDRESS`, `usdcErc20`, and `usdcGas`
+- `circleWalletAccount`, `CircleSignerError` and `CircleWalletAccountConfig`
+  from `arcanum-sdk/circle` (Node.js only)
