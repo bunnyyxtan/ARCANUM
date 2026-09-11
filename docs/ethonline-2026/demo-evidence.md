@@ -16,7 +16,7 @@ not.
 | Scenario | Receipt id | Verdict / reason | Evaluated at block | Transaction | Evidence rows | Offline verification |
 | --- | --- | --- | --- | --- | --- | --- |
 | Allowed payment (5 USDC to the approved vendor) | `e68e068d-90b0-4366-940d-700b1b1c8c60` | allow / NONE | 61419538 | [`0x214b1ddb…62fc781c`](https://testnet.arcscan.app/tx/0x214b1ddba2b8018eda6d4692d9c1647907d79b0046bdb2b8bd80c3cf62fc781c) (block 61419543) | `execution/executed` | `verifyPaymentReceipt`: ok; digest `0x6fea6a19…2654ac6d` verified, issuer `arc-testnet-2026-09` verified, request signature verified |
-| Denied payment | _pending_ | | | none (a deny never reaches the chain) | none | |
+| Denied payment (1 USDC to an address with no vendor record) | `3fb578b8-454d-4f3d-bf2f-64407e8b88ed` | deny / ALLOWLIST_REQUIRED | 61419566 | none (a deny never reaches the chain) | none | `verifyPaymentReceipt`: ok; digest `0x1b16fc6f…b552a69` verified, issuer `arc-testnet-2026-09` verified, request signature verified |
 | Escalated payment | _pending_ | | | | | |
 | Council decision on the hold | _pending_ (same receipt) | | | | | |
 
