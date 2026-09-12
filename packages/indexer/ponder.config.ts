@@ -76,21 +76,28 @@ export default createConfig({
   chains: {
     [chainKey]: {
       id: ARC_CHAIN_ID,
-      // The official public RPC (rpc.testnet.arc.network) rate-limits
-      // eth_getLogs so aggressively that a backfill never progresses, so the
-      // dRPC public endpoint goes first and the official one is the fallback.
-      // No third-party mainnet mirror is configured, so mainnet uses only the
-      // env override plus the configured official endpoint.
-      rpc: [
-        process.env.ARC_RPC_URL ??
-          process.env.ARC_TESTNET_RPC ??
-          process.env.PONDER_RPC_URL_5042002,
-        ...(IS_ARC_MAINNET ? [] : ["https://arc-testnet.drpc.org"]),
-        ARC_RPC_URL,
-      ].filter((url): url is string => Boolean(url)),
+      // The official public RPC (rpc.testnet.arc.network) answers a 10,000
+      // block eth_getLogs in ~100ms and returns 429 above roughly two
+      // requests per second; Ponder adapts its request rate to those 429s
+      // on its own, so the block range is set to the endpoint's maximum and
+      // the rate is left to it. The free dRPC endpoint is no longer listed:
+      // its plan rejects any eth_getLogs range above 100 blocks, and with a
+      // fixed block range Ponder does not shrink requests on that error, so
+      // every request routed there failed and a backfill crawled at a few
+      // hundred blocks per minute (2026-09-12). An env override, when set,
+      // is used alongside the configured official endpoint.
+      rpc: Array.from(
+        new Set(
+          [
+            process.env.ARC_RPC_URL ??
+              process.env.ARC_TESTNET_RPC ??
+              process.env.PONDER_RPC_URL_5042002,
+            ARC_RPC_URL,
+          ].filter((url): url is string => Boolean(url)),
+        ),
+      ),
       pollingInterval: 4_000,
-      maxRequestsPerSecond: 10,
-      ethGetLogsBlockRange: 2_000,
+      ethGetLogsBlockRange: 10_000,
     },
   },
   contracts: contracts as never,

@@ -37,8 +37,11 @@ three repository secrets before the schedule can run.
 - The development workspace indexer keeps running as before; the two use separate
   checkpoints and their writes to the read model are the same rows, so they
   never fight.
-- The free dRPC endpoint rate-limits occasionally (HTTP 429). Ponder retries
-  and gets through; warnings in the run log are normal, failures are not.
+- The official public RPC (`rpc.testnet.arc.network`) rate-limits at roughly
+  two requests per second (HTTP 429). Ponder adapts its request rate and gets
+  through; warnings in the run log are normal, failures are not. The free dRPC
+  endpoint is not used any more: its plan caps `eth_getLogs` at 100 blocks, so
+  a backfill through it crawled at a few hundred blocks per minute.
 - If a paid RPC key ever arrives, change `ARC_TESTNET_RPC` in the workflow to
   the keyed URL and, if wanted, tighten the cron to every hour.
 - To pause everything: Actions tab → "Indexer top-up" → "…" → Disable
