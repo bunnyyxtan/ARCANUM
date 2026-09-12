@@ -2,6 +2,22 @@ import type { PaymentReceiptEvidence, PaymentReceiptVerdict } from "@arcanum/sha
 
 export type VerdictTone = "approved" | "rejected" | "escalated" | "frozen";
 
+// Receipt envelopes are small; this cap prevents local parsing and file reads
+// from consuming unbounded browser memory.
+export const RECEIPT_INPUT_MAX_BYTES = 1024 * 1024;
+
+export function receiptInputSizeError(size: number): string | null {
+  return size > RECEIPT_INPUT_MAX_BYTES ? "Receipt JSON must be 1 MiB or smaller." : null;
+}
+
+/**
+ * The limit is in bytes, so pasted text is measured in UTF-8 rather than by
+ * UTF-16 code units, which under-count any non-ASCII content.
+ */
+export function receiptTextSizeError(text: string): string | null {
+  return receiptInputSizeError(new TextEncoder().encode(text).byteLength);
+}
+
 const VERDICT_TONES: Record<PaymentReceiptVerdict, VerdictTone> = {
   allow: "approved",
   escalate: "escalated",

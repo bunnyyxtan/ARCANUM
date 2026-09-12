@@ -10,14 +10,9 @@ import { formatUnits } from "viem";
 import { z } from "zod";
 
 import { readVendorChainState } from "../chain";
-import {
-  readSupabaseVendors,
-  readSupabaseWalletByLooseId,
-  vendorCategoryFromIndex,
-  writeSupabaseVendor,
-} from "../supabase";
+import { readSupabaseVendors, vendorCategoryFromIndex, writeSupabaseVendor } from "../supabase";
 import { protectedProcedure, publicProcedure, router } from "../trpc";
-import { findWalletByLooseId } from "./helpers";
+import { findWalletByLooseId, requireChainWalletOwner, requireWalletOwner } from "./helpers";
 
 function onChainVendorWriteOnly(): never {
   throw new TRPCError({
@@ -57,25 +52,11 @@ export const vendorsRouter = router({
         name: z.string().min(1).max(80),
         category: z.string().min(1).max(40),
         kycStatus: z.enum(["public", "arcanevm"]).default("public"),
-        perVendorCap: z.number().nonnegative().default(0),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const walletAddress = input.walletAddress.toLowerCase();
-      const wallet = await readSupabaseWalletByLooseId(ctx, walletAddress);
-
-      if (!wallet || wallet.address.toLowerCase() !== walletAddress) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Governed wallet was not found.",
-        });
-      }
-      if (wallet.ownerAddress.toLowerCase() !== ctx.session.walletAddress.toLowerCase()) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Only the governed wallet owner can record vendor registry changes.",
-        });
-      }
+      const wallet = await requireWalletOwner(ctx, walletAddress);
 
       const chainState = await readVendorChainState(
         walletAddress as `0x${string}`,
@@ -88,6 +69,9 @@ export const vendorsRouter = router({
           message: "VendorRegistry is not reachable; vendor state could not be verified onchain.",
         });
       }
+      // Keep the owner check adjacent to the metadata write as well as at
+      // address resolution; transfers can arrive while the registry read runs.
+      await requireChainWalletOwner(ctx, wallet.address);
 
       const status = chainState.blocked ? "blocked" : chainState.allowed ? "allowed" : "removed";
 

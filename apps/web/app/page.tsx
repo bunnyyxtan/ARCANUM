@@ -22,6 +22,8 @@ type GlobalStats = {
   capitalGovernedUsdc: number;
 };
 
+type GlobalStatsState = "loading" | "available" | "unavailable";
+
 function formatUsd(value: number): string {
   if (value >= 1e9) return `$${(value / 1e9).toFixed(1)}B`;
   if (value >= 1e6) return `$${(value / 1e6).toFixed(1)}M`;
@@ -33,6 +35,7 @@ export default function LandingPage() {
   const [connectOpen, setConnectOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("");
   const [globalStats, setGlobalStats] = useState<GlobalStats | null>(null);
+  const [globalStatsState, setGlobalStatsState] = useState<GlobalStatsState>("loading");
   const gridRef = useRef<HTMLDivElement>(null);
   const railRef = useRef<HTMLDivElement>(null);
 
@@ -62,17 +65,32 @@ export default function LandingPage() {
 
   useEffect(() => {
     // Real global numbers from the read model: every workspace, every governed
-    // decision. No simulated counters on the landing page.
+    // decision. Never substitute sample values when this read model is unavailable.
     let cancelled = false;
     fetch("/api/public-stats")
-      .then((response) => (response.ok ? response.json() : null))
-      .then((stats: GlobalStats | null) => {
-        if (!cancelled && stats && typeof stats.capitalGovernedUsdc === "number") {
+      .then((response) => {
+        if (!response.ok) throw new Error("Public stats unavailable");
+        return response.json() as Promise<GlobalStats>;
+      })
+      .then((stats) => {
+        if (
+          !cancelled &&
+          stats &&
+          typeof stats.capitalGovernedUsdc === "number" &&
+          Number.isFinite(stats.capitalGovernedUsdc)
+        ) {
           setGlobalStats(stats);
+          setGlobalStatsState("available");
+        } else if (!cancelled) {
+          setGlobalStats(null);
+          setGlobalStatsState("unavailable");
         }
       })
       .catch(() => {
-        // Leave the placeholder in place; the record panel stays honest.
+        if (!cancelled) {
+          setGlobalStats(null);
+          setGlobalStatsState("unavailable");
+        }
       });
     return () => {
       cancelled = true;
@@ -267,16 +285,22 @@ export default function LandingPage() {
                 <LedgerRows />
               </Reveal>
               <div className="absolute bottom-full right-0 mb-5 hidden w-[200px] border-l border-[var(--wl-signal)] pl-4 text-[10px] leading-[1.4] text-[var(--wl-signal)] lg:block">
-                THE LIVE RECORD
+                ILLUSTRATIVE SAMPLE
                 <br />
                 <span className="text-[var(--wl-secondary)]">
-                  Not a demo. A transaction deciding itself in public.
+                  Static examples of governed decisions. No live ledger feed is shown here.
                 </span>
                 <strong className="mt-4 block font-mono text-[20px] font-medium tabular-nums text-[var(--wl-ink)]">
-                  {globalStats ? formatUsd(globalStats.capitalGovernedUsdc) : "$ · · ·"}
+                  {globalStatsState === "available" && globalStats
+                    ? formatUsd(globalStats.capitalGovernedUsdc)
+                    : globalStatsState === "loading"
+                      ? "CHECKING"
+                      : "UNAVAILABLE"}
                 </strong>
                 <span className="block font-mono text-[8px] uppercase tracking-[.12em] text-[var(--wl-secondary)]">
-                  capital governed
+                  {globalStatsState === "available"
+                    ? "capital governed · public read model"
+                    : "public stats unavailable"}
                 </span>
               </div>
             </div>

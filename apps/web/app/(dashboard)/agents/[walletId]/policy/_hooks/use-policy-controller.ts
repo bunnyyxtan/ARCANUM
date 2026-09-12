@@ -55,6 +55,8 @@ function usePolicyControllerInternal(routeWalletId: string) {
     deployment,
     writeState,
     refreshPolicyQueries,
+    routeWalletId,
+    policyWalletOptions,
   );
   const deployStatusLabel = writeState.policyPendingIndexer
     ? "DEPLOYED"

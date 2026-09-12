@@ -6,6 +6,7 @@ import { type Address, formatUnits } from "viem";
 import { useAccount, useSwitchChain } from "wagmi";
 
 import { CCTP_ROUTE } from "@/lib/cctp";
+import { fundingAmountError } from "@/lib/cctp-funding-flow";
 import { useAgentFundingController } from "../_hooks/use-agent-funding-controller";
 
 export function AgentFundingPanel({
@@ -30,6 +31,7 @@ export function AgentFundingPanel({
   } = useAgentFundingController(governedWalletAddress);
 
   const [resumeHashInput, setResumeHashInput] = useState("");
+  const amountError = fundingAmountError(amount);
 
   const formatAmount = (baseUnits: string | undefined) => {
     if (!baseUnits) return "—";
@@ -76,13 +78,15 @@ export function AgentFundingPanel({
             </span>
             <div className="flex gap-2 items-center">
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 value={amount}
                 onChange={(event) => {
                   setAmount(event.target.value);
                 }}
                 disabled={state === "APPROVING" || state === "BURNING"}
                 placeholder="100.00"
+                aria-invalid={Boolean(amountError)}
                 className="mt-2 w-full border-b border-[var(--wl-faint)] bg-transparent py-2 font-mono text-[12px] outline-none focus:border-[var(--wl-signal)] disabled:opacity-50"
               />
               <button
@@ -92,6 +96,7 @@ export function AgentFundingPanel({
                   !isConnected ||
                   state === "QUOTING" ||
                   !amount ||
+                  Boolean(amountError) ||
                   state === "APPROVING" ||
                   state === "BURNING"
                 }
@@ -100,6 +105,11 @@ export function AgentFundingPanel({
                 {state === "QUOTING" ? "Quoting..." : "Quote"}
               </button>
             </div>
+            {amountError ? (
+              <p className="mt-2 font-mono text-[9px] leading-[1.5] text-[var(--wl-signal)]">
+                {amountError}
+              </p>
+            ) : null}
           </label>
 
           {quote && state !== "QUOTING" && (

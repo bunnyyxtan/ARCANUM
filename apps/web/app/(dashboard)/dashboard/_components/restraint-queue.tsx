@@ -1,6 +1,6 @@
 import { Arrow } from "@/components/arcanum/arrow";
 import { Reveal } from "@/components/arcanum/reveal";
-import { categoryLabel, formatUsdCompact } from "@/lib/format";
+import { categoryLabel, formatUSDCFromBaseUnits } from "@/lib/format";
 import Link from "next/link";
 import type { DashboardController } from "../_hooks/use-dashboard-controller";
 
@@ -77,7 +77,7 @@ export function RestraintQueue({
                 </p>
               </div>
               <span className="font-mono text-[14px] tabular-nums">
-                {formatUsdCompact(pendingItem.amount)}
+                {formatUSDCFromBaseUnits(pendingItem.amountBaseUnits)}
               </span>
             </div>
             <div className="mt-5 grid grid-cols-2 gap-y-3 font-mono text-[9px] uppercase tracking-[.11em] text-[var(--wl-secondary)]">
@@ -92,7 +92,8 @@ export function RestraintQueue({
                 <b className="font-normal text-[var(--wl-ink)]">{pendingItem.expiresIn}</b>
               </span>
               <span className="col-span-2">
-                wallet <b className="font-normal text-[var(--wl-ink)]">{pendingItem.wallet}</b>
+                wallet{" "}
+                <b className="font-normal text-[var(--wl-ink)]">{pendingItem.walletAddress}</b>
               </span>
             </div>
             <div className="mt-6 flex items-center gap-3">

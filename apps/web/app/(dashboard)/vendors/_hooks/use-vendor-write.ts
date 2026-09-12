@@ -78,7 +78,6 @@ export function useVendorWrite(
       name: string;
       category: string;
       kycStatus: "public" | "arcanevm";
-      perVendorCap: number;
     },
   ) => {
     try {

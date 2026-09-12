@@ -44,6 +44,20 @@ describe("protectedProcedure auth guard", () => {
     );
     await expect(caller.whoami()).resolves.toMatch(/^0x/);
   });
+
+  it("rejects a session whose application expiry has passed", async () => {
+    const caller = guardRouter.createCaller({
+      ...anonymousContext({ authConfigured: true, allowDevAuth: false }),
+      session: {
+        walletAddress: "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        tenantId: "tenant-default",
+        role: "viewer",
+        expiresAt: Date.now() - 1,
+      },
+    });
+
+    await expect(caller.whoami()).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+  });
 });
 
 describe("allowDevAuth environment derivation", () => {

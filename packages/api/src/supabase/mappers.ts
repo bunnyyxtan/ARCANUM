@@ -47,7 +47,7 @@ export function walletFromGovernedWalletRow(row: SupabaseRow): Wallet {
     orgId: stringField(row, ["organization_id", "org_id"], ""),
     address: walletAddress.toLowerCase(),
     label,
-    ownerAddress: stringField(row, ["owner_address"], ownerScopeFromEnv()),
+    ownerAddress: stringField(row, ["owner_address"], "") || ownerScopeFromEnv(),
     createdBlock: numberField(row, ["created_block", "block_number"], 0),
     createdAt: dateField(row, ["created_at", "deployed_at"]),
     factoryAddress: stringField(row, ["wallet_factory_address"], zeroWallet()),
@@ -128,10 +128,17 @@ export function policyFromDoctrineRow(
   };
 }
 
+export type SupabaseVendor = Omit<Vendor, "perVendorCap"> & {
+  /** Null means the mirror predates the explicit cap column. */
+  perVendorCap: string | null;
+};
+
+const UINT256_MAX = 115792089237316195423570985008687907853269984665640564039457584007913129639935n;
+
 export function vendorFromRow(
   row: SupabaseRow,
   wallet?: Wallet | null,
-): Vendor & {
+): SupabaseVendor & {
   name: string;
   kycStatus: "public" | "arcanevm";
   walletAddress: string;
@@ -147,7 +154,10 @@ export function vendorFromRow(
     address: vendorAddress.toLowerCase(),
     category: stringField(row, ["category"], "other"),
     status: vendorStatusFromString(stringField(row, ["status"], "allowed")),
-    perVendorCap: "0",
+    // Supabase stores this explicitly as USDC base units. A nullable column is
+    // deliberate: rows created before the cap mirror was installed must not be
+    // presented as an uncapped vendor.
+    perVendorCap: vendorCapBaseUnitsFromRow(row),
     metadataHash: stringField(row, ["metadata_hash"], stableHash(`vendor:${vendorAddress}`)),
     addedAt: dateField(row, ["created_at"]),
     addedBy: wallet?.ownerAddress ?? ownerScopeFromEnv(),
@@ -155,6 +165,27 @@ export function vendorFromRow(
     kycStatus: booleanField(row, ["confidential"], false) ? "arcanevm" : "public",
     walletAddress,
   };
+}
+
+/**
+ * Read the cap mirror without guessing the unit of an older/foreign column.
+ * `per_vendor_cap_base_units` is the explicitly defined Supabase storage
+ * column; its numeric(78,0) value matches the canonical Drizzle schema and the
+ * six-decimal USDC value returned by VendorRegistry.
+ */
+export function vendorCapBaseUnitsFromRow(row: SupabaseRow | undefined): string | null {
+  const value = row?.per_vendor_cap_base_units;
+  if (typeof value === "bigint") {
+    return value >= 0n && value <= UINT256_MAX ? value.toString() : null;
+  }
+  if (typeof value === "string" && /^\d+$/.test(value.trim())) {
+    const normalized = value.trim().replace(/^0+(?=\d)/, "");
+    return BigInt(normalized) <= UINT256_MAX ? normalized : null;
+  }
+  if (typeof value === "number" && Number.isSafeInteger(value) && value >= 0) {
+    return String(value);
+  }
+  return null;
 }
 
 export function transferFromRow(row: SupabaseRow, wallets: Wallet[]): Transfer {
@@ -183,7 +214,54 @@ export function transferFromRow(row: SupabaseRow, wallets: Wallet[]): Transfer {
   };
 }
 
-export function escalationFromRow(row: SupabaseRow, wallets: Wallet[]): Escalation {
+export type EscalationWithWalletIdentity = Escalation & {
+  /** Stable Supabase wallet row id; never use this as a contract address. */
+  walletId: string;
+  /** GovernedWallet contract address used as the onchain cancellation target. */
+  walletAddress: string;
+  /** Current owner mirror for display only; actions re-read the chain owner. */
+  ownerAddress: string;
+  /** Exact uint256 amount representation used for chain/display binding. */
+  amountBaseUnits: string;
+  counterpartyAddress: string;
+};
+
+/**
+ * The canonical `escalations.amount` column is numeric(78,0) base units. Do
+ * not send that column through the decimal-USDC compatibility parser: values
+ * below one whole USDC are still valid base-unit amounts.
+ */
+export function escalationAmountBaseUnits(row: SupabaseRow) {
+  const canonical = row.amount;
+  if (typeof canonical === "bigint") {
+    if (canonical < 0n) throw new Error("Escalation amount cannot be negative.");
+    return canonical.toString();
+  }
+  if (typeof canonical === "number") {
+    if (canonical < 0 || !Number.isFinite(canonical)) {
+      throw new Error("Escalation amount cannot be represented exactly.");
+    }
+    if (!Number.isInteger(canonical)) {
+      return moneyBaseUnits({ amount_usdc: String(canonical) }, ["amount_usdc"]);
+    }
+    if (!Number.isSafeInteger(canonical)) {
+      throw new Error("Escalation amount cannot be represented exactly.");
+    }
+    return String(canonical);
+  }
+  if (typeof canonical === "string" && /^\d+$/.test(canonical.trim())) {
+    return canonical.trim().replace(/^0+(?=\d)/, "");
+  }
+  if (typeof canonical === "string" && /^(0|[1-9]\d*)(\.\d{1,6})?$/.test(canonical.trim())) {
+    return moneyBaseUnits({ amount_usdc: canonical.trim() }, ["amount_usdc"]);
+  }
+  return moneyBaseUnits(row, ["amount_usdc"], "0");
+}
+
+export function escalationFromRow(
+  row: SupabaseRow,
+  wallets: Wallet[],
+): EscalationWithWalletIdentity {
   const wallet = walletForRow(row, wallets);
   const walletAddress = requireWalletAddress(wallet);
   // The dashboard and the public approver portal both call the escalation
@@ -195,13 +273,24 @@ export function escalationFromRow(row: SupabaseRow, wallets: Wallet[]): Escalati
     stableHash(`escalation:${JSON.stringify(row)}`),
   );
 
+  const amountBaseUnits = escalationAmountBaseUnits(row);
+  const counterpartyAddress = stringField(
+    row,
+    ["to_address", "counterparty_address"],
+    zeroWallet(),
+  );
+
   return {
     id,
     tenantId: stringField(row, ["tenant_id"], FALLBACK_TENANT_ID),
     walletId: wallet?.id ?? stableUuid(`wallet:${walletAddress}`),
+    walletAddress,
+    ownerAddress: wallet?.ownerAddress ?? ownerScopeFromEnv(),
     transferId: stringField(row, ["ledger_event_id"], null),
-    toAddress: stringField(row, ["to_address", "counterparty_address"], zeroWallet()),
-    amount: moneyBaseUnits(row, ["amount", "amount_usdc"]),
+    toAddress: counterpartyAddress,
+    counterpartyAddress,
+    amount: amountBaseUnits,
+    amountBaseUnits,
     reason: stringField(row, ["reason"], "Supabase escalation"),
     createdAt: dateField(row, ["created_at"]),
     expiresAt: dateField(row, ["expires_at"], new Date(Date.now() + 30 * 60_000)),
@@ -275,8 +364,9 @@ export function agentTypeFromLabel(label: string): Agent["type"] {
 }
 
 export function vendorStatusFromString(value: string): Vendor["status"] {
-  if (value === "blocked" || value === "removed") {
-    return value;
+  const normalized = value.toLowerCase();
+  if (normalized === "blocked" || normalized === "removed") {
+    return normalized;
   }
 
   return "allowed";

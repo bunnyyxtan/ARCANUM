@@ -8,15 +8,16 @@ import { ThemeToggle } from "@/components/warm/ThemeToggle";
 import { useMemo, useState } from "react";
 import { isAddress } from "viem";
 
+import { copyText } from "@/lib/clipboard";
 import { shortAddress } from "@/lib/format/address";
 import { configuredPublicOrigin } from "@/lib/public-url";
 import { trpc } from "@/lib/trpc";
 
 export function BadgePublicPage({ wallet }: Readonly<{ wallet: string }>) {
-  const [copied, setCopied] = useState<"url" | "embed" | null>(null);
+  const [copyState, setCopyState] = useState<"url" | "embed" | "failed" | null>(null);
   const publicOrigin = configuredPublicOrigin();
   const validAddress = isAddress(wallet);
-  const walletLabel = wallet.startsWith("0x") ? shortAddress(wallet, { tail: 6 }) : wallet;
+  const walletLabel = validAddress ? shortAddress(wallet, { tail: 6 }) : "INVALID ADDRESS";
 
   const profileQuery = trpc.wallets.publicProfile.useQuery(
     { address: wallet as `0x${string}` },
@@ -30,11 +31,17 @@ export function BadgePublicPage({ wallet }: Readonly<{ wallet: string }>) {
   const profile = profileQuery.data;
   const hasProfile = Boolean(profile);
   const score = profile?.postureScore ?? 0;
-  const status = profile?.state ?? "NO PUBLIC PROFILE";
-  const profileLabel = profile?.label ?? (hasProfile ? "Governed wallet" : walletLabel);
+  const status = profileQuery.isLoading
+    ? "VERIFYING PUBLIC PROFILE"
+    : profileQuery.isError
+      ? "PUBLIC PROFILE UNAVAILABLE"
+      : (profile?.state ?? "NO PUBLIC PROFILE");
+  const profileLabel = profile?.label ?? (hasProfile ? "Governed wallet" : status);
   const sourceLabel = profileQuery.isLoading
     ? "LOADING"
-    : (profile?.dataSource ?? "NO PUBLIC PROFILE").toUpperCase();
+    : profileQuery.isError
+      ? "UNAVAILABLE"
+      : (profile?.dataSource ?? "NO PUBLIC PROFILE").toUpperCase();
 
   const badgePath = `/badge/${encodeURIComponent(wallet)}`;
   const explorerPath = `/explorer/${encodeURIComponent(wallet)}`;
@@ -45,12 +52,10 @@ export function BadgePublicPage({ wallet }: Readonly<{ wallet: string }>) {
     [publicOrigin, explorerPath, publicBadgeUrl],
   );
 
-  const copyValue = (kind: "url" | "embed", value: string) => {
-    if (navigator.clipboard) {
-      void navigator.clipboard.writeText(value);
-    }
-    setCopied(kind);
-    window.setTimeout(() => setCopied(null), 1600);
+  const copyValue = async (kind: "url" | "embed", value: string) => {
+    const copied = await copyText(value);
+    setCopyState(copied ? kind : "failed");
+    window.setTimeout(() => setCopyState(null), copied ? 1600 : 3000);
   };
 
   return (
@@ -97,7 +102,13 @@ export function BadgePublicPage({ wallet }: Readonly<{ wallet: string }>) {
               A.
             </span>
             <div className="min-w-0">
-              <p className="text-[18px] font-semibold tracking-[-.04em]">GOVERNED BY ARCANUM</p>
+              <p className="text-[18px] font-semibold tracking-[-.04em]">
+                {hasProfile
+                  ? "GOVERNED BY ARCANUM"
+                  : profileQuery.isLoading
+                    ? "VERIFYING PUBLIC PROFILE"
+                    : "NO PUBLIC PROFILE"}
+              </p>
               <p className="mt-1 truncate font-mono text-[9px] uppercase tracking-[.13em] text-[var(--wl-secondary)]">
                 {profileLabel} · {walletLabel}
               </p>
@@ -115,12 +126,14 @@ export function BadgePublicPage({ wallet }: Readonly<{ wallet: string }>) {
           >
             ● {status}
           </p>
-          <Link
-            href={explorerPath}
-            className="mt-7 inline-block font-mono text-[9px] uppercase tracking-[.14em] text-[var(--wl-signal)] underline underline-offset-4"
-          >
-            Inspect public record ↗
-          </Link>
+          {hasProfile && (
+            <Link
+              href={explorerPath}
+              className="mt-7 inline-block font-mono text-[9px] uppercase tracking-[.14em] text-[var(--wl-signal)] underline underline-offset-4"
+            >
+              Inspect public record ↗
+            </Link>
+          )}
         </section>
 
         <section className="mt-14 grid grid-cols-2 gap-px overflow-hidden border border-[var(--wl-line)] bg-[var(--wl-line)] text-left sm:grid-cols-4">
@@ -132,47 +145,83 @@ export function BadgePublicPage({ wallet }: Readonly<{ wallet: string }>) {
               profile?.threatsBlocked === null || profile?.threatsBlocked === undefined
                 ? hasProfile
                   ? "PENDING"
-                  : "0"
+                  : "NOT PUBLISHED"
                 : String(profile.threatsBlocked)
             }
           />
           <BadgeMetric label="SOURCE" value={sourceLabel} muted />
         </section>
 
-        <section className="mt-14 text-left">
-          <div className="flex flex-col items-start gap-4 border-b border-[var(--wl-line)] pb-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
-                INSTALL / ONE LINE
-              </p>
-              <h2 className="font-display mt-2 text-[22px] font-medium tracking-[-.015em]">
-                Embed the badge
-              </h2>
+        {hasProfile ? (
+          <section className="mt-14 text-left">
+            <div className="flex flex-col items-start gap-4 border-b border-[var(--wl-line)] pb-4 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
+                  INSTALL / ONE LINE
+                </p>
+                <h2 className="font-display mt-2 text-[22px] font-medium tracking-[-.015em]">
+                  Embed the badge
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => copyValue("embed", embedSnippet)}
+                className="min-h-11 md:min-h-0 rounded-full border border-[var(--wl-line)] px-4 py-2 font-mono text-[9px] tracking-[.11em] transition hover:border-[var(--wl-ink)]"
+              >
+                {copyState === "embed"
+                  ? "COPIED"
+                  : copyState === "failed"
+                    ? "COPY FAILED"
+                    : "COPY SNIPPET"}
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => copyValue("embed", embedSnippet)}
-              className="min-h-11 md:min-h-0 rounded-full border border-[var(--wl-line)] px-4 py-2 font-mono text-[9px] tracking-[.11em] transition hover:border-[var(--wl-ink)]"
-            >
-              {copied === "embed" ? "COPIED" : "COPY SNIPPET"}
-            </button>
-          </div>
-          <pre className="mt-5 overflow-x-auto border border-[var(--wl-line)] bg-[var(--wl-bg-soft)] p-5 font-mono text-[10px] leading-[1.7] text-[var(--wl-body)]">
-            <code>{embedSnippet}</code>
-          </pre>
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-            <p className="font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-mute)]">
-              Links directly to the agent&apos;s read-only governance proof.
+            <pre className="mt-5 overflow-x-auto border border-[var(--wl-line)] bg-[var(--wl-bg-soft)] p-5 font-mono text-[10px] leading-[1.7] text-[var(--wl-body)]">
+              <code>{embedSnippet}</code>
+            </pre>
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <p className="font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-mute)]">
+                Links directly to the agent&apos;s read-only governance proof.
+              </p>
+              <button
+                type="button"
+                onClick={() => copyValue("url", publicBadgeUrl)}
+                className="min-h-11 md:min-h-0 rounded-full border border-[var(--wl-line)] px-4 py-2 font-mono text-[9px] tracking-[.11em] transition hover:border-[var(--wl-ink)]"
+              >
+                {copyState === "url"
+                  ? "URL COPIED"
+                  : copyState === "failed"
+                    ? "COPY FAILED"
+                    : "COPY BADGE URL"}
+              </button>
+            </div>
+            {copyState === "failed" && (
+              <div role="alert" className="mt-4 border-l border-[var(--wl-signal)] pl-3">
+                <p className="font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-signal)]">
+                  Clipboard unavailable
+                </p>
+                <p className="mt-1 text-[11px] leading-[1.45] text-[var(--wl-secondary2)]">
+                  Select the snippet or badge URL above and copy it manually.
+                </p>
+                <code className="mt-2 block break-all select-all font-mono text-[10px] text-[var(--wl-body)]">
+                  {publicBadgeUrl}
+                </code>
+              </div>
+            )}
+          </section>
+        ) : (
+          <section className="mt-14 border border-[var(--wl-line)] bg-[var(--wl-bg-soft)] p-5 text-left">
+            <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-mute)]">
+              PUBLIC EMBED UNAVAILABLE
             </p>
-            <button
-              type="button"
-              onClick={() => copyValue("url", publicBadgeUrl)}
-              className="min-h-11 md:min-h-0 rounded-full border border-[var(--wl-line)] px-4 py-2 font-mono text-[9px] tracking-[.11em] transition hover:border-[var(--wl-ink)]"
-            >
-              {copied === "url" ? "URL COPIED" : "COPY BADGE URL"}
-            </button>
-          </div>
-        </section>
+            <p className="mt-3 text-[13px] leading-[1.5] text-[var(--wl-body)]">
+              {profileQuery.isLoading
+                ? "We are checking whether this address has opted into a public profile."
+                : profileQuery.isError
+                  ? "The public profile service could not verify this address. No endorsement is shown."
+                  : "This address has not opted into a public profile. No governance badge or embed URL is available."}
+            </p>
+          </section>
+        )}
 
         <footer className="mt-16 border-t border-[var(--wl-line)] pt-5 text-left font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-mute)]">
           ARCANUM · GOVERNED WALLETS FOR AI AGENTS

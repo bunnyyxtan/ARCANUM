@@ -10,6 +10,14 @@ export async function syncSupabaseAuthSession(user: {
   tenantId: string;
   role: string;
 }) {
+  // Checked before anything else: the identity store is shared across hosts,
+  // so a multi-tenant deployment must not issue a session at all, including
+  // through the "unconfigured" path a storage-less deployment may allow.
+  if (process.env.ARCANUM_DEPLOYMENT_MODE === "multi-tenant") {
+    throw new Error(
+      "multi-tenant mode requires tenant-scoped Supabase identity, which this build does not implement; run single-tenant",
+    );
+  }
   const client = createSupabaseServiceRoleClient();
   if (!client) {
     return { synced: false as const, reason: "unconfigured" as const };

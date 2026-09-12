@@ -1,6 +1,7 @@
 import {
   ESCALATION_REASONS,
   ESCALATION_STATUSES,
+  categorySchema,
   escalationReasonFromIndex,
   escalationStatusFromIndex,
 } from "@arcanum/shared";
@@ -18,10 +19,25 @@ function tableRows(table: string) {
   return rows;
 }
 
+// Mirrors PostgREST's `column->>key` JSON text accessor for filter keys.
+function columnValue(row: Row, key: string) {
+  const [column, jsonKey] = key.split("->>");
+  if (jsonKey === undefined) return row[key];
+  const json = row[column ?? ""];
+  if (!json || typeof json !== "object" || Array.isArray(json)) return undefined;
+  const value = (json as Row)[jsonKey];
+  return value === undefined || value === null ? value : String(value);
+}
+
 function matches(row: Row, endpoint: URL) {
   return [...endpoint.searchParams.entries()]
-    .filter(([key]) => key !== "select" && key !== "limit")
-    .every(([key, value]) => String(row[key]) === value.replace(/^eq\./, ""));
+    .filter(([key]) => !["select", "limit", "offset", "order"].includes(key))
+    .every(([key, value]) => {
+      const actual = columnValue(row, key);
+      return value === "is.null"
+        ? actual === null || actual === undefined
+        : String(actual) === value.replace(/^eq\./, "");
+    });
 }
 
 async function fakeFetch(input: string | URL | Request, init?: RequestInit) {
@@ -66,6 +82,42 @@ async function fakeFetch(input: string | URL | Request, init?: RequestInit) {
     tables.indexer_catchup_evidence.push(evidence);
     return Response.json([evidence]);
   }
+  if (table === "sync_governed_wallet_owner" && method === "POST") {
+    const body = JSON.parse(String(init?.body ?? "{}")) as Row;
+    const wallet = tableRows("governed_wallets").find(
+      (row) =>
+        row.chain_id === body.p_chain_id &&
+        String(row.wallet_address).toLowerCase() === String(body.p_wallet_address).toLowerCase(),
+    );
+    if (!wallet) {
+      return Response.json(null);
+    }
+
+    const previousBlock = wallet.owner_sync_block as number | undefined;
+    const previousLog = wallet.owner_sync_log_index as number | undefined;
+    if (
+      previousBlock !== undefined &&
+      (Number(body.p_block_number) < previousBlock ||
+        (Number(body.p_block_number) === previousBlock &&
+          Number(body.p_log_index) <= (previousLog ?? -1)))
+    ) {
+      return Response.json(wallet);
+    }
+    if (
+      String(wallet.owner_address).toLowerCase() !== String(body.p_previous_owner).toLowerCase() &&
+      String(wallet.owner_address).toLowerCase() !== String(body.p_new_owner).toLowerCase()
+    ) {
+      return new Response("owner mismatch", { status: 409 });
+    }
+
+    Object.assign(wallet, {
+      owner_address: String(body.p_new_owner).toLowerCase(),
+      owner_sync_block: Number(body.p_block_number),
+      owner_sync_log_index: Number(body.p_log_index),
+      owner_sync_tx_hash: String(body.p_tx_hash).toLowerCase(),
+    });
+    return Response.json(wallet);
+  }
   tables[table] ??= [];
   const rows = tableRows(table);
 
@@ -74,7 +126,10 @@ async function fakeFetch(input: string | URL | Request, init?: RequestInit) {
   }
   if (method === "GET") {
     const limit = Number(endpoint.searchParams.get("limit") ?? Number.POSITIVE_INFINITY);
-    return Response.json(rows.filter((row) => matches(row, endpoint)).slice(0, limit));
+    const offset = Number(endpoint.searchParams.get("offset") ?? 0);
+    return Response.json(
+      rows.filter((row) => matches(row, endpoint)).slice(offset, offset + limit),
+    );
   }
   const body: Row | Row[] | undefined = init?.body ? JSON.parse(String(init.body)) : undefined;
   if (method === "POST") {
@@ -134,13 +189,16 @@ describe("Supabase synchronization", () => {
           organization_id: "organization-1",
           wallet_address: transfer.walletAddress,
           chain_id: 5042002,
+          owner_address: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           label: "Treasury",
           status: "active",
         },
       ],
       public_wallet_profiles: [],
       ledger_events: [],
+      governance_events: [],
       escalations: [],
+      vendors: [],
       unlinked_ledger_events: [],
       indexer_checkpoints: [],
       indexer_catchup_evidence: [],
@@ -166,6 +224,68 @@ describe("Supabase synchronization", () => {
       tx_hash: transfer.txHash.toLowerCase(),
       log_index: transfer.logIndex,
     });
+  });
+
+  it("mirrors ownership transfers in order and makes replay idempotent", async () => {
+    const { syncOwnershipTransferred } = await import("../src/supabase-sync");
+    const oldOwner = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    const newOwner = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+    const txHash = `0x${"ef".repeat(32)}`;
+
+    await syncOwnershipTransferred({
+      walletAddress: transfer.walletAddress,
+      previousOwner: oldOwner,
+      newOwner,
+      blockNumber: 21,
+      logIndex: 3,
+      txHash,
+      timestamp: transfer.timestamp,
+    });
+    await syncOwnershipTransferred({
+      walletAddress: transfer.walletAddress,
+      previousOwner: oldOwner,
+      newOwner,
+      blockNumber: 21,
+      logIndex: 3,
+      txHash,
+      timestamp: transfer.timestamp,
+    });
+    // A late event from before the applied transfer cannot roll the mirror
+    // back to the former owner.
+    await syncOwnershipTransferred({
+      walletAddress: transfer.walletAddress,
+      previousOwner: oldOwner,
+      newOwner: oldOwner,
+      blockNumber: 20,
+      logIndex: 99,
+      txHash: `0x${"dd".repeat(32)}`,
+      timestamp: transfer.timestamp,
+    });
+
+    expect(tableRows("governed_wallets")[0]).toMatchObject({
+      owner_address: newOwner,
+      owner_sync_block: 21,
+      owner_sync_log_index: 3,
+      owner_sync_tx_hash: txHash,
+    });
+    expect(tableRows("governance_events")).toHaveLength(3);
+  });
+
+  it("skips ownership events for foreign wallets without pinning progress", async () => {
+    tables.governed_wallets = [];
+    const { syncOwnershipTransferred } = await import("../src/supabase-sync");
+    await syncOwnershipTransferred({
+      walletAddress: transfer.walletAddress,
+      previousOwner: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      newOwner: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      blockNumber: 21,
+      logIndex: 3,
+      txHash: `0x${"ef".repeat(32)}`,
+      timestamp: transfer.timestamp,
+    });
+
+    expect(tableRows("governance_events")).toEqual([]);
+    expect(tableRows("governed_wallets")).toEqual([]);
   });
 
   it("stages an event when its wallet row does not exist", async () => {
@@ -356,15 +476,178 @@ describe("Supabase synchronization", () => {
   ] as const)("stores escalation status %s without collapsing it", async (status, hashField) => {
     tables.escalations = [{ id: "esc-row", escalation_key: "0x01", status: "pending" }];
     const { syncEscalationStatus } = await import("../src/supabase-sync");
-    await syncEscalationStatus("0x01", status, transfer.txHash);
+    await syncEscalationStatus({
+      escalationId: "0x01",
+      status,
+      blockNumber: 21,
+      logIndex: 1,
+      txHash: transfer.txHash,
+      timestamp: transfer.timestamp,
+    });
     expect(tableRows("escalations")[0]?.status).toBe(status);
     if (hashField) {
       expect(tableRows("escalations")[0]?.[hashField]).toBe(transfer.txHash.toLowerCase());
     }
   });
+
+  it("formats authoritative USDC amounts without precision loss", async () => {
+    const { usdcDecimal } = await import("../src/supabase-sync");
+    expect(usdcDecimal(9_007_199_254_740_993n)).toBe("9007199254.740993");
+    expect(usdcDecimal(0n)).toBe("0.0");
+    expect(usdcDecimal(1n)).toBe("0.000001");
+    expect(usdcDecimal(1_000_000n)).toBe("1.0");
+  });
+
+  it("mirrors vendor lifecycle events with a chain ordering guard", async () => {
+    const { syncVendorRule } = await import("../src/supabase-sync");
+    const base = {
+      walletAddress: transfer.walletAddress,
+      vendorAddress: transfer.toAddress,
+      blockNumber: 30,
+      logIndex: 2,
+      txHash: transfer.txHash,
+      timestamp: transfer.timestamp,
+    };
+    await syncVendorRule({
+      ...base,
+      kind: "added",
+      categoryIndex: 3,
+      perVendorCap: 9_007_199_254_740_993n,
+    });
+    await syncVendorRule({ ...base, kind: "removed", blockNumber: 29 });
+    await syncVendorRule({
+      ...base,
+      kind: "blocked",
+      blockNumber: 31,
+      txHash: `0x${"bb".repeat(32)}`,
+    });
+    expect(tableRows("vendors")).toHaveLength(1);
+    expect(tableRows("vendors")[0]).toMatchObject({
+      wallet_address: transfer.walletAddress,
+      vendor_address: transfer.toAddress,
+      category: "subcontracting",
+      status: "blocked",
+      per_vendor_cap_base_units: "9007199254740993",
+      confidential: true,
+      data_source: "live",
+      source: "indexer",
+      rule_sync_block: 31,
+    });
+  });
+
+  it("stages and replays vendor events after the wallet appears", async () => {
+    tables.governed_wallets = [];
+    const { syncCheckpoint, syncVendorRule } = await import("../src/supabase-sync");
+    await syncVendorRule({
+      walletAddress: transfer.walletAddress,
+      vendorAddress: transfer.toAddress,
+      kind: "removed",
+      blockNumber: 30,
+      logIndex: 2,
+      txHash: transfer.txHash,
+      timestamp: transfer.timestamp,
+    });
+    expect(tableRows("unlinked_ledger_events")[0]?.event_kind).toBe("vendor_removed");
+    tables.governed_wallets.push({
+      id: "wallet-1",
+      organization_id: "organization-1",
+      wallet_address: transfer.walletAddress,
+      chain_id: 5042002,
+      status: "active",
+    });
+    await syncCheckpoint(30, 1);
+    expect(tableRows("vendors")[0]).toMatchObject({ status: "removed" });
+    expect(tableRows("unlinked_ledger_events")).toHaveLength(0);
+  });
+
+  it("replays a staged escalation lifecycle in chain order", async () => {
+    tables.governed_wallets = [];
+    const { syncCheckpoint, syncEscalationApproval, syncEscalationStatus, syncTransferEscalated } =
+      await import("../src/supabase-sync");
+    const escalationId = "escalation-1";
+    await syncTransferEscalated({
+      ...transfer,
+      escalationId,
+      reason: "review",
+      policyVersion: "1",
+      councilVersion: "1",
+      expiresAt: new Date("2025-01-02T00:00:00.000Z"),
+      quorumRequired: 2,
+    });
+    await syncEscalationApproval({
+      escalationId,
+      approvalsCount: 1,
+      blockNumber: 21,
+      logIndex: 1,
+      txHash: `0x${"cc".repeat(32)}`,
+      timestamp: transfer.timestamp,
+    });
+    await syncEscalationStatus({
+      escalationId,
+      status: "released",
+      blockNumber: 22,
+      logIndex: 1,
+      txHash: `0x${"dd".repeat(32)}`,
+      timestamp: transfer.timestamp,
+    });
+    tables.governed_wallets.push({
+      id: "wallet-1",
+      organization_id: "organization-1",
+      wallet_address: transfer.walletAddress,
+      chain_id: 5042002,
+      status: "active",
+    });
+    await syncCheckpoint(22, 1);
+    expect(tableRows("escalations")[0]).toMatchObject({
+      status: "released",
+      approvals_count: 1,
+      release_tx_hash: `0x${"dd".repeat(32)}`,
+    });
+    expect(tableRows("unlinked_ledger_events")).toHaveLength(0);
+  });
+
+  it("replays a staged queue larger than one PostgREST page, in chain order", async () => {
+    tables.governed_wallets = [];
+    const { syncCheckpoint, syncTransferExecuted } = await import("../src/supabase-sync");
+    // Stage in reverse chain order so a partial or unsorted read would show.
+    const total = 1_203;
+    for (let index = total - 1; index >= 0; index -= 1) {
+      await syncTransferExecuted({
+        ...transfer,
+        txHash: `0x${index.toString(16).padStart(64, "0")}`,
+        logIndex: index % 7,
+        blockNumber: 100 + Math.floor(index / 7),
+        amount: BigInt(index + 1),
+      });
+    }
+    expect(tableRows("unlinked_ledger_events")).toHaveLength(total);
+
+    tables.governed_wallets.push({
+      id: "wallet-1",
+      organization_id: "organization-1",
+      wallet_address: transfer.walletAddress,
+      chain_id: 5042002,
+      status: "active",
+    });
+    await syncCheckpoint(300, 1);
+
+    expect(tableRows("unlinked_ledger_events")).toHaveLength(0);
+    const ledger = tableRows("ledger_events");
+    expect(ledger).toHaveLength(total);
+    const amounts = ledger.map((row) => String(row.amount_usdc));
+    expect(amounts[0]).toBe("0.000001");
+    expect(amounts[total - 1]).toBe(`0.00${String(total).padStart(4, "0")}`);
+  });
 });
 
 describe("contract enum mappings", () => {
+  it("keeps the vendor category ordinal aligned with the shared schema", async () => {
+    const { vendorCategoryFromIndex } = await import("../src/supabase-sync");
+    expect(categorySchema.options.map((_, index) => vendorCategoryFromIndex(index))).toEqual(
+      categorySchema.options,
+    );
+  });
+
   it("round-trips every escalation status ordinal", () => {
     for (const [index, status] of ESCALATION_STATUSES.entries()) {
       expect(escalationStatusFromIndex(index)).toBe(status);

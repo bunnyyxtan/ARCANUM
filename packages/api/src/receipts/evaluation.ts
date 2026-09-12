@@ -392,7 +392,7 @@ export function explainDecision(verdict: PaymentReceiptVerdict, reasonCode: stri
     case "CATEGORY_DISABLED":
       return "The vendor's category is not enabled by the policy.";
     case "PER_VENDOR_CAP":
-      return "The amount exceeds the per-vendor cap.";
+      return "The amount exceeds the per-payment cap.";
     default:
       return `Policy engine reason ${reasonCode}.`;
   }

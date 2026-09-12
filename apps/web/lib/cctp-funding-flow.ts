@@ -11,6 +11,7 @@ import {
 import { sepolia } from "viem/chains";
 
 import type { CctpQuote, CctpStatus } from "@/lib/cctp";
+import { decimalUsdcSchema, decimalUsdcToBaseUnits } from "@arcanum/shared";
 
 import { type FundingIntent, isStrictTransactionHash } from "./cctp-funding-storage";
 
@@ -39,6 +40,32 @@ function asRecord(value: unknown, label: string): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
+/** The input boundary shared by the inline error, quote request, and signing path. */
+export function parseFundingAmount(value: string): bigint {
+  if (value.length > 40) {
+    throw new Error("Enter a USDC amount with at most 6 decimal places.");
+  }
+  const parsed = decimalUsdcSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new Error("Enter a USDC amount with at most 6 decimal places.");
+  }
+  const amount = decimalUsdcToBaseUnits(parsed.data);
+  if (amount <= 0n) {
+    throw new Error("The amount must be greater than zero.");
+  }
+  return amount;
+}
+
+export function fundingAmountError(value: string): string | null {
+  if (value === "") return null;
+  try {
+    parseFundingAmount(value);
+    return null;
+  } catch (error) {
+    return error instanceof Error ? error.message : "Enter a valid USDC amount.";
+  }
+}
+
 export function assertValidCctpQuote(value: unknown, amountUsdc: string): CctpQuote {
   const quote = asRecord(value, "quote");
   if (
@@ -51,12 +78,14 @@ export function assertValidCctpQuote(value: unknown, amountUsdc: string): CctpQu
   ) {
     throw new Error("Malformed or expired CCTP quote.");
   }
-  let requestedAmount: bigint;
   try {
-    requestedAmount = parseUnits(amountUsdc, 6);
-  } catch {
-    throw new Error("Enter a USDC amount with at most 6 decimal places.");
+    parseFundingAmount(amountUsdc);
+  } catch (error) {
+    throw error instanceof Error
+      ? error
+      : new Error("Enter a USDC amount with at most 6 decimal places.");
   }
+  const requestedAmount = parseUnits(amountUsdc, 6);
   const amount = BigInt(quote.amountBaseUnits);
   const fee = BigInt(quote.maxFeeBaseUnits);
   const minimumReceived = BigInt(quote.minimumReceivedBaseUnits);

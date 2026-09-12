@@ -51,7 +51,7 @@ AI agents are starting to pay for APIs, compute, data, and tools on their own. A
 It combines:
 
 - Smart-contract wallets with owner-defined policy envelopes, called doctrines
-- Vendor allowlists, category controls, per-vendor limits, and fixed-window spend caps
+- Vendor allowlists, category controls, per-payment limits, and fixed-window spend caps
 - Versioned human councils with expiring, cancellable, and release-time re-evaluated escalations
 - Freshness-bounded anomaly scores with rotatable service signers
 - A public explorer and badge layer so anyone can verify an agent is governed
@@ -72,8 +72,10 @@ Unlike an off-chain spend dashboard that an agent can bypass, the enforcement li
 4. **The agent spends, the contract decides**
    Each USDC payment is evaluated by the `PolicyEngine`. Normal payments pass. Boundary-crossing payments are denied, frozen, or escalated to a human quorum.
 
-5. **Everything leaves a record**
-   The ledger, event stream, public explorer, and badge pages show the full decision trail for every governed movement.
+5. **Settled movements leave a record**
+   The ledger, event stream, public explorer, and badge pages show indexed contract events for
+   governed movements and escalations. A policy-denied call that reverts does not emit a successful
+   DENY event; an issuer-signed payment decision receipt is separate preflight evidence.
 
 <p align="center">
   <img src="./docs/assets/readme/policy-doctrine.webp" alt="Doctrine editor showing per-transaction, daily, and monthly USDC caps, allowed vendor categories, and the deployment record" width="920" />
@@ -95,7 +97,8 @@ A doctrine is the wallet's governing document: per-transaction, daily, and month
 
 ### Vendor registry
 
-Counterparties are registered with a name, category, and optional per-vendor cap. Agents can pay known infrastructure providers while unknown destinations stay blocked.
+Counterparties are registered with a name, category, and optional per-payment cap. Agents can pay
+known infrastructure providers while unknown destinations stay blocked.
 
 ### Human escalation quorum
 
@@ -118,7 +121,7 @@ Every governed wallet has public explorer and badge pages, so anyone can show th
 </p>
 
 <p align="center">
-  <sub>The governed ledger: a complete decision record for every movement, with amounts, counterparties, and verdicts.</sub>
+  <sub>The governed ledger: indexed records for settled movements, with amounts, counterparties, and verdicts.</sub>
 </p>
 
 ## More screens

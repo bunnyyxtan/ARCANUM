@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 export function useVendorSelection(vendors: readonly Vendor[]) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [notice, setNotice] = useState("ALLOWLIST / 30 DAY WINDOW");
+  const [notice, setNotice] = useState("ALLOWLIST / PER-PAYMENT CAPS");
   const [menu, setMenu] = useState<string | null>(null);
   const [capEditing, setCapEditing] = useState(false);
   const [capValue, setCapValue] = useState("");

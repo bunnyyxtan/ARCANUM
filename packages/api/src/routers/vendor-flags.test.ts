@@ -22,6 +22,7 @@ const FLAGGER = "0x1111111111111111111111111111111111111111";
 const EDITOR = "0x2222222222222222222222222222222222222222";
 const CLEARER = "0x3333333333333333333333333333333333333333";
 const OUTSIDER = "0x4444444444444444444444444444444444444444";
+const VIEWER = "0x5555555555555555555555555555555555555555";
 
 type Row = Record<string, unknown>;
 
@@ -66,13 +67,21 @@ function createReadModel(options: FakeOptions = {}) {
       walletFor(EDITOR, ORG),
       walletFor(CLEARER, ORG),
       walletFor(OUTSIDER, OTHER_ORG),
+      walletFor(VIEWER, ORG),
     ],
-    profiles: [profileFor(FLAGGER), profileFor(EDITOR), profileFor(CLEARER), profileFor(OUTSIDER)],
+    profiles: [
+      profileFor(FLAGGER),
+      profileFor(EDITOR),
+      profileFor(CLEARER),
+      profileFor(OUTSIDER),
+      profileFor(VIEWER),
+    ],
     organization_members: [
       memberFor(FLAGGER, ORG, "owner"),
       memberFor(EDITOR, ORG, "approver"),
       memberFor(CLEARER, ORG, "approver"),
       memberFor(OUTSIDER, OTHER_ORG, "owner"),
+      memberFor(VIEWER, ORG, "viewer"),
     ],
     vendor_flags: [] as Row[],
     vendor_flag_events: [] as Row[],
@@ -242,6 +251,18 @@ function callerAs(actor: string, readModel: ReturnType<typeof createReadModel>) 
   return vendorFlagsRouter.createCaller(ctx);
 }
 
+function anonymousCaller(readModel: ReturnType<typeof createReadModel>) {
+  const ctx = {
+    db: null as never,
+    session: null,
+    publicClient: null as never,
+    supabase: readModel.client as unknown as ApiContext["supabase"],
+    requestFingerprint: null,
+    env: { authConfigured: true, allowDevAuth: false },
+  } as unknown as ApiContext;
+  return vendorFlagsRouter.createCaller(ctx);
+}
+
 const VENDOR = "0xf45c70f2b08397419b11751041c0d9547ccedead";
 const OTHER_VENDOR = "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd";
 
@@ -341,5 +362,30 @@ describe("vendor flag review trail", () => {
     const insiderFlags = await callerAs(FLAGGER, readModel).list();
     expect(insiderFlags).toHaveLength(1);
     expect(insiderFlags[0]?.note).toBe("internal review");
+  });
+
+  it("rejects a viewer for every review-register mutation", async () => {
+    const readModel = createReadModel();
+    const viewer = callerAs(VIEWER, readModel);
+    const input = { vendorAddress: VENDOR };
+
+    await expect(viewer.flag({ ...input, note: "read-only attempt" })).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+    await expect(viewer.updateNote({ ...input, note: "read-only edit" })).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+    await expect(viewer.unflag(input)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(readModel.tables.vendor_flags).toEqual([]);
+    expect(readModel.tables.vendor_flag_events).toEqual([]);
+  });
+
+  it("rejects an anonymous caller before any review-register function call", async () => {
+    const readModel = createReadModel();
+    await expect(anonymousCaller(readModel).flag({ vendorAddress: VENDOR })).rejects.toMatchObject({
+      code: "UNAUTHORIZED",
+    });
+    expect(readModel.tables.vendor_flags).toEqual([]);
+    expect(readModel.tables.vendor_flag_events).toEqual([]);
   });
 });

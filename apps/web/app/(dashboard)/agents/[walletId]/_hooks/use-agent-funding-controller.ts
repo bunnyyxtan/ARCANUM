@@ -19,6 +19,7 @@ import {
   fundingIntentFromStatus,
   fundingStateForStage,
   isKnownUserRejection,
+  parseFundingAmount,
 } from "@/lib/cctp-funding-flow";
 import {
   type FundingStorage,
@@ -189,6 +190,12 @@ export function useAgentFundingController(governedWalletAddress: Address | null)
 
   const fetchQuote = useCallback(
     async (value: string) => {
+      try {
+        parseFundingAmount(value);
+      } catch (caught) {
+        setError(messageFor(caught, "Enter a valid USDC amount."));
+        return;
+      }
       if (
         IS_ARC_MAINNET ||
         !governedWalletAddress ||
@@ -239,6 +246,12 @@ export function useAgentFundingController(governedWalletAddress: Address | null)
   );
 
   const submitFunding = useCallback(async () => {
+    try {
+      parseFundingAmount(amount);
+    } catch (caught) {
+      setError(messageFor(caught, "Enter a valid USDC amount."));
+      return;
+    }
     if (
       submittingRef.current ||
       IS_ARC_MAINNET ||

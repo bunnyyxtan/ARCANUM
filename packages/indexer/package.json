@@ -16,13 +16,14 @@
     "@arcanum/contracts": "2.0.0",
     "@arcanum/db": "2.0.0",
     "@arcanum/shared": "2.0.0",
-    "drizzle-orm": "^0.36.0",
+    "drizzle-orm": "^0.45.2",
     "ponder": "^0.16.6",
     "viem": "^2.21.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "@arcanum/config": "2.0.0",
-    "typescript": "^5.6.0"
+    "typescript": "^5.6.0",
+    "vitest": "^5.0.0"
   }
 }

@@ -3,6 +3,12 @@ import type { Dispatch, MouseEvent, SetStateAction } from "react";
 import type { VendorFlagDetail } from "@/lib/live-data";
 import type { Vendor } from "@/lib/types";
 
+import { preserveRawUsdcCapInput, vendorCapDraftState } from "../_lib/helpers";
+
+function focusInlineEditor(input: HTMLInputElement | null) {
+  input?.focus();
+}
+
 export interface VendorReviewControlsProps {
   detail: {
     capEditing: boolean;
@@ -38,6 +44,7 @@ export function VendorReviewControls(props: VendorReviewControlsProps) {
   const { selected, detail } = props;
   if (!selected) return null;
   const flagged = props.isVendorFlagged(selected.address);
+  const capState = vendorCapDraftState(detail.capValue, "edit");
   return (
     <>
       <div className="mt-8 flex flex-wrap gap-3">
@@ -93,7 +100,7 @@ export function VendorReviewControls(props: VendorReviewControlsProps) {
         {flagged && detail.noteEditOpen && (
           <div className="w-full">
             <input
-              autoFocus
+              ref={focusInlineEditor}
               value={detail.noteEditValue}
               maxLength={200}
               onChange={(event) => detail.setNoteEditValue(event.target.value)}
@@ -118,7 +125,7 @@ export function VendorReviewControls(props: VendorReviewControlsProps) {
         {!flagged && detail.flagNoteOpen && (
           <div className="w-full">
             <input
-              autoFocus
+              ref={focusInlineEditor}
               value={detail.flagNote}
               maxLength={200}
               onChange={(event) => detail.setFlagNote(event.target.value)}
@@ -149,22 +156,24 @@ export function VendorReviewControls(props: VendorReviewControlsProps) {
       {detail.capEditing && (
         <div className="mt-4 border-l-2 border-[var(--wl-signal)] bg-[var(--wl-bg-soft)] p-4">
           <p className="font-mono text-[9px] uppercase tracking-[.14em] text-[var(--wl-signal)]">
-            REVISE MONTHLY CAP / {selected.name.toUpperCase()}
+            REVISE PER-PAYMENT CAP / {selected.name.toUpperCase()}
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <span className="font-mono text-[13px] text-[var(--wl-secondary)]">$</span>
             <input
-              autoFocus
+              ref={focusInlineEditor}
               inputMode="numeric"
               value={detail.capValue}
-              onChange={(event) => detail.setCapValue(event.target.value.replace(/[^0-9.]/g, ""))}
+              aria-describedby={capState.error ? "vendor-cap-edit-error" : undefined}
+              aria-invalid={Boolean(capState.error)}
+              onChange={(event) => detail.setCapValue(preserveRawUsdcCapInput(event.target.value))}
               placeholder="2500"
               className="w-[110px] border-b border-[var(--wl-faint)] bg-transparent py-1 font-mono text-[13px] outline-none focus:border-[var(--wl-signal)]"
             />
-            <span className="font-mono text-[10px] text-[var(--wl-mute)]">/ MO · USDC</span>
+            <span className="font-mono text-[10px] text-[var(--wl-mute)]">PER PAYMENT · USDC</span>
             <button
               type="button"
-              disabled={props.vendorSaving}
+              disabled={props.vendorSaving || !capState.canSubmit}
               onClick={props.submitCap}
               className="warm-pill ml-2 rounded-full bg-[var(--wl-signal)] px-4 py-2 font-mono text-[9px] tracking-[.1em] text-[var(--wl-bg)] disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -178,8 +187,18 @@ export function VendorReviewControls(props: VendorReviewControlsProps) {
               CANCEL
             </button>
           </div>
+          {capState.error ? (
+            <p
+              id="vendor-cap-edit-error"
+              role="alert"
+              className="mt-2 font-mono text-[8.5px] tracking-[.08em] text-[var(--wl-signal)]"
+            >
+              {capState.error}
+            </p>
+          ) : null}
           <p className="mt-2 font-mono text-[8.5px] tracking-[.08em] text-[var(--wl-mute)]">
-            WRITES addVendor WITH THE REVISED PER-VENDOR CAP · TAKES EFFECT NEXT SETTLEMENT WINDOW
+            WRITES addVendor WITH THE REVISED PER-PAYMENT CAP · WALLET-WIDE DAILY / MONTHLY CAPS
+            STILL APPLY
           </p>
         </div>
       )}

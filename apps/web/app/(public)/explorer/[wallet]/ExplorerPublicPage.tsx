@@ -10,6 +10,7 @@ import { useState } from "react";
 import { isAddress } from "viem";
 
 import { getArcscanAddressUrl, getArcscanTxUrl } from "@/lib/arcscan";
+import { copyText } from "@/lib/clipboard";
 import { shortAddress } from "@/lib/format/address";
 import { formatUsd } from "@/lib/format/money";
 import { useLiveLedgerByWallet } from "@/lib/live-data";
@@ -31,9 +32,9 @@ function verdictClass(status: LedgerStatus) {
 }
 
 export function ExplorerPublicPage({ wallet }: Readonly<{ wallet: string }>) {
-  const [copied, setCopied] = useState(false);
+  const [copyState, setCopyState] = useState<"copied" | "failed" | null>(null);
   const validAddress = isAddress(wallet);
-  const walletLabel = wallet.startsWith("0x") ? shortAddress(wallet, { tail: 6 }) : wallet;
+  const walletLabel = validAddress ? shortAddress(wallet, { tail: 6 }) : "INVALID ADDRESS";
   const badgeHref = `/badge/${encodeURIComponent(wallet)}`;
   const walletUrl = getArcscanAddressUrl(wallet);
 
@@ -48,21 +49,25 @@ export function ExplorerPublicPage({ wallet }: Readonly<{ wallet: string }>) {
   );
   const profile = profileQuery.data;
   const hasProfile = Boolean(profile);
-  const profileLabel = profile?.label ?? (hasProfile ? "Governed wallet" : walletLabel);
-  const profileState = profile?.state ?? "NO PUBLIC PROFILE";
+  const profileState = profileQuery.isLoading
+    ? "VERIFYING PUBLIC PROFILE"
+    : profileQuery.isError
+      ? "PUBLIC PROFILE UNAVAILABLE"
+      : (profile?.state ?? "NO PUBLIC PROFILE");
+  const profileLabel = profile?.label ?? (hasProfile ? "Governed wallet" : profileState);
   const dataSource = profileQuery.isLoading
     ? "LOADING"
-    : (profile?.dataSource ?? "NO PUBLIC PROFILE").toUpperCase();
+    : profileQuery.isError
+      ? "UNAVAILABLE"
+      : (profile?.dataSource ?? "NO PUBLIC PROFILE").toUpperCase();
 
-  const ledgerQuery = useLiveLedgerByWallet(validAddress ? wallet : null);
+  const ledgerQuery = useLiveLedgerByWallet(validAddress && hasProfile ? wallet : null);
   const records: LedgerEntry[] = ledgerQuery.data ?? [];
 
-  const copy = () => {
-    if (navigator.clipboard) {
-      void navigator.clipboard.writeText(wallet);
-    }
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1800);
+  const copy = async () => {
+    const copied = await copyText(wallet);
+    setCopyState(copied ? "copied" : "failed");
+    window.setTimeout(() => setCopyState(null), copied ? 1800 : 3000);
   };
 
   return (
@@ -107,7 +112,11 @@ export function ExplorerPublicPage({ wallet }: Readonly<{ wallet: string }>) {
                 {profileLabel}
               </h1>
               <p className="mt-5 max-w-[500px] text-[14px] leading-[1.5] text-[var(--wl-body)]">
-                A governed autonomous wallet. Anyone can verify its doctrine and public spend.
+                {hasProfile
+                  ? "A governed autonomous wallet. Anyone can verify its doctrine and public spend."
+                  : profileQuery.isLoading
+                    ? "Checking whether this address has opted into a public governance profile."
+                    : "This address has no published public governance profile."}
               </p>
             </div>
             <span
@@ -136,14 +145,27 @@ export function ExplorerPublicPage({ wallet }: Readonly<{ wallet: string }>) {
               WALLET IDENTITY
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-3">
-              <code className="font-mono text-[15px]">{walletLabel}</code>
+              <code
+                className={`font-mono text-[15px] ${copyState === "failed" ? "break-all select-all" : ""}`}
+              >
+                {copyState === "failed" ? wallet : walletLabel}
+              </code>
               <button
                 type="button"
                 onClick={copy}
                 className="rounded-full border border-[var(--wl-line)] px-3 py-1.5 font-mono text-[9px] transition hover:border-[var(--wl-ink)]"
               >
-                {copied ? "COPIED" : "COPY"}
+                {copyState === "copied"
+                  ? "COPIED"
+                  : copyState === "failed"
+                    ? "COPY FAILED"
+                    : "COPY"}
               </button>
+              {copyState === "failed" && (
+                <p role="alert" className="basis-full text-[10px] text-[var(--wl-signal)]">
+                  Clipboard unavailable. Select the address above and copy it manually.
+                </p>
+              )}
               {walletUrl && (
                 <a
                   href={walletUrl}
@@ -164,21 +186,31 @@ export function ExplorerPublicPage({ wallet }: Readonly<{ wallet: string }>) {
               GOVERNANCE PROOF
             </p>
             <p className="mt-4 text-[19px] font-medium tracking-[-.04em]">
-              Posture{" "}
-              {profile?.postureScore === null || profile?.postureScore === undefined
-                ? "pending"
-                : `${profile.postureScore} / 100`}
-              .
+              {hasProfile
+                ? `Posture ${
+                    profile?.postureScore === null || profile?.postureScore === undefined
+                      ? "pending"
+                      : `${profile.postureScore} / 100`
+                  }.`
+                : profileQuery.isLoading
+                  ? "Posture verifying."
+                  : "Posture not published."}
             </p>
             <p className="mt-2 text-[12px] leading-[1.5] text-[var(--wl-body)]">
-              Vendors, caps, and every decision are recorded by ARCANUM.
+              {hasProfile
+                ? "Vendors, caps, and every decision are recorded by ARCANUM."
+                : profileQuery.isLoading
+                  ? "No governance claim is shown until the public profile is verified."
+                  : "No public governance proof is available for this address."}
             </p>
-            <Link
-              href={badgeHref}
-              className="mt-5 inline-block font-mono text-[9px] uppercase tracking-[.13em] text-[var(--wl-signal)] underline underline-offset-4"
-            >
-              Use this proof on your site ↗
-            </Link>
+            {hasProfile && (
+              <Link
+                href={badgeHref}
+                className="mt-5 inline-block font-mono text-[9px] uppercase tracking-[.13em] text-[var(--wl-signal)] underline underline-offset-4"
+              >
+                Use this proof on your site ↗
+              </Link>
+            )}
           </div>
         </section>
 
@@ -186,7 +218,8 @@ export function ExplorerPublicPage({ wallet }: Readonly<{ wallet: string }>) {
           <div className="flex flex-col items-start gap-3 border-b border-[var(--wl-line)] pb-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
-                PUBLIC LEDGER / {String(records.length).padStart(2, "0")} RECORDS
+                PUBLIC LEDGER / {hasProfile ? String(records.length).padStart(2, "0") : "--"}{" "}
+                RECORDS
               </p>
               <h2 className="font-display mt-2 text-[23px] font-medium tracking-[-.015em]">
                 Recent governed spend
@@ -202,7 +235,19 @@ export function ExplorerPublicPage({ wallet }: Readonly<{ wallet: string }>) {
             <span>Transaction</span>
           </div>
 
-          {ledgerQuery.isError ? (
+          {profileQuery.isLoading ? (
+            <p className="px-3 py-10 font-mono text-[11px] uppercase tracking-[.13em] text-[var(--wl-mute)]">
+              Verifying public publication before loading ledger records…
+            </p>
+          ) : profileQuery.isError ? (
+            <p className="px-3 py-10 font-mono text-[11px] text-[var(--wl-red)]">
+              ERR / PUBLIC PROFILE UNAVAILABLE. No ledger claim is shown.
+            </p>
+          ) : !hasProfile ? (
+            <p className="px-3 py-10 font-mono text-[11px] uppercase tracking-[.13em] text-[var(--wl-mute)]">
+              No public profile is published for this wallet.
+            </p>
+          ) : ledgerQuery.isError ? (
             <p className="px-3 py-10 font-mono text-[11px] text-[var(--wl-red)]">
               ERR / PUBLIC LEDGER UNAVAILABLE. Try again shortly.
             </p>

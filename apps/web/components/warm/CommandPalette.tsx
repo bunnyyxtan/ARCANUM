@@ -4,7 +4,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAccount } from "wagmi";
 
+import { formatBaseUnits } from "@/lib/escalation-truth";
 import { useLiveEscalations } from "@/lib/live-data";
+import { useDialogFocus } from "@/lib/use-dialog-focus";
 
 const SAMPLE_WALLET = "0x4F8C39A7D2B1E84F3aF20a91dDb83a7B7A4eA3B7";
 
@@ -24,10 +26,7 @@ export function CommandPalette() {
   const entries = useMemo<Entry[]>(() => {
     const nextEscalation = pendingEscalations[0];
     const approveHint = nextEscalation
-      ? `${nextEscalation.agentName} · $${nextEscalation.amount.toLocaleString(undefined, {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })}`
+      ? `${nextEscalation.agentName} · ${formatBaseUnits(nextEscalation.amountBaseUnits)}`
       : undefined;
     const explorerHref = address ? `/explorer/${address}` : `/explorer/${SAMPLE_WALLET}`;
     const badgeHref = address ? `/badge/${address}` : `/badge/${SAMPLE_WALLET}`;
@@ -77,6 +76,7 @@ export function CommandPalette() {
     setOpen(false);
     setQuery("");
   };
+  const dialogRef = useDialogFocus(open, close);
 
   const run = (entry: Entry) => {
     router.push(entry.href);
@@ -179,21 +179,28 @@ export function CommandPalette() {
       </button>
       {open && (
         <div
+          ref={dialogRef}
           className="cmd-backdrop fixed inset-0 z-[70] flex items-start justify-center bg-[rgba(var(--wl-ink-rgb),.28)] px-5 pt-[12vh]"
+          // biome-ignore lint/a11y/useSemanticElements: custom ARIA dialog is managed by useDialogFocus; native showModal lifecycle is intentionally not used
           role="dialog"
           aria-modal="true"
           aria-label="Command palette"
-          onClick={close}
         >
-          <div
-            className="cmd-panel w-full max-w-[580px] overflow-hidden border border-[var(--wl-line-bold)] bg-[var(--wl-bg)] shadow-[0_28px_70px_-18px_rgba(var(--wl-ink-rgb),.45)]"
-            onClick={(event) => event.stopPropagation()}
-          >
+          <button
+            type="button"
+            aria-label="Close command palette"
+            aria-hidden="true"
+            data-dialog-backdrop
+            tabIndex={-1}
+            className="absolute inset-0"
+            onClick={close}
+          />
+          <div className="cmd-panel relative z-10 w-full max-w-[580px] overflow-hidden border border-[var(--wl-line-bold)] bg-[var(--wl-bg)] shadow-[0_28px_70px_-18px_rgba(var(--wl-ink-rgb),.45)]">
             <div className="flex items-center gap-3 border-b border-[var(--wl-line-soft)] px-5 py-4">
               <span className="font-mono text-[13px] text-[var(--wl-signal)]">⌕</span>
               <input
-                autoFocus
                 ref={inputRef}
+                data-dialog-autofocus
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 onKeyDown={onNavKey}

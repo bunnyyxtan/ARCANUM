@@ -1,4 +1,4 @@
-import type { ArcanumSession } from "@arcanum/auth";
+import { type ArcanumSession, isCurrentSession } from "@arcanum/auth";
 import { defaultTenantId } from "@arcanum/db";
 import { TRPCError, initTRPC } from "@trpc/server";
 import superjson from "superjson";
@@ -36,6 +36,13 @@ export const publicProcedure = t.procedure.use(async ({ ctx, next, path, type })
 export const rateLimitedPublicProcedure = publicProcedure;
 
 export const protectedProcedure = t.procedure.use(async ({ ctx, next, path, type }) => {
+  // Do not treat a sealed value as authorization by itself. In particular,
+  // existing seals issued with iron-session's old fourteen-day default can
+  // still unseal after the seven-day cookie expires.
+  if (ctx.session && !isCurrentSession(ctx.session)) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "SIWE session expired" });
+  }
+
   const session = ctx.session ?? createLocalDevSession(ctx.env.allowDevAuth);
 
   if (!session) {

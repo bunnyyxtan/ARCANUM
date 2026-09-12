@@ -1,10 +1,12 @@
 import { defaultTenantId } from "@arcanum/db";
 import { TRPCError } from "@trpc/server";
 
+import { readWalletOwner } from "../chain";
 import type { ApiContext } from "../context";
 import {
   readModelUnavailable,
   readSupabaseAgentByLooseId,
+  readSupabaseWalletByAddressUnscoped,
   readSupabaseWalletByLooseId,
 } from "../supabase";
 
@@ -48,6 +50,54 @@ export async function failClosed<T>(label: string, operation: () => Promise<T>):
 /** Resolve a governed wallet by id, address, or label from the read model. */
 export function findWalletByLooseId(ctx: ApiContext, looseWalletId: string) {
   return readSupabaseWalletByLooseId(ctx, looseWalletId);
+}
+
+export async function requireChainWalletOwner(ctx: ApiContext, walletAddress: string) {
+  const caller = ctx.session?.walletAddress.toLowerCase();
+  let chainOwner: string;
+  try {
+    chainOwner = (
+      await readWalletOwner(ctx.publicClient, walletAddress as `0x${string}`)
+    ).toLowerCase();
+  } catch (error) {
+    throw new TRPCError({
+      code: "SERVICE_UNAVAILABLE",
+      message: "The governed wallet owner could not be verified onchain. Try again shortly.",
+      cause: error,
+    });
+  }
+
+  if (!caller || chainOwner !== caller) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Only the current onchain wallet owner may record wallet metadata.",
+    });
+  }
+
+  return chainOwner;
+}
+
+/**
+ * Resolve a supplied governed-wallet address without trusting its eventually
+ * consistent owner_address mirror, then authorize against the wallet contract.
+ *
+ * Owner-only metadata callbacks commonly arrive during the interval after an
+ * OwnershipTransferred event and before Supabase has indexed it. Address
+ * lookup keeps the current owner addressable in that interval; the chain read
+ * prevents the former owner from retaining write authority.
+ */
+export async function requireWalletOwner(ctx: ApiContext, walletAddress: string) {
+  const wallet = await readSupabaseWalletByAddressUnscoped(ctx, walletAddress);
+  if (!wallet || wallet.address.toLowerCase() !== walletAddress.toLowerCase()) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Governed wallet was not found in the live read model.",
+    });
+  }
+
+  await requireChainWalletOwner(ctx, wallet.address);
+
+  return wallet;
 }
 
 /** Resolve an agent by its id, signer address, or governed wallet identity. */

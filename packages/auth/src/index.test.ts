@@ -1,3 +1,4 @@
+import { sealData, unsealData } from "iron-session";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const directory = vi.hoisted(() => ({
@@ -139,5 +140,45 @@ describe("resolveTenantId", () => {
     process.env.ARCANUM_DEPLOYMENT_MODE = "multi-tenant";
     process.env.ARCANUM_TENANT_APP_EXAMPLE_COM = "tenant-mapped";
     expect((await authModule()).resolveTenantId("APP.EXAMPLE.COM:443")).toBe("tenant-mapped");
+  });
+});
+
+describe("session lifetime enforcement", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    process.env.SIWE_SECRET = "s".repeat(32);
+  });
+
+  afterEach(() => {
+    process.env = { ...originalEnv };
+  });
+
+  it("sets the iron-session seal and cookie lifetime to exactly seven days", async () => {
+    const { getSessionOptions, SESSION_TTL_SECONDS } = await authModule();
+    const options = getSessionOptions();
+
+    expect(options.ttl).toBe(SESSION_TTL_SECONDS);
+    expect(options.cookieOptions?.maxAge).toBe(SESSION_TTL_SECONDS);
+  });
+
+  it("rejects an expired application session inside an otherwise valid longer-lived seal", async () => {
+    const { isCurrentSession, SESSION_TTL_SECONDS } = await authModule();
+    const expiredUser = {
+      walletAddress: verifiedMessage.address,
+      tenantId: "tenant-default",
+      role: "viewer" as const,
+      expiresAt: Date.now() - 1,
+    };
+    const seal = await sealData(
+      { user: expiredUser },
+      { password: process.env.SIWE_SECRET as string, ttl: SESSION_TTL_SECONDS * 2 },
+    );
+    const recovered = await unsealData<{ user: typeof expiredUser }>(seal, {
+      password: process.env.SIWE_SECRET as string,
+      ttl: SESSION_TTL_SECONDS * 2,
+    });
+
+    expect(recovered.user).toEqual(expiredUser);
+    expect(isCurrentSession(recovered.user)).toBe(false);
   });
 });

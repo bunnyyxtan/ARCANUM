@@ -57,9 +57,11 @@ export const healthRouter = router({
     const rpc = await healthCheck(() => ctx.publicClient.getBlockNumber());
     const lastCatchupAt = supabase.indexerCheckpoint.lastCatchupAt;
     const indexerStatus = indexerHealthStatus(supabase.indexerCheckpoint.status, lastCatchupAt);
+    const unsupportedMultiTenantIdentity =
+      process.env.ARCANUM_DEPLOYMENT_MODE === "multi-tenant" && Boolean(ctx.supabase);
 
     return {
-      ok: supabase.readModel.status === "available" && rpc.ok,
+      ok: supabase.readModel.status === "available" && rpc.ok && !unsupportedMultiTenantIdentity,
       supabase,
       redisVersion:
         process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
@@ -89,6 +91,9 @@ export const healthRouter = router({
         error: rpc.ok ? null : `${ARC_NETWORK_NAME} RPC is unavailable.`,
       },
       deploymentMode: process.env.ARCANUM_DEPLOYMENT_MODE ?? "supabase",
+      identityProvisioning: unsupportedMultiTenantIdentity
+        ? "unsupported: multi-tenant mode requires tenant-scoped Supabase identity"
+        : "available",
     };
   }),
 });

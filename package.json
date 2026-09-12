@@ -17,6 +17,47 @@
     "db:studio": "npm run db:studio --workspace @arcanum/db",
     "biome": "biome"
   },
+  "overrides": {
+    "@hono/node-server": "1.19.15",
+    "@esbuild-kit/core-utils": {
+      "esbuild": "0.25.12"
+    },
+    "@metamask/sdk": {
+      "uuid": "11.1.1"
+    },
+    "@metamask/sdk-communication-layer": {
+      "uuid": "11.1.1"
+    },
+    "@metamask/utils": {
+      "uuid": "11.1.1"
+    },
+    "mermaid": {
+      "uuid": "14.0.2"
+    },
+    "@size-limit/esbuild": {
+      "nanoid": "5.1.16"
+    },
+    "@xmldom/xmldom": "0.9.12",
+    "axios": "1.20.0",
+    "brace-expansion": "2.1.4",
+    "browserslist": "4.28.9",
+    "drizzle-orm": "0.45.2",
+    "engine.io-client": "6.6.6",
+    "fast-uri": "3.1.6",
+    "form-data": "4.0.6",
+    "hono": "4.13.7",
+    "js-yaml": "3.15.2",
+    "kysely": "0.28.17",
+    "nanoid": "3.3.18",
+    "postcss": "8.5.28",
+    "socket.io-parser": "4.2.7",
+    "tsup": {
+      "esbuild": "0.28.2"
+    },
+    "vite": "6.4.3",
+    "ws": "8.21.3",
+    "@walletconnect/ethereum-provider": "2.24.0"
+  },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
     "@tailwindcss/postcss": "^4.1.8",
@@ -35,6 +76,6 @@
     "url": "https://github.com/bunnyyxtan/ARCANUM/issues"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22.12"
   }
 }

@@ -1,14 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useDialogFocus } from "@/lib/use-dialog-focus";
 
 export function ShortcutsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (event: KeyboardEvent) => event.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  const dialogRef = useDialogFocus(open, onClose);
 
   if (!open) return null;
 
@@ -21,16 +16,23 @@ export function ShortcutsDialog({ open, onClose }: { open: boolean; onClose: () 
 
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-[65] flex items-center justify-center bg-[rgba(var(--wl-ink-rgb),.14)] p-5"
+      // biome-ignore lint/a11y/useSemanticElements: custom ARIA dialog is managed by useDialogFocus; native showModal lifecycle is intentionally not used
       role="dialog"
       aria-modal="true"
       aria-label="Keyboard shortcuts"
-      onClick={onClose}
     >
-      <div
-        className="warm-modal-panel w-full max-w-[420px] border border-[var(--wl-faint)] bg-[var(--wl-bg)] p-6 shadow-[12px_14px_0_var(--wl-line-faint)]"
-        onClick={(event) => event.stopPropagation()}
-      >
+      <button
+        type="button"
+        aria-label="Close keyboard shortcuts"
+        aria-hidden="true"
+        data-dialog-backdrop
+        tabIndex={-1}
+        className="absolute inset-0"
+        onClick={onClose}
+      />
+      <div className="warm-modal-panel relative z-10 w-full max-w-[420px] border border-[var(--wl-faint)] bg-[var(--wl-bg)] p-6 shadow-[12px_14px_0_var(--wl-line-faint)]">
         <div className="flex items-start justify-between border-b border-[var(--wl-line)] pb-4">
           <div>
             <p className="font-mono text-[9px] uppercase tracking-[.17em] text-[var(--wl-signal)]">

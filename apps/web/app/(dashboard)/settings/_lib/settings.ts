@@ -24,3 +24,13 @@ export function roleClass(role: TeamMember["role"]): string {
   }
   return "border border-[var(--wl-line)] text-[var(--wl-body)]";
 }
+
+export function canRemoveTeamMember(
+  member: Pick<TeamMember, "wallet" | "rawRole">,
+  isOwner: boolean,
+  ownerAddress?: string,
+): boolean {
+  return (
+    isOwner && Boolean(ownerAddress) && member.wallet.toLowerCase() !== ownerAddress?.toLowerCase()
+  );
+}

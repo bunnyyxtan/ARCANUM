@@ -4,7 +4,13 @@ import { StatusPill } from "@/components/arcanum/status-pill";
 import { EmberMark } from "@/components/warm/EmberMark";
 import { ThemeToggle } from "@/components/warm/ThemeToggle";
 import { formatUsd, truncateAddress } from "@/lib/format";
-import { formatUnixUtc, formatUtc, verdictTone } from "@/lib/receipts";
+import {
+  formatUnixUtc,
+  formatUtc,
+  receiptInputSizeError,
+  receiptTextSizeError,
+  verdictTone,
+} from "@/lib/receipts";
 import {
   ARC_NETWORK_BADGE,
   PAYMENT_RECEIPT_ISSUERS,
@@ -46,12 +52,18 @@ export function VerifyPage() {
   // Each run gets a sequence number so a slow verification cannot report on
   // input that has since been replaced.
   const runRef = useRef(0);
+  const fileReadRef = useRef(0);
+  const activeReaderRef = useRef<FileReader | null>(null);
 
   const replaceInput = (value: string) => {
+    fileReadRef.current += 1;
+    activeReaderRef.current?.abort();
+    activeReaderRef.current = null;
     runRef.current += 1;
-    setJsonInput(value);
+    const sizeError = receiptTextSizeError(value);
+    setJsonInput(sizeError ? "" : value);
     setVerification(null);
-    setError(null);
+    setError(sizeError);
     setIsVerifying(false);
   };
 
@@ -94,11 +106,34 @@ export function VerifyPage() {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
+    const fileRead = ++fileReadRef.current;
+    activeReaderRef.current?.abort();
+    runRef.current += 1;
+    setJsonInput("");
+    setVerification(null);
+    setError(null);
+    setIsVerifying(false);
+    const sizeError = receiptInputSizeError(file.size);
+    if (sizeError) {
+      setError(`The selected file is too large. ${sizeError}`);
+      return;
+    }
     const reader = new FileReader();
+    activeReaderRef.current = reader;
+    const isCurrentRead = () => fileRead === fileReadRef.current;
     reader.onload = () => {
-      if (typeof reader.result === "string") {
-        replaceInput(reader.result);
-      }
+      if (!isCurrentRead()) return;
+      activeReaderRef.current = null;
+      if (typeof reader.result === "string") replaceInput(reader.result);
+      else setError("The selected file did not contain readable text.");
+    };
+    reader.onerror = () => {
+      if (!isCurrentRead()) return;
+      activeReaderRef.current = null;
+      runRef.current += 1;
+      setVerification(null);
+      setIsVerifying(false);
+      setError("The selected file could not be read. Try another JSON file.");
     };
     reader.readAsText(file);
   };
@@ -119,7 +154,7 @@ export function VerifyPage() {
         </Link>
         <div className="flex items-center gap-3 md:gap-5">
           <span className="hidden font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)] sm:inline">
-            OFFLINE VERIFIER
+            LOCAL / OFFLINE
           </span>
           <span className="rounded-full border border-[var(--wl-line)] px-3 py-2 font-mono text-[9px] tracking-[.12em] text-[var(--wl-body)]">
             {ARC_NETWORK_BADGE}
@@ -131,7 +166,7 @@ export function VerifyPage() {
       <div className="mx-auto max-w-[1080px] px-5 py-6 md:px-9 md:py-16">
         <header className="rise border-b border-[var(--wl-line)] pb-10">
           <p className="font-mono text-[10px] uppercase tracking-[.2em] text-[var(--wl-signal)]">
-            TRUSTLESS VERIFICATION
+            REGISTRY-BASED OFFLINE VERIFICATION
           </p>
           <div className="mt-5 flex flex-col justify-between gap-8 md:flex-row md:items-end">
             <div>
@@ -141,10 +176,23 @@ export function VerifyPage() {
                 <span className="text-[var(--wl-dim)]">Offline.</span>
               </h1>
               <p className="mt-6 max-w-[430px] text-[14px] leading-[1.5] text-[var(--wl-body)]">
-                Paste a payment decision receipt and this page checks its digest, the issuer
-                signature against the published registry, and the agent signature inside it. The
-                checks run in your browser; nothing is sent anywhere and no wallet is needed.
+                Paste a payment decision receipt and this page checks its format, digest, issuer
+                signature against the published issuer registry, and agent signature inside it.
+                These checks run locally in your browser; nothing is sent anywhere and no wallet is
+                needed.
               </p>
+              <div className="mt-6 max-w-[560px] border-l border-[var(--wl-signal)] pl-4 text-[12px] leading-[1.5] text-[var(--wl-secondary2)]">
+                <p className="font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-signal)]">
+                  TRUST MODEL
+                </p>
+                <p className="mt-2">
+                  The published issuer registry is the trust anchor. A passing digest means the
+                  envelope matches the receipt bytes; an issuer signature means that registered key
+                  attested to those bytes; an agent signature binds the request to its signer. These
+                  checks do not prove policy correctness, chain inclusion, payment settlement, or
+                  that a transaction was sent.
+                </p>
+              </div>
             </div>
           </div>
         </header>
@@ -169,9 +217,19 @@ export function VerifyPage() {
             />
 
             <div className="mt-4 flex items-center justify-between">
-              <label className="cursor-pointer font-mono text-[10px] uppercase tracking-[.1em] text-[var(--wl-ink)] underline underline-offset-4 hover:text-[var(--wl-signal)]">
+              <label
+                htmlFor="receipt-file"
+                className="cursor-pointer font-mono text-[10px] uppercase tracking-[.1em] text-[var(--wl-ink)] underline underline-offset-4 hover:text-[var(--wl-signal)]"
+              >
                 UPLOAD .JSON FILE
-                <input type="file" accept=".json" className="hidden" onChange={handleFileUpload} />
+                <input
+                  id="receipt-file"
+                  type="file"
+                  accept=".json"
+                  aria-label="Upload receipt JSON file"
+                  className="sr-only"
+                  onChange={handleFileUpload}
+                />
               </label>
 
               <button
@@ -204,7 +262,7 @@ export function VerifyPage() {
                   <div
                     className={`text-[20px] font-medium tracking-[-.02em] ${verification.ok ? "text-[var(--wl-green)]" : "text-[var(--wl-signal)]"}`}
                   >
-                    {verification.ok ? "Receipt verifies" : "Verification failed"}
+                    {verification.ok ? "Receipt checks pass" : "Verification failed"}
                   </div>
                 </div>
 
@@ -322,6 +380,10 @@ export function VerifyPage() {
               <h3 className="font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)] mb-3">
                 TRUSTED REGISTRY
               </h3>
+              <p className="mb-3 text-[11px] leading-[1.45] text-[var(--wl-secondary2)]">
+                Issuer keys used as the local trust anchor for signature checks. This list does not
+                establish chain inclusion or settlement.
+              </p>
               <ul className="space-y-2">
                 {PAYMENT_RECEIPT_ISSUERS.map((issuer) => (
                   <li

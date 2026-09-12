@@ -228,6 +228,13 @@ export const escalationManagerAbi = [
   },
   {
     type: "function",
+    name: "sweepExpired",
+    inputs: [{ name: "escalationId", type: "bytes32" }],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
     name: "getEscalation",
     inputs: [{ name: "escalationId", type: "bytes32" }],
     outputs: [
@@ -351,9 +358,9 @@ export type PolicyDraftState = {
 export const initialPolicyDraft: PolicyDraftState = {
   dailyCap: "500",
   enabledCategories: new Set(["API", "DATA", "COMPUTE"]),
-  escalationThreshold: "100",
+  escalationThreshold: "50",
   monthlyCap: "15000",
-  perTxCap: "50",
+  perTxCap: "100",
   requireAllowlist: true,
   freezeOnBlockedVendor: true,
 };

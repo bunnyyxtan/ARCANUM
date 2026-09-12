@@ -7,7 +7,7 @@ import {
 
 import type { ApiContext } from "../context";
 import { type SupabaseRow, createSupabaseServiceRoleClient, safeSupabaseError } from "./client";
-import { numberOrNull, stringField } from "./fields";
+import { booleanField, numberOrNull, stringField } from "./fields";
 import { PUBLIC_AGGREGATE_WINDOW, formatUsdcBaseUnits, readSupabasePublicLedger } from "./ledger";
 import { postureFromDoctrineRow, publicProfileFromRow, shortAddress } from "./mappers";
 import { selectRows } from "./transport";
@@ -213,21 +213,22 @@ export async function readSupabaseRuntimeHealth(ctx: ApiContext): Promise<Supaba
 
 export async function readSupabasePublicWalletProfile(ctx: ApiContext, address: string) {
   const walletAddress = address.toLowerCase();
-  // Anonymous visitors have no session, so the wallet must be resolved unscoped
-  // or the public trust pages would always report "no public profile".
-  const [rows, wallet] = await Promise.all([
-    selectRows(ctx, "public_wallet_profiles", {
-      filters: { wallet_address: walletAddress },
-      limit: 1,
-    }),
-    readSupabaseWalletByAddressUnscoped(ctx, walletAddress),
-  ]);
-
-  if (!rows[0] && !wallet) {
+  // Service-role reads bypass RLS. Publication is therefore an application
+  // invariant, not an optional decoration: do not resolve the wallet, ledger,
+  // doctrine, or any fallback until the profile has explicitly opted in.
+  const rows = await selectRows(ctx, "public_wallet_profiles", {
+    filters: { wallet_address: walletAddress },
+    limit: 1,
+  });
+  const profileRow = rows[0];
+  if (!profileRow || !booleanField(profileRow, ["show_public_badge"], false)) {
     return null;
   }
 
-  const stored = rows[0] ? publicProfileFromRow(rows[0], "supabase") : null;
+  // Anonymous visitors have no session, so the wallet must be resolved
+  // unscoped only after the publication gate has passed.
+  const wallet = await readSupabaseWalletByAddressUnscoped(ctx, walletAddress);
+  const stored = publicProfileFromRow(profileRow, "supabase");
   // Aggregates cover the most recent PUBLIC_AGGREGATE_WINDOW events; the read
   // model has no aggregate endpoint, so very long histories would need the
   // indexer to maintain running totals.
@@ -236,7 +237,7 @@ export async function readSupabasePublicWalletProfile(ctx: ApiContext, address: 
     wallet
       ? selectRows(ctx, "doctrines", {
           filters: { governed_wallet_id: wallet.id },
-          order: "updated_at.desc",
+          order: "version.desc",
           limit: 1,
         })
       : Promise.resolve([] as SupabaseRow[]),

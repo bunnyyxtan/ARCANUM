@@ -13,8 +13,10 @@ import {
   burnNonceForIntent,
   canUseOriginalQuoteForBurn,
   createFundingWalletClient,
+  fundingAmountError,
   fundingIntentFromStatus,
   fundingStateForStage,
+  parseFundingAmount,
 } from "./cctp-funding-flow";
 
 const quote = {
@@ -25,6 +27,14 @@ const quote = {
 };
 
 describe("CCTP funding flow validation", () => {
+  it("uses one strict parser for funding input and preserves base units", () => {
+    expect(parseFundingAmount("1.000001")).toBe(1_000_001n);
+    expect(fundingAmountError("-1")).toContain("at most 6 decimal places");
+    expect(fundingAmountError("1e3")).toContain("at most 6 decimal places");
+    expect(fundingAmountError("1.0000001")).toContain("at most 6 decimal places");
+    expect(fundingAmountError("0")).toContain("greater than zero");
+  });
+
   it("submits both wallet requests on Sepolia with the captured burn nonce", async () => {
     const calls: { method: string; params?: unknown }[] = [];
     const provider = {

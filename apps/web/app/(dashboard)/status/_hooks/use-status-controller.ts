@@ -5,6 +5,7 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 
 import { indexerMetricLabel } from "../_lib/indexer-metric-label";
+import { formatStatusTimestamp } from "../_lib/status-time";
 
 export type HealthState = "OPERATIONAL" | "DEGRADED" | "CHECKING";
 
@@ -14,22 +15,20 @@ export function useStatusController() {
     refetchOnWindowFocus: false,
     staleTime: 60_000,
   });
-  const [checkedAt, setCheckedAt] = useState<string | null>(null);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
   const indexer = health.data?.indexer;
   const rpc = health.data?.rpc;
   const supabase = health.data?.supabase;
 
   const runCheck = async () => {
-    const result = await health.refetch();
-    if (result.status === "success") {
-      setCheckedAt(
-        `${new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-          hour12: false,
-        })} UTC`,
-      );
+    setRefreshError(null);
+    try {
+      const result = await health.refetch();
+      if (result.status !== "success") {
+        setRefreshError("Health check failed; showing the last successful result.");
+      }
+    } catch {
+      setRefreshError("Health check failed; showing the last successful result.");
     }
   };
 
@@ -50,7 +49,6 @@ export function useStatusController() {
       : "DEGRADED";
 
   return {
-    checkedAt: checkedAt ?? (health.isLoading ? "Checking…" : "Not checked yet"),
     indexer: {
       // The headline number is the chain height the read model is level with,
       // so it compares directly with the RPC card. The last event block sits in
@@ -90,6 +88,15 @@ export function useStatusController() {
           : (rpc?.error ?? "RPC STATUS UNKNOWN"),
       state: rpcState,
     },
+    checkedAt:
+      health.isLoading && !health.dataUpdatedAt
+        ? "Checking…"
+        : health.dataUpdatedAt
+          ? formatStatusTimestamp(health.dataUpdatedAt)
+          : "No successful check yet",
+    refreshError:
+      refreshError ??
+      (health.isError ? "Health check failed; no successful result is available." : null),
     runCheck,
   };
 }

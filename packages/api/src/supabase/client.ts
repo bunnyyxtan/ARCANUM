@@ -22,16 +22,21 @@ export function readModelUnavailable(label: string, error: unknown): TRPCError {
 }
 
 export type SupabaseRow = Record<string, unknown>;
+export type SupabaseRows = SupabaseRow[] & { contentRange?: string | null };
 
 export type SupabaseRequestOptions = {
   filters?: Record<string, string | number | boolean | null | undefined>;
   inFilters?: Record<string, string[]>;
+  gte?: Record<string, string | number>;
+  lte?: Record<string, string | number>;
   limit?: number;
   order?: string;
   // Do not project mapped tables while their mappers tolerate legacy names.
   // PostgREST rejects a projection when any named legacy column is absent.
   select?: string;
   before?: { createdAt: string; id: string };
+  /** The ordered timestamp column used by the keyset cursor. */
+  beforeColumn?: "created_at" | "event_time" | "updated_at";
 };
 
 export type SupabaseWriteResult<T> =
@@ -58,6 +63,8 @@ export class SupabaseRequestError extends Error {
 export type SupabaseServiceRoleClient = {
   configured: boolean;
   selectRows: (table: string, options?: SupabaseRequestOptions) => Promise<SupabaseRow[]>;
+  /** Exact count for a bounded page query, or null when Content-Range is absent. */
+  countRows?: (table: string, options?: SupabaseRequestOptions) => Promise<number | null>;
   // Plain insert: a duplicate key is reported as a 409 SupabaseRequestError
   // instead of silently merging into the existing row.
   insertRows: (table: string, rows: SupabaseRow[]) => Promise<SupabaseRow[]>;
@@ -119,10 +126,19 @@ export function createSupabaseServiceRoleClient(): SupabaseServiceRoleClient | n
       }
     }
 
+    for (const [key, value] of Object.entries(options?.gte ?? {})) {
+      endpoint.searchParams.set(key, `gte.${String(value)}`);
+    }
+
+    for (const [key, value] of Object.entries(options?.lte ?? {})) {
+      endpoint.searchParams.set(key, `lte.${String(value)}`);
+    }
+
     if (options?.before) {
+      const beforeColumn = options.beforeColumn ?? "created_at";
       endpoint.searchParams.set(
         "or",
-        `(created_at.lt.${options.before.createdAt},and(created_at.eq.${options.before.createdAt},id.lt.${options.before.id}))`,
+        `(${beforeColumn}.lt.${options.before.createdAt},and(${beforeColumn}.eq.${options.before.createdAt},id.lt.${options.before.id}))`,
       );
     }
 
@@ -137,9 +153,11 @@ export function createSupabaseServiceRoleClient(): SupabaseServiceRoleClient | n
         Authorization: `Bearer ${adminKey}`,
         "Content-Type": "application/json",
         Prefer:
-          method === "GET" || options?.resolution === "none"
-            ? "return=representation"
-            : "return=representation,resolution=merge-duplicates",
+          method === "GET"
+            ? "return=representation,count=exact"
+            : options?.resolution === "none"
+              ? "return=representation"
+              : "return=representation,resolution=merge-duplicates",
       },
       body: options?.body ? JSON.stringify(options.body) : undefined,
       cache: "no-store",
@@ -150,7 +168,13 @@ export function createSupabaseServiceRoleClient(): SupabaseServiceRoleClient | n
       throw new SupabaseRequestError(table, method, response.status, safeSupabaseError(body));
     }
 
-    return (await response.json()) as SupabaseRow[];
+    const rows = (await response.json()) as SupabaseRows;
+    Object.defineProperty(rows, "contentRange", {
+      configurable: true,
+      enumerable: false,
+      value: response.headers.get("content-range"),
+    });
+    return rows;
   }
 
   async function callFunction(fn: string, args: Record<string, unknown>) {
@@ -174,9 +198,67 @@ export function createSupabaseServiceRoleClient(): SupabaseServiceRoleClient | n
     return body ? (JSON.parse(body) as unknown) : null;
   }
 
+  async function countRows(table: string, options?: SupabaseRequestOptions) {
+    const endpoint = new URL(`${baseUrl}/rest/v1/${table}`);
+    endpoint.searchParams.set("select", "id");
+    endpoint.searchParams.set("limit", "1");
+    if (options?.order) {
+      endpoint.searchParams.set("order", options.order);
+    }
+    for (const [key, value] of Object.entries(options?.filters ?? {})) {
+      if (value !== undefined && value !== null && value !== "") {
+        endpoint.searchParams.set(key, `eq.${String(value)}`);
+      }
+    }
+    for (const [key, values] of Object.entries(options?.inFilters ?? {})) {
+      if (values.length > 0) {
+        endpoint.searchParams.set(key, `in.(${values.join(",")})`);
+      }
+    }
+    for (const [key, value] of Object.entries(options?.gte ?? {})) {
+      endpoint.searchParams.set(key, `gte.${String(value)}`);
+    }
+    for (const [key, value] of Object.entries(options?.lte ?? {})) {
+      endpoint.searchParams.set(key, `lte.${String(value)}`);
+    }
+    if (options?.before) {
+      const beforeColumn = options.beforeColumn ?? "created_at";
+      endpoint.searchParams.set(
+        "or",
+        `(${beforeColumn}.lt.${options.before.createdAt},and(${beforeColumn}.eq.${options.before.createdAt},id.lt.${options.before.id}))`,
+      );
+    }
+
+    const response = await fetch(endpoint, {
+      method: "GET",
+      headers: {
+        apikey: adminKey,
+        Authorization: `Bearer ${adminKey}`,
+        Prefer: "count=exact",
+      },
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      throw new SupabaseRequestError(table, "GET", response.status, safeSupabaseError(body));
+    }
+
+    const range = response.headers.get("content-range")?.split("/")[1];
+    const total = range ? Number(range) : Number.NaN;
+    if (Number.isSafeInteger(total) && total >= 0) {
+      return total;
+    }
+    await response.json();
+    // The request is deliberately limited to one row, so its body length is
+    // not an exact count. Never turn an absent Content-Range into a false
+    // total that can disable pagination.
+    return null;
+  }
+
   return {
     configured: true,
     selectRows: (table, options) => request("GET", table, options),
+    countRows,
     insertRows: (table, rows) => request("POST", table, { body: rows, resolution: "none" }),
     upsertRows: (table, rows, onConflict) => request("POST", table, { body: rows, onConflict }),
     patchRows: (table, patch, filters) => request("PATCH", table, { body: patch, filters }),

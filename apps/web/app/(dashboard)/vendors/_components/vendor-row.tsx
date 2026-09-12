@@ -1,21 +1,27 @@
 import type { CSSProperties, MouseEvent } from "react";
 
+import { copyText } from "@/lib/clipboard";
 import { shortAddress } from "@/lib/format/address";
+import { formatUSDCBaseUnitsExact } from "@/lib/format/money";
 import type { VendorFlagDetail, VendorUnflagDetail } from "@/lib/live-data";
 import type { Vendor } from "@/lib/types";
 
 import { categoryLabel } from "../_lib/helpers";
 
-export function StatePill({ blocked }: { blocked: boolean }) {
+export function StatePill({ trust }: { trust: Vendor["trust"] }) {
+  const removed = trust === "removed";
+  const blocked = trust === "blocked";
   return (
     <span
       className={`inline-flex rounded-full px-2.5 py-1 font-mono text-[9px] tracking-[.12em] ${
-        blocked
-          ? "bg-[var(--wl-ink)] text-[var(--wl-bg)]"
-          : "bg-[var(--wl-green-tint)] text-[var(--wl-green)]"
+        removed
+          ? "border border-[var(--wl-line)] text-[var(--wl-mute)]"
+          : blocked
+            ? "bg-[var(--wl-ink)] text-[var(--wl-bg)]"
+            : "bg-[var(--wl-green-tint)] text-[var(--wl-green)]"
       }`}
     >
-      {blocked ? "BLOCKED" : "APPROVED"}
+      {removed ? "REMOVED" : blocked ? "BLOCKED" : "APPROVED"}
     </span>
   );
 }
@@ -45,6 +51,19 @@ export function VendorRow(props: VendorRowProps) {
   const { vendor, index, registry } = props;
   const flag = props.vendorFlagDetail(vendor.address);
   const unflag = props.vendorUnflagDetail(vendor.address);
+  const selectRow = () => {
+    props.selectVendor(vendor.id);
+    registry.setNotice(`${vendor.name.toUpperCase()} SELECTED · DETAIL RAIL READY`);
+  };
+  const copyVendorAddress = async () => {
+    const copied = await copyText(vendor.address);
+    registry.setNotice(
+      copied
+        ? `${vendor.name.toUpperCase()} ADDRESS COPIED`
+        : `${vendor.name.toUpperCase()} ADDRESS COPY FAILED · SELECT MANUALLY: ${vendor.address}`,
+    );
+    registry.setMenu(null);
+  };
   // The entrance animation leaves a transform on every row, so each row is its
   // own stacking context and the next row paints over this row's open menu. It
   // is transparent, so the menu stays visible but the row takes the clicks.
@@ -52,11 +71,14 @@ export function VendorRow(props: VendorRowProps) {
   const menuOpen = registry.menu === vendor.id;
   return (
     <div
-      onClick={() => {
-        props.selectVendor(vendor.id);
-        registry.setNotice(`${vendor.name.toUpperCase()} SELECTED · DETAIL RAIL READY`);
+      onClick={selectRow}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        selectRow();
       }}
-      onKeyDown={(event) => event.key === "Enter" && props.selectVendor(vendor.id)}
+      // biome-ignore lint/a11y/useSemanticElements: the row owns nested action buttons, so a native button would create invalid nested controls.
       role="button"
       tabIndex={0}
       style={{ "--row": index } as CSSProperties}
@@ -117,9 +139,13 @@ export function VendorRow(props: VendorRowProps) {
       </span>
       <span className="font-mono text-[11px] tabular-nums text-[var(--wl-body)]">
         <small className="mr-2 text-[8px] tracking-[.12em] text-[var(--wl-mute)] md:hidden">
-          CAP
+          PAYMENT CAP
         </small>
-        {vendor.confidential ? "capped" : "no cap"}
+        {vendor.perVendorCap === null
+          ? "cap unknown"
+          : vendor.confidential
+            ? formatUSDCBaseUnitsExact(vendor.perVendorCap)
+            : "no cap"}
       </span>
       <span>
         <small className="mr-2 font-mono text-[8px] tracking-[.12em] text-[var(--wl-mute)] md:hidden">
@@ -139,8 +165,13 @@ export function VendorRow(props: VendorRowProps) {
         {vendor.trust}
       </span>
       <span className="flex items-center justify-between gap-3">
-        <StatePill blocked={vendor.trust === "blocked"} />
-        <span data-vendor-menu className="relative" onClick={(event) => event.stopPropagation()}>
+        <StatePill trust={vendor.trust} />
+        <span
+          data-vendor-menu
+          className="relative"
+          onClick={(event) => event.stopPropagation()}
+          onKeyDown={(event) => event.stopPropagation()}
+        >
           <button
             type="button"
             aria-label={`Actions for ${vendor.name}`}
@@ -157,11 +188,7 @@ export function VendorRow(props: VendorRowProps) {
             >
               <button
                 type="button"
-                onClick={() => {
-                  navigator.clipboard?.writeText(vendor.address);
-                  registry.setNotice(`${vendor.name.toUpperCase()} ADDRESS COPIED`);
-                  registry.setMenu(null);
-                }}
+                onClick={() => void copyVendorAddress()}
                 className="block w-full px-3 py-2 text-left font-mono text-[9px] hover:bg-[var(--wl-bg-soft)]"
               >
                 COPY ADDRESS
@@ -171,7 +198,9 @@ export function VendorRow(props: VendorRowProps) {
                   key={action}
                   type="button"
                   disabled={
-                    props.vendorSaving || (action === "block" && vendor.trust === "blocked")
+                    props.vendorSaving ||
+                    vendor.trust === "removed" ||
+                    (action === "block" && vendor.trust === "blocked")
                   }
                   onClick={(event) => {
                     registry.setMenu(null);

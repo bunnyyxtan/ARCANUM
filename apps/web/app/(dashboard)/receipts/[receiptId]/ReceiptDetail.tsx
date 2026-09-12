@@ -6,6 +6,7 @@ import { ConnectCta } from "@/components/warm/ConnectCta";
 import { SignInCta } from "@/components/warm/SignInCta";
 import { getArcscanAddressUrl, getArcscanBaseUrl, getArcscanTxUrl } from "@/lib/arcscan";
 import { useWorkspaceMode } from "@/lib/auth-session";
+import { copyText } from "@/lib/clipboard";
 import { formatUSDCFromBaseUnits, formatUsd, truncateAddress } from "@/lib/format";
 import {
   allowedCategoryNames,
@@ -105,6 +106,7 @@ export function ReceiptDetail({ receiptId }: { receiptId: string }) {
   );
 
   const [verification, setVerification] = useState<PaymentReceiptVerification | null>(null);
+  const [copyState, setCopyState] = useState<"copied" | "failed" | null>(null);
 
   useEffect(() => {
     const envelope = data?.receipt;
@@ -171,8 +173,10 @@ export function ReceiptDetail({ receiptId }: { receiptId: string }) {
   const blockUrl = `${getArcscanBaseUrl()}/block/${evaluation.blockNumber}`;
   const envelopeJson = JSON.stringify(envelope, null, 2);
 
-  const handleCopyJson = () => {
-    void navigator.clipboard.writeText(envelopeJson);
+  const handleCopyJson = async () => {
+    const copied = await copyText(envelopeJson);
+    setCopyState(copied ? "copied" : "failed");
+    window.setTimeout(() => setCopyState(null), copied ? 1600 : 3000);
   };
   const handleDownloadJson = () => {
     const blob = new Blob([envelopeJson], { type: "application/json" });
@@ -215,7 +219,11 @@ export function ReceiptDetail({ receiptId }: { receiptId: string }) {
                 onClick={handleCopyJson}
                 className="rounded border border-[var(--wl-line)] px-3 py-1.5 font-mono text-[9px] uppercase tracking-[.1em] text-[var(--wl-ink)] transition-colors hover:bg-[var(--wl-bg-soft)]"
               >
-                COPY JSON
+                {copyState === "copied"
+                  ? "COPIED"
+                  : copyState === "failed"
+                    ? "COPY FAILED"
+                    : "COPY JSON"}
               </button>
               <button
                 type="button"
@@ -227,6 +235,28 @@ export function ReceiptDetail({ receiptId }: { receiptId: string }) {
             </div>
           </div>
         </header>
+
+        {copyState === "failed" && (
+          <div
+            role="alert"
+            className="mb-7 border-l-2 border-[var(--wl-signal)] bg-[var(--wl-bg-soft)] p-4"
+          >
+            <p className="font-mono text-[10px] uppercase tracking-[.1em] text-[var(--wl-signal)]">
+              Clipboard unavailable
+            </p>
+            <p className="mt-2 text-[12px] leading-[1.5] text-[var(--wl-body)]">
+              Open the receipt JSON below, select it, and copy it manually.
+            </p>
+          </div>
+        )}
+        <details className="mb-7 border border-[var(--wl-line)] bg-[var(--wl-bg-soft)] p-4">
+          <summary className="cursor-pointer font-mono text-[9px] uppercase tracking-[.12em] text-[var(--wl-body)]">
+            VIEW RECEIPT JSON
+          </summary>
+          <pre className="mt-4 max-h-80 overflow-auto whitespace-pre-wrap break-all select-text font-mono text-[10px] leading-[1.6] text-[var(--wl-secondary2)]">
+            {envelopeJson}
+          </pre>
+        </details>
 
         <div className="grid gap-7 lg:grid-cols-2">
           <section className="border border-[var(--wl-line)] bg-[var(--wl-bg-raised)] p-6 md:p-8">
@@ -365,7 +395,7 @@ export function ReceiptDetail({ receiptId }: { receiptId: string }) {
                 )}
               </Field>
               <Field label="VENDOR CATEGORY">{vendorCategoryName(vendor.category)}</Field>
-              <Field label="PER-VENDOR CAP">
+              <Field label="PER-PAYMENT CAP">
                 {vendor.perVendorCap === "0"
                   ? "NONE"
                   : formatUSDCFromBaseUnits(vendor.perVendorCap)}

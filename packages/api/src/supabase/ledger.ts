@@ -1,9 +1,10 @@
 import { FALLBACK_TENANT_ID } from "@arcanum/db";
 import type { Transfer, Wallet } from "@arcanum/db/schema";
 import type { ApiContext } from "../context";
-import type { SupabaseRow } from "./client";
+import type { SupabaseRequestOptions, SupabaseRow } from "./client";
 import { readModelUnavailable, warnSupabase } from "./client";
 import {
+  booleanField,
   dateField,
   moneyBaseUnits,
   numberField,
@@ -13,28 +14,122 @@ import {
 } from "./fields";
 import { transferFromRow } from "./mappers";
 import { rowsForWalletIdentity, walletForRow } from "./scope";
-import { selectRows } from "./transport";
+import { selectRows, selectRowsExhaustive } from "./transport";
 import { readSupabaseWalletByAddressUnscoped, readSupabaseWallets } from "./wallets";
 
 /** How many recent ledger events the public trust figures are computed over. */
 export const PUBLIC_AGGREGATE_WINDOW = 2000;
-const MAX_LEDGER_ROWS = 1_000;
+const MAX_GOVERNANCE_EVENT_ROWS = 1_000;
+export type LedgerCursor = { createdAt: string; id: string };
+
+export type TransferReadOptions = {
+  cursor?: LedgerCursor;
+  /** Upper bound for a visible page read; aggregate readers may omit it. */
+  limit?: number;
+  /** Restrict the database page to one already-authorized wallet. */
+  walletId?: string;
+  /** Restrict the database page to one counterparty address. */
+  counterparty?: string;
+  since?: Date | string;
+  until?: Date | string;
+};
 
 export async function readSupabaseTransfers(
   ctx: ApiContext,
-  cursor?: { createdAt: string; id: string },
+  cursorOrOptions?: LedgerCursor | TransferReadOptions,
 ) {
+  const options: TransferReadOptions =
+    cursorOrOptions && "createdAt" in cursorOrOptions
+      ? { cursor: cursorOrOptions }
+      : (cursorOrOptions ?? {});
   const wallets = await readSupabaseWallets(ctx);
   if (wallets.length === 0) {
     return [];
   }
-  const rows = await selectRows(ctx, "ledger_events", {
-    inFilters: { governed_wallet_id: wallets.map((wallet) => wallet.id) },
-    order: "created_at.desc,id.desc",
-    limit: MAX_LEDGER_ROWS,
-    before: cursor,
+  const scopedWallets = options.walletId
+    ? wallets.filter((wallet) => wallet.id === options.walletId)
+    : wallets;
+  if (scopedWallets.length === 0) {
+    return [];
+  }
+  const since = options.since instanceof Date ? options.since.toISOString() : options.since;
+  const until = options.until instanceof Date ? options.until.toISOString() : options.until;
+  const rows = await selectRowsExhaustive(
+    ctx,
+    "ledger_events",
+    {
+      inFilters: { governed_wallet_id: scopedWallets.map((wallet) => wallet.id) },
+      filters: options.counterparty ? { counterparty_address: options.counterparty } : undefined,
+      gte: since ? { event_time: since } : undefined,
+      lte: until ? { event_time: until } : undefined,
+      order: "event_time.desc,id.desc",
+      before: options.cursor,
+    },
+    {
+      cursorColumn: "event_time",
+      stopAfter: options.limit,
+      label: "ledger_events.read",
+    },
+  );
+  const transfers = rowsForWalletIdentity(rows, scopedWallets).map((row) =>
+    transferFromRow(row, scopedWallets),
+  );
+  // Keep the range check in the API as well as the PostgREST predicate. It
+  // covers legacy rows whose timestamp mapper uses created_at and protects the
+  // aggregate contract if a test/read-model adapter ignores range operators.
+  return transfers.filter((transfer) => {
+    const timestamp = transfer.timestamp.getTime();
+    const afterSince = !since || timestamp >= new Date(since).getTime();
+    const beforeUntil = !until || timestamp <= new Date(until).getTime();
+    return afterSince && beforeUntil;
   });
-  return rowsForWalletIdentity(rows, wallets).map((row) => transferFromRow(row, wallets));
+}
+
+/**
+ * Exact count for a ledger page. Production Supabase adapters use
+ * Content-Range/count=exact and still return only one id row; in-memory
+ * adapters without count support fall back to their scoped rows.
+ */
+export async function readSupabaseTransferCount(
+  ctx: ApiContext,
+  options: Pick<
+    TransferReadOptions,
+    "cursor" | "since" | "until" | "walletId" | "counterparty"
+  > = {},
+) {
+  const wallets = await readSupabaseWallets(ctx);
+  const scopedWallets = options.walletId
+    ? wallets.filter((wallet) => wallet.id === options.walletId)
+    : wallets;
+  if (scopedWallets.length === 0) {
+    return 0;
+  }
+  const since = options.since instanceof Date ? options.since.toISOString() : options.since;
+  const until = options.until instanceof Date ? options.until.toISOString() : options.until;
+  const requestOptions: SupabaseRequestOptions = {
+    inFilters: { governed_wallet_id: scopedWallets.map((wallet) => wallet.id) },
+    filters: options.counterparty ? { counterparty_address: options.counterparty } : undefined,
+    gte: since ? { event_time: since } : undefined,
+    lte: until ? { event_time: until } : undefined,
+    before: options.cursor,
+    beforeColumn: "event_time",
+  };
+  if (ctx.supabase?.countRows) {
+    try {
+      return await ctx.supabase.countRows("ledger_events", requestOptions);
+    } catch (error) {
+      throw readModelUnavailable("ledger_events.count", error);
+    }
+  }
+  return (
+    await readSupabaseTransfers(ctx, {
+      cursor: options.cursor,
+      walletId: options.walletId,
+      counterparty: options.counterparty,
+      since: options.since,
+      until: options.until,
+    })
+  ).length;
 }
 
 /** Governance event from the indexed Supabase audit trail. The field shape
@@ -161,7 +256,7 @@ export async function readSupabaseEvents(
       order: "created_at.desc,id.desc",
       limit: Math.min(
         (options?.page ?? 0) * (options?.pageSize ?? 50) + (options?.pageSize ?? 50),
-        MAX_LEDGER_ROWS,
+        MAX_GOVERNANCE_EVENT_ROWS,
       ),
     }),
     readOptionalGovernanceRows(
@@ -169,7 +264,7 @@ export async function readSupabaseEvents(
       wallets.map((wallet) => wallet.id),
       Math.min(
         (options?.page ?? 0) * (options?.pageSize ?? 50) + (options?.pageSize ?? 50),
-        MAX_LEDGER_ROWS,
+        MAX_GOVERNANCE_EVENT_ROWS,
       ),
     ),
   ]);
@@ -197,18 +292,38 @@ export async function readSupabaseEvents(
 export async function readSupabasePublicLedger(
   ctx: ApiContext,
   address: string,
-  limit = 100,
+  limit?: number,
 ): Promise<Transfer[]> {
+  // This reader is used by anonymous explorer/badge requests and therefore
+  // must repeat the publication gate independently of the profile endpoint.
+  // Otherwise a direct ledger call could bypass an opted-out profile.
+  const profileRows = await selectRows(ctx, "public_wallet_profiles", {
+    filters: { wallet_address: address.toLowerCase() },
+    limit: 1,
+  });
+  const profile = profileRows[0];
+  if (!profile || !booleanField(profile, ["show_public_badge"], false)) {
+    return [];
+  }
+
   const wallet = await readSupabaseWalletByAddressUnscoped(ctx, address);
   if (!wallet) {
     return [];
   }
 
-  const rows = await selectRows(ctx, "ledger_events", {
-    filters: { governed_wallet_id: wallet.id },
-    order: "event_time.desc",
-    limit,
-  });
+  const rows = await selectRowsExhaustive(
+    ctx,
+    "ledger_events",
+    {
+      filters: { governed_wallet_id: wallet.id },
+      order: "event_time.desc,id.desc",
+    },
+    {
+      cursorColumn: "event_time",
+      stopAfter: limit,
+      label: "public.ledger_events.read",
+    },
+  );
 
   // The public record proves what the wallet did; it must not hand out the
   // tenant's internal wiring or the free-text decision rationale.
