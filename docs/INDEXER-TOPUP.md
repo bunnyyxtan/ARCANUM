@@ -64,6 +64,11 @@ three repository secrets before the schedule can run.
   sync refuses to move a checkpoint backwards, so a replay against the old row
   fails on its first event with `current deployment checkpoint ... is ahead of
   event block ...`. A replay against a deleted row starts a fresh checkpoint.
+- Catch-up evidence is refused while a staged `unlinked_ledger_events` row is
+  still pending for the deployment. Rows without a deployment identity count
+  only from the deployment's start block on: an earlier deployment's staged
+  row below that block can never be replayed by this indexer, so it is left
+  alone rather than allowed to block evidence forever.
 - If a keyed RPC ever arrives, set `INDEXER_RPC_URL` (and a matching
   `INDEXER_RPC_REQUESTS_PER_SECOND`) in the workflow's indexer step and, if
   wanted, tighten the cron to every hour. The indexer deliberately ignores

@@ -51,8 +51,13 @@ async function fakeFetch(input: string | URL | Request, init?: RequestInit) {
         row.deployment_id === body.p_deployment_id &&
         row.contract_name === `arcanum-indexer:${body.p_deployment_network}:${body.p_chain_id}`,
     );
+    // Mirrors finalize_indexer_catchup: a legacy row without an identity only
+    // counts while this deployment could still replay it.
     const pending = tableRows("unlinked_ledger_events").some(
-      (row) => row.deployment_id === null || row.deployment_id === body.p_deployment_id,
+      (row) =>
+        row.deployment_id === body.p_deployment_id ||
+        (row.deployment_id === null &&
+          Number(row.block_number) >= Number(body.p_deployment_start_block)),
     );
     if (
       checkpoints.length > 1 ||
