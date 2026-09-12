@@ -1,33 +1,25 @@
-import { GuardedWalletAbi, PolicyEngineAbi } from "@arcanum/contracts";
 import {
-  ARC_CHAIN_ID,
-  ARC_NETWORK_NAME,
-  ARC_USDC_ADDRESS,
-  ESCALATION_REASONS,
   type NormalizedPaymentIntentInput,
-  type NormalizedSignedPaymentIntentInput,
   type PaymentIntentDecision,
   type PaymentIntentResult,
-  createPaymentIntentMessage,
   createPaymentIntentResult,
   signedPaymentIntentInputSchema,
 } from "@arcanum/shared";
-import { type Address, type PublicClient, parseUnits, verifyMessage } from "viem";
+import type { PublicClient } from "viem";
 
+import { isReceiptError } from "../receipts/errors";
+import {
+  evaluatePaymentIntentAtBlock,
+  parsePaymentIntentAmount,
+  verifyPaymentIntentSignature,
+} from "../receipts/evaluation";
 import { rateLimitedPublicProcedure, router } from "../trpc";
-
-const VERDICTS = [
-  "allow",
-  "escalate",
-  "deny",
-  "freeze",
-] as const satisfies readonly PaymentIntentDecision[];
 
 export const paymentIntentsRouter = router({
   create: rateLimitedPublicProcedure
     .input(signedPaymentIntentInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const signatureValid = await verifyIntentSignature(input);
+      const signatureValid = await verifyPaymentIntentSignature(input);
 
       if (!signatureValid) {
         return intentResult(input, {
@@ -41,100 +33,20 @@ export const paymentIntentsRouter = router({
     }),
 });
 
+/**
+ * Read-only preflight. It runs the same pinned-block evaluation the receipt
+ * path signs, but reports every outcome -- including input and chain failures
+ * -- in the result body rather than as errors, because this endpoint predates
+ * receipts and integrations branch on its `decision` field.
+ */
 async function evaluatePaymentIntent(
   publicClient: PublicClient,
   intent: NormalizedPaymentIntentInput,
 ): Promise<PaymentIntentResult> {
-  const amount = parsePaymentIntentAmount(intent.amount);
-
-  if (intent.chainId !== ARC_CHAIN_ID) {
-    return intentResult(intent, {
-      decision: "unsupported",
-      reason: `Only ${ARC_NETWORK_NAME} payment intents are supported.`,
-      errorCode: "UNSUPPORTED_CHAIN",
-    });
-  }
-
-  if (!sameAddress(intent.tokenAddress, ARC_USDC_ADDRESS)) {
-    return intentResult(intent, {
-      decision: "unsupported",
-      reason: `Only ${ARC_NETWORK_NAME} USDC payment intents are supported.`,
-      errorCode: "UNSUPPORTED_TOKEN",
-    });
-  }
-
-  if (amount === null) {
-    return intentResult(intent, {
-      decision: "validation_error",
-      reason: "Amount must be greater than zero with up to 6 decimals.",
-      errorCode: "INVALID_AMOUNT",
-    });
-  }
-
   try {
-    const [
-      walletToken,
-      isSigner,
-      frozen,
-      policy,
-      dailySpent,
-      monthlySpent,
-      policyEngine,
-      vendorRegistry,
-    ] = await Promise.all([
-      publicClient.readContract({
-        address: intent.governedWalletAddress,
-        abi: GuardedWalletAbi,
-        functionName: "usdc",
-      }),
-      publicClient.readContract({
-        address: intent.governedWalletAddress,
-        abi: GuardedWalletAbi,
-        functionName: "agentSigners",
-        args: [intent.agentSignerAddress],
-      }),
-      publicClient.readContract({
-        address: intent.governedWalletAddress,
-        abi: GuardedWalletAbi,
-        functionName: "frozen",
-      }),
-      publicClient.readContract({
-        address: intent.governedWalletAddress,
-        abi: GuardedWalletAbi,
-        functionName: "policy",
-      }),
-      publicClient.readContract({
-        address: intent.governedWalletAddress,
-        abi: GuardedWalletAbi,
-        functionName: "dailySpent",
-      }),
-      publicClient.readContract({
-        address: intent.governedWalletAddress,
-        abi: GuardedWalletAbi,
-        functionName: "monthlySpent",
-      }),
-      publicClient.readContract({
-        address: intent.governedWalletAddress,
-        abi: GuardedWalletAbi,
-        functionName: "policyEngine",
-      }),
-      publicClient.readContract({
-        address: intent.governedWalletAddress,
-        abi: GuardedWalletAbi,
-        functionName: "vendorRegistry",
-      }),
-    ]);
+    const { amount, decision } = await evaluatePaymentIntentAtBlock(publicClient, intent);
 
-    if (!sameAddress(walletToken, ARC_USDC_ADDRESS)) {
-      return intentResult(intent, {
-        amount,
-        decision: "unsupported",
-        reason: `GuardedWallet is not configured for ${ARC_NETWORK_NAME} USDC.`,
-        errorCode: "UNSUPPORTED_WALLET_TOKEN",
-      });
-    }
-
-    if (!isSigner) {
+    if (decision.reasonCode === "AGENT_NOT_AUTHORIZED") {
       return intentResult(intent, {
         amount,
         decision: "deny",
@@ -142,8 +54,7 @@ async function evaluatePaymentIntent(
         errorCode: "AGENT_NOT_AUTHORIZED",
       });
     }
-
-    if (frozen) {
+    if (decision.reasonCode === "WALLET_FROZEN") {
       return intentResult(intent, {
         amount,
         decision: "freeze",
@@ -152,67 +63,32 @@ async function evaluatePaymentIntent(
       });
     }
 
-    const policyEnvelope = {
-      perTxCap: policy[0],
-      daily24hCap: policy[1],
-      monthlyCap: policy[2],
-      allowedCategories: policy[3],
-      escalationThreshold: policy[4],
-      requireAllowlist: policy[5],
-      freezeOnBlockedVendor: policy[6],
-    };
-
-    const [verdictIndex, reasonIndex] = await publicClient.readContract({
-      account: intent.governedWalletAddress,
-      address: policyEngine,
-      abi: PolicyEngineAbi,
-      functionName: "evaluate",
-      args: [
-        policyEnvelope,
-        intent.vendorAddress,
-        amount,
-        dailySpent,
-        monthlySpent,
-        vendorRegistry,
-      ],
-    });
-
     return intentResult(intent, {
       amount,
-      decision: VERDICTS[Number(verdictIndex)] ?? "deny",
-      reason: ESCALATION_REASONS[Number(reasonIndex)] ?? "UNKNOWN",
+      decision: decision.verdict,
+      reason: decision.reasonCode,
       policyReference: `guarded-wallet:${intent.governedWalletAddress}`,
     });
-  } catch {
+  } catch (error) {
+    if (!isReceiptError(error)) {
+      throw error;
+    }
+    const inputRejected =
+      error.code === "UNSUPPORTED_CHAIN" ||
+      error.code === "UNSUPPORTED_TOKEN" ||
+      error.code === "INVALID_AMOUNT" ||
+      error.code === "INVALID_RECIPIENT";
     return intentResult(intent, {
-      amount,
-      decision: "validation_error",
-      reason: `Unable to read governed wallet policy state on ${ARC_NETWORK_NAME}.`,
-      errorCode: "CHAIN_READ_FAILED",
+      amount: inputRejected ? undefined : (parsePaymentIntentAmount(intent.amount) ?? undefined),
+      decision:
+        error.code === "UNSUPPORTED_CHAIN" ||
+        error.code === "UNSUPPORTED_TOKEN" ||
+        error.code === "UNSUPPORTED_WALLET_TOKEN"
+          ? "unsupported"
+          : "validation_error",
+      reason: error.message,
+      errorCode: error.code,
     });
-  }
-}
-
-async function verifyIntentSignature(intent: NormalizedSignedPaymentIntentInput) {
-  try {
-    return verifyMessage({
-      address: intent.agentSignerAddress,
-      message: createPaymentIntentMessage(intent),
-      signature: intent.signature,
-    });
-  } catch {
-    // Malformed signatures are expected user input and verify as invalid.
-    return false;
-  }
-}
-
-function parsePaymentIntentAmount(amount: string) {
-  try {
-    const parsed = parseUnits(amount, 6);
-    return parsed > 0n ? parsed : null;
-  } catch {
-    // Invalid decimal input is reported through the payment-intent validation result.
-    return null;
   }
 }
 
@@ -233,8 +109,4 @@ function intentResult(
     policyReference: input.policyReference,
     errorCode: input.errorCode,
   });
-}
-
-function sameAddress(a: Address | string, b: Address | string) {
-  return a.toLowerCase() === b.toLowerCase();
 }

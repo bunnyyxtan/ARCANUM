@@ -2,7 +2,13 @@ import type { CSSProperties } from "react";
 
 import { statusGuideParagraphs } from "../_lib/status-content";
 
-export function StatusGuide({ checkedAt }: { checkedAt: string }) {
+export function StatusGuide({
+  checkedAt,
+  refreshError,
+}: {
+  checkedAt: string;
+  refreshError: string | null;
+}) {
   return (
     <section
       className="warm-reveal is-visible mt-8 grid gap-12 border border-[var(--wl-line)] bg-[var(--wl-bg-soft)] p-8 md:grid-cols-[1fr_280px] md:p-10"
@@ -28,8 +34,15 @@ export function StatusGuide({ checkedAt }: { checkedAt: string }) {
         <span className="mt-4 font-mono text-[12px] tabular-nums text-[var(--wl-ink)]">
           {checkedAt}
         </span>
+        {refreshError && (
+          <p role="alert" className="mt-3 text-[11px] leading-[1.45] text-[var(--wl-signal)]">
+            {refreshError}
+          </p>
+        )}
         <span className="mt-8 text-[11px] leading-[1.45] text-[var(--wl-secondary)]">
-          All read-only checks complete without writing to the ledger.
+          {refreshError
+            ? "The timestamp above is the last successful result; this failed refresh is not treated as fresh."
+            : "All read-only checks complete without writing to the ledger."}
         </span>
       </div>
     </section>

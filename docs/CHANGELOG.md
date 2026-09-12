@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Payment decision receipts: issuer-signed, offline-verifiable snapshots of a
+  wallet's policy verdict for a signed payment intent, evaluated at a pinned
+  Arc Testnet block, with evidence that links each receipt to the transaction
+  that acted on it. New `/api/receipts` routes, the `/receipts` dashboard
+  pages, the public `/verify` page and the SDK methods
+  `requestPaymentReceipt`, `executePaymentIntentWithReceipt` and
+  `attachPaymentReceiptEvidence`. Built during ETHOnline 2026; see
+  [`PAYMENT-RECEIPTS.md`](./PAYMENT-RECEIPTS.md).
+
+### Changed
+
+- Protocol v2 contracts (policy and escalation changes across GuardedWallet,
+  PolicyEngine, EscalationManager, AnomalyOracle and WalletFactory),
+  redeployed on Arc Testnet on 7 September 2026 and recorded in
+  `packages/contracts/deployments/arc-testnet.json`, which the app and the
+  indexer now read addresses from. The v1 deployment is retired; owners
+  redeploy v1 wallets through the v2 factory.
+- TypeScript SDK 3.0.0 (published as `arcanum-sdk`) and Python SDK 3.0.0:
+  ABIs and types for contracts v2, the payment intent `idempotencyKey` renamed
+  to `reference` (references do not make retries idempotent), transaction
+  receipt status enforced with `confirm(txHash)` and `TransferRevertedError`.
+
+## [2.1.0] - 2026-08-11
+
+Arc Testnet redeploy and SDK 2.1.0.
+
+### Changed
+
+- Fresh contract deployment with hardened oracle signatures, bound to a nonce
+  and a deadline.
+- Monthly rolling spend caps with a hard deny.
+- The escalation threshold is checked before the daily caps.
+- Deployer-scoped wallet address prediction.
+- TypeScript SDK 2.1.0, aligned with the new ABIs.
+
 ## [2.0.0] - 2026-08-06
 
 Major upgrade of the entire product. The web app was rebuilt from scratch on
@@ -66,6 +103,7 @@ build before the version 2 rewrite.
 - TypeScript SDK (`@arcanum/sdk`) and Python SDK (`packages/sdk-py`).
 - Documentation site workspace (`apps/docs`).
 
-[Unreleased]: https://github.com/bunnyyxtan/ARCANUM/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/bunnyyxtan/ARCANUM/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/bunnyyxtan/ARCANUM/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/bunnyyxtan/ARCANUM/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/bunnyyxtan/ARCANUM/releases/tag/v1.0.0

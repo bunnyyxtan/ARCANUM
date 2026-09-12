@@ -18,7 +18,7 @@
 <p align="center">
   <a href="https://github.com/bunnyyxtan/ARCANUM/actions/workflows/ci.yml"><img src="https://github.com/bunnyyxtan/ARCANUM/actions/workflows/ci.yml/badge.svg" alt="CI status" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-2f3542" alt="AGPL-3.0 license" /></a>
-  <a href="https://github.com/bunnyyxtan/ARCANUM/releases/tag/v3.0.0"><img src="https://img.shields.io/badge/release-v3.0.0-ff5a1f" alt="Latest release v3.0.0" /></a>
+  <a href="https://github.com/bunnyyxtan/ARCANUM/releases/latest"><img src="https://img.shields.io/github/v/release/bunnyyxtan/ARCANUM?label=release&color=ff5a1f" alt="Latest release" /></a>
   <img src="https://img.shields.io/badge/network-Arc%20Testnet-6e9e7c" alt="Arc Testnet" />
 </p>
 
@@ -30,6 +30,18 @@
   <sub>The operator dashboard: capital under governance, active agents, a live decision stream, and the human restraint queue.</sub>
 </p>
 
+## ETHOnline 2026
+
+Arcanum is entered as a Continuity project (Extend Open Source). The repository, its history and the production app predate the event; the feature built during it is **payment decision receipts**.
+
+| | |
+| --- | --- |
+| What is new | Issuer-signed, offline-verifiable receipts of the policy verdict for a signed payment intent, linked to the transaction that acts on them: `/receipts` in the dashboard, the public `/verify` page, and `requestPaymentReceipt` / `executePaymentIntentWithReceipt` in the SDK. The agent can sign with a Circle developer-controlled wallet instead of a host-held key (`arcanum-sdk/circle`, [docs/CIRCLE-WALLETS.md](./docs/CIRCLE-WALLETS.md)) |
+| Event work in one view | [`pre-ethonline-2026...ethonline-2026`](https://github.com/bunnyyxtan/ARCANUM/compare/pre-ethonline-2026...ethonline-2026): every commit after the baseline tag, with real dates. The same diff as a review-only pull request: [#6](https://github.com/bunnyyxtan/ARCANUM/pull/6) |
+| What existed before, what was built during, how AI was used | [PRE-EXISTING.md](./PRE-EXISTING.md) |
+| Feature documentation | [docs/PAYMENT-RECEIPTS.md](./docs/PAYMENT-RECEIPTS.md), [docs/CIRCLE-WALLETS.md](./docs/CIRCLE-WALLETS.md), [docs/CCTP-FUNDING.md](./docs/CCTP-FUNDING.md) |
+| Try it | [thearcanum.in/verify](https://thearcanum.in/verify), no account needed |
+
 ## Overview
 
 Arcanum lets you give AI agents real USDC wallets without giving them unrestricted control of funds. It works for anyone who runs agents that spend money: individuals, teams, DAOs, and companies.
@@ -39,7 +51,7 @@ AI agents are starting to pay for APIs, compute, data, and tools on their own. A
 It combines:
 
 - Smart-contract wallets with owner-defined policy envelopes, called doctrines
-- Vendor allowlists, category controls, per-vendor limits, and fixed-window spend caps
+- Vendor allowlists, category controls, per-payment limits, and fixed-window spend caps
 - Versioned human councils with expiring, cancellable, and release-time re-evaluated escalations
 - Freshness-bounded anomaly scores with rotatable service signers
 - A public explorer and badge layer so anyone can verify an agent is governed
@@ -60,8 +72,10 @@ Unlike an off-chain spend dashboard that an agent can bypass, the enforcement li
 4. **The agent spends, the contract decides**
    Each USDC payment is evaluated by the `PolicyEngine`. Normal payments pass. Boundary-crossing payments are denied, frozen, or escalated to a human quorum.
 
-5. **Everything leaves a record**
-   The ledger, event stream, public explorer, and badge pages show the full decision trail for every governed movement.
+5. **Settled movements leave a record**
+   The ledger, event stream, public explorer, and badge pages show indexed contract events for
+   governed movements and escalations. A policy-denied call that reverts does not emit a successful
+   DENY event; an issuer-signed payment decision receipt is separate preflight evidence.
 
 <p align="center">
   <img src="./docs/assets/readme/policy-doctrine.webp" alt="Doctrine editor showing per-transaction, daily, and monthly USDC caps, allowed vendor categories, and the deployment record" width="920" />
@@ -83,7 +97,8 @@ A doctrine is the wallet's governing document: per-transaction, daily, and month
 
 ### Vendor registry
 
-Counterparties are registered with a name, category, and optional per-vendor cap. Agents can pay known infrastructure providers while unknown destinations stay blocked.
+Counterparties are registered with a name, category, and optional per-payment cap. Agents can pay
+known infrastructure providers while unknown destinations stay blocked.
 
 ### Human escalation quorum
 
@@ -92,6 +107,10 @@ Payments that cross a policy boundary go to a restraint queue where human approv
 ### Anomaly defense
 
 An anomaly layer scores agent behaviour and can flag, restrain, or freeze wallets whose activity deviates from the expected pattern.
+
+### Payment decision receipts
+
+Before an agent pays, it can ask the API for a receipt: an issuer-signed, offline-verifiable snapshot of the policy verdict for that exact signed intent at one pinned block. The transaction that acts on the receipt names it in its calldata, and the API links the two afterwards, so the decision and its consequence can be audited side by side. Anyone can verify a receipt at `/verify` without an account. Details in [docs/PAYMENT-RECEIPTS.md](./docs/PAYMENT-RECEIPTS.md).
 
 ### Public proof surfaces
 
@@ -102,7 +121,7 @@ Every governed wallet has public explorer and badge pages, so anyone can show th
 </p>
 
 <p align="center">
-  <sub>The governed ledger: a complete decision record for every movement, with amounts, counterparties, and verdicts.</sub>
+  <sub>The governed ledger: indexed records for settled movements, with amounts, counterparties, and verdicts.</sub>
 </p>
 
 ## More screens
@@ -117,14 +136,16 @@ Network: **Arc Testnet** · Explorer: [testnet.arcscan.app](https://testnet.arcs
 
 | Module | Address | Responsibility |
 | --- | --- | --- |
-| WalletFactory | `0x51A560589e23AcD2e57173641267f4583e0e65E7` | Deploys GuardedWallet instances |
-| PolicyEngine | `0x67f3731280e1Dfcc38B8a388412FE0c971a4A215` | Evaluates doctrine rules on every spend |
-| EscalationManager | `0x9dc6C86469650A3859e7CA9A03adDfE9C964D134` | Quorum approvals for sensitive actions |
-| AnomalyOracle | `0x4ee7c78afFd9C5d9e0FD4EFEaEe82BEe32E8C0DC` | Anomaly signals for the policy layer |
-| VendorRegistry | `0x0fAe8E2Cd6f22aa9715E256B61f58b42357ABd1b` | Vendor allowlist, categories, and caps |
+| WalletFactory | `0xbE1bC48F26e7166D872828d40e82A6407dbD350C` | Deploys GuardedWallet instances |
+| PolicyEngine | `0x7777ac24A19202E619bF67B92375E714e72033A4` | Evaluates doctrine rules on every spend |
+| EscalationManager | `0xb5907700Df79B9030FafDaA48C26AE355512cCcd` | Quorum approvals for sensitive actions |
+| AnomalyOracle | `0x2eae369C3f93ebf5Bbe62FBE6d2CD976977f7AE8` | Anomaly signals for the policy layer |
+| VendorRegistry | `0xeA4597b02Ea2958A80afc47c417422598b9c548C` | Vendor allowlist, categories, and caps |
 
-These addresses are the legacy v1 testnet deployment. The app and indexer move to the committed
-v2 manifest after the one-time redeploy; owners must redeploy v1 wallets through the v2 factory.
+These are the protocol v2 contracts recorded in the committed manifest
+`packages/contracts/deployments/arc-testnet.json` (deployed 7 September 2026, indexed from block
+60,951,839); the app and indexer read addresses from that manifest. The earlier v1 deployment is
+retired and owners must redeploy v1 wallets through the v2 factory.
 Neither deployment has received an independent third-party audit and neither should hold
 production funds.
 
@@ -201,6 +222,7 @@ Fill in the variables before starting. The essentials:
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes | Server-only Supabase key, never client-side |
 | `SIWE_SECRET` | Yes | Server-side session secret |
 | `NEXT_PUBLIC_APP_URL` | Yes | Canonical app URL |
+| `ARCANUM_RECEIPT_ISSUER_PRIVATE_KEY` | For receipts | Signing key for payment decision receipts; must match an active entry in the published issuer registry |
 
 Contract addresses are not configured through the environment. Every runtime reads
 `packages/contracts/deployments/arc-<network>.json`, the manifest written by the deploy script.

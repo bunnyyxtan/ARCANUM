@@ -1,5 +1,6 @@
 import type { Anomaly, Escalation } from "@arcanum/db/schema";
 import { ARC_CHAIN_ID, ARC_NETWORK, deploymentManifestFor } from "@arcanum/shared";
+import { readWalletOwner } from "../chain";
 import type { ApiContext } from "../context";
 import { readCallerMembership } from "./auth";
 import {
@@ -9,7 +10,12 @@ import {
   warnSupabase,
 } from "./client";
 import { dateField, moneyBaseUnits, numberField, stringField } from "./fields";
-import { anomalyFromRow, escalationFromRow, escalationStatusFromString } from "./mappers";
+import {
+  anomalyFromRow,
+  escalationAmountBaseUnits,
+  escalationFromRow,
+  escalationStatusFromString,
+} from "./mappers";
 import { rowsForWallets } from "./scope";
 import { selectRows } from "./transport";
 import { readSupabaseWallets } from "./wallets";
@@ -73,7 +79,9 @@ export async function readSupabasePublicEscalationByKey(ctx: ApiContext, escalat
     escalationKey: stringField(row, ["escalation_key"]),
     walletAddress: stringField(wallet, ["wallet_address"]),
     chainId: numberField(wallet, ["chain_id"]),
-    amount: moneyBaseUnits(row, ["amount_usdc", "amount"]),
+    amount: escalationAmountBaseUnits(row),
+    amountBaseUnits: escalationAmountBaseUnits(row),
+    counterpartyAddress: stringField(row, ["counterparty_address"], ""),
     counterparty: stringField(row, ["counterparty_address", "counterparty_name"]),
     threshold: numberField(row, ["quorum_required"], 1),
     signatureCount: numberField(row, ["approvals_count"], 0),
@@ -149,9 +157,13 @@ export async function recordSupabaseAnomalyDecision(
     const wallet = wallets.find((item) => item.id === walletId);
     const caller = ctx.session?.walletAddress.toLowerCase();
     const membership = await readCallerMembership(ctx);
+    const chainOwner =
+      wallet && caller
+        ? (await readWalletOwner(ctx.publicClient, wallet.address as `0x${string}`)).toLowerCase()
+        : null;
     const authorized =
-      Boolean(wallet && caller && wallet.ownerAddress.toLowerCase() === caller) ||
-      membership?.role === "operator";
+      Boolean(wallet && caller && chainOwner === caller) ||
+      membership?.role.toLowerCase() === "operator";
     if (!authorized || !caller) {
       return {
         ok: false,

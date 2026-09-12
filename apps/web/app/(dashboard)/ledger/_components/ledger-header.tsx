@@ -10,13 +10,15 @@ export function LedgerHeader({ ledger }: { ledger: LedgerController }) {
       <div className="flex flex-col justify-between gap-7 border-b border-[var(--wl-line)] pb-9 md:flex-row md:items-end">
         <div>
           <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
-            RECORD / LAST 24H
+            RECORD / VISIBLE PAGE
           </p>
           <h1 className="font-display mt-4 text-[clamp(2.7rem,5vw,4.8rem)] font-semibold leading-[.9] tracking-[-.015em]">
             Governed ledger
           </h1>
           <p className="mt-4 max-w-[550px] text-[14px] leading-[1.45] text-[var(--wl-secondary2)]">
-            A complete decision record for every governed movement across your fleet.
+            A paginated decision record for governed movements across your fleet. Filters and
+            exports describe the visible page; use the controls below to inspect the remaining
+            records.
           </p>
         </div>
         <div className="relative w-fit">
@@ -45,7 +47,7 @@ export function LedgerHeader({ ledger }: { ledger: LedgerController }) {
                 >
                   Download CSV
                   <span className="mt-0.5 block font-mono text-[9px] tracking-[.12em] text-[var(--wl-mute)]">
-                    SPREADSHEET · {filters.visibleRows.length} ROWS
+                    VISIBLE PAGE · {filters.visibleRows.length} ROWS
                   </span>
                 </button>
                 <button
@@ -55,7 +57,7 @@ export function LedgerHeader({ ledger }: { ledger: LedgerController }) {
                 >
                   Print / save as PDF
                   <span className="mt-0.5 block font-mono text-[9px] tracking-[.12em] text-[var(--wl-mute)]">
-                    FORMATTED DECISION REPORT
+                    VISIBLE PAGE REPORT
                   </span>
                 </button>
               </div>
@@ -65,10 +67,10 @@ export function LedgerHeader({ ledger }: { ledger: LedgerController }) {
       </div>
       <section className="grid grid-cols-2 border-b border-[var(--wl-line)] md:grid-cols-4">
         {[
-          ["TOTAL VALUE", formatUsd(filters.totals.value), false],
-          ["APPROVED", String(filters.totals.approved), false],
-          ["REJECTED", String(filters.totals.rejected), false],
-          ["ESCALATED", String(filters.totals.escalated), true],
+          ["PAGE VALUE", formatUsd(filters.totals.value), false],
+          ["PAGE APPROVED", String(filters.totals.approved), false],
+          ["PAGE REJECTED", String(filters.totals.rejected), false],
+          ["PAGE ESCALATED", String(filters.totals.escalated), true],
         ].map(([label, value, accent], index) => (
           <div
             key={label as string}

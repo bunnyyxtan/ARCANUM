@@ -1,4 +1,5 @@
 import type { Vendor, Wallet } from "@arcanum/db/schema";
+import { decimalUsdcToBaseUnits } from "@arcanum/shared";
 import type { ApiContext } from "../context";
 import {
   type SupabaseWriteResult,
@@ -7,13 +8,13 @@ import {
   warnSupabase,
 } from "./client";
 import { stringField } from "./fields";
-import { vendorFromRow } from "./mappers";
-import { orgScopedRowsForWallets } from "./scope";
+import { type SupabaseVendor, vendorFromRow } from "./mappers";
+import { walletForRow } from "./scope";
 import { selectRows } from "./transport";
 import { readSupabaseWallets } from "./wallets";
 
-// Vendor registers are intentionally bounded to keep workspace reads predictable.
-const MAX_VENDORS_PER_ORG = 1_000;
+// Vendor registers are intentionally bounded to keep wallet reads predictable.
+const MAX_VENDORS = 1_000;
 
 export async function readSupabaseVendors(
   ctx: ApiContext,
@@ -22,9 +23,9 @@ export async function readSupabaseVendors(
 ) {
   if (wallet) {
     const rows = await selectRows(ctx, "vendors", {
-      filters: { organization_id: wallet.orgId },
+      filters: { wallet_address: wallet.address.toLowerCase() },
       order: "created_at.desc,id.desc",
-      limit: MAX_VENDORS_PER_ORG,
+      limit: MAX_VENDORS,
       before: cursor,
     });
     return rows.map((row) => vendorFromRow(row, wallet));
@@ -37,15 +38,16 @@ export async function readSupabaseVendors(
 
   const rows = await selectRows(ctx, "vendors", {
     inFilters: {
-      organization_id: Array.from(new Set(wallets.map((item) => item.orgId))).filter(Boolean),
+      wallet_address: wallets.map((item) => item.address.toLowerCase()),
     },
     order: "created_at.desc,id.desc",
-    limit: MAX_VENDORS_PER_ORG,
+    limit: MAX_VENDORS,
     before: cursor,
   });
-  return orgScopedRowsForWallets(rows, wallets).map(({ row, wallet }) =>
-    vendorFromRow(row, wallet),
-  );
+  return rows.flatMap((row) => {
+    const rowWallet = walletForRow(row, wallets);
+    return rowWallet ? [vendorFromRow(row, rowWallet)] : [];
+  });
 }
 
 export async function writeSupabaseVendor(
@@ -60,7 +62,9 @@ export async function writeSupabaseVendor(
     status?: Vendor["status"];
   },
   wallet: Wallet,
-): Promise<SupabaseWriteResult<Vendor & { name: string; kycStatus: "public" | "arcanevm" }>> {
+): Promise<
+  SupabaseWriteResult<SupabaseVendor & { name: string; kycStatus: "public" | "arcanevm" }>
+> {
   const client = ctx.supabase;
   if (!client) {
     return unconfiguredWrite("vendor");
@@ -69,6 +73,7 @@ export async function writeSupabaseVendor(
   const now = new Date().toISOString();
   const row = {
     organization_id: wallet.orgId,
+    wallet_address: wallet.address.toLowerCase(),
     vendor_address: input.address.toLowerCase(),
     name: input.name,
     category: input.category,
@@ -76,13 +81,16 @@ export async function writeSupabaseVendor(
     confidential: input.kycStatus === "arcanevm",
     data_source: "live",
     source: "supabase",
+    // `perVendorCap` arrives from the chain as display-USDC text. Convert
+    // exactly once to the explicitly named six-decimal base-unit mirror.
+    per_vendor_cap_base_units: decimalUsdcToBaseUnits(input.perVendorCap).toString(),
     updated_at: now,
   };
 
   try {
     const [existing] = await client.selectRows("vendors", {
       filters: {
-        organization_id: wallet.orgId,
+        wallet_address: wallet.address.toLowerCase(),
         vendor_address: input.address.toLowerCase(),
       },
       limit: 1,
@@ -90,7 +98,11 @@ export async function writeSupabaseVendor(
     const existingId = stringField(existing, ["id"], "");
     const [written] = existingId
       ? await client.patchRows("vendors", row, { id: existingId })
-      : await client.upsertRows("vendors", [{ ...row, created_at: now }]);
+      : await client.upsertRows(
+          "vendors",
+          [{ ...row, created_at: now }],
+          "wallet_address,vendor_address",
+        );
     return {
       ok: true,
       data: vendorFromRow(written ?? row, wallet),

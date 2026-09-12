@@ -54,6 +54,11 @@ Never hard-code private keys or commit `.env` files. For production operators,
 prefer managed signer infrastructure or user-controlled wallets over server-held
 agent keys.
 
+Arc's native USDC gas balance uses 18 decimals. GuardedWallet policy and payment
+amounts are deployed ERC20 USDC base units with 6 decimals, which is why this
+example uses `usdcErc20(12)`. Source-chain ERC20/CCTP amounts also use 6
+decimals; do not use the native gas scale for those values.
+
 ## Payment intent preflight and execution
 
 `createPaymentIntent` is a read-only policy preflight for agent backends. It
@@ -111,6 +116,138 @@ the API still evaluates policy from chain state and does not custody keys. Use
 the SDK execution method only from an agent runtime that controls the authorized
 testnet signer.
 
+## Payment decision receipts
+
+`requestPaymentReceipt` asks the Arcanum API for a signed receipt: the verdict
+the wallet's policy gives the intent, evaluated at one pinned block and signed
+by the published Arcanum issuer key. Nothing moves onchain. The receipt is an
+offline-verifiable record of a preflight, not an authorization; the contract
+still decides at execution time. The client verifies every receipt it
+receives (issuer signature, digest, its own request signature, and that the
+receipt answers the intent it just signed) before returning it; a receipt
+that fails is a `RECEIPT_UNVERIFIED` or `RECEIPT_MISMATCH` error, never a
+result; a response that is not a receipt envelope is a `ReceiptRequestError`
+(`MALFORMED_RESPONSE`). Pass `receiptIssuers` in the config to trust a
+self-hosted issuer.
+
+`executePaymentIntentWithReceipt` obtains the receipt first, submits
+`executeUSDC` only for `allow` and `escalate` with the receipt id in the reason
+metadata, then links the transaction hash back to the receipt. When execution
+returns a hash, the result carries it even if linking fails (`evidenceError`
+sits next to it). If the RPC drops out while waiting for inclusion, the
+execution error has no hash; link the transaction later with
+`attachPaymentReceiptEvidence`.
+
+The signed preflight receipt is separate from indexed contract events. A
+successful payment or escalation can produce an onchain event after settlement;
+a policy `deny` reverts the guarded call and does not produce a successful
+`DENY` event. A receipt alone never proves that a transaction was submitted or
+settled.
+
+```ts
+const arcanum = new ArcanumClient({
+  walletAddress,
+  agentSigner,
+  chain: arcTestnet,
+  rpcUrl: ARC_TESTNET_RPC_URL,
+  apiUrl: "https://thearcanum.in",
+});
+
+const { receipt, replayed } = await arcanum.requestPaymentReceipt(intent);
+console.log(receipt.receipt.decision.verdict, receipt.receipt.decision.reasonCode);
+
+const outcome = await arcanum.executePaymentIntentWithReceipt(intent);
+console.log(outcome.result.txHash, outcome.evidence?.map((row) => row.outcome));
+
+const verification = await verifyPaymentReceipt(receipt);
+console.log(verification.ok, verification.issuer.status);
+```
+
+`verifyPaymentReceipt` runs entirely offline against the issuer registry
+bundled in the SDK. The registry is the trust anchor: a passing digest shows
+the envelope matches the attested bytes, and a passing issuer or agent
+signature shows which signer attested to them. These checks do not independently
+prove policy correctness, chain inclusion, payment settlement, or that a
+transaction was sent. The same `reference` returns the same receipt
+(`replayed: true`); reusing a reference for a different payment is rejected.
+`executePaymentIntentWithReceipt` does not act on a replayed receipt, since
+the earlier attempt may already have paid and the contract does not
+deduplicate references: it returns `errorCode: "RECEIPT_REPLAYED"` unless
+called with `{ executeReplayedReceipt: true }` or a fresh reference.
+See the repository's `docs/PAYMENT-RECEIPTS.md` for the format, the trust
+model and the API.
+
+## Circle Wallets as the agent signer
+
+`arcanum-sdk/circle` turns a Circle developer-controlled wallet into the
+agent signer, so no private key has to sit on the agent host. The wallet's
+key lives in Circle's MPC service; the adapter is a viem local account that
+sends payment-intent messages (EIP-191) and prepared transactions to Circle's
+signing API and hands the signatures back to `ArcanumClient`. viem still
+prepares nonce, gas and fees over your Arc RPC and broadcasts the signed
+transaction itself, so policy, escalation and receipt evidence behave exactly
+as with a private key. Node.js only (the entity secret ciphertext needs
+`node:crypto`).
+
+```ts
+import { ArcanumClient } from "arcanum-sdk";
+import { arcTestnet, ARC_TESTNET_RPC_URL } from "arcanum-sdk/chains";
+import { circleWalletAccount } from "arcanum-sdk/circle";
+
+const agentSigner = circleWalletAccount({
+  apiKey: process.env.CIRCLE_API_KEY!,
+  entitySecret: process.env.CIRCLE_ENTITY_SECRET!,
+  walletId: process.env.CIRCLE_WALLET_ID!,
+  address: process.env.CIRCLE_WALLET_ADDRESS as `0x${string}`,
+});
+
+const arcanum = new ArcanumClient({
+  walletAddress: process.env.GUARDED_WALLET as `0x${string}`,
+  agentSigner,
+  chain: arcTestnet,
+  rpcUrl: ARC_TESTNET_RPC_URL,
+  apiUrl: "https://thearcanum.in",
+});
+```
+
+Create the wallet as an EOA on Circle's generic `EVM-TESTNET` (or `EVM`)
+identifier, since Circle's transaction-signing endpoint is not available for
+named chains such as `ARC-TESTNET`, then authorise its address on the
+governed wallet like any signer (`GuardedWallet.addSigner`) and give it a
+little USDC for gas. Every answer from Circle is checked
+before use: a signature must recover to the wallet address, and a signed
+transaction must parse back to exactly the requested recipient, calldata,
+value, nonce, chain, gas and fees; otherwise a `CircleSignerError` is thrown
+and nothing is broadcast. The API key and entity secret never appear in
+errors. See the repository's `docs/CIRCLE-WALLETS.md` for setup and the
+trust model.
+
+## CCTP inbound funding
+
+The browser-safe `arcanum-sdk/cctp` subpath supports one testnet route:
+Ethereum Sepolia USDC to an Arc Testnet governed wallet, using CCTP V2 and
+Circle's Forwarding Service. It needs no Circle API key and does not load
+the Node-only signing adapter.
+
+```ts
+import { getCctpQuote, buildCctpTransactions, getCctpStatus } from "arcanum-sdk/cctp";
+
+const quote = await getCctpQuote("5"); // total debit, including the fee
+const { approval, burn } = buildCctpTransactions({ recipient: guardedWallet, quote });
+// Submit approval on Sepolia and require success. Revalidate the quote,
+// account and chain before submitting burn; the helpers do not send funds.
+const transfer = await getCctpStatus({ burnTxHash, recipient: guardedWallet });
+```
+
+Quotes report the maximum fee and minimum received in six-decimal USDC base
+units. `expiresAt` is a Unix timestamp in milliseconds. A new quote requires
+the payer's review. Store the burn
+hash before waiting for settlement, then resume status checks with that hash,
+never by repeating the burn. A completed attestation is not a completed mint.
+Funding neither changes the wallet's spending policy nor issues a payment
+receipt. See `docs/CCTP-FUNDING.md` in the repository for the CLI, dashboard,
+recovery rules and Circle trust boundary.
+
 ## Public exports
 
 - `ArcanumClient`
@@ -121,5 +258,14 @@ testnet signer.
   `SimulationResult`
 - Payment intent types such as `PaymentIntentInput`, `SignedPaymentIntentInput`,
   and `PaymentIntentResult`
+- Receipt helpers `verifyPaymentReceipt`, `paymentReceiptDigest`,
+  `paymentReceiptEnvelopeSchema`, `PAYMENT_RECEIPT_ISSUERS`, the `ReceiptApi`
+  REST client, `ReceiptRequestError`, and types such as
+  `PaymentReceiptEnvelope`, `PaymentReceiptEvidence`, and
+  `PaymentIntentWithReceiptResult`
 - Arc Testnet helpers from `arcanum-sdk/chains`, including `arcTestnet`,
   `ARC_TESTNET_RPC_URL`, `ARC_TESTNET_USDC_ADDRESS`, `usdcErc20`, and `usdcGas`
+- `circleWalletAccount`, `CircleSignerError` and `CircleWalletAccountConfig`
+  from `arcanum-sdk/circle` (Node.js only)
+- `CCTP_ROUTE`, `getCctpQuote`, `buildCctpTransactions`, `getCctpStatus`,
+  `CctpQuote` and `CctpStatus` from `arcanum-sdk/cctp` (browser-safe)

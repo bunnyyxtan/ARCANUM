@@ -1,5 +1,5 @@
 import { WalletFactoryAbi } from "@arcanum/contracts";
-import { encodeAbiParameters, encodeEventTopics } from "viem";
+import { encodeAbiParameters, encodeEventTopics, encodeFunctionData } from "viem";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ApiContext } from "../context";
@@ -26,12 +26,14 @@ afterEach(() => {
 
 function context(input: {
   owner?: string | null;
+  chainOwner?: string;
   selectRows?: (table: string, options?: SupabaseRequestOptions) => Promise<SupabaseRow[]>;
   patchRows?: ApiContext["supabase"] extends infer _T
     ? NonNullable<ApiContext["supabase"]>["patchRows"]
     : never;
   callFunction?: NonNullable<ApiContext["supabase"]>["callFunction"];
   receipt?: SupabaseRow;
+  transaction?: SupabaseRow;
 }): ApiContext {
   return {
     db: null as never,
@@ -46,10 +48,14 @@ function context(input: {
           },
     publicClient: {
       getTransactionReceipt: () => Promise.resolve(input.receipt),
+      getTransaction: () => Promise.resolve(input.transaction ?? createWalletTransaction()),
+      readContract: ({ functionName }: { functionName: string }) =>
+        Promise.resolve(functionName === "owner" ? (input.chainOwner ?? OWNER) : false),
     } as never,
     supabase: {
       configured: true,
       selectRows: input.selectRows ?? (() => Promise.resolve([])),
+      insertRows: () => Promise.resolve([]),
       upsertRows: () => Promise.resolve([]),
       patchRows: input.patchRows ?? (() => Promise.resolve([])),
       callFunction: input.callFunction ?? (() => Promise.resolve(null)),
@@ -76,6 +82,35 @@ function walletCreatedReceipt(address = FACTORY, status = "success") {
         ),
       },
     ],
+  };
+}
+
+// Creation metadata is bound to the factory calldata, so the mocked chain
+// must hand back the transaction the receipt belongs to.
+function createWalletTransaction(to = FACTORY) {
+  return {
+    to,
+    input: encodeFunctionData({
+      abi: WalletFactoryAbi,
+      functionName: "createWallet",
+      args: [
+        OWNER,
+        "Agent",
+        {
+          perTxCap: 100_000_000n,
+          daily24hCap: 1_000_000_000n,
+          monthlyCap: 30_000_000_000n,
+          allowedCategories: 31n,
+          escalationThreshold: 50_000_000n,
+          requireAllowlist: true,
+          freezeOnBlockedVendor: true,
+        },
+        [OWNER],
+        [OWNER],
+        1,
+        86_400n,
+      ],
+    }),
   };
 }
 
@@ -124,6 +159,22 @@ describe("created wallet verification", () => {
     await expect(
       agentsRouter
         .createCaller(context({ receipt: walletCreatedReceipt(FACTORY, "reverted"), callFunction }))
+        .recordCreatedWallet(createdWalletInput),
+    ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    expect(callFunction).not.toHaveBeenCalled();
+  });
+
+  it("rejects a creation transaction that was not sent directly to the factory", async () => {
+    const callFunction = vi.fn(() => Promise.resolve(null));
+    await expect(
+      agentsRouter
+        .createCaller(
+          context({
+            receipt: walletCreatedReceipt(),
+            transaction: createWalletTransaction(OTHER_OWNER),
+            callFunction,
+          }),
+        )
         .recordCreatedWallet(createdWalletInput),
     ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
     expect(callFunction).not.toHaveBeenCalled();
@@ -245,8 +296,10 @@ describe("public escalation lookup", () => {
     expect(Object.keys(result).sort()).toEqual(
       [
         "amount",
+        "amountBaseUnits",
         "chainId",
         "counterparty",
+        "counterpartyAddress",
         "escalationKey",
         "expiresAt",
         "policyVersion",
@@ -259,6 +312,8 @@ describe("public escalation lookup", () => {
     expect(result).toMatchObject({
       escalationKey: ESCALATION_KEY,
       walletAddress: WALLET,
+      amountBaseUnits: "12500000",
+      counterpartyAddress: OTHER_OWNER,
       status: "REJECTED",
     });
   });

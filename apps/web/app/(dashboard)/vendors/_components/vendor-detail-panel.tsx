@@ -1,4 +1,5 @@
 import { shortAddress } from "@/lib/format/address";
+import { formatUSDCBaseUnitsExact } from "@/lib/format/money";
 import {
   type VendorFlagDetail,
   type VendorFlagHistoryEntry,
@@ -46,7 +47,7 @@ export function VendorDetailPanel(props: VendorDetailPanelProps) {
             </p>
           </div>
           <span className="flex flex-col items-end gap-2">
-            <StatePill blocked={selected.trust === "blocked"} />
+            <StatePill trust={selected.trust} />
             {flagged && (
               <span
                 title={
@@ -93,27 +94,39 @@ export function VendorDetailPanel(props: VendorDetailPanelProps) {
         </div>
         <div className="mt-10">
           <div className="flex justify-between font-mono text-[9px] uppercase tracking-[.13em] text-[var(--wl-secondary)]">
-            <span>PER-VENDOR CAP</span>
-            <span>{selected.confidential ? "SET" : "NONE"}</span>
+            <span>PER-PAYMENT CAP</span>
+            <span>
+              {selected.perVendorCap === null
+                ? "UNKNOWN"
+                : selected.confidential
+                  ? formatUSDCBaseUnitsExact(selected.perVendorCap)
+                  : "NONE"}
+            </span>
           </div>
           <div className="mt-3 flex justify-between font-mono text-[9px] text-[var(--wl-mute)]">
             <span>Last used {selected.lastUsed}</span>
             <span>Added {selected.createdAt ?? "N/A"}</span>
           </div>
         </div>
-        <VendorReviewControls
-          detail={props.controls.detail}
-          flagToggling={props.controls.flagToggling}
-          isConnected={props.controls.isConnected}
-          isVendorFlagged={props.controls.isVendorFlagged}
-          saveNoteEdit={props.controls.saveNoteEdit}
-          selected={selected}
-          setVendorStatusRemote={props.controls.setVendorStatusRemote}
-          submitCap={props.controls.submitCap}
-          toggleVendorFlag={props.controls.toggleVendorFlag}
-          vendorFlagDetail={props.controls.vendorFlagDetail}
-          vendorSaving={props.controls.vendorSaving}
-        />
+        {selected.trust === "removed" ? (
+          <p className="mt-8 border border-[var(--wl-line)] bg-[var(--wl-bg)] p-3 font-mono text-[9px] uppercase tracking-[.1em] text-[var(--wl-mute)]">
+            Historical record · removed vendors cannot be edited here.
+          </p>
+        ) : (
+          <VendorReviewControls
+            detail={props.controls.detail}
+            flagToggling={props.controls.flagToggling}
+            isConnected={props.controls.isConnected}
+            isVendorFlagged={props.controls.isVendorFlagged}
+            saveNoteEdit={props.controls.saveNoteEdit}
+            selected={selected}
+            setVendorStatusRemote={props.controls.setVendorStatusRemote}
+            submitCap={props.controls.submitCap}
+            toggleVendorFlag={props.controls.toggleVendorFlag}
+            vendorFlagDetail={props.controls.vendorFlagDetail}
+            vendorSaving={props.controls.vendorSaving}
+          />
+        )}
       </div>
       <VendorFactsAndHistory flagHistory={props.flagHistory} selected={selected} />
     </aside>
@@ -155,7 +168,8 @@ function VendorFactsAndHistory({
         </div>
       </div>
       <p className="mt-8 max-w-[390px] font-mono text-[9px] leading-[1.6] tracking-[.08em] text-[var(--wl-mute)]">
-        Every payment is evaluated against this cap before it reaches the governed wallet.
+        Each payment is evaluated against this cap before it reaches the governed wallet. The
+        wallet-wide monthly cap remains separate.
       </p>
       <div className="mt-10">
         <div className="flex items-center justify-between border-b border-[var(--wl-line)] pb-4">

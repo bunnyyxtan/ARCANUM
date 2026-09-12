@@ -58,7 +58,7 @@ export function VendorRegistry(props: VendorRegistryProps) {
       <div className="hidden grid-cols-[1.1fr_.7fr_1fr_1.2fr_.8fr_.65fr] gap-4 border-b border-[var(--wl-line)] px-4 py-3 font-mono text-[9px] uppercase tracking-[.14em] text-[var(--wl-mute)] lg:grid">
         <span>Vendor</span>
         <span>Category</span>
-        <span>Per-vendor cap</span>
+        <span>Per-payment cap</span>
         <span>Approved by</span>
         <span>Trust</span>
         <span>State</span>

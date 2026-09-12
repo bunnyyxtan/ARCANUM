@@ -3,8 +3,8 @@
 import type { CSSProperties } from "react";
 
 import { getArcscanTxUrl } from "@/lib/arcscan";
+import { formatBaseUnits } from "@/lib/escalation-truth";
 import { shortAddress } from "@/lib/format/address";
-import { formatUsd } from "@/lib/format/money";
 import type { Escalation } from "@/lib/types";
 
 import { useEscalationAction } from "../_hooks/use-escalation-action";
@@ -25,8 +25,13 @@ export function EscalationCard({
   onChainUpdate,
 }: Readonly<EscalationCardProps>) {
   const action = useEscalationAction(item, onChainUpdate);
-  const amountLabel = formatUsd(item.amount);
+  const amountLabel = formatBaseUnits(item.amountBaseUnits);
   const isNear = item.expiryPercent < 10;
+  const displayedStatus = action.expiredUnsettled
+    ? "EXPIRED · UNSWEPT"
+    : action.expiryVerificationRequired
+      ? "EXPIRY · VERIFYING"
+      : (action.resolvedStatus ?? "PENDING");
   return (
     <article
       id={cardId}
@@ -47,14 +52,12 @@ export function EscalationCard({
             className={`rounded-full px-2.5 py-1 font-mono text-[9px] tracking-[.12em] ${
               action.resolved
                 ? "bg-[var(--wl-green-tint)] text-[var(--wl-green)]"
-                : "border border-[var(--wl-signal)] text-[var(--wl-signal)]"
+                : action.expiredUnsettled || action.expiryVerificationRequired
+                  ? "border border-[var(--wl-amber)] text-[var(--wl-amber)]"
+                  : "border border-[var(--wl-signal)] text-[var(--wl-signal)]"
             }`}
           >
-            {action.resolved
-              ? action.lastAction === "approve"
-                ? "APPROVED"
-                : "REJECTED"
-              : "PENDING"}
+            {displayedStatus}
           </span>
           {action.resolved && (
             <span className="arc-stamp px-2 py-1 font-mono text-[8px] tracking-[.12em]">
@@ -108,7 +111,37 @@ export function EscalationCard({
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2 border-t border-[var(--wl-line)] pt-5">
-        {!action.resolved ? (
+        {action.expiredUnsettled ? (
+          <>
+            <div className="w-full border-l-2 border-[var(--wl-amber)] bg-[var(--wl-bg-soft)] p-4">
+              <p className="font-mono text-[9px] uppercase tracking-[.14em] text-[var(--wl-amber)]">
+                EXPIRED · UNSWEPT
+              </p>
+              <p className="mt-2 text-[12px] leading-[1.5] text-[var(--wl-body)]">
+                This request passed its expiry while still pending. Approve and reject are disabled;
+                any connected wallet may settle expiry onchain.
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={action.sweepActionsDisabled}
+              onClick={(event) => void action.submitResolution("sweepExpired", event)}
+              className="arc-pill min-h-11 rounded-full bg-[var(--wl-signal)] px-5 py-3 text-[10px] font-semibold text-[var(--wl-bg)] disabled:cursor-not-allowed disabled:opacity-55 md:min-h-0"
+            >
+              Settle expired request
+            </button>
+          </>
+        ) : action.expiryVerificationRequired ? (
+          <div className="w-full border-l-2 border-[var(--wl-amber)] bg-[var(--wl-bg-soft)] p-4">
+            <p className="font-mono text-[9px] uppercase tracking-[.14em] text-[var(--wl-amber)]">
+              EXPIRY · VERIFYING ONCHAIN
+            </p>
+            <p className="mt-2 text-[12px] leading-[1.5] text-[var(--wl-body)]">
+              The read model has reached expiry. Decisions stay disabled until the canonical
+              EscalationManager state is confirmed.
+            </p>
+          </div>
+        ) : !action.resolved ? (
           <>
             <button
               type="button"

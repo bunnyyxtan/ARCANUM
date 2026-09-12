@@ -1,6 +1,10 @@
 import { z } from "zod";
 
-/** The roles a workspace can hand out, mirroring the org_role enum in Postgres. */
+/**
+ * Roles the browser may hand out. Postgres also has the backend-only
+ * `operator` capability (added for anomaly/review workers); it is deliberately
+ * not an invite role.
+ */
 export const workspaceRoleSchema = z.enum(["owner", "admin", "approver", "viewer"]);
 
 export const orgCreateInputSchema = z.object({

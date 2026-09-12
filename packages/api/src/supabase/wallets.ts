@@ -1,5 +1,6 @@
 import type { Agent, Policy, Wallet } from "@arcanum/db/schema";
 import { ARC_NETWORK, deploymentManifestFor } from "@arcanum/shared";
+import { readWalletAuthorityState } from "../chain";
 import type { ApiContext } from "../context";
 import { computePostureScore } from "../posture";
 import { readCallerMembership } from "./auth";
@@ -10,7 +11,7 @@ import {
   unconfiguredWrite,
   warnSupabase,
 } from "./client";
-import { arrayField, stringField } from "./fields";
+import { arrayField, numberField, stringField } from "./fields";
 import {
   agentFromSigner,
   policyFromDoctrineRow,
@@ -19,10 +20,8 @@ import {
   zeroWallet,
 } from "./mappers";
 import { ownerScope, requiredStringField, rowsForWallets, scopedRows } from "./scope";
-import { selectRows } from "./transport";
+import { selectRows, selectRowsExhaustive } from "./transport";
 
-// A workspace is capped well above the expected fleet size while preventing unbounded reads.
-const MAX_WALLETS_PER_ORG = 500;
 const MAX_DOCTRINE_VERSIONS_PER_WALLET = 500;
 
 /**
@@ -71,20 +70,28 @@ export async function readSupabaseWallets(ctx: ApiContext): Promise<Wallet[]> {
   // wallets the read model never filed under an organisation.
   const [orgRows, ownedRows] = await Promise.all([
     membership
-      ? selectRows(ctx, "governed_wallets", {
-          filters: {
-            organization_id: membership.orgId,
-            wallet_factory_address: walletFactory,
+      ? selectRowsExhaustive(
+          ctx,
+          "governed_wallets",
+          {
+            filters: {
+              organization_id: membership.orgId,
+              wallet_factory_address: walletFactory,
+            },
+            order: "created_at.desc,id.desc",
           },
-          order: "created_at.desc",
-          limit: MAX_WALLETS_PER_ORG,
-        })
+          { cursorColumn: "created_at", label: "governed_wallets.org.read" },
+        )
       : Promise.resolve([] as SupabaseRow[]),
-    selectRows(ctx, "governed_wallets", {
-      filters: { owner_address: owner, wallet_factory_address: walletFactory },
-      order: "created_at.desc",
-      limit: MAX_WALLETS_PER_ORG,
-    }),
+    selectRowsExhaustive(
+      ctx,
+      "governed_wallets",
+      {
+        filters: { owner_address: owner, wallet_factory_address: walletFactory },
+        order: "created_at.desc,id.desc",
+      },
+      { cursorColumn: "created_at", label: "governed_wallets.owner.read" },
+    ),
   ]);
 
   const seen = new Set<string>();
@@ -117,15 +124,19 @@ export async function readSupabaseLegacyWalletCount(ctx: ApiContext) {
   const walletFactory = deploymentManifestFor(ARC_NETWORK).walletFactory.toLowerCase();
   const [orgRows, ownedRows] = await Promise.all([
     membership
-      ? selectRows(ctx, "governed_wallets", {
-          filters: { organization_id: membership.orgId },
-          limit: MAX_WALLETS_PER_ORG,
-        })
+      ? selectRowsExhaustive(
+          ctx,
+          "governed_wallets",
+          { filters: { organization_id: membership.orgId }, order: "created_at.desc,id.desc" },
+          { cursorColumn: "created_at", label: "legacy.governed_wallets.org.read" },
+        )
       : Promise.resolve([] as SupabaseRow[]),
-    selectRows(ctx, "governed_wallets", {
-      filters: { owner_address: owner },
-      limit: MAX_WALLETS_PER_ORG,
-    }),
+    selectRowsExhaustive(
+      ctx,
+      "governed_wallets",
+      { filters: { owner_address: owner }, order: "created_at.desc,id.desc" },
+      { cursorColumn: "created_at", label: "legacy.governed_wallets.owner.read" },
+    ),
   ]);
 
   const legacyWalletIds = new Set<string>();
@@ -222,14 +233,27 @@ async function agentsForWallets(ctx: ApiContext, wallets: Wallet[]): Promise<Age
   // Doctrines are versioned, so this read is deliberately unbounded: a cap
   // across all wallets would let one busy wallet's history push another
   // wallet's current doctrine out of the window.
-  const doctrineRows = await selectRows(ctx, "doctrines", {
-    inFilters: { governed_wallet_id: wallets.map((wallet) => wallet.id) },
-    order: "updated_at.desc",
-  });
+  // The exhaustive reader pages by its cursor column, so the wire order must
+  // stay on that column; the current doctrine is picked by chain version in
+  // memory because `updated_at` says when a row was mirrored, not which
+  // policy the wallet enforces.
+  const doctrineRows = await selectRowsExhaustive(
+    ctx,
+    "doctrines",
+    {
+      inFilters: { governed_wallet_id: wallets.map((wallet) => wallet.id) },
+      order: "updated_at.desc,id.desc",
+    },
+    { cursorColumn: "updated_at", label: "doctrines.agents.read" },
+  );
   const doctrinesByWallet = new Map<string, SupabaseRow>();
   for (const doctrine of doctrineRows) {
     const walletId = stringField(doctrine, ["governed_wallet_id"]);
-    if (walletId && !doctrinesByWallet.has(walletId)) {
+    if (!walletId) {
+      continue;
+    }
+    const current = doctrinesByWallet.get(walletId);
+    if (!current || numberField(doctrine, ["version"], 0) > numberField(current, ["version"], 0)) {
       doctrinesByWallet.set(walletId, doctrine);
     }
   }
@@ -256,7 +280,7 @@ export async function readSupabasePolicy(ctx: ApiContext, wallet: Wallet | null)
 
   const rows = await selectRows(ctx, "doctrines", {
     filters: { governed_wallet_id: wallet.id },
-    order: "updated_at.desc",
+    order: "version.desc",
     limit: 1,
   });
 
@@ -265,7 +289,7 @@ export async function readSupabasePolicy(ctx: ApiContext, wallet: Wallet | null)
 
 export async function syncSupabaseSignerState(
   ctx: ApiContext,
-  input: { authorized: boolean; signerAddress: `0x${string}`; wallet: Wallet },
+  input: { signerAddress: `0x${string}`; wallet: Wallet },
 ): Promise<SupabaseWriteResult<{ signers: `0x${string}`[]; status: string }>> {
   const client = ctx.supabase;
   if (!client) {
@@ -275,9 +299,27 @@ export async function syncSupabaseSignerState(
   const signerAddress = input.signerAddress.toLowerCase() as `0x${string}`;
 
   try {
+    // Never treat the requested action as proof that the transaction landed.
+    // The wallet's owner and signer mapping are the authority, and both are
+    // read from chain immediately before changing the eventually-consistent
+    // doctrine mirror.
+    const authority = await readWalletAuthorityState(
+      ctx.publicClient,
+      input.wallet.address as `0x${string}`,
+      signerAddress,
+    );
+    const caller = ctx.session?.walletAddress.toLowerCase();
+    if (!caller || authority.owner.toLowerCase() !== caller) {
+      return {
+        ok: false,
+        reason: "forbidden",
+        message: "Only the current onchain wallet owner can sync signer state.",
+      };
+    }
+
     const rows = await client.selectRows("doctrines", {
       filters: { governed_wallet_id: input.wallet.id },
-      order: "updated_at.desc",
+      order: "version.desc",
       limit: 1,
     });
     const existing = rows[0];
@@ -292,7 +334,7 @@ export async function syncSupabaseSignerState(
     const currentSigners = arrayField(existing, ["signers"])
       .map((address) => address.toLowerCase())
       .filter((address): address is `0x${string}` => address.startsWith("0x"));
-    const nextSigners = input.authorized
+    const nextSigners = authority.signerAuthorized
       ? Array.from(new Set([...currentSigners, signerAddress]))
       : currentSigners.filter((address) => address !== signerAddress);
 
@@ -325,7 +367,7 @@ export async function readSupabasePolicies(ctx: ApiContext, wallet: Wallet | nul
 
   const rows = await selectRows(ctx, "doctrines", {
     filters: { governed_wallet_id: wallet.id },
-    order: "updated_at.desc",
+    order: "version.desc",
     limit: MAX_DOCTRINE_VERSIONS_PER_WALLET,
   });
 

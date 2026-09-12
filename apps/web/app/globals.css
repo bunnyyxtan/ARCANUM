@@ -407,13 +407,13 @@ html.wl-dark .wl-icon-moon {
   transition: opacity 200ms ease, transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Live ledger rows */
+/* Illustrative ledger rows */
 .warm-ledger-row {
   opacity: 0.3;
   transform: translateY(8px);
   transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1), opacity 220ms ease;
 }
-.warm-ledger-row.is-live {
+.warm-ledger-row.is-visible {
   opacity: 1;
   transform: translateY(0);
   animation: ledgerIn 420ms cubic-bezier(0.16, 1, 0.3, 1) calc(var(--row-i) * 120ms) both;
@@ -456,7 +456,7 @@ html.wl-dark .wl-icon-moon {
   transition: max-width 420ms cubic-bezier(0.16, 1, 0.3, 1), transform 420ms
     cubic-bezier(0.16, 1, 0.3, 1), opacity 220ms ease;
 }
-.warm-ledger-row.is-live .approval-chip {
+.warm-ledger-row.is-visible .approval-chip {
   max-width: 45px;
   opacity: 1;
   transform: translateX(0);

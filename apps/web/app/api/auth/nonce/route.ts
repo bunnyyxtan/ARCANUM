@@ -1,4 +1,9 @@
-import { type AuthSessionData, createNonce, getSessionOptions } from "@arcanum/auth";
+import {
+  type AuthSessionData,
+  createNonce,
+  getSessionOptions,
+  isCurrentSession,
+} from "@arcanum/auth";
 import { getIronSession } from "iron-session";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
@@ -12,6 +17,9 @@ export async function GET(request: Request) {
   }
 
   const session = await getIronSession<AuthSessionData>(await cookies(), getSessionOptions());
+  if (session.user && !isCurrentSession(session.user)) {
+    await session.destroy();
+  }
   session.nonce = createNonce();
   await session.save();
   return NextResponse.json({ nonce: session.nonce });

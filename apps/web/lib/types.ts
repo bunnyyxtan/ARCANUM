@@ -26,9 +26,11 @@ export type Vendor = {
   name: string;
   address: string;
   category: Category;
-  trust: "approved" | "confidential" | "blocked";
+  trust: "approved" | "confidential" | "blocked" | "removed";
   approvedBy: string[];
   confidential: boolean;
+  /** Six-decimal USDC base units; null means the mirror has no cap observation. */
+  perVendorCap: string | null;
   createdAt?: string;
   lastUsed: string;
   walletAddress?: string;
@@ -56,9 +58,17 @@ export type Escalation = {
   id: string;
   agentId: string;
   agentName: string;
-  wallet: string;
-  amount: number;
+  /** Stable read-model wallet row id. Never use this as a contract target. */
+  walletId: string;
+  /** GovernedWallet contract address used for chain reads/cancellation. */
+  walletAddress: string;
+  /** Mirrored owner address; action hooks still verify the current chain owner. */
+  ownerAddress: string;
+  /** Exact USDC base-unit string; do not convert before chain binding. */
+  amount: string;
+  amountBaseUnits: string;
   counterparty: string;
+  counterpartyAddress: string;
   category: Category;
   reason: string;
   status: "PENDING" | "EXECUTED" | "REJECTED" | "EXPIRED" | "DENIED" | "CANCELLED" | "INVALIDATED";

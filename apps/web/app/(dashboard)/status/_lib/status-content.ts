@@ -4,7 +4,7 @@ export const healthCardContent = [
     index: 1,
     label: "EVENT SYNC",
     detail:
-      "Onchain history is synced for governed wallets and may lag behind the latest Arc block.",
+      "Onchain history is synced for governed wallets. Freshness is confirmed only after a complete catch-up, not by event activity alone.",
   },
   {
     key: "readModel",
@@ -21,6 +21,6 @@ export const healthCardContent = [
 ] as const;
 
 export const statusGuideParagraphs = [
-  "Workspace records are stored off-chain so the dashboard can answer quickly. Onchain history syncs continuously and may lag behind the latest Arc block.",
+  "Workspace records are stored off-chain so the dashboard can answer quickly. Event progress and a confirmed full catch-up are tracked separately.",
   "Fresh wallets may show no recorded activity until their first transactions are picked up. That is expected, not a missing policy decision.",
 ] as const;

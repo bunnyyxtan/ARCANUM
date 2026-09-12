@@ -119,8 +119,10 @@ export default function GlossaryPage() {
       ),
     [letter, query],
   );
-  const active = terms.find((item) => item.term === selected) ?? visibleTerms[0] ?? terms[0];
-  if (!active) return null;
+  // A selection is only meaningful inside the current result set. In
+  // particular, an empty search must not keep showing the previously selected
+  // term as though it matched.
+  const active = visibleTerms.find((item) => item.term === selected) ?? visibleTerms[0] ?? null;
 
   return (
     <main className="min-h-[100dvh] bg-[var(--wl-bg)] text-[var(--wl-ink)]">
@@ -203,7 +205,7 @@ export default function GlossaryPage() {
                   <button
                     type="button"
                     key={item.term}
-                    data-active={active.term === item.term}
+                    data-active={active?.term === item.term}
                     onClick={() => setSelected(item.term)}
                     className="glossary-row grid w-full grid-cols-[40px_1fr] gap-3 px-3 py-5 text-left md:grid-cols-[46px_170px_1fr] md:items-center"
                   >
@@ -242,42 +244,54 @@ export default function GlossaryPage() {
                 <StatusMark>DEFINED</StatusMark>
               </div>
             </div>
-            <div key={active.term} className="glossary-detail px-6 py-7">
-              <p className="font-mono text-[11px] text-[var(--wl-signal)]">
-                {active.letter} / 0{terms.indexOf(active) + 1}
-              </p>
-              <h2 className="font-display mt-3 text-[34px] font-medium tracking-[-.015em]">
-                {active.term}
-              </h2>
-              <p className="mt-5 text-[16px] leading-[1.5] text-[var(--wl-strong3)]">
-                {active.definition}
-              </p>
-              <div className="mt-7 border-t border-[var(--wl-line)] pt-5">
-                <p className="font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)]">
-                  IN PRACTICE
+            {active ? (
+              <div key={active.term} className="glossary-detail px-6 py-7">
+                <p className="font-mono text-[11px] text-[var(--wl-signal)]">
+                  {active.letter} / 0{terms.indexOf(active) + 1}
                 </p>
-                <p className="mt-3 text-[13px] leading-[1.55] text-[var(--wl-body)]">
-                  {active.detail}
+                <h2 className="font-display mt-3 text-[34px] font-medium tracking-[-.015em]">
+                  {active.term}
+                </h2>
+                <p className="mt-5 text-[16px] leading-[1.5] text-[var(--wl-strong3)]">
+                  {active.definition}
                 </p>
-              </div>
-              <div className="mt-7 border-t border-[var(--wl-line)] pt-5">
-                <p className="font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)]">
-                  SEE ALSO
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {active.related.map((item) => (
-                    <button
-                      type="button"
-                      key={item}
-                      onClick={() => setSelected(item)}
-                      className="rounded-full border border-[var(--wl-line)] px-3 py-1.5 text-[11px] text-[var(--wl-body)] transition-colors hover:border-[var(--wl-signal)] hover:text-[var(--wl-signal)]"
-                    >
-                      {item}
-                    </button>
-                  ))}
+                <div className="mt-7 border-t border-[var(--wl-line)] pt-5">
+                  <p className="font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)]">
+                    IN PRACTICE
+                  </p>
+                  <p className="mt-3 text-[13px] leading-[1.55] text-[var(--wl-body)]">
+                    {active.detail}
+                  </p>
+                </div>
+                <div className="mt-7 border-t border-[var(--wl-line)] pt-5">
+                  <p className="font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-mute)]">
+                    SEE ALSO
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {active.related.map((item) => (
+                      <button
+                        type="button"
+                        key={item}
+                        onClick={() => setSelected(item)}
+                        className="rounded-full border border-[var(--wl-line)] px-3 py-1.5 text-[11px] text-[var(--wl-body)] transition-colors hover:border-[var(--wl-signal)] hover:text-[var(--wl-signal)]"
+                      >
+                        {item}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="px-6 py-12">
+                <p className="font-mono text-[10px] uppercase tracking-[.15em] text-[var(--wl-secondary)]">
+                  NO SELECTED ENTRY
+                </p>
+                <p className="mt-3 text-[13px] leading-[1.5] text-[var(--wl-secondary2)]">
+                  No glossary term matches the current search. Clear the search to browse the full
+                  index.
+                </p>
+              </div>
+            )}
             <div className="border-t border-[var(--wl-line)] bg-[var(--wl-bg-soft)] px-6 py-4 font-mono text-[9px] uppercase leading-[1.7] tracking-[.1em] text-[var(--wl-secondary)]">
               TERM OWNER / ARCANUM
               <br />

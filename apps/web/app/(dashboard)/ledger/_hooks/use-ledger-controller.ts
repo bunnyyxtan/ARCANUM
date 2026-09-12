@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useAccount } from "wagmi";
 
 import { getArcscanTxUrl } from "@/lib/arcscan";
@@ -11,7 +12,8 @@ import { useLedgerNotes } from "./use-ledger-notes";
 import { useLedgerSelection } from "./use-ledger-selection";
 
 function useLedgerControllerInternal() {
-  const liveLedger = useLiveLedger();
+  const [page, setPage] = useState(0);
+  const liveLedger = useLiveLedger(page);
   const vendorFlags = useVendorFlags();
   const { isConnected, isConnecting, isReconnecting } = useAccount();
   const filters = useLedgerFilters(liveLedger.data, vendorFlags.flaggedAddresses);
@@ -21,6 +23,10 @@ function useLedgerControllerInternal() {
     filters.statusFilter,
     filters.flaggedOnly,
     filters.search,
+    {
+      page,
+      totalCount: liveLedger.pageInfo ? liveLedger.pageInfo.totalCount : liveLedger.data.length,
+    },
   );
   const notes = useLedgerNotes(
     selection.selectedId,
@@ -45,6 +51,8 @@ function useLedgerControllerInternal() {
 
   return {
     liveLedger,
+    page,
+    setPage,
     vendorFlags,
     isConnected,
     readOnly: !isConnected && !isConnecting && !isReconnecting,

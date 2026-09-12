@@ -12,7 +12,13 @@ import { arcChain } from "@arcanum/shared";
 import { type MouseEvent as ReactMouseEvent, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { type Address, keccak256, toBytes } from "viem";
-import { allowTrustedMutation, parseUsdcCapInput, vendorCategoryIndex } from "../_lib/helpers";
+import {
+  allowTrustedMutation,
+  parseUsdcCapInput,
+  vendorCapDraftState,
+  vendorCapSyncNotice,
+  vendorCategoryIndex,
+} from "../_lib/helpers";
 import type { useVendorSelection } from "./use-vendor-selection";
 import type { useVendorWrite } from "./use-vendor-write";
 
@@ -100,7 +106,11 @@ export function useAddVendor(
       }
       const categoryIndex = vendorCategoryIndex(form.vendorForm.category);
       if (categoryIndex < 0) throw new Error("Select a valid vendor category.");
-      const perVendorCap = parseUsdcCapInput(form.vendorForm.perVendorCap, "Per-vendor cap");
+      const capState = vendorCapDraftState(form.vendorForm.perVendorCap, "add");
+      if (!capState.canSubmit) {
+        throw new Error(capState.error ?? "Enter a valid per-payment cap.");
+      }
+      const perVendorCap = parseUsdcCapInput(form.vendorForm.perVendorCap, "Per-payment cap");
       const governedWallet = await write.ensureVendorWriteReady();
       const vendorAddress = vendorAddressRaw as Address;
       const hash = await write.writeContractAsync({
@@ -125,19 +135,16 @@ export function useAddVendor(
         name,
         category: form.vendorForm.category,
         kycStatus: form.vendorForm.confidential ? "arcanevm" : "public",
-        perVendorCap: Number(perVendorCap) / 1e6,
       });
       await write.refreshVendors();
       form.setVendorForm(initialVendorForm);
       form.setAddVendorOpen(false);
-      selection.setNotice(
-        syncFailed
-          ? `${name.toUpperCase()} WRITE CONFIRMED · REGISTRY NOT SYNCED`
-          : `${name.toUpperCase()} WRITE CONFIRMED · REGISTRY UPDATED`,
-      );
-      toast.success("VENDOR WRITE CONFIRMED", {
-        description: "Onchain write confirmed. The record may take a moment to update.",
-      });
+      selection.setNotice(vendorCapSyncNotice(name, form.vendorForm.perVendorCap, syncFailed));
+      if (!syncFailed) {
+        toast.success("VENDOR / PER-PAYMENT CAP CONFIRMED", {
+          description: "Onchain write confirmed and the vendor registry has been updated.",
+        });
+      }
     } catch (caught) {
       const message = describeChainError(caught);
       form.setVendorError(message);

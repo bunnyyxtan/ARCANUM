@@ -73,15 +73,45 @@ function rpcErrorResponse(status: number, code: number, message: string) {
   return NextResponse.json({ jsonrpc: "2.0", id: null, error: { code, message } }, { status });
 }
 
+class BodyTooLargeError extends Error {}
+
+async function readBoundedText(stream: ReadableStream<Uint8Array> | null, limit: number) {
+  if (!stream) return "";
+  const reader = stream.getReader();
+  const decoder = new TextDecoder();
+  let bytes = 0;
+  let text = "";
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bytes += value.byteLength;
+      if (bytes > limit) {
+        // Cancellation must not delay the rejection if an upstream stalls.
+        void reader.cancel().catch(() => {});
+        throw new BodyTooLargeError();
+      }
+      text += decoder.decode(value, { stream: true });
+    }
+    return text + decoder.decode();
+  } finally {
+    reader.releaseLock();
+  }
+}
+
 export async function POST(request: Request) {
   const clientKey = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
   if (isRateLimited(clientKey)) {
     return rpcErrorResponse(429, -32005, "Too many requests. Slow down.");
   }
 
-  const raw = await request.text();
-  if (raw.length > MAX_BODY_BYTES) {
-    return rpcErrorResponse(413, -32600, "Request body too large.");
+  let raw: string;
+  try {
+    raw = await readBoundedText(request.body, MAX_BODY_BYTES);
+  } catch (error) {
+    return error instanceof BodyTooLargeError
+      ? rpcErrorResponse(413, -32600, "Request body too large.")
+      : rpcErrorResponse(400, -32600, "Unable to read request body.");
   }
 
   let payload: unknown;
@@ -123,17 +153,18 @@ export async function POST(request: Request) {
       // instead of surfacing as a dead page.
       if (response.status === 429 || response.status >= 500) {
         lastFailure = `upstream responded ${response.status}`;
+        void response.body?.cancel().catch(() => {});
         continue;
       }
-      const body = await response.text();
-      if (body.length > MAX_RESPONSE_BYTES) {
-        return rpcErrorResponse(502, -32603, "Upstream response too large for this proxy.");
-      }
+      const body = await readBoundedText(response.body, MAX_RESPONSE_BYTES);
       return new NextResponse(body, {
         status: response.status,
         headers: { "content-type": "application/json", "cache-control": "no-store" },
       });
     } catch (caught) {
+      if (caught instanceof BodyTooLargeError) {
+        return rpcErrorResponse(502, -32603, "Upstream response too large for this proxy.");
+      }
       lastFailure = caught instanceof Error ? caught.message : String(caught);
     }
   }

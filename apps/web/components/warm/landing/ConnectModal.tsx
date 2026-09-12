@@ -6,6 +6,9 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ConnectorAlreadyConnectedError, useAccount, useConnect, useDisconnect } from "wagmi";
 
+import { useDialogFocus } from "@/lib/use-dialog-focus";
+import { clearWalletLaunch, requestWalletLaunch } from "@/lib/wallet-launch-intent";
+
 import {
   type Environment,
   WALLET_OPTIONS,
@@ -27,58 +30,18 @@ export function ConnectModal({ open, onClose }: { open: boolean; onClose: () => 
   const [chosenWallet, setChosenWallet] = useState<WalletOption | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [environment, setEnvironment] = useState<Environment>(DESKTOP_ENVIRONMENT);
-  const dialogRef = useRef<HTMLDialogElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
-  const restoreFocusRef = useRef<HTMLElement | null>(null);
+  const close = () => {
+    setConnecting(false);
+    onClose();
+  };
+  const dialogRef = useDialogFocus(open, close);
 
   useEffect(() => {
     setEnvironment(
       detectEnvironment(navigator.userAgent, Boolean((window as { ethereum?: unknown }).ethereum)),
     );
   }, []);
-
-  // Once a wallet is connected while the modal is open, hand off to the dashboard.
-  useEffect(() => {
-    if (open && isConnected && connecting) {
-      onClose();
-      router.push("/dashboard");
-    }
-  }, [open, isConnected, connecting, onClose, router]);
-
-  useEffect(() => {
-    if (!open) return;
-    restoreFocusRef.current =
-      document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    closeButtonRef.current?.focus();
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setConnecting(false);
-        onClose();
-      }
-      if (event.key === "Tab") {
-        const focusable = Array.from(
-          dialogRef.current?.querySelectorAll<HTMLElement>(
-            'button:not([disabled]), a[href], input:not([disabled]), [tabindex]:not([tabindex="-1"])',
-          ) ?? [],
-        );
-        const first = focusable[0];
-        const last = focusable.at(-1);
-        if (!first || !last) return;
-        if (event.shiftKey && document.activeElement === first) {
-          event.preventDefault();
-          last.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault();
-          first.focus();
-        }
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      restoreFocusRef.current?.focus();
-    };
-  }, [open, onClose]);
 
   useEffect(() => {
     if (!open) {
@@ -88,11 +51,6 @@ export function ConnectModal({ open, onClose }: { open: boolean; onClose: () => 
   }, [open]);
 
   if (!open) return null;
-
-  const close = () => {
-    setConnecting(false);
-    onClose();
-  };
 
   const handleConnect = async (option: WalletOption) => {
     const connector = resolveConnector(connectors, option, environment.hasInjectedProvider);
@@ -131,9 +89,13 @@ export function ConnectModal({ open, onClose }: { open: boolean; onClose: () => 
         await disconnectAsync();
       }
       await connectAsync({ connector });
-      // WalletAuthBridge (mounted in providers) performs the SIWE ceremony.
-      // The isConnected effect above pushes to /dashboard on success.
+      // The request is consumed by the bridge above the identity-scoped
+      // provider. The modal itself may already have unmounted after wagmi
+      // reported the new account.
+      requestWalletLaunch();
+      window.dispatchEvent(new Event("arcanum:wallet-launch-requested"));
     } catch (error) {
+      clearWalletLaunch();
       setConnecting(false);
       if (
         error instanceof ConnectorAlreadyConnectedError ||
@@ -156,19 +118,24 @@ export function ConnectModal({ open, onClose }: { open: boolean; onClose: () => 
 
   return (
     <dialog
-      ref={dialogRef}
       open
-      className="warm-modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-[rgba(var(--wl-ink-rgb),.32)] p-5"
+      className="warm-modal-backdrop fixed inset-0 z-50 flex h-full w-full items-center justify-center bg-[rgba(var(--wl-ink-rgb),.32)] p-5"
       aria-modal="true"
       aria-label="Connect wallet"
     >
       <button
         type="button"
         aria-label="Close connect dialog"
+        aria-hidden="true"
+        data-dialog-backdrop
+        tabIndex={-1}
         className="fixed inset-0 cursor-default"
         onClick={close}
       />
-      <div className="warm-modal-panel relative max-h-[calc(100dvh-40px)] w-full max-w-[440px] overflow-y-auto border border-[var(--wl-line-strong2)] bg-[var(--wl-bg)] shadow-[0_24px_60px_-16px_rgba(var(--wl-ink-rgb),.35)]">
+      <div
+        ref={dialogRef}
+        className="warm-modal-panel relative max-h-[calc(100dvh-40px)] w-full max-w-[440px] overflow-y-auto border border-[var(--wl-line-strong2)] bg-[var(--wl-bg)] shadow-[0_24px_60px_-16px_rgba(var(--wl-ink-rgb),.35)]"
+      >
         <div className="flex items-center justify-between border-b border-[var(--wl-line-soft)] px-7 py-4">
           <p className="font-mono text-[10px] uppercase tracking-[.2em] text-[var(--wl-signal)]">
             ARCANUM / ACCESS

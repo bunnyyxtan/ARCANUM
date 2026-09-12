@@ -36,6 +36,27 @@ replaces the former `idempotencyKey` name; do not send both.
 The reference does not make execution idempotent. If receipt waiting times out, retain the
 submitted hash and call `confirm(txHash)`; resubmitting can transfer funds twice.
 
+## Circle Wallets as the signer
+
+`arcanum-sdk/circle` (Node.js only) turns a Circle developer-controlled wallet into the agent
+signer, so the key never sits on the agent host. It is a viem local account that asks Circle's
+signing API for message and transaction signatures and verifies each answer against the request
+before viem broadcasts anything.
+
+```ts
+import { circleWalletAccount } from "arcanum-sdk/circle"
+
+const agentSigner = circleWalletAccount({
+  apiKey: process.env.CIRCLE_API_KEY as string,
+  entitySecret: process.env.CIRCLE_ENTITY_SECRET as string,
+  walletId: process.env.CIRCLE_WALLET_ID as string,
+  address: process.env.CIRCLE_WALLET_ADDRESS as `0x${string}`,
+})
+```
+
+Authorize the wallet's address with `addSigner` like any signer. Setup and the trust model are in
+the repository's `docs/CIRCLE-WALLETS.md`.
+
 ## API
 
 - `executeUSDC({ to, amount, reason, metadata })`

@@ -14,14 +14,17 @@ import { ARC_CHAIN_ID, escalationReasonFromIndex, freezeSourceFromIndex } from "
 import { and, eq } from "drizzle-orm";
 
 import { loadDeployment } from "./deployment";
+import { transferReasonText } from "./reason-text";
 import {
   syncCheckpoint as persistCheckpoint,
   syncAnomaly,
   syncEscalationApproval,
   syncEscalationStatus,
   syncGovernanceEvent,
+  syncOwnershipTransferred,
   syncTransferEscalated,
   syncTransferExecuted,
+  syncVendorRule,
   syncWalletCreated,
   syncWalletFrozenState,
 } from "./supabase-sync";
@@ -292,13 +295,14 @@ ponder.on("GuardedWallet:TransferExecuted", async ({ event }) => {
 });
 
 ponder.on("GuardedWallet:TransferEscalated", async ({ event }) => {
+  const reason = transferReasonText(event.args.reason);
   await syncTransferEscalated({
     walletAddress: asAddress(event.args.wallet),
     txHash: event.transaction.hash,
     logIndex: logIndex(event.log.logIndex),
     toAddress: asAddress(event.args.to),
     amount: asBigint(event.args.amount),
-    reason: reasonName(event.args.reason),
+    reason,
     escalationId: asString(event.args.escalationId),
     blockNumber: Number(event.block.number),
     timestamp: blockDate(event.block.timestamp),
@@ -331,7 +335,7 @@ ponder.on("GuardedWallet:TransferEscalated", async ({ event }) => {
           toAddress: asAddress(event.args.to),
           amount,
           verdict: "ESCALATE",
-          reason: reasonName(event.args.reason),
+          reason,
           vendorCategory: "compute",
           dailySpentAfter: "0",
         })
@@ -351,7 +355,7 @@ ponder.on("GuardedWallet:TransferEscalated", async ({ event }) => {
       transferId: transfer?.id,
       toAddress: asAddress(event.args.to),
       amount,
-      reason: reasonName(event.args.reason),
+      reason,
       createdAt: blockDate(event.block.timestamp),
       expiresAt: blockDate(asBigint(event.args.expiresAt)),
       status: "PENDING",
@@ -511,18 +515,37 @@ ponder.on("GuardedWallet:OwnershipTransferStarted", async ({ event }) => {
 });
 
 ponder.on("GuardedWallet:OwnershipTransferred", async ({ event }) => {
-  await syncGovernanceEvent({
-    walletAddress: asAddress(event.args.wallet),
-    eventType: "OWNERSHIP_TRANSFERRED",
-    severity: "info",
-    payload: {
-      previousOwner: asAddress(event.args.previousOwner),
-      newOwner: asAddress(event.args.newOwner),
-    },
+  const walletAddress = asAddress(event.args.wallet);
+  const previousOwner = asAddress(event.args.previousOwner);
+  const newOwner = asAddress(event.args.newOwner);
+  const mirrored = await syncOwnershipTransferred({
+    walletAddress,
+    previousOwner,
+    newOwner,
     blockNumber: Number(event.block.number),
+    logIndex: logIndex(event.log.logIndex),
     txHash: event.transaction.hash,
     timestamp: blockDate(event.block.timestamp),
   });
+
+  // Keep the legacy local mirror ordered as well. The previous-owner predicate
+  // makes replay and late events no-ops instead of rolling it back.
+  if (mirrored) {
+    const tenantId = defaultTenantId();
+    const wallet = await findWallet(walletAddress, tenantId);
+    if (wallet) {
+      await db
+        .update(wallets)
+        .set({ ownerAddress: newOwner })
+        .where(
+          and(
+            eq(wallets.tenantId, tenantId),
+            eq(wallets.id, wallet.id),
+            eq(wallets.ownerAddress, previousOwner),
+          ),
+        );
+    }
+  }
   await syncCheckpoint(Number(event.block.number));
 });
 
@@ -670,7 +693,14 @@ ponder.on("GuardedWallet:ModuleRotated", async ({ event }) => {
 });
 
 ponder.on("EscalationManager:EscalationApproved", async ({ event }) => {
-  await syncEscalationApproval(asString(event.args.escalationId), asNumber(event.args.count));
+  await syncEscalationApproval({
+    escalationId: asString(event.args.escalationId),
+    approvalsCount: asNumber(event.args.count),
+    blockNumber: Number(event.block.number),
+    logIndex: logIndex(event.log.logIndex),
+    txHash: event.transaction.hash,
+    timestamp: blockDate(event.block.timestamp),
+  });
   await syncCheckpoint(Number(event.block.number));
   if (pgMirrorDisabled) {
     return;
@@ -729,27 +759,40 @@ ponder.on("EscalationManager:WalletRegistered", async ({ event }) => {
 });
 
 ponder.on("EscalationManager:EscalationRejected", async ({ event }) => {
-  await syncEscalationStatus(asString(event.args.escalationId), "rejected", event.transaction.hash);
+  await syncEscalationStatus({
+    escalationId: asString(event.args.escalationId),
+    status: "rejected",
+    blockNumber: Number(event.block.number),
+    logIndex: logIndex(event.log.logIndex),
+    txHash: event.transaction.hash,
+    timestamp: blockDate(event.block.timestamp),
+  });
   await syncCheckpoint(Number(event.block.number));
   await updateEscalationStatus(asString(event.args.escalationId), "REJECTED", event);
 });
 
 ponder.on("EscalationManager:EscalationCancelled", async ({ event }) => {
-  await syncEscalationStatus(
-    asString(event.args.escalationId),
-    "cancelled",
-    event.transaction.hash,
-  );
+  await syncEscalationStatus({
+    escalationId: asString(event.args.escalationId),
+    status: "cancelled",
+    blockNumber: Number(event.block.number),
+    logIndex: logIndex(event.log.logIndex),
+    txHash: event.transaction.hash,
+    timestamp: blockDate(event.block.timestamp),
+  });
   await syncCheckpoint(Number(event.block.number));
   await updateEscalationStatus(asString(event.args.escalationId), "CANCELLED", event);
 });
 
 ponder.on("EscalationManager:EscalationInvalidated", async ({ event }) => {
-  await syncEscalationStatus(
-    asString(event.args.escalationId),
-    "invalidated",
-    event.transaction.hash,
-  );
+  await syncEscalationStatus({
+    escalationId: asString(event.args.escalationId),
+    status: "invalidated",
+    blockNumber: Number(event.block.number),
+    logIndex: logIndex(event.log.logIndex),
+    txHash: event.transaction.hash,
+    timestamp: blockDate(event.block.timestamp),
+  });
   await syncCheckpoint(Number(event.block.number));
   await updateEscalationStatus(asString(event.args.escalationId), "INVALIDATED", event, {
     councilVersion: asBigint(event.args.councilVersion).toString(),
@@ -757,7 +800,14 @@ ponder.on("EscalationManager:EscalationInvalidated", async ({ event }) => {
 });
 
 ponder.on("EscalationManager:EscalationDenied", async ({ event }) => {
-  await syncEscalationStatus(asString(event.args.escalationId), "denied", event.transaction.hash);
+  await syncEscalationStatus({
+    escalationId: asString(event.args.escalationId),
+    status: "denied",
+    blockNumber: Number(event.block.number),
+    logIndex: logIndex(event.log.logIndex),
+    txHash: event.transaction.hash,
+    timestamp: blockDate(event.block.timestamp),
+  });
   await syncCheckpoint(Number(event.block.number));
   await updateEscalationStatus(asString(event.args.escalationId), "DENIED", event, {
     reason: reasonName(event.args.reason),
@@ -765,13 +815,27 @@ ponder.on("EscalationManager:EscalationDenied", async ({ event }) => {
 });
 
 ponder.on("EscalationManager:EscalationExpired", async ({ event }) => {
-  await syncEscalationStatus(asString(event.args.escalationId), "expired");
+  await syncEscalationStatus({
+    escalationId: asString(event.args.escalationId),
+    status: "expired",
+    blockNumber: Number(event.block.number),
+    logIndex: logIndex(event.log.logIndex),
+    txHash: event.transaction.hash,
+    timestamp: blockDate(event.block.timestamp),
+  });
   await syncCheckpoint(Number(event.block.number));
   await updateEscalationStatus(asString(event.args.escalationId), "EXPIRED", event);
 });
 
 ponder.on("EscalationManager:EscalationExecuted", async ({ event }) => {
-  await syncEscalationStatus(asString(event.args.escalationId), "released", event.transaction.hash);
+  await syncEscalationStatus({
+    escalationId: asString(event.args.escalationId),
+    status: "released",
+    blockNumber: Number(event.block.number),
+    logIndex: logIndex(event.log.logIndex),
+    txHash: event.transaction.hash,
+    timestamp: blockDate(event.block.timestamp),
+  });
   await syncCheckpoint(Number(event.block.number));
   if (pgMirrorDisabled) {
     return;
@@ -871,6 +935,17 @@ ponder.on("VendorRegistry:VendorAdded", async ({ event }) => {
     txHash: event.transaction.hash,
     timestamp: blockDate(event.block.timestamp),
   });
+  await syncVendorRule({
+    walletAddress: asAddress(event.args.wallet),
+    vendorAddress: asAddress(event.args.vendor),
+    kind: "added",
+    categoryIndex: asNumber(event.args.category),
+    perVendorCap: asBigint(event.args.perVendorCap),
+    blockNumber: Number(event.block.number),
+    logIndex: logIndex(event.log.logIndex),
+    txHash: event.transaction.hash,
+    timestamp: blockDate(event.block.timestamp),
+  });
   await syncCheckpoint(Number(event.block.number));
 
   const tenantId = defaultTenantId();
@@ -966,6 +1041,7 @@ async function upsertVendorStatus(
   event: {
     args: Record<string, unknown>;
     block: { number: bigint; timestamp: bigint };
+    log: { logIndex: number };
     transaction: { hash: `0x${string}` };
   },
   status: "blocked" | "removed",
@@ -976,6 +1052,15 @@ async function upsertVendorStatus(
     severity: status === "blocked" ? "warning" : "info",
     payload: { vendor: asAddress(event.args.vendor) },
     blockNumber: Number(event.block.number),
+    txHash: event.transaction.hash,
+    timestamp: blockDate(event.block.timestamp),
+  });
+  await syncVendorRule({
+    walletAddress: asAddress(event.args.wallet),
+    vendorAddress: asAddress(event.args.vendor),
+    kind: status,
+    blockNumber: Number(event.block.number),
+    logIndex: logIndex(event.log.logIndex),
     txHash: event.transaction.hash,
     timestamp: blockDate(event.block.timestamp),
   });

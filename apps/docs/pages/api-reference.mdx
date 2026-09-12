@@ -15,5 +15,6 @@ Procedure groups:
 - `anomalies`: anomaly reads and acknowledgment state.
 - `events`: indexed event stream.
 - `analytics`: posture, value governed, active agents, threats blocked, and pending escalations.
+- `receipts`: payment decision receipt issuance, evidence linkage, history and the issuer registry. Issuance and evidence are also served over REST at `POST /api/receipts`, `POST /api/receipts/{id}/evidence`, `POST /api/receipts/verify` and `GET /api/receipts/issuers` for agent runtimes.
 
 Every protected procedure derives `tenantId` from the SIWE session. Inputs never choose tenant scope.

@@ -8,7 +8,13 @@ import { arcChain } from "@arcanum/shared";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { toast } from "sonner";
 import { type Address, keccak256, toBytes } from "viem";
-import { allowTrustedMutation, parseUsdcCapInput, vendorCategoryIndex } from "../_lib/helpers";
+import {
+  allowTrustedMutation,
+  parseUsdcCapInput,
+  vendorCapDraftState,
+  vendorCapSyncNotice,
+  vendorCategoryIndex,
+} from "../_lib/helpers";
 import type { useVendorSelection } from "./use-vendor-selection";
 import type { useVendorWrite } from "./use-vendor-write";
 
@@ -60,7 +66,6 @@ export function useVendorMutations(
         name: vendor.name,
         category: vendor.category,
         kycStatus: vendor.confidential ? "arcanevm" : "public",
-        perVendorCap: 0,
       });
       await write.refreshVendors();
       selection.setNotice(
@@ -81,9 +86,10 @@ export function useVendorMutations(
   const submitCap = (event: ReactMouseEvent<HTMLButtonElement>) => {
     const vendor = selection.selected;
     if (!vendor) return;
-    const amount = Number(selection.detail.capValue);
-    if (!amount || amount <= 0) {
-      selection.setNotice("ENTER A VALID MONTHLY CAP");
+    const amount = selection.detail.capValue.trim();
+    const capState = vendorCapDraftState(amount, "edit");
+    if (!capState.canSubmit) {
+      selection.setNotice((capState.error ?? "Enter a valid per-payment cap").toUpperCase());
       return;
     }
     void submitVendorCap(event, vendor, amount);
@@ -91,12 +97,12 @@ export function useVendorMutations(
   const submitVendorCap = async (
     event: ReactMouseEvent<HTMLButtonElement>,
     vendor: Vendor,
-    amount: number,
+    amount: string,
   ) => {
     if (!allowTrustedMutation("vendors.updateCap", event) || write.vendorSubmittingRef.current)
       return;
     if (!isEvmAddress(vendor.address)) {
-      toast.info("Cap update unavailable", {
+      toast.info("Per-payment cap update unavailable", {
         description: "A full vendor address is required for onchain updates.",
       });
       return;
@@ -104,7 +110,7 @@ export function useVendorMutations(
     write.vendorSubmittingRef.current = true;
     setVendorSaving(true);
     try {
-      const perVendorCap = parseUsdcCapInput(String(amount), "Per-vendor cap");
+      const perVendorCap = parseUsdcCapInput(amount, "Per-payment cap");
       const governedWallet = await write.ensureVendorWriteReady();
       const hash = await write.writeContractAsync({
         address: governedWallet,
@@ -127,22 +133,19 @@ export function useVendorMutations(
         name: vendor.name,
         category: vendor.category,
         kycStatus: vendor.confidential ? "arcanevm" : "public",
-        perVendorCap: Number(perVendorCap) / 1e6,
       });
       await write.refreshVendors();
       selection.detail.setCapEditing(false);
-      selection.setNotice(
-        `${vendor.name.toUpperCase()} CAP REVISED TO $${amount.toLocaleString("en-US")} / MO`,
-      );
+      selection.setNotice(vendorCapSyncNotice(vendor.name, amount, syncFailed));
       if (!syncFailed) {
-        toast.success("VENDOR CAP CONFIRMED", {
+        toast.success("VENDOR PER-PAYMENT CAP CONFIRMED", {
           description: "Onchain write confirmed and the vendor registry has been updated.",
         });
       }
     } catch (caught) {
       const message = describeChainError(caught);
       selection.setNotice(message.toUpperCase());
-      toast.error("VENDOR CAP FAILED", { description: message });
+      toast.error("VENDOR PER-PAYMENT CAP FAILED", { description: message });
     } finally {
       setVendorSaving(false);
       write.vendorSubmittingRef.current = false;
