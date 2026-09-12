@@ -85,7 +85,7 @@ describe("CCTP Sepolia to Arc route", () => {
           amountBaseUnits: "100",
           maxFeeBaseUnits: "100",
           minimumReceivedBaseUnits: "0",
-          expiresAt: Date.now() + 1,
+          expiresAt: Date.now() + 60_000,
         },
       }),
     ).toThrow("invalid amount");
