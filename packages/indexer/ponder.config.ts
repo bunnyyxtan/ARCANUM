@@ -89,20 +89,28 @@ if (!databaseUrl) {
 const DEFAULT_ARC_TESTNET_INDEXER_RPC_URL = "https://arc-testnet.gateway.tenderly.co";
 const DEFAULT_RPC_REQUESTS_PER_SECOND = 1;
 
+// A blank variable is "unset": `.env.example` ships these keys empty, and an
+// empty `INDEXER_RPC_URL=` in a copied `.env.local` must fall through to the
+// default rather than disable the indexer.
+const envValue = (name: string) => {
+  const value = process.env[name]?.trim();
+  return value ? value : undefined;
+};
+
 // INDEXER_RPC_URL is the indexer-only override (a keyed provider goes here),
 // ARC_RPC_URL the override shared with the API and web proxy. ARC_TESTNET_RPC
 // is deliberately not consulted: it names the official endpoint for the app's
 // low-volume reads, which the backfill cannot use.
 const rpcUrl =
-  process.env.INDEXER_RPC_URL ??
-  process.env.ARC_RPC_URL ??
+  envValue("INDEXER_RPC_URL") ??
+  envValue("ARC_RPC_URL") ??
   (IS_ARC_MAINNET ? ARC_RPC_URL : DEFAULT_ARC_TESTNET_INDEXER_RPC_URL);
 if (!rpcUrl) {
   throw new Error("No Arc RPC URL is configured for the indexer (set INDEXER_RPC_URL)");
 }
 
 const rpcRequestsPerSecond = Number(
-  process.env.INDEXER_RPC_REQUESTS_PER_SECOND ?? String(DEFAULT_RPC_REQUESTS_PER_SECOND),
+  envValue("INDEXER_RPC_REQUESTS_PER_SECOND") ?? String(DEFAULT_RPC_REQUESTS_PER_SECOND),
 );
 if (!Number.isInteger(rpcRequestsPerSecond) || rpcRequestsPerSecond < 1) {
   throw new Error(

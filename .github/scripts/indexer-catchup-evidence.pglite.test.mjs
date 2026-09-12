@@ -9,6 +9,14 @@ const migration = await readFile(
     ),
   "utf8",
 );
+// The finalizer was redefined once since; production runs both in order.
+const followUpMigration = await readFile(
+  new URL(
+    "../../supabase/migrations/20260912203000_finalizer_ignores_pre_deployment_staged_rows.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const db = new PGlite();
 const address = "0x1111111111111111111111111111111111111111";
 const identity = {
@@ -77,7 +85,8 @@ try {
       deployment_id text,
       wallet_address text not null,
       event_kind text not null,
-      event_key text not null
+      event_key text not null,
+      block_number bigint not null default 0
     );
     alter table public.indexer_checkpoints enable row level security;
     create policy checkpoint_service_role on public.indexer_checkpoints
@@ -86,6 +95,7 @@ try {
     grant all on public.unlinked_ledger_events to service_role;
   `);
   await db.exec(migration);
+  await db.exec(followUpMigration);
 
   // Simulate a platform default grant being present when an additive migration
   // is replayed: the migration must revoke it on every run.
@@ -93,6 +103,7 @@ try {
     grant all on public.indexer_catchup_evidence to anon, authenticated, service_role;
   `);
   await db.exec(migration);
+  await db.exec(followUpMigration);
   const grants = await db.query(`
     select
       has_table_privilege('service_role', 'public.indexer_catchup_evidence', 'SELECT') as service_select,
@@ -188,6 +199,26 @@ try {
     [identity.chain, address],
   );
   await mustReject(() => finalize("pending-deployment"), "pending finalization");
+  // A legacy row (no identity) staged below this deployment's start block can
+  // never be replayed by this deployment and must not block its evidence; the
+  // same row at or above the start block still does.
+  await db.query(
+    "insert into public.unlinked_ledger_events (chain_id, deployment_id, wallet_address, event_kind, event_key, block_number) values ($1, null, $2, 'transfer_executed', 'legacy-below-start', $3)",
+    [identity.chain, address, identity.start - 1],
+  );
+  const legacyBelow = await finalize("legacy-below-deployment", 5);
+  if (legacyBelow.rows[0].status !== "ready") {
+    throw new Error("a legacy staged row below the start block blocked finalization");
+  }
+  await db.query(
+    "insert into public.unlinked_ledger_events (chain_id, deployment_id, wallet_address, event_kind, event_key, block_number) values ($1, null, $2, 'transfer_executed', 'legacy-at-start', $3)",
+    [identity.chain, address, identity.start],
+  );
+  await mustReject(
+    () => finalize("legacy-at-start-deployment"),
+    "finalization with a legacy staged row at the start block",
+  );
+  await db.query("delete from public.unlinked_ledger_events where event_key = 'legacy-at-start'");
   const raceOne = await finalize("race-deployment", 1);
   const raceTwo = await finalize("race-deployment", 2);
   if (raceOne.rows.length !== 1 || raceTwo.rows.length !== 1) {
