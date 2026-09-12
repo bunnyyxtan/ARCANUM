@@ -11,11 +11,14 @@
  * rows.
  */
 
-import { ARC_CHAIN_ID, ARC_NETWORK } from "@arcanum/shared";
+import { ARC_CHAIN_ID, deploymentIdentity } from "@arcanum/shared";
+import { loadDeployment } from "./deployment";
 
 const CHAIN_ID = ARC_CHAIN_ID;
+const DEPLOYMENT = loadDeployment();
+const DEPLOYMENT_ID = deploymentIdentity(DEPLOYMENT);
 const LEGACY_CHECKPOINT_CONTRACT = "arcanum-indexer";
-const CHECKPOINT_CONTRACT = `${LEGACY_CHECKPOINT_CONTRACT}:${ARC_NETWORK}:${CHAIN_ID}`;
+const CHECKPOINT_CONTRACT = `${LEGACY_CHECKPOINT_CONTRACT}:${DEPLOYMENT.network}:${CHAIN_ID}`;
 
 type Row = Record<string, unknown>;
 
@@ -195,16 +198,7 @@ async function updateCheckpoint(blockNumber: number, startBlock: number) {
       `[supabase-sync] refusing checkpoint block ${blockNumber} below deployment start block ${startBlock}`,
     );
   }
-  let [existing] = await request("GET", "indexer_checkpoints", {
-    filters: { chain_id: CHAIN_ID, contract_name: CHECKPOINT_CONTRACT },
-    limit: 1,
-  });
-  if (!existing) {
-    [existing] = await request("GET", "indexer_checkpoints", {
-      filters: { chain_id: CHAIN_ID, contract_name: LEGACY_CHECKPOINT_CONTRACT },
-      limit: 1,
-    });
-  }
+  const existing = await findCheckpoint();
   const now = new Date().toISOString();
   const checkpointPatch: Row = {
     last_block: blockNumber,
@@ -214,13 +208,12 @@ async function updateCheckpoint(blockNumber: number, startBlock: number) {
   };
   if (existing) {
     const lastBlock = Number(existing.last_block ?? 0);
-    if (lastBlock < startBlock) {
-      console.info(
-        `[supabase-sync] deployment start block ${startBlock} is above stored checkpoint ${lastBlock}; cutting over to the new deployment`,
+    if (blockNumber < lastBlock) {
+      throw new Error(
+        `[supabase-sync] current deployment checkpoint ${lastBlock} is ahead of event block ${blockNumber}; refusing to skip low deployment events`,
       );
-      checkpointPatch.last_seen_block = null;
     }
-    if (blockNumber <= lastBlock && str(existing, "status") === "synced") {
+    if (blockNumber === lastBlock && str(existing, "status") === "synced") {
       return;
     }
     await request("PATCH", "indexer_checkpoints", {
@@ -237,11 +230,52 @@ async function updateCheckpoint(blockNumber: number, startBlock: number) {
       {
         chain_id: CHAIN_ID,
         contract_name: CHECKPOINT_CONTRACT,
-        contract_address: "0x0000000000000000000000000000000000000000",
+        contract_address: DEPLOYMENT.walletFactory.toLowerCase(),
+        deployment_id: DEPLOYMENT_ID,
+        deployment_start_block: DEPLOYMENT.startBlock,
+        deployment_network: DEPLOYMENT.network,
+        deployment_usdc_address: DEPLOYMENT.usdc.toLowerCase(),
+        deployment_policy_engine_address: DEPLOYMENT.policyEngine.toLowerCase(),
+        deployment_escalation_manager_address: DEPLOYMENT.escalationManager.toLowerCase(),
+        deployment_anomaly_oracle_address: DEPLOYMENT.anomalyOracle.toLowerCase(),
+        deployment_vendor_registry_address: DEPLOYMENT.vendorRegistry.toLowerCase(),
+        deployment_wallet_factory_address: DEPLOYMENT.walletFactory.toLowerCase(),
         ...checkpointPatch,
       },
     ],
   });
+}
+
+/** Finalize deployment-scoped /ready evidence through the atomic RPC. */
+export async function syncConfirmedCatchup(blockNumber?: number) {
+  if (!configured()) return;
+  await request("POST", "rpc/finalize_indexer_catchup", {
+    body: {
+      p_deployment_id: DEPLOYMENT_ID,
+      p_chain_id: CHAIN_ID,
+      p_deployment_network: DEPLOYMENT.network,
+      p_deployment_start_block: DEPLOYMENT.startBlock,
+      p_deployment_usdc_address: DEPLOYMENT.usdc.toLowerCase(),
+      p_deployment_policy_engine_address: DEPLOYMENT.policyEngine.toLowerCase(),
+      p_deployment_escalation_manager_address: DEPLOYMENT.escalationManager.toLowerCase(),
+      p_deployment_anomaly_oracle_address: DEPLOYMENT.anomalyOracle.toLowerCase(),
+      p_deployment_vendor_registry_address: DEPLOYMENT.vendorRegistry.toLowerCase(),
+      p_deployment_wallet_factory_address: DEPLOYMENT.walletFactory.toLowerCase(),
+      p_last_seen_block: blockNumber ?? null,
+    },
+  });
+}
+
+async function findCheckpoint() {
+  const [existing] = await request("GET", "indexer_checkpoints", {
+    filters: {
+      chain_id: CHAIN_ID,
+      contract_name: CHECKPOINT_CONTRACT,
+      deployment_id: DEPLOYMENT_ID,
+    },
+    limit: 2,
+  });
+  return existing;
 }
 
 async function upsertLedgerEvent(input: {
@@ -348,6 +382,7 @@ async function stageUnlinked(
     {
       wallet_address: input.walletAddress.toLowerCase(),
       chain_id: CHAIN_ID,
+      deployment_id: DEPLOYMENT_ID,
       event_kind: eventKind,
       event_key: eventKey,
       payload,
@@ -357,6 +392,7 @@ async function stageUnlinked(
     {
       wallet_address: input.walletAddress.toLowerCase(),
       chain_id: CHAIN_ID,
+      deployment_id: DEPLOYMENT_ID,
       event_kind: eventKind,
       event_key: eventKey,
     },
@@ -404,7 +440,7 @@ async function flushUnlinkedLedgerEvents(wallet: Row) {
   const walletAddress = str(wallet, "wallet_address").toLowerCase();
   if (!walletAddress) return;
   const rows = await request("GET", "unlinked_ledger_events", {
-    filters: { wallet_address: walletAddress, chain_id: CHAIN_ID },
+    filters: { wallet_address: walletAddress, chain_id: CHAIN_ID, deployment_id: DEPLOYMENT_ID },
   });
   for (const row of rows) {
     const payload = row.payload;

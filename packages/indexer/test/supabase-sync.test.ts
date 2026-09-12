@@ -28,6 +28,44 @@ async function fakeFetch(input: string | URL | Request, init?: RequestInit) {
   const endpoint = new URL(typeof input === "string" || input instanceof URL ? input : input.url);
   const table = endpoint.pathname.split("/").at(-1) ?? "";
   const method = init?.method ?? "GET";
+  if (table === "finalize_indexer_catchup" && method === "POST") {
+    const body = JSON.parse(String(init?.body ?? "{}")) as Row;
+    const checkpoints = tableRows("indexer_checkpoints").filter(
+      (row) =>
+        row.deployment_id === body.p_deployment_id &&
+        row.contract_name === `arcanum-indexer:${body.p_deployment_network}:${body.p_chain_id}`,
+    );
+    const pending = tableRows("unlinked_ledger_events").some(
+      (row) => row.deployment_id === null || row.deployment_id === body.p_deployment_id,
+    );
+    if (
+      checkpoints.length > 1 ||
+      (checkpoints[0] &&
+        (checkpoints[0].status !== "synced" || String(checkpoints[0].error_note ?? "").trim())) ||
+      pending
+    ) {
+      return new Response("finalization rejected", { status: 409 });
+    }
+    const evidence = {
+      ...body,
+      deployment_id: body.p_deployment_id,
+      chain_id: body.p_chain_id,
+      deployment_network: body.p_deployment_network,
+      deployment_start_block: body.p_deployment_start_block,
+      deployment_usdc_address: body.p_deployment_usdc_address,
+      deployment_policy_engine_address: body.p_deployment_policy_engine_address,
+      deployment_escalation_manager_address: body.p_deployment_escalation_manager_address,
+      deployment_anomaly_oracle_address: body.p_deployment_anomaly_oracle_address,
+      deployment_vendor_registry_address: body.p_deployment_vendor_registry_address,
+      deployment_wallet_factory_address: body.p_deployment_wallet_factory_address,
+      status: "ready",
+      last_seen_at: "2025-01-01T00:00:00.000Z",
+      last_seen_block: body.p_last_seen_block,
+    };
+    tables.indexer_catchup_evidence ??= [];
+    tables.indexer_catchup_evidence.push(evidence);
+    return Response.json([evidence]);
+  }
   tables[table] ??= [];
   const rows = tableRows(table);
 
@@ -68,6 +106,22 @@ const transfer = {
   timestamp: new Date("2025-01-01T00:00:00.000Z"),
 };
 
+const checkpointIdentity = {
+  chain_id: 5042002,
+  contract_name: "arcanum-indexer:arc-testnet:5042002",
+  contract_address: "0xbe1bc48f26e7166d872828d40e82a6407dbd350c",
+  deployment_id:
+    "v1:5042002:arc-testnet:60951839:0x3600000000000000000000000000000000000000:0x7777ac24a19202e619bf67b92375e714e72033a4:0xb5907700df79b9030fafdaa48c26ae355512cccd:0x2eae369c3f93ebf5bbe62fbe6d2cd976977f7ae8:0xea4597b02ea2958a80afc47c417422598b9c548c:0xbe1bc48f26e7166d872828d40e82a6407dbd350c",
+  deployment_start_block: 60951839,
+  deployment_network: "arc-testnet",
+  deployment_usdc_address: "0x3600000000000000000000000000000000000000",
+  deployment_policy_engine_address: "0x7777ac24a19202e619bf67b92375e714e72033a4",
+  deployment_escalation_manager_address: "0xb5907700df79b9030fafdaa48c26ae355512cccd",
+  deployment_anomaly_oracle_address: "0x2eae369c3f93ebf5bbe62fbe6d2cd976977f7ae8",
+  deployment_vendor_registry_address: "0xea4597b02ea2958a80afc47c417422598b9c548c",
+  deployment_wallet_factory_address: "0xbe1bc48f26e7166d872828d40e82a6407dbd350c",
+};
+
 describe("Supabase synchronization", () => {
   beforeEach(() => {
     vi.resetModules();
@@ -89,6 +143,7 @@ describe("Supabase synchronization", () => {
       escalations: [],
       unlinked_ledger_events: [],
       indexer_checkpoints: [],
+      indexer_catchup_evidence: [],
     };
     failLedgerWrites = false;
     vi.stubGlobal("fetch", vi.fn(fakeFetch));
@@ -161,13 +216,120 @@ describe("Supabase synchronization", () => {
     });
   });
 
-  it("cuts over when the deployment starts above the stored checkpoint", async () => {
+  it("does not refresh a prior full catch-up when event progress continues", async () => {
+    const oldCatchup = "2025-01-01T00:00:00.000Z";
+    tables.indexer_checkpoints = [
+      {
+        id: "checkpoint-1",
+        ...checkpointIdentity,
+        last_block: 20,
+        last_seen_block: 250,
+        last_seen_at: oldCatchup,
+        status: "synced",
+        updated_at: oldCatchup,
+      },
+    ];
+    const { syncCheckpoint, syncTransferExecuted } = await import("../src/supabase-sync");
+    await syncTransferExecuted({ ...transfer, blockNumber: 300 });
+    await syncCheckpoint(300, 1);
+    expect(tableRows("indexer_checkpoints")[0]).toMatchObject({
+      last_block: 300,
+      last_seen_block: 250,
+      last_seen_at: oldCatchup,
+    });
+  });
+
+  it("records a quiet-chain catch-up only when explicitly confirmed", async () => {
+    tables.indexer_checkpoints = [
+      {
+        id: "checkpoint-1",
+        ...checkpointIdentity,
+        last_block: 20,
+        last_seen_block: 20,
+        last_seen_at: null,
+        status: "synced",
+      },
+    ];
+    const { syncConfirmedCatchup } = await import("../src/supabase-sync");
+    await syncConfirmedCatchup(250);
+    expect(tableRows("indexer_catchup_evidence")[0]).toMatchObject({
+      last_seen_block: 250,
+      last_seen_at: expect.any(String),
+      status: "ready",
+    });
+  });
+
+  it("leaves the old catch-up untouched when a bounded run times out", async () => {
+    const oldCatchup = "2025-01-01T00:00:00.000Z";
+    tables.indexer_checkpoints = [
+      {
+        id: "checkpoint-1",
+        ...checkpointIdentity,
+        last_block: 20,
+        last_seen_block: 250,
+        last_seen_at: oldCatchup,
+        status: "synced",
+      },
+    ];
+    // A budget-limited run does not call syncConfirmedCatchup at all.
+    expect(tableRows("indexer_checkpoints")[0]).toMatchObject({
+      last_seen_block: 250,
+      last_seen_at: oldCatchup,
+    });
+  });
+
+  it("records a confirmed catch-up with an unknown status cursor", async () => {
+    tables.indexer_checkpoints = [
+      {
+        id: "checkpoint-1",
+        ...checkpointIdentity,
+        last_block: 20,
+        last_seen_block: 250,
+        last_seen_at: "2025-01-01T00:00:00.000Z",
+        status: "synced",
+      },
+    ];
+    const { syncConfirmedCatchup } = await import("../src/supabase-sync");
+    await syncConfirmedCatchup();
+    expect(tableRows("indexer_catchup_evidence")[0]).toMatchObject({
+      last_seen_block: null,
+      last_seen_at: expect.any(String),
+      status: "ready",
+    });
+  });
+
+  it("records quiet deployment evidence without inventing a checkpoint", async () => {
+    const { syncConfirmedCatchup } = await import("../src/supabase-sync");
+    await syncConfirmedCatchup();
+    expect(tableRows("indexer_checkpoints")).toHaveLength(0);
+    expect(tableRows("indexer_catchup_evidence")).toHaveLength(1);
+  });
+
+  it("uses the deployment-scoped finalizer instead of a checkpoint marker patch", async () => {
+    tables.indexer_checkpoints = [
+      {
+        id: "checkpoint-1",
+        ...checkpointIdentity,
+        last_block: 20,
+        last_seen_block: 250,
+        status: "synced",
+      },
+    ];
+    const { syncConfirmedCatchup } = await import("../src/supabase-sync");
+    await syncConfirmedCatchup(300);
+    expect(tableRows("indexer_catchup_evidence")[0]).toMatchObject({
+      status: "ready",
+      last_seen_block: 300,
+    });
+  });
+
+  it("does not reuse a foreign deployment watermark for low current events", async () => {
     const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
     tables.indexer_checkpoints = [
       {
         id: "checkpoint-1",
-        chain_id: 5042002,
-        contract_name: "arcanum-indexer",
+        ...checkpointIdentity,
+        deployment_id: "v1:foreign-deployment",
         last_block: 10,
         last_seen_block: 12,
         status: "synced",
@@ -175,12 +337,13 @@ describe("Supabase synchronization", () => {
     ];
     const { syncCheckpoint } = await import("../src/supabase-sync");
     await syncCheckpoint(25, 20);
-    expect(tableRows("indexer_checkpoints")[0]).toMatchObject({
+    expect(tableRows("indexer_checkpoints")).toHaveLength(2);
+    expect(tableRows("indexer_checkpoints")[1]).toMatchObject({
       last_block: 25,
-      last_seen_block: null,
+      deployment_id: checkpointIdentity.deployment_id,
       status: "synced",
     });
-    expect(info).toHaveBeenCalledWith(expect.stringContaining("cutting over"));
+    expect(info).not.toHaveBeenCalled();
   });
 
   it.each([

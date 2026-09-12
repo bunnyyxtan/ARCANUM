@@ -62,9 +62,9 @@ export function useStatusController() {
           : "-",
       metricLabel: health.isLoading
         ? "CHECKING"
-        : indexer?.status === "stale"
-          ? "STALE / SYNC LAG"
-          : (indexer?.error ?? indexerMetricLabel(indexer)),
+        : indexer?.status === "unavailable" || indexer?.status === "not_configured"
+          ? (indexer.error ?? "INDEXER STATUS UNKNOWN")
+          : indexerMetricLabel(indexer),
       state: indexerState,
     },
     isFetching: health.isFetching,

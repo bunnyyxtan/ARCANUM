@@ -39,6 +39,42 @@ const deploymentManifestSchema = z.object({
 
 export type DeploymentManifest = z.infer<typeof deploymentManifestSchema>;
 
+type DeploymentIdentityInput = Pick<
+  DeploymentManifest,
+  | "chainId"
+  | "network"
+  | "startBlock"
+  | "usdc"
+  | "policyEngine"
+  | "escalationManager"
+  | "anomalyOracle"
+  | "vendorRegistry"
+  | "walletFactory"
+>;
+
+/**
+ * Stable identity for the exact contract deployment an indexer is allowed to
+ * read or write. The start block is part of the identity: a replacement
+ * deployment can legitimately reuse an address while beginning at a later
+ * block, and an old cursor must never be allowed to skip its early events.
+ */
+export function deploymentIdentity(manifest: DeploymentIdentityInput) {
+  return [
+    "v1",
+    manifest.chainId,
+    manifest.network.toLowerCase(),
+    manifest.startBlock,
+    manifest.usdc,
+    manifest.policyEngine,
+    manifest.escalationManager,
+    manifest.anomalyOracle,
+    manifest.vendorRegistry,
+    manifest.walletFactory,
+  ]
+    .map((value) => String(value).toLowerCase())
+    .join(":");
+}
+
 export function parseDeploymentManifest(json: unknown): DeploymentManifest {
   const result = deploymentManifestSchema.safeParse(json);
   if (!result.success) {
