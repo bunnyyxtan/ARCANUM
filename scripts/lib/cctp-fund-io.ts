@@ -73,6 +73,11 @@ export function printStatus(status: CctpStatus): void {
   console.log(`stage       ${status.stage}`);
   console.log(`burn        ${status.burnTxHash}`);
   if (status.mintTxHash) console.log(`mint        ${status.mintTxHash}`);
+  if (status.forwardState) console.log(`forward     ${safeError(status.forwardState)}`);
+  if (status.forwardState)
+    console.log(
+      "forward note Circle metadata only; COMPLETE is not proof of automatic broadcast (manual relay can also report COMPLETE)",
+    );
   if (status.sender) console.log(`sender      ${status.sender}`);
   if (status.amountBaseUnits) console.log(`burn amount ${status.amountBaseUnits} base units`);
   if (status.feeBaseUnits) console.log(`fee         ${status.feeBaseUnits} base units`);

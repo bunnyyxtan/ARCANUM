@@ -197,6 +197,8 @@ export async function simulateAndSend(
   tx: { to: Address; data: `0x${string}` },
   beforeBroadcast: () => void,
   nonce?: number,
+  maxCostWei?: bigint,
+  beforeSign?: () => void,
 ): Promise<Hash> {
   await publicClient.call({
     account: account.address,
@@ -213,6 +215,33 @@ export async function simulateAndSend(
     type: "eip1559",
     ...(nonce === undefined ? {} : { nonce }),
   });
+  if (maxCostWei !== undefined) {
+    const gasLimit = request.gas;
+    const maxFeePerGasWei = request.maxFeePerGas ?? request.gasPrice;
+    if (gasLimit === undefined || maxFeePerGasWei === undefined) {
+      throw new Error(
+        "Sepolia RPC did not return a bounded gas limit and max fee; refusing capped execution.",
+      );
+    }
+    const maxCost = gasLimit * maxFeePerGasWei;
+    if (maxCost > maxCostWei) {
+      throw new Error(
+        `Prepared source transaction exposure ${maxCost} wei exceeds the approved remaining cap of ${maxCostWei} wei.`,
+      );
+    }
+  }
+  if (nonce !== undefined) {
+    const pendingNonce = await publicClient.getTransactionCount({
+      address: account.address,
+      blockTag: "pending",
+    });
+    if (pendingNonce !== nonce) {
+      throw new Error(
+        `Pending source nonce changed from required ${nonce} to ${pendingNonce} after preparation; refusing to sign.`,
+      );
+    }
+  }
+  beforeSign?.();
   beforeBroadcast();
   // The prepared request is tied to our concrete Sepolia chain/account. The
   // unconstrained WalletClient type otherwise intersects its send parameters
@@ -226,4 +255,44 @@ export async function simulateAndSend(
     prepared: Omit<typeof request, "account"> & { account: LocalAccount },
   ) => Promise<Hash>;
   return sendPrepared({ ...request, account });
+}
+
+export interface SourceGasEstimate {
+  gasLimit: bigint;
+  maxFeePerGasWei: bigint;
+  maxCostWei: bigint;
+}
+
+/**
+ * Prepare a source transaction without signing or broadcasting it. Capped
+ * runs use this for approval before signing and for the actual burn after the
+ * allowance confirms. If the RPC cannot estimate a required call, fail closed.
+ */
+export async function estimateSourceGas(
+  publicClient: SourcePublicClient,
+  account: LocalAccount,
+  tx: { to: Address; data: `0x${string}` },
+  nonce: number,
+): Promise<SourceGasEstimate> {
+  const request = await publicClient.prepareTransactionRequest({
+    account: account.address,
+    chain: sepolia,
+    to: tx.to,
+    data: tx.data,
+    value: 0n,
+    type: "eip1559",
+    nonce,
+  });
+  const gasLimit = request.gas;
+  const maxFeePerGasWei = request.maxFeePerGas ?? request.gasPrice;
+  if (gasLimit === undefined || maxFeePerGasWei === undefined) {
+    throw new Error(
+      "Sepolia RPC did not return a bounded gas limit and max fee; refusing capped execution.",
+    );
+  }
+  return {
+    gasLimit,
+    maxFeePerGasWei,
+    maxCostWei: gasLimit * maxFeePerGasWei,
+  };
 }

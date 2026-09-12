@@ -229,6 +229,9 @@ export function assertValidCctpStatus(
   if (status.detail !== undefined && typeof status.detail !== "string") {
     throw new Error("Malformed CCTP status detail.");
   }
+  if (status.forwardState !== undefined && typeof status.forwardState !== "string") {
+    throw new Error("Malformed CCTP forwarding state.");
+  }
   if (
     sourceNonce !== undefined &&
     (typeof sourceNonce !== "number" || !Number.isSafeInteger(sourceNonce) || sourceNonce < 0)

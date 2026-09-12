@@ -212,9 +212,12 @@ describe("CCTP Sepolia to Arc route", () => {
     const fixture = validFixture();
     const status = await getCctpStatus(
       { burnTxHash: HASH, recipient: RECIPIENT },
-      { sourceClient: fixture.source, fetchFn: async () => json(iris(fixture.message, {})) },
+      {
+        sourceClient: fixture.source,
+        fetchFn: async () => json(iris(fixture.message, { forwardState: "PENDING" })),
+      },
     );
-    expect(status.stage).toBe("forwarding");
+    expect(status).toMatchObject({ stage: "forwarding", forwardState: "PENDING" });
   });
 
   it("verifies an explicitly supplied manual destination transaction candidate", async () => {
@@ -224,10 +227,14 @@ describe("CCTP Sepolia to Arc route", () => {
       {
         sourceClient: fixture.source,
         destinationClient: fixture.destination,
-        fetchFn: async () => json(iris(fixture.message, {})),
+        fetchFn: async () => json(iris(fixture.message, { forwardState: "COMPLETE" })),
       },
     );
-    expect(completed).toMatchObject({ stage: "completed", mintTxHash: MINT_HASH });
+    expect(completed).toMatchObject({
+      stage: "completed",
+      mintTxHash: MINT_HASH,
+      forwardState: "COMPLETE",
+    });
 
     for (const destinationMutation of [
       "wrong-calldata",
@@ -249,16 +256,34 @@ describe("CCTP Sepolia to Arc route", () => {
     }
 
     const revertedDestination = validFixture({ destinationMutation: "failed-call" });
-    await expect(
-      getCctpStatus(
-        { burnTxHash: HASH, recipient: RECIPIENT, mintTxHash: MINT_HASH },
-        {
-          sourceClient: revertedDestination.source,
-          destinationClient: revertedDestination.destination,
-          fetchFn: async () => json(iris(revertedDestination.message, {})),
-        },
-      ),
-    ).resolves.toMatchObject({ stage: "forwarding", mintTxHash: MINT_HASH });
+    const revertedStatus = await getCctpStatus(
+      { burnTxHash: HASH, recipient: RECIPIENT, mintTxHash: MINT_HASH },
+      {
+        sourceClient: revertedDestination.source,
+        destinationClient: revertedDestination.destination,
+        fetchFn: async () => json(iris(revertedDestination.message, {})),
+      },
+    );
+    expect(revertedStatus).toMatchObject({ stage: "forwarding", mintTxHash: MINT_HASH });
+    expect(revertedStatus.forwardState).toBeUndefined();
+    expect(revertedStatus.detail).toBe("Forwarded destination transaction has not succeeded.");
+
+    const providerStateOnRevertedDestination = validFixture({ destinationMutation: "failed-call" });
+    const providerStateStatus = await getCctpStatus(
+      { burnTxHash: HASH, recipient: RECIPIENT, mintTxHash: MINT_HASH },
+      {
+        sourceClient: providerStateOnRevertedDestination.source,
+        destinationClient: providerStateOnRevertedDestination.destination,
+        fetchFn: async () =>
+          json(iris(providerStateOnRevertedDestination.message, { forwardState: "COMPLETE" })),
+      },
+    );
+    expect(providerStateStatus).toMatchObject({
+      stage: "forwarding",
+      mintTxHash: MINT_HASH,
+      forwardState: "COMPLETE",
+      detail: "Forwarded destination transaction has not succeeded.",
+    });
 
     const pendingDestination = validFixture();
     const pending = await getCctpStatus(
@@ -273,6 +298,8 @@ describe("CCTP Sepolia to Arc route", () => {
       },
     );
     expect(pending).toMatchObject({ stage: "forwarding", mintTxHash: MINT_HASH });
+    expect(pending.forwardState).toBeUndefined();
+    expect(pending.detail).toBe("Circle attested the burn; forwarding is still pending.");
 
     await expect(
       getCctpStatus(
@@ -366,7 +393,8 @@ describe("CCTP Sepolia to Arc route", () => {
             throw new TransactionNotFoundError({ hash: MINT_HASH });
           },
         },
-        fetchFn: async () => json(iris(fixture.message, { forwardTxHash: MINT_HASH })),
+        fetchFn: async () =>
+          json(iris(fixture.message, { forwardState: "COMPLETE", forwardTxHash: MINT_HASH })),
       },
     );
     expect(status).toMatchObject({ stage: "forwarding", mintTxHash: MINT_HASH });
@@ -461,12 +489,14 @@ describe("CCTP Sepolia to Arc route", () => {
       {
         sourceClient: fixture.source,
         destinationClient: fixture.destination,
-        fetchFn: async () => json(iris(fixture.message, { forwardTxHash: MINT_HASH })),
+        fetchFn: async () =>
+          json(iris(fixture.message, { forwardState: "COMPLETE", forwardTxHash: MINT_HASH })),
       },
     );
     expect(completed).toMatchObject({
       stage: "completed",
       mintTxHash: MINT_HASH,
+      forwardState: "COMPLETE",
       feeBaseUnits: "100",
       receivedBaseUnits: "999900",
       sourceNonce: 7,

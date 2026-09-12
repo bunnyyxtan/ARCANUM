@@ -89,6 +89,15 @@ const recovered = await getCctpStatus({
 });
 ```
 
+When Iris provides it, the status result also exposes Circle's informational
+`forwardState` (`PENDING`, `COMPLETE`, or another provider state). It does not
+make a transfer complete by itself: Arcanum still requires a verified Arc
+`receiveMessage` receipt, matching `MessageReceived` event and exact native-USDC
+mint. The forwarding state cannot establish whether a destination transaction
+was broadcast automatically when an operator-supplied mint hash is later used;
+even `COMPLETE` is only Circle metadata, since a manual relay can also report
+`COMPLETE`.
+
 Quotes expire. The payer must request and review a new quote if approval takes
 too long; Arcanum never silently substitutes a higher fee. Amounts are decimal
 strings in six-decimal ERC20 USDC units, including on Arc. Arc's native gas
@@ -102,6 +111,26 @@ From the repository root, with dependencies installed:
 export GUARDED_WALLET=0xYourArcGuardedWallet
 npx tsx scripts/cctp-fund.ts quote 5
 ```
+
+For any future automatic-only test, `quote 1` is the read-only preflight. An
+explicitly capped run can opt in to both absolute limits:
+
+```sh
+npx tsx scripts/cctp-fund.ts start 1 --confirm \
+  --max-fee 0.10 \
+  --max-source-gas 0.001
+```
+
+Without either cap, existing CLI behavior is unchanged. With a source-gas cap,
+the CLI estimates approval before either transaction is signed and reserves a
+burn gas ceiling from the remaining cap; it does not guess allowance storage or
+pretend a pre-approval burn estimate succeeded. After approval confirms, a
+capped run fetches a fresh quote, requires the same amount, prepares the actual
+burn with the now-updated allowance, and rechecks the combined gas budget before
+the burn can be signed. The fee endpoint has no expiry field; the SDK quote
+expires after 120 seconds, and the refreshed quote must remain unexpired and
+inside the approved caps. A nonce drift, unavailable post-approval estimate or
+failed preflight is a stop condition, never an automatic retry.
 
 For signing, either configure all four existing Circle signer variables
 (`CIRCLE_API_KEY`, `CIRCLE_ENTITY_SECRET`, `CIRCLE_WALLET_ID`,

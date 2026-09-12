@@ -10,6 +10,8 @@ import {
   type CctpFundingState,
   acquireCctpLock,
   clearCctpPendingMarker,
+  readCctpState,
+  refreshCctpPendingMarkerQuote,
   writeCctpState,
 } from "./cctp-state";
 
@@ -88,5 +90,58 @@ describe("CCTP terminal restart guards", () => {
       /does not match the archived intent/,
     );
     unrelated.release();
+  });
+});
+
+describe("CCTP capped-run persistence guards", () => {
+  it("retains cap observations and permits pre-nonce quote refresh", () => {
+    const directory = root();
+    const state = {
+      ...terminalState(),
+      phase: "safety_failed" as const,
+      burnTxHash: undefined,
+      sourceNonce: undefined,
+      sourceBlockNumber: undefined,
+      sourceProofVerified: undefined,
+      safety: {
+        maxFeeBaseUnits: "100000",
+        maxSourceGasWei: "1000000000000000",
+        initialQuoteMaxFeeBaseUnits: "18704",
+        approvalNonce: 12,
+        burnNonce: 13,
+        approvalMaxCostWei: "100000000000000",
+        burnGasCeiling: "200000",
+        approvalGasLimit: "50000",
+        burnGasLimit: "150000",
+        approvalMaxFeePerGasWei: "2000000000",
+        burnMaxFeePerGasWei: "2000000000",
+        combinedMaxGasWei: "400000000000000",
+      },
+    };
+    writeCctpState(state, directory);
+    const lock = acquireCctpLock(IDENTITY, directory, {
+      ...oldIntent,
+      maxFeeBaseUnits: "18704",
+      sourceNonce: undefined,
+      sourceBlockNumber: undefined,
+    });
+
+    refreshCctpPendingMarkerQuote(IDENTITY, "25000", directory);
+    expect(readCctpState(IDENTITY, directory)?.safety?.maxSourceGasWei).toBe("1000000000000000");
+    expect(readCctpState(IDENTITY, directory)?.safety?.burnGasCeiling).toBe("200000");
+    expect(() => refreshCctpPendingMarkerQuote(IDENTITY, "30000", directory)).not.toThrow();
+
+    lock.release();
+    clearCctpPendingMarker(IDENTITY, directory);
+  });
+
+  it("refuses a quote refresh after the burn nonce is bound", () => {
+    const directory = root();
+    writeCctpState(terminalState(), directory);
+    const lock = acquireCctpLock(IDENTITY, directory, oldIntent);
+    expect(() => refreshCctpPendingMarkerQuote(IDENTITY, "200", directory)).toThrow(
+      "source nonce has been bound",
+    );
+    lock.release();
   });
 });

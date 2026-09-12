@@ -2,7 +2,12 @@ import { type Hex, type LocalAccount, createPublicClient, createWalletClient, cu
 import { privateKeyToAccount } from "viem/accounts";
 import { describe, expect, it, vi } from "vitest";
 
-import { type SourcePublicClient, sepolia, simulateAndSend } from "./cctp-fund-signing";
+import {
+  type SourcePublicClient,
+  estimateSourceGas,
+  sepolia,
+  simulateAndSend,
+} from "./cctp-fund-signing";
 
 const PRIVATE_KEY = `0x${"11".repeat(32)}` as const;
 const RAW_TRANSACTION = "0xdeadbeef" as Hex;
@@ -15,7 +20,7 @@ interface RpcCall {
   params: readonly unknown[] | undefined;
 }
 
-function rpcTransport(options: { failCall?: boolean } = {}) {
+function rpcTransport(options: { failCall?: boolean; pendingNonce?: string } = {}) {
   const calls: RpcCall[] = [];
   const transport = custom({
     request: async ({ method, params }) => {
@@ -42,7 +47,7 @@ function rpcTransport(options: { failCall?: boolean } = {}) {
         case "eth_getBlockByNumber":
           return { number: "0x64", baseFeePerGas: "0x3b9aca00" };
         case "eth_getTransactionCount":
-          return "0x07";
+          return options.pendingNonce ?? "0x07";
         case "eth_sendRawTransaction":
           return TRANSACTION_HASH;
         case "eth_sendTransaction":
@@ -65,7 +70,7 @@ function localSigner(onSign: (transaction: unknown) => void): LocalAccount {
 }
 
 describe("CCTP signer transport", () => {
-  it("locally signs the prepared EIP-1559 request and sends only raw bytes", async () => {
+  it("bare/default start signs the reserved approval nonce and sends only raw bytes", async () => {
     const rpc = rpcTransport();
     const publicClient = createPublicClient({
       chain: sepolia,
@@ -143,5 +148,86 @@ describe("CCTP signer transport", () => {
     expect(signed).toBe(false);
     expect(rpc.calls.map((call) => call.method)).not.toContain("eth_sendRawTransaction");
     expect(rpc.calls.map((call) => call.method)).not.toContain("eth_sendTransaction");
+  });
+
+  it("prepares the burn gas bound successfully after approval without signing or broadcasting", async () => {
+    const rpc = rpcTransport();
+    const publicClient = createPublicClient({
+      chain: sepolia,
+      transport: rpc.transport,
+    });
+    const account = privateKeyToAccount(PRIVATE_KEY);
+    const estimate = await estimateSourceGas(
+      publicClient as unknown as SourcePublicClient,
+      account,
+      { to: TO, data: DATA },
+      7,
+    );
+
+    expect(estimate.gasLimit).toBe(21_000n);
+    expect(estimate.maxCostWei).toBe(46_200_000_000_000n);
+    expect(rpc.calls.map((call) => call.method)).not.toContain("eth_sendRawTransaction");
+    expect(rpc.calls.map((call) => call.method)).not.toContain("eth_sendTransaction");
+  });
+
+  it("refuses a post-approval burn over remaining cap before signing", async () => {
+    const rpc = rpcTransport();
+    const publicClient = createPublicClient({
+      chain: sepolia,
+      transport: rpc.transport,
+    });
+    let signed = false;
+    const account = localSigner(() => {
+      signed = true;
+    });
+    const walletClient = createWalletClient({
+      account,
+      chain: sepolia,
+      transport: rpc.transport,
+    });
+
+    await expect(
+      simulateAndSend(
+        publicClient as unknown as SourcePublicClient,
+        walletClient,
+        account,
+        { to: TO, data: DATA },
+        () => undefined,
+        7,
+        46_199_999_999_999n,
+      ),
+    ).rejects.toThrow("exceeds the approved remaining cap");
+    expect(signed).toBe(false);
+    expect(rpc.calls.map((call) => call.method)).not.toContain("eth_sendRawTransaction");
+  });
+
+  it("max-fee-only and bare starts refuse to sign when pending nonce drifts after preparation", async () => {
+    const rpc = rpcTransport({ pendingNonce: "0x08" });
+    const publicClient = createPublicClient({
+      chain: sepolia,
+      transport: rpc.transport,
+    });
+    let signed = false;
+    const account = localSigner(() => {
+      signed = true;
+    });
+    const walletClient = createWalletClient({
+      account,
+      chain: sepolia,
+      transport: rpc.transport,
+    });
+
+    await expect(
+      simulateAndSend(
+        publicClient as unknown as SourcePublicClient,
+        walletClient,
+        account,
+        { to: TO, data: DATA },
+        () => undefined,
+        7,
+      ),
+    ).rejects.toThrow("changed from required 7 to 8 after preparation");
+    expect(signed).toBe(false);
+    expect(rpc.calls.map((call) => call.method)).not.toContain("eth_sendRawTransaction");
   });
 });

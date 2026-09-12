@@ -8,9 +8,10 @@
 
 import { quote, start, status, watch } from "./lib/cctp-fund-commands";
 import { parseHash, safeError } from "./lib/cctp-fund-io";
+import { parseCctpStartFlags } from "./lib/cctp-safety";
 
 export function usage(): string {
-  return "Usage: cctp-fund.ts quote <USDC total> | start <USDC total> --confirm | status <burnTxHash> | watch <burnTxHash>";
+  return "Usage: cctp-fund.ts quote <USDC total> | start <USDC total> --confirm [--max-fee <USDC>] [--max-source-gas <ETH>] | status <burnTxHash> | watch <burnTxHash>";
 }
 
 export async function run(argv: readonly string[] = process.argv.slice(2)): Promise<void> {
@@ -19,8 +20,10 @@ export async function run(argv: readonly string[] = process.argv.slice(2)): Prom
     await quote(first);
     return;
   }
-  if (command === "start" && first && rest.length === 1 && rest[0] === "--confirm") {
-    await start(first, true);
+  if (command === "start" && first) {
+    const flags = parseCctpStartFlags(rest);
+    if (!flags.confirm) throw new Error(usage());
+    await start(first, true, flags.caps);
     return;
   }
   if (command === "status" && first && rest.length === 0) {

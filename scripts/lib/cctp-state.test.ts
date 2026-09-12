@@ -8,6 +8,7 @@ import {
   type CctpBurnIntent,
   type CctpFundingState,
   acquireCctpLock,
+  acquireCctpSigningLock,
   archiveCctpState,
   bindCctpPendingMarker,
   cctpPendingPath,
@@ -15,6 +16,7 @@ import {
   clearCctpPendingMarker,
   hasCctpPendingMarker,
   isCctpTerminalPhase,
+  isCctpUnresolvedPhase,
   readCctpPendingMarker,
   readCctpState,
   updateCctpState,
@@ -82,6 +84,18 @@ describe("CCTP durable state", () => {
     expect(hasCctpPendingMarker(IDENTITY, root)).toBe(false);
   });
 
+  it("serializes one funder across different recipient runs", () => {
+    const root = directory();
+    const first = acquireCctpSigningLock(INTENT.sender, IDENTITY.sourceChainId, root);
+    expect(() => acquireCctpSigningLock(INTENT.sender, IDENTITY.sourceChainId, root)).toThrow(
+      /signing lock already exists/,
+    );
+    first.release();
+
+    const second = acquireCctpSigningLock(INTENT.sender, IDENTITY.sourceChainId, root);
+    second.release();
+  });
+
   it("preserves progress and source errors across atomic updates", () => {
     const root = directory();
     writeCctpState(state(), root);
@@ -101,6 +115,40 @@ describe("CCTP durable state", () => {
     expect(saved?.sourceError).toBe("source receipt reverted");
     expect(saved?.pollCount).toBe(2);
     expect(isCctpTerminalPhase(saved?.phase ?? "prepared")).toBe(true);
+  });
+
+  it("keeps nonce-drift safety failures unresolved so a second start cannot archive them", () => {
+    const root = directory();
+    writeCctpState({ ...state(), phase: "safety_failed" }, root);
+    expect(isCctpTerminalPhase("safety_failed")).toBe(false);
+    expect(isCctpTerminalPhase("approval_failed")).toBe(false);
+    expect(isCctpTerminalPhase("quote_expired")).toBe(false);
+    expect(isCctpUnresolvedPhase("safety_failed")).toBe(true);
+    expect(readCctpState(IDENTITY, root)?.phase).toBe("safety_failed");
+  });
+
+  it("persists approval and planned burn nonces for bare and max-fee-only reservations", () => {
+    const root = directory();
+    const bare = {
+      ...state(),
+      safety: { approvalNonce: 7, burnNonce: 8 },
+    };
+    writeCctpState(bare, root);
+    expect(readCctpState(IDENTITY, root)?.safety).toMatchObject({
+      approvalNonce: 7,
+      burnNonce: 8,
+    });
+
+    const maxFeeOnly = {
+      ...bare,
+      safety: { maxFeeBaseUnits: "100000", approvalNonce: 9, burnNonce: 10 },
+    };
+    writeCctpState(maxFeeOnly, root);
+    expect(readCctpState(IDENTITY, root)?.safety).toMatchObject({
+      maxFeeBaseUnits: "100000",
+      approvalNonce: 9,
+      burnNonce: 10,
+    });
   });
 
   it("archives a terminal record before an explicit new run", () => {

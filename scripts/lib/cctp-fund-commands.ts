@@ -21,9 +21,11 @@ import {
   saveObservedError,
 } from "./cctp-fund-io";
 import {
+  type SourceBurnAnchor,
   assertRecipientContract,
   assertSourceSepolia,
   destinationPublicClient,
+  estimateSourceGas,
   funderAccount,
   prepareSourceBurnAnchor,
   recipientFromEnv,
@@ -34,9 +36,23 @@ import {
   waitForReceipt,
 } from "./cctp-fund-signing";
 import {
+  type CctpGasEstimate,
+  type CctpSafetyCaps,
+  assertCombinedSourceGasWithinCap,
+  assertFeeWithinCctpCap,
+  assertRefreshedCctpQuote,
+  assertSequentialSourceNonces,
+  deriveBurnGasCeiling,
+  hasCctpSafetyCaps,
+} from "./cctp-safety";
+import {
   type CctpBurnIntent,
   type CctpFundingState,
+  type CctpSafetyState,
+  type CctpStateIdentity,
+  type CctpStateLock,
   acquireCctpLock,
+  acquireCctpSigningLock,
   archiveCctpState,
   bindCctpPendingMarker,
   clearCctpPendingMarker,
@@ -45,6 +61,7 @@ import {
   isCctpUnresolvedPhase,
   readCctpPendingMarker,
   readCctpState,
+  refreshCctpPendingMarkerQuote,
   updateCctpState,
   writeCctpState,
 } from "./cctp-state";
@@ -76,7 +93,45 @@ function quoteRecord(
   };
 }
 
-function initialState(recipient: Address, sender: Address, quote: CctpQuote): CctpFundingState {
+function initialState(
+  recipient: Address,
+  sender: Address,
+  quote: CctpQuote,
+  caps?: CctpSafetyCaps,
+  preflight?: {
+    approvalNonce: number;
+    burnNonce: number;
+    approval?: CctpGasEstimate;
+    burnGasCeiling?: string;
+  },
+): CctpFundingState {
+  const safety: CctpSafetyState | undefined =
+    preflight || hasCctpSafetyCaps(caps)
+      ? {
+          ...(caps?.maxFeeBaseUnits === undefined ? {} : { maxFeeBaseUnits: caps.maxFeeBaseUnits }),
+          ...(caps?.maxSourceGasWei === undefined ? {} : { maxSourceGasWei: caps.maxSourceGasWei }),
+          ...(hasCctpSafetyCaps(caps)
+            ? { initialQuoteMaxFeeBaseUnits: quote.maxFeeBaseUnits }
+            : {}),
+          ...(preflight
+            ? {
+                approvalNonce: preflight.approvalNonce,
+                burnNonce: preflight.burnNonce,
+                ...(preflight.approval
+                  ? {
+                      approvalMaxCostWei: preflight.approval.maxCostWei.toString(),
+                      approvalGasLimit: preflight.approval.gasLimit.toString(),
+                      approvalMaxFeePerGasWei: preflight.approval.maxFeePerGasWei.toString(),
+                      burnMaxFeePerGasWei: preflight.approval.maxFeePerGasWei.toString(),
+                    }
+                  : {}),
+                ...(preflight.burnGasCeiling === undefined
+                  ? {}
+                  : { burnGasCeiling: preflight.burnGasCeiling }),
+              }
+            : {}),
+        }
+      : undefined;
   return {
     version: 1,
     recipient,
@@ -86,6 +141,7 @@ function initialState(recipient: Address, sender: Address, quote: CctpQuote): Cc
     ...quoteRecord(quote),
     phase: "prepared",
     pollCount: 0,
+    ...(safety === undefined ? {} : { safety }),
     updatedAt: Date.now(),
   };
 }
@@ -167,12 +223,46 @@ function approvalData(amountBaseUnits: string): `0x${string}` {
   });
 }
 
+function assertRouteTransactions(
+  transactions: ReturnType<typeof buildCctpTransactions>,
+  amountBaseUnits: string,
+): void {
+  if (transactions.approval.to.toLowerCase() !== CCTP_ROUTE.sourceUsdc.toLowerCase()) {
+    throw new Error("CCTP SDK returned an approval target outside the approved route.");
+  }
+  if (transactions.approval.data.toLowerCase() !== approvalData(amountBaseUnits).toLowerCase()) {
+    throw new Error(
+      "CCTP SDK returned approval calldata that does not authorize the exact quoted amount.",
+    );
+  }
+  if (transactions.burn.to.toLowerCase() !== CCTP_ROUTE.sourceTokenMessenger.toLowerCase()) {
+    throw new Error("CCTP SDK returned a burn target outside the approved route.");
+  }
+}
+
+function assertPersistedNonce(
+  identity: CctpStateIdentity,
+  field: "approvalNonce" | "burnNonce",
+  expected: number,
+): void {
+  const state = readCctpState(identity);
+  if (state?.safety?.[field] !== expected) {
+    throw new Error(
+      `Persisted ${field} ${state?.safety?.[field] ?? "missing"} does not match required nonce ${expected}; refusing to sign.`,
+    );
+  }
+}
+
 export async function quote(amount: string): Promise<void> {
   const quoteResult = await getCctpQuote(parseAmount(amount));
   printQuote(quoteResult);
 }
 
-export async function start(amount: string, confirm: boolean): Promise<void> {
+export async function start(
+  amount: string,
+  confirm: boolean,
+  safetyCaps?: CctpSafetyCaps,
+): Promise<void> {
   if (!confirm) throw new Error("start is write-enabled only with the exact --confirm flag.");
   const recipient = recipientFromEnv();
   const identity = identityFor(recipient, CCTP_ROUTE.sourceChainId);
@@ -199,35 +289,72 @@ export async function start(amount: string, confirm: boolean): Promise<void> {
     if (hasCctpPendingMarker(identity)) clearCctpPendingMarker(identity);
   }
 
-  const quoteResult = await getCctpQuote(parseAmount(amount));
+  const parsedAmount = parseAmount(amount);
+  const safetyEnabled = hasCctpSafetyCaps(safetyCaps);
+  const quoteResult = await getCctpQuote(parsedAmount);
+  assertFeeWithinCctpCap(quoteResult.maxFeeBaseUnits, safetyCaps?.maxFeeBaseUnits);
   const account = funderAccount();
   const wallet = createWalletClient({
     account,
     chain: sepolia,
     transport: http(sourceRpcUrl()),
   });
-  const transactions = buildCctpTransactions({ recipient, quote: quoteResult });
-  if (transactions.approval.to.toLowerCase() !== CCTP_ROUTE.sourceUsdc.toLowerCase()) {
-    throw new Error("CCTP SDK returned an approval target outside the approved route.");
-  }
-  if (
-    transactions.approval.data.toLowerCase() !==
-    approvalData(quoteResult.amountBaseUnits).toLowerCase()
-  ) {
-    throw new Error(
-      "CCTP SDK returned approval calldata that does not authorize the exact quoted amount.",
-    );
-  }
-  if (transactions.burn.to.toLowerCase() !== CCTP_ROUTE.sourceTokenMessenger.toLowerCase()) {
-    throw new Error("CCTP SDK returned a burn target outside the approved route.");
+  let transactions = buildCctpTransactions({ recipient, quote: quoteResult });
+  assertRouteTransactions(transactions, quoteResult.amountBaseUnits);
+
+  let preflightAnchor: SourceBurnAnchor | undefined;
+  let preflight:
+    | {
+        approvalNonce: number;
+        burnNonce: number;
+        approval?: CctpGasEstimate;
+        burnGasCeiling?: string;
+      }
+    | undefined;
+  const signingLock = acquireCctpSigningLock(account.address, CCTP_ROUTE.sourceChainId);
+  let signingReleased = false;
+  const releaseSigning = (): void => {
+    if (!signingReleased) {
+      signingLock.release();
+      signingReleased = true;
+    }
+  };
+  try {
+    preflightAnchor = await prepareSourceBurnAnchor(source, account.address);
+    const burnNonce = preflightAnchor.sourceNonce + 1;
+    assertSequentialSourceNonces(preflightAnchor.sourceNonce, burnNonce);
+    preflight = {
+      approvalNonce: preflightAnchor.sourceNonce,
+      burnNonce,
+    };
+    if (safetyCaps?.maxSourceGasWei !== undefined) {
+      const approvalEstimate = await estimateSourceGas(
+        source,
+        account,
+        transactions.approval,
+        preflightAnchor.sourceNonce,
+      );
+      const burnGasCeiling = deriveBurnGasCeiling(approvalEstimate, safetyCaps.maxSourceGasWei);
+      preflight.approval = approvalEstimate;
+      preflight.burnGasCeiling = burnGasCeiling;
+    }
+  } catch (error) {
+    releaseSigning();
+    throw error;
   }
 
-  const lock = acquireCctpLock(identity, undefined, {
-    sender: account.address,
-    recipient,
-    amountBaseUnits: quoteResult.amountBaseUnits,
-    maxFeeBaseUnits: quoteResult.maxFeeBaseUnits,
-  });
+  let lock: CctpStateLock;
+  try {
+    lock = acquireCctpLock(identity, undefined, {
+      sender: account.address,
+      recipient,
+      amountBaseUnits: quoteResult.amountBaseUnits,
+      maxFeeBaseUnits: quoteResult.maxFeeBaseUnits,
+    });
+  } catch (error) {
+    releaseSigning();
+    throw error;
+  }
   let mayHaveBroadcasted = false;
   let keepMarker = false;
   let lastBroadcastHash: Hash | undefined;
@@ -255,9 +382,10 @@ export async function start(amount: string, confirm: boolean): Promise<void> {
       if (archived) console.log(`archived    ${archived}`);
     }
     try {
-      writeCctpState(initialState(recipient, account.address, quoteResult));
+      writeCctpState(initialState(recipient, account.address, quoteResult, safetyCaps, preflight));
     } catch (error) {
       keepMarker = true;
+      releaseSigning();
       throw new Error(
         `CCTP state could not be initialized (${safeError(error)}). Keep the pending marker and do not rebroadcast.`,
       );
@@ -265,6 +393,12 @@ export async function start(amount: string, confirm: boolean): Promise<void> {
 
     const state = readCctpState(identity);
     if (!state) throw new Error("CCTP state disappeared before approval; refusing to write.");
+    if (!preflightAnchor || !preflight) {
+      throw new Error(
+        "CCTP signing nonce reservation disappeared before approval; refusing to sign.",
+      );
+    }
+    const reservedApprovalNonce = preflightAnchor.sourceNonce;
     console.log(`recipient   ${recipient}`);
     console.log(`funder      ${account.address}`);
     printQuote(quoteResult);
@@ -273,10 +407,19 @@ export async function start(amount: string, confirm: boolean): Promise<void> {
     let approvalAttempted = false;
     let approvalHash: Hash;
     try {
-      approvalHash = await simulateAndSend(source, wallet, account, transactions.approval, () => {
-        mayHaveBroadcasted = true;
-        approvalAttempted = true;
-      });
+      approvalHash = await simulateAndSend(
+        source,
+        wallet,
+        account,
+        transactions.approval,
+        () => {
+          mayHaveBroadcasted = true;
+          approvalAttempted = true;
+        },
+        reservedApprovalNonce,
+        preflight?.approval?.maxCostWei,
+        () => assertPersistedNonce(identity, "approvalNonce", reservedApprovalNonce),
+      );
     } catch (error) {
       if (!approvalAttempted) {
         try {
@@ -288,6 +431,7 @@ export async function start(amount: string, confirm: boolean): Promise<void> {
         } catch {
           keepMarker = true;
         }
+        releaseSigning();
       }
       throw error;
     }
@@ -308,6 +452,7 @@ export async function start(amount: string, confirm: boolean): Promise<void> {
       } catch {
         keepMarker = true;
       }
+      releaseSigning();
       throw error;
     }
     if (approvalStatus !== "success") {
@@ -315,16 +460,108 @@ export async function start(amount: string, confirm: boolean): Promise<void> {
         phase: "approval_failed",
         lastError: `Approval transaction reverted: ${approvalHash}`,
       });
+      releaseSigning();
       release();
       throw new Error(`Approval reverted in ${approvalHash}; no burn was sent.`);
     }
     updateCctpState(identity, { phase: "approval_confirmed" });
 
-    if (isQuoteExpired(quoteResult.expiresAt)) {
+    let activeQuote = quoteResult;
+    let burnAnchor: SourceBurnAnchor | undefined;
+    try {
+      burnAnchor = await prepareSourceBurnAnchor(source, account.address);
+      assertSequentialSourceNonces(reservedApprovalNonce, burnAnchor.sourceNonce);
+      if (burnAnchor.sourceNonce !== preflight.burnNonce) {
+        throw new Error(
+          `Planned burn nonce ${preflight.burnNonce} changed to ${burnAnchor.sourceNonce}; refusing to continue.`,
+        );
+      }
+    } catch (error) {
+      try {
+        updateCctpState(identity, {
+          phase: "safety_failed",
+          lastError: `Post-approval nonce guard failed: ${safeError(error)}`,
+        });
+      } catch {
+        keepMarker = true;
+      }
+      keepMarker = true;
+      releaseSigning();
+      throw new Error(
+        `Post-approval nonce guard failed after approval ${approvalHash}; no burn was sent and the pending record is retained. ${safeError(error)}`,
+      );
+    }
+    if (safetyEnabled) {
+      try {
+        const refreshedQuote = await getCctpQuote(parsedAmount);
+        assertRefreshedCctpQuote(quoteResult, refreshedQuote, safetyCaps?.maxFeeBaseUnits);
+        activeQuote = refreshedQuote;
+        transactions = buildCctpTransactions({ recipient, quote: activeQuote });
+        assertRouteTransactions(transactions, activeQuote.amountBaseUnits);
+
+        if (safetyCaps?.maxSourceGasWei !== undefined) {
+          if (!preflight.approval || preflight.burnGasCeiling === undefined) {
+            throw new Error("Capped source-gas run has no persisted approval gas reservation.");
+          }
+          const refreshedBurnEstimate = await estimateSourceGas(
+            source,
+            account,
+            transactions.burn,
+            burnAnchor.sourceNonce,
+          );
+          if (refreshedBurnEstimate.gasLimit > BigInt(preflight.burnGasCeiling)) {
+            throw new Error(
+              `Post-approval burn gas limit ${refreshedBurnEstimate.gasLimit} exceeds the reserved ceiling of ${preflight.burnGasCeiling}.`,
+            );
+          }
+          const combinedMaxGasWei = assertCombinedSourceGasWithinCap(
+            preflight.approval,
+            refreshedBurnEstimate,
+            safetyCaps.maxSourceGasWei,
+          );
+          refreshCctpPendingMarkerQuote(identity, activeQuote.maxFeeBaseUnits);
+          updateCctpState(identity, {
+            ...quoteRecord(activeQuote),
+            safety: {
+              ...(readCctpState(identity)?.safety ?? {}),
+              refreshedQuoteMaxFeeBaseUnits: activeQuote.maxFeeBaseUnits,
+              burnNonce: burnAnchor.sourceNonce,
+              burnGasLimit: refreshedBurnEstimate.gasLimit.toString(),
+              burnMaxFeePerGasWei: refreshedBurnEstimate.maxFeePerGasWei.toString(),
+              combinedMaxGasWei,
+            },
+          });
+        } else {
+          refreshCctpPendingMarkerQuote(identity, activeQuote.maxFeeBaseUnits);
+          updateCctpState(identity, {
+            ...quoteRecord(activeQuote),
+            safety: {
+              ...(readCctpState(identity)?.safety ?? {}),
+              refreshedQuoteMaxFeeBaseUnits: activeQuote.maxFeeBaseUnits,
+            },
+          });
+        }
+      } catch (error) {
+        try {
+          updateCctpState(identity, {
+            phase: "safety_failed",
+            lastError: `Capped pre-burn safety check failed: ${safeError(error)}`,
+          });
+        } catch {
+          keepMarker = true;
+        }
+        releaseSigning();
+        keepMarker = true;
+        throw new Error(
+          `Capped pre-burn safety check failed after approval ${approvalHash}; no burn was sent and the pending record is retained. ${safeError(error)}`,
+        );
+      }
+    } else if (isQuoteExpired(quoteResult.expiresAt)) {
       updateCctpState(identity, {
         phase: "quote_expired",
         lastError: "Quote expired after approval; obtain a fresh quote before trying again.",
       });
+      releaseSigning();
       release();
       throw new Error(
         `Quote expired before burn. Approval succeeded in ${approvalHash}; requote and run an explicit new start. The fee was not increased and no burn was sent.`,
@@ -332,12 +569,14 @@ export async function start(amount: string, confirm: boolean): Promise<void> {
     }
 
     updateCctpState(identity, { phase: "burn_pending" });
-    const burnAnchor = await prepareSourceBurnAnchor(source, account.address);
+    if (!burnAnchor) {
+      throw new Error("CCTP planned burn nonce disappeared before signing; refusing to write.");
+    }
     const burnIntent: CctpBurnIntent = {
       sender: account.address,
       recipient,
-      amountBaseUnits: quoteResult.amountBaseUnits,
-      maxFeeBaseUnits: quoteResult.maxFeeBaseUnits,
+      amountBaseUnits: activeQuote.amountBaseUnits,
+      maxFeeBaseUnits: activeQuote.maxFeeBaseUnits,
       ...burnAnchor,
     };
     // Bind both durable records before the first burn broadcast. The exact
@@ -351,6 +590,7 @@ export async function start(amount: string, confirm: boolean): Promise<void> {
       });
     } catch (error) {
       keepMarker = true;
+      releaseSigning();
       throw new Error(
         `CCTP burn identity could not be durably bound (${safeError(error)}); no burn was sent and the pending marker must be inspected before retrying.`,
       );
@@ -368,18 +608,24 @@ export async function start(amount: string, confirm: boolean): Promise<void> {
           burnAttempted = true;
         },
         burnAnchor.sourceNonce,
+        safetyCaps?.maxSourceGasWei && preflight?.approval
+          ? BigInt(safetyCaps.maxSourceGasWei) - preflight.approval.maxCostWei
+          : undefined,
+        () => assertPersistedNonce(identity, "burnNonce", burnAnchor.sourceNonce),
       );
     } catch (error) {
       if (!burnAttempted) {
         try {
           updateCctpState(identity, {
-            phase: "burn_failed",
+            phase: safetyEnabled ? "safety_failed" : "burn_failed",
             lastError: `Burn simulation failed: ${safeError(error)}`,
           });
-          release();
+          if (safetyEnabled) keepMarker = true;
+          else release();
         } catch {
           keepMarker = true;
         }
+        releaseSigning();
       }
       throw error;
     }
@@ -393,6 +639,7 @@ export async function start(amount: string, confirm: boolean): Promise<void> {
         phase: "source_pending",
         lastError: undefined,
       });
+      releaseSigning();
     } catch (error) {
       throw new Error(
         `Burn broadcast returned ${burnHash}, but durable state could not be saved (${safeError(error)}). Keep the pending marker, inspect the source hash, and do not rebroadcast.`,
@@ -449,6 +696,9 @@ export async function start(amount: string, confirm: boolean): Promise<void> {
       );
     }
   } catch (error) {
+    if (!signingReleased && !mayHaveBroadcasted && lastBroadcastKind !== "burn") {
+      releaseSigning();
+    }
     if (!released && !mayHaveBroadcasted && !keepMarker) {
       release();
     }

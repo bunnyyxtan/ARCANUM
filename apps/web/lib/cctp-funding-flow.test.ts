@@ -96,6 +96,17 @@ describe("CCTP funding flow validation", () => {
     ).toThrow("Malformed CCTP status response");
   });
 
+  it("rejects a malformed Circle forwarding state", () => {
+    const burnHash = `0x${"a".repeat(64)}` as `0x${string}`;
+    expect(() =>
+      assertValidCctpStatus(
+        { burnTxHash: burnHash, forwardState: 1, stage: "forwarding" },
+        burnHash,
+        "0x0000000000000000000000000000000000000001",
+      ),
+    ).toThrow("Malformed CCTP forwarding state");
+  });
+
   it("rejects imported pending burns and a burn from another sender", () => {
     const burnHash = `0x${"a".repeat(64)}` as `0x${string}`;
     expect(() =>

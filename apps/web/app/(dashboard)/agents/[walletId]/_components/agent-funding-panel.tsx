@@ -213,6 +213,19 @@ export function AgentFundingPanel({
             </div>
           )}
 
+          {status?.forwardState && (
+            <div className="mb-2">
+              <div className="flex justify-between mb-1">
+                <span className="text-[var(--wl-mute)]">Circle forward state:</span>
+                <span>{status.forwardState}</span>
+              </div>
+              <p className="text-[9px] leading-[1.4] text-[var(--wl-secondary)]">
+                Informational Circle metadata only. COMPLETE does not prove Circle broadcast the
+                mint; a manual relay can also report COMPLETE.
+              </p>
+            </div>
+          )}
+
           {status?.balanceBaseUnits && (
             <div className="flex justify-between mb-1 mt-2 pt-2 border-t border-[var(--wl-line)]">
               <span className="text-[var(--wl-mute)]">Current Balance:</span>
