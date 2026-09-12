@@ -1,6 +1,9 @@
 # Vendors
 
-VendorRegistry stores per-wallet allowlists, blocklists, category tags, and caps. The same vendor address can be allowed for one wallet and blocked for another.
+VendorRegistry stores per-wallet allowlists, blocklists, category tags, and optional per-payment
+per-payment caps. The same vendor address can be allowed for one wallet and blocked for another.
+A non-zero per-payment vendor cap is checked independently for each payment; the wallet's daily
+and monthly caps remain separate.
 
 ```ts
 const vendor = await arc.getVendor("0x0000000000000000000000000000000000000002")

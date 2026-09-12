@@ -54,6 +54,11 @@ Never hard-code private keys or commit `.env` files. For production operators,
 prefer managed signer infrastructure or user-controlled wallets over server-held
 agent keys.
 
+Arc's native USDC gas balance uses 18 decimals. GuardedWallet policy and payment
+amounts are deployed ERC20 USDC base units with 6 decimals, which is why this
+example uses `usdcErc20(12)`. Source-chain ERC20/CCTP amounts also use 6
+decimals; do not use the native gas scale for those values.
+
 ## Payment intent preflight and execution
 
 `createPaymentIntent` is a read-only policy preflight for agent backends. It
@@ -133,6 +138,12 @@ sits next to it). If the RPC drops out while waiting for inclusion, the
 execution error has no hash; link the transaction later with
 `attachPaymentReceiptEvidence`.
 
+The signed preflight receipt is separate from indexed contract events. A
+successful payment or escalation can produce an onchain event after settlement;
+a policy `deny` reverts the guarded call and does not produce a successful
+`DENY` event. A receipt alone never proves that a transaction was submitted or
+settled.
+
 ```ts
 const arcanum = new ArcanumClient({
   walletAddress,
@@ -153,7 +164,11 @@ console.log(verification.ok, verification.issuer.status);
 ```
 
 `verifyPaymentReceipt` runs entirely offline against the issuer registry
-bundled in the SDK. The same `reference` returns the same receipt
+bundled in the SDK. The registry is the trust anchor: a passing digest shows
+the envelope matches the attested bytes, and a passing issuer or agent
+signature shows which signer attested to them. These checks do not independently
+prove policy correctness, chain inclusion, payment settlement, or that a
+transaction was sent. The same `reference` returns the same receipt
 (`replayed: true`); reusing a reference for a different payment is rejected.
 `executePaymentIntentWithReceipt` does not act on a replayed receipt, since
 the earlier attempt may already have paid and the contract does not
