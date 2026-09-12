@@ -25,6 +25,12 @@ export interface CctpStatus {
   stage: "source_pending" | "attestation_pending" | "forwarding" | "completed" | "source_failed";
   burnTxHash: Hash;
   mintTxHash?: Hash;
+  /**
+   * Circle Forwarding Service state from Iris, when provided. This is
+   * informational only: even COMPLETE still requires destination receipt and
+   * native-USDC mint verification before this status can be completed.
+   */
+  forwardState?: string;
   /** Verified source transaction nonce; absent until the burn receipt is known. */
   sourceNonce?: number;
   /** Verified Sepolia receipt block number, serialized without precision loss. */
@@ -306,8 +312,9 @@ export async function getCctpStatus(
       input.burnTxHash,
       attestedBurn,
       sourceIdentity,
-      "Forwarded destination transaction has not succeeded.",
+      iris.forwardState,
       mintTxHash,
+      "Forwarded destination transaction has not succeeded.",
     );
   }
 
@@ -323,6 +330,7 @@ export async function getCctpStatus(
     stage: "completed",
     burnTxHash: input.burnTxHash,
     mintTxHash,
+    ...(iris.forwardState === undefined ? {} : { forwardState: iris.forwardState }),
     ...verifiedBurnFields(attestedBurn, recipient, sourceIdentity),
     feeBaseUnits: attestedBurn.feeExecuted.toString(),
     receivedBaseUnits: (attestedBurn.amount - attestedBurn.feeExecuted).toString(),
@@ -780,15 +788,19 @@ function forwarding(
   sourceIdentity: VerifiedSourceIdentity,
   state?: string,
   mintTxHash?: Hash,
+  detail?: string,
 ): CctpStatus {
   return {
     stage: "forwarding",
     burnTxHash: hash,
     ...(mintTxHash ? { mintTxHash } : {}),
+    ...(state === undefined ? {} : { forwardState: state }),
     ...verifiedBurnFields(burn, burn.recipient, sourceIdentity),
-    detail: state
-      ? `Forwarding service state: ${state}.`
-      : "Circle attested the burn; forwarding is still pending.",
+    detail:
+      detail ??
+      (state
+        ? `Forwarding service state: ${state}.`
+        : "Circle attested the burn; forwarding is still pending."),
   };
 }
 
