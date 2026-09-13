@@ -132,7 +132,7 @@ sent on to policy evaluation); its behaviour is otherwise unchanged.
 ## AI-use disclosure
 
 Arcanum is a maintainer-owned product that was built, before and during the
-event, by the maintainer directing an AI coding agent (Replit Agent). This
+event, by the maintainer directing an AI coding agent. This
 section answers the event's three questions in order: what the maintainer
 contributed, which files the agent wrote, and where the directing artifacts
 are.
@@ -164,8 +164,9 @@ are.
   and the deployment live on the maintainer's infrastructure and were rolled
   out under the maintainer's authority. The testnet demonstration referenced
   by the submission is run by the maintainer against the deployed API; its
-  transactions are real Arc Testnet transactions. The submission video is
-  narrated by the maintainer.
+  transactions are real Arc Testnet transactions. The submission video's
+  voiceover is text-to-speech generated from a script written and approved by
+  the maintainer.
 
 ### Attribution: what the agent wrote
 
