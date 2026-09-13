@@ -378,7 +378,25 @@ ponder.on("GuardedWallet:TransferEscalated", async ({ event }) => {
 });
 
 ponder.on("GuardedWallet:Frozen", async ({ event }) => {
+  const frozenPayload = {
+    source:
+      freezeSourceFromIndex(asNumber(event.args.source)) ??
+      `UNKNOWN_${asNumber(event.args.source)}`,
+    reason: reasonName(event.args.reason),
+    data: asString(event.args.data),
+  };
   await syncWalletFrozenState(asAddress(event.args.wallet), true, blockDate(event.block.timestamp));
+  // Deployed environments read the governance timeline from Supabase and run
+  // without the local mirror below, so the freeze has to be recorded here too.
+  await syncGovernanceEvent({
+    walletAddress: asAddress(event.args.wallet),
+    eventType: "WALLET_FROZEN",
+    severity: "danger",
+    payload: frozenPayload,
+    blockNumber: Number(event.block.number),
+    txHash: event.transaction.hash,
+    timestamp: blockDate(event.block.timestamp),
+  });
   await syncCheckpoint(Number(event.block.number));
 
   const tenantId = defaultTenantId();
@@ -397,13 +415,7 @@ ponder.on("GuardedWallet:Frozen", async ({ event }) => {
     walletId: wallet.id,
     type: "WALLET_FROZEN",
     severity: "danger",
-    payload: {
-      source:
-        freezeSourceFromIndex(asNumber(event.args.source)) ??
-        `UNKNOWN_${asNumber(event.args.source)}`,
-      reason: reasonName(event.args.reason),
-      data: asString(event.args.data),
-    },
+    payload: frozenPayload,
     blockNumber: Number(event.block.number),
     txHash: event.transaction.hash,
     timestamp: blockDate(event.block.timestamp),
@@ -416,6 +428,15 @@ ponder.on("GuardedWallet:Unfrozen", async ({ event }) => {
     false,
     blockDate(event.block.timestamp),
   );
+  await syncGovernanceEvent({
+    walletAddress: asAddress(event.args.wallet),
+    eventType: "WALLET_UNFROZEN",
+    severity: "info",
+    payload: {},
+    blockNumber: Number(event.block.number),
+    txHash: event.transaction.hash,
+    timestamp: blockDate(event.block.timestamp),
+  });
   await syncCheckpoint(Number(event.block.number));
 
   const tenantId = defaultTenantId();
