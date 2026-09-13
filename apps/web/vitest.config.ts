@@ -11,5 +11,6 @@ export default defineConfig({
     environment: "node",
     exclude: [".next/**", "node_modules/**"],
     include: ["**/*.test.ts"],
+    pool: "threads",
   },
 });

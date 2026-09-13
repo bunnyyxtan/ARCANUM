@@ -175,13 +175,6 @@ export function LedgerRows({ dark = false }: { dark?: boolean }) {
       time: "09:41:19",
     },
   ];
-  const [visible, setVisible] = useState(2);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only ticker; rows is a static array
-  useEffect(() => {
-    const id = window.setInterval(() => setVisible((v) => (v >= rows.length ? 1 : v + 1)), 2500);
-    return () => window.clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
   const line = dark ? "border-[var(--wl-strong2)]" : "border-[var(--wl-line)]";
   const quiet = dark ? "text-[var(--wl-dim2)]" : "text-[var(--wl-mute)]";
   return (
@@ -190,7 +183,7 @@ export function LedgerRows({ dark = false }: { dark?: boolean }) {
     >
       <div className={`flex items-center justify-between border-b px-5 py-4 ${line}`}>
         <span className={`font-mono text-[10px] uppercase tracking-[.18em] ${quiet}`}>
-          Live governed ledger
+          Illustrative sample ledger
         </span>
         <span className={`font-mono text-[10px] ${quiet}`}>ARC / USDC</span>
       </div>
@@ -210,7 +203,7 @@ export function LedgerRows({ dark = false }: { dark?: boolean }) {
           <div
             key={r.time}
             style={{ "--row-i": i } as CSSProperties}
-            className={`warm-ledger-row grid gap-3 px-4 py-4 md:grid-cols-[1.3fr_1fr_.9fr_1fr_140px] md:items-center md:px-5 ${i < visible ? "is-live" : "is-quiet"}`}
+            className="warm-ledger-row is-visible grid gap-3 px-4 py-4 md:grid-cols-[1.3fr_1fr_.9fr_1fr_140px] md:items-center md:px-5"
           >
             <div className="flex items-baseline justify-between gap-3 md:block">
               <div
@@ -260,8 +253,8 @@ export function LedgerRows({ dark = false }: { dark?: boolean }) {
         ))}
       </div>
       <div className={`flex items-center justify-between border-t px-5 py-3 ${line}`}>
-        <span className={`font-mono text-[9px] ${quiet}`}>policy/v4.18 · 42ms median</span>
-        <span className="font-mono text-[9px] text-[var(--wl-green-soft)]">● streaming</span>
+        <span className={`font-mono text-[9px] ${quiet}`}>sample policy / v4.18</span>
+        <span className={`font-mono text-[9px] ${quiet}`}>static illustration</span>
       </div>
     </div>
   );

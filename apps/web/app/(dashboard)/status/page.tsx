@@ -28,7 +28,7 @@ export default function StatusPage() {
           rpc={controller.rpc}
         />
         <ContractsSection />
-        <StatusGuide checkedAt={controller.checkedAt} />
+        <StatusGuide checkedAt={controller.checkedAt} refreshError={controller.refreshError} />
       </div>
     </main>
   );

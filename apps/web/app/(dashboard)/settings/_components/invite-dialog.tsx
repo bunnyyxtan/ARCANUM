@@ -1,17 +1,34 @@
+"use client";
+
+import { useDialogFocus } from "@/lib/use-dialog-focus";
+
 import type { SettingsController } from "../_hooks/use-settings-controller";
 import { inviteRoles } from "../_lib/settings";
 
 export function InviteDialog({ settings }: { settings: SettingsController }) {
+  const dialogRef = useDialogFocus(settings.inviteOpen, () => settings.setInviteOpen(false));
+
   if (!settings.inviteOpen) return null;
 
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-30 flex items-center justify-center bg-[rgba(var(--wl-ink-rgb),.18)] p-5"
+      // biome-ignore lint/a11y/useSemanticElements: custom ARIA dialog is managed by useDialogFocus; native showModal lifecycle is intentionally not used
       role="dialog"
       aria-modal="true"
       aria-label="Invite team member"
     >
-      <div className="w-full max-w-[450px] border border-[var(--wl-line)] bg-[var(--wl-bg)] p-7 shadow-[0_24px_50px_-28px_rgba(var(--wl-ink-rgb),.6)]">
+      <button
+        type="button"
+        aria-label="Close invite dialog"
+        aria-hidden="true"
+        data-dialog-backdrop
+        tabIndex={-1}
+        className="absolute inset-0"
+        onClick={() => settings.setInviteOpen(false)}
+      />
+      <div className="relative w-full max-w-[450px] border border-[var(--wl-line)] bg-[var(--wl-bg)] p-7 shadow-[0_24px_50px_-28px_rgba(var(--wl-ink-rgb),.6)]">
         <div className="flex items-start justify-between">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
@@ -37,7 +54,7 @@ export function InviteDialog({ settings }: { settings: SettingsController }) {
             value={settings.inviteWallet}
             onChange={(event) => settings.setInviteWallet(event.target.value)}
             spellCheck={false}
-            autoFocus
+            data-dialog-autofocus
             className="mt-2 w-full border-b border-[var(--wl-line)] bg-transparent py-3 font-mono text-[13px] outline-none transition-colors placeholder:text-[var(--wl-mute)] focus:border-[var(--wl-signal)]"
             placeholder="0x…"
           />

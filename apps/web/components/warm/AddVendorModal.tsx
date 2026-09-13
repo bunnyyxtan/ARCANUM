@@ -1,12 +1,16 @@
 "use client";
 
-import { useEffect } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 
+import {
+  preserveRawUsdcCapInput,
+  vendorCapDraftState,
+} from "@/app/(dashboard)/vendors/_lib/helpers";
 import { getArcscanTxUrl } from "@/lib/arcscan";
 import type { AddVendorFormState, VendorCategoryValue } from "@/lib/contracts";
 import { vendorCategoryOptions } from "@/lib/contracts";
 import { shortAddress } from "@/lib/format/address";
+import { useDialogFocus } from "@/lib/use-dialog-focus";
 
 type WalletOption = { address: string; label: string };
 
@@ -37,23 +41,17 @@ export function AddVendorModal({
   walletOptions: ReadonlyArray<WalletOption>;
   writeDisabledReason: string | null;
 }>) {
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+  const dialogRef = useDialogFocus(true, onClose);
 
   const fieldClass =
     "mt-2 h-11 w-full border border-[var(--wl-line)] bg-[var(--wl-bg-raised)] px-3 text-[12px] text-[var(--wl-ink)] outline-none placeholder:text-[var(--wl-mute)] focus:border-[var(--wl-signal)]";
+  const capState = vendorCapDraftState(form.perVendorCap, "add");
 
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-50 flex items-end justify-center bg-[rgba(var(--wl-ink-rgb),.1)] p-5 sm:items-center"
+      // biome-ignore lint/a11y/useSemanticElements: custom ARIA dialog is managed by useDialogFocus; native showModal lifecycle is intentionally not used
       role="dialog"
       aria-modal="true"
       aria-label="Add vendor"
@@ -61,6 +59,9 @@ export function AddVendorModal({
       <button
         type="button"
         aria-label="Close add vendor dialog"
+        aria-hidden="true"
+        data-dialog-backdrop
+        tabIndex={-1}
         className="warm-modal-backdrop absolute inset-0 bg-[rgba(var(--wl-ink-rgb),.35)]"
         onClick={onClose}
       />
@@ -151,17 +152,31 @@ export function AddVendorModal({
 
           <label className="block">
             <span className="block font-mono text-[10px] uppercase tracking-[.14em] text-[var(--wl-secondary)]">
-              PER-VENDOR CAP / USDC
+              PER-PAYMENT CAP / USDC
             </span>
             <input
               value={form.perVendorCap}
-              onChange={(event) => onChange({ perVendorCap: event.target.value })}
+              aria-describedby={capState.error ? "vendor-cap-add-error" : undefined}
+              aria-invalid={Boolean(capState.error)}
+              onChange={(event) =>
+                onChange({ perVendorCap: preserveRawUsdcCapInput(event.target.value) })
+              }
               inputMode="decimal"
               placeholder="0"
               className={fieldClass}
             />
+            {capState.error ? (
+              <span
+                id="vendor-cap-add-error"
+                role="alert"
+                className="mt-1.5 block font-mono text-[10px] leading-[1.5] tracking-[.08em] text-[var(--wl-signal)]"
+              >
+                {capState.error}
+              </span>
+            ) : null}
             <span className="mt-1.5 block font-mono text-[10px] leading-[1.5] tracking-[.08em] text-[var(--wl-mute)]">
-              `0` means no vendor-specific cap; global policy caps still apply.
+              0 means no per-payment cap for this vendor. Otherwise this limit applies to each
+              payment; the wallet-wide daily and monthly caps still apply.
             </span>
           </label>
 
@@ -220,7 +235,7 @@ export function AddVendorModal({
             <button
               type="button"
               onClick={(event) => onAdd(event)}
-              disabled={saving || Boolean(writeDisabledReason)}
+              disabled={saving || Boolean(writeDisabledReason) || !capState.canSubmit}
               className="warm-pill flex h-11 items-center justify-center rounded-full bg-[var(--wl-signal)] font-mono text-[11px] tracking-[.12em] text-[var(--wl-bg)] disabled:cursor-not-allowed disabled:opacity-55"
             >
               {saving ? "CONFIRMING..." : "ADD / UPDATE VENDOR"}

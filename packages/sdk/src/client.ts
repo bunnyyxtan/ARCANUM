@@ -8,9 +8,14 @@ import {
   ARC_CHAIN_ID,
   ARC_NETWORK_NAME,
   ARC_USDC_ADDRESS,
+  type PaymentReceiptEnvelope,
+  type PaymentReceiptIssuer,
+  type PaymentReceiptVerification,
   createPaymentIntentMessage,
   createPaymentIntentResult,
   paymentIntentInputSchema,
+  paymentRequestDigest,
+  verifyPaymentReceipt,
 } from "@arcanum/shared";
 import {
   http,
@@ -37,14 +42,17 @@ import {
   TransferRevertedError,
   WalletFrozenError,
 } from "./errors";
+import { type AttachedReceiptEvidence, ReceiptApi, type RequestedReceipt } from "./receipts";
 import type {
   ArcanumClientConfig,
   Escalation,
   EscalationResolved,
+  ExecutePaymentIntentWithReceiptOptions,
   ExecuteUSDCInput,
   ExecuteUSDCResult,
   PaymentIntentInput,
   PaymentIntentResult,
+  PaymentIntentWithReceiptResult,
   PolicyEnvelope,
   SignedPaymentIntentInput,
   SimulateInput,
@@ -81,11 +89,17 @@ export class ArcanumClient {
   private readonly pollingIntervalMs: number;
   private readonly publicClient;
   private readonly walletClient;
+  private readonly receiptApi: ReceiptApi | null;
+  private readonly receiptIssuers: readonly PaymentReceiptIssuer[] | undefined;
 
   constructor(config: ArcanumClientConfig) {
     this.walletAddress = config.walletAddress;
     this.dashboardUrl = config.dashboardUrl;
     this.pollingIntervalMs = config.pollingIntervalMs ?? 4_000;
+    this.receiptApi = config.apiUrl
+      ? new ReceiptApi({ apiUrl: config.apiUrl, fetch: config.fetch })
+      : null;
+    this.receiptIssuers = config.receiptIssuers;
     const transport = http(config.rpcUrl);
 
     this.publicClient = createPublicClient({
@@ -97,6 +111,19 @@ export class ArcanumClient {
       chain: config.chain,
       transport,
     });
+  }
+
+  private requireReceiptApi() {
+    if (!this.receiptApi) {
+      throw new ArcanumError({
+        code: "API_URL_REQUIRED",
+        message:
+          "Payment decision receipts need the Arcanum API. Construct ArcanumClient with apiUrl.",
+        verdict: "DENY",
+        reason: "API_URL_REQUIRED",
+      });
+    }
+    return this.receiptApi;
   }
 
   private requireSigner() {
@@ -259,6 +286,164 @@ export class ArcanumClient {
       return paymentIntentExecutionResult(intent, preflight, execution);
     } catch (error) {
       return paymentIntentExecutionErrorResult(intent, preflight, error);
+    }
+  }
+
+  /**
+   * Ask the Arcanum API for a signed Payment Decision Receipt: the verdict
+   * this wallet's policy gives the intent, evaluated at one pinned block and
+   * signed by the Arcanum issuer. Nothing moves onchain.
+   *
+   * The receipt is verified before it is returned: issuer signature against
+   * the trusted registry, digest, and the agent's own request signature, and
+   * it must describe exactly the intent that was just signed. The API is the
+   * transport for a receipt, never the authority on what one says.
+   */
+  async requestPaymentReceipt(input: PaymentIntentInput): Promise<RequestedReceipt> {
+    const api = this.requireReceiptApi();
+    const intent = paymentIntentInputSchema.parse(input);
+    if (!sameAddress(intent.governedWalletAddress, this.walletAddress)) {
+      throw new ArcanumError({
+        code: "WALLET_MISMATCH",
+        message: "Intent governed wallet does not match this SDK client.",
+        verdict: "DENY",
+        reason: "WALLET_MISMATCH",
+      });
+    }
+    const requested = await api.requestReceipt(await this.signPaymentIntent(intent));
+    await this.assertReceiptDescribesIntent(requested.receipt, intent);
+    return requested;
+  }
+
+  private async assertReceiptDescribesIntent(
+    envelope: PaymentReceiptEnvelope,
+    intent: PaymentIntentInput,
+  ): Promise<void> {
+    const verification = await verifyPaymentReceipt(envelope, {
+      ...(this.receiptIssuers ? { issuers: this.receiptIssuers } : {}),
+    });
+    if (!verification.ok) {
+      throw new ArcanumError({
+        code: "RECEIPT_UNVERIFIED",
+        message: `Receipt ${envelope.receipt.receiptId} failed verification (${describeVerification(verification)}).`,
+        verdict: "DENY",
+        reason: "RECEIPT_UNVERIFIED",
+      });
+    }
+    // The request digest covers every field of the signed intent, so equal
+    // digests mean the receipt answers this payment and no other.
+    if (envelope.receipt.requestDigest !== paymentRequestDigest(intent)) {
+      throw new ArcanumError({
+        code: "RECEIPT_MISMATCH",
+        message: `Receipt ${envelope.receipt.receiptId} describes a different payment intent than the one requested.`,
+        verdict: "DENY",
+        reason: "RECEIPT_MISMATCH",
+      });
+    }
+  }
+
+  /** Link the transaction that acted on a receipt; the API verifies the link onchain. */
+  async attachPaymentReceiptEvidence(
+    receiptId: string,
+    txHash: Hash,
+  ): Promise<AttachedReceiptEvidence> {
+    return this.requireReceiptApi().attachEvidence(receiptId, txHash);
+  }
+
+  /**
+   * Receipt-first payment: obtain the receipt, act on its verdict, and link
+   * the resulting transaction back to it. The receipt id travels in the
+   * executeUSDC reason bytes, so the chain itself names the decision it acted
+   * on. Denied and frozen verdicts never reach the chain.
+   *
+   * A replayed receipt (one this reference already obtained earlier) is not
+   * acted on by default: the earlier attempt may already have paid, and the
+   * contract does not deduplicate references. Pass `executeReplayedReceipt`
+   * only when you know the receipt has not been acted on, for example after
+   * inspecting it with `requestPaymentReceipt` first.
+   */
+  async executePaymentIntentWithReceipt(
+    input: PaymentIntentInput,
+    options: ExecutePaymentIntentWithReceiptOptions = {},
+  ): Promise<PaymentIntentWithReceiptResult> {
+    const intent = paymentIntentInputSchema.parse(input);
+    const { receipt, replayed } = await this.requestPaymentReceipt(intent);
+    const decision = receipt.receipt.decision;
+    const preflight = createPaymentIntentResult(intent, {
+      decision: decision.verdict,
+      reason: decision.reasonCode,
+      amountBaseUnits: receipt.receipt.amountBaseUnits,
+      policyReference: `payment-receipt:${receipt.receipt.receiptId}`,
+    });
+
+    if (decision.verdict !== "allow" && decision.verdict !== "escalate") {
+      return { receipt, replayed, result: preflight, evidence: null };
+    }
+
+    if (replayed && !options.executeReplayedReceipt) {
+      return {
+        receipt,
+        replayed,
+        result: createPaymentIntentResult(intent, {
+          decision: "validation_error",
+          reason:
+            "A receipt for this reference was already issued, so the payment may already have been sent. Inspect the receipt's evidence, then retry with executeReplayedReceipt or a new reference.",
+          amountBaseUnits: receipt.receipt.amountBaseUnits,
+          policyReference: preflight.policyReference,
+          errorCode: "RECEIPT_REPLAYED",
+        }),
+        evidence: null,
+      };
+    }
+
+    let result: PaymentIntentResult;
+    try {
+      const execution = await this.executeUSDC({
+        to: intent.vendorAddress,
+        amount: BigInt(receipt.receipt.amountBaseUnits),
+        reason: intent.purpose,
+        metadata: {
+          reference: intent.reference,
+          tokenSymbol: intent.tokenSymbol ?? "USDC",
+          receiptId: receipt.receipt.receiptId,
+        },
+      });
+      result = paymentIntentExecutionResult(intent, preflight, execution);
+    } catch (error) {
+      if (error instanceof TransferRevertedError) {
+        // The call reached the chain and reverted: that is evidence too.
+        result = createPaymentIntentResult(intent, {
+          decision: "deny",
+          reason: error.reason ?? error.message,
+          amountBaseUnits: preflight.amountBaseUnits,
+          policyReference: preflight.policyReference,
+          txHash: error.txHash,
+          errorCode: error.code,
+        });
+      } else {
+        result = paymentIntentExecutionErrorResult(intent, preflight, error);
+      }
+    }
+    return this.linkExecution(receipt, replayed, result);
+  }
+
+  private async linkExecution(
+    receipt: PaymentReceiptEnvelope,
+    replayed: boolean,
+    result: PaymentIntentResult,
+  ): Promise<PaymentIntentWithReceiptResult> {
+    if (!result.txHash) {
+      return { receipt, replayed, result, evidence: null };
+    }
+    try {
+      const attached = await this.attachPaymentReceiptEvidence(
+        receipt.receipt.receiptId,
+        result.txHash,
+      );
+      return { receipt, replayed, result, evidence: attached.evidence };
+    } catch (error) {
+      // The payment already happened; report the linkage failure, never hide the tx.
+      return { receipt, replayed, result, evidence: null, evidenceError: asError(error) };
     }
   }
 
@@ -618,6 +803,19 @@ export function encodeExecuteUSDC(input: ExecuteUSDCInput) {
   });
 }
 
+/** One line naming the checks that failed, for the error a caller sees. */
+function describeVerification(verification: PaymentReceiptVerification): string {
+  const failed = [
+    verification.format.status !== "valid" ? `format ${verification.format.status}` : null,
+    verification.receiptDigest.status !== "verified"
+      ? `digest ${verification.receiptDigest.status}`
+      : null,
+    verification.issuer.status !== "verified" ? `issuer ${verification.issuer.status}` : null,
+    verification.request.status !== "verified" ? `request ${verification.request.status}` : null,
+  ].filter((item): item is string => item !== null);
+  return failed.join(", ");
+}
+
 function parsePaymentIntentAmount(amount: string) {
   try {
     const parsed = parseUnits(amount, 6);
@@ -706,6 +904,10 @@ function paymentIntentResult(
     policyReference: input.policyReference,
     errorCode: input.errorCode,
   });
+}
+
+function asError(error: unknown): Error {
+  return error instanceof Error ? error : new Error(String(error));
 }
 
 function sameAddress(a: Address | string, b: Address | string) {

@@ -80,6 +80,9 @@ function createReadModel() {
       throw new Error("renaming a workspace must not patch rows directly");
     },
 
+    insertRows: async () => {
+      throw new Error("renaming a workspace must not insert rows");
+    },
     upsertRows: async () => {
       throw new Error("renaming a workspace must not insert rows");
     },

@@ -18,6 +18,15 @@ const FLAGS_TABLE = "vendor_flags";
 const EVENTS_TABLE = "vendor_flag_events";
 const HISTORY_LIMIT = 50;
 
+export const VENDOR_REVIEW_WRITER_ROLES = new Set([
+  "owner",
+  "admin",
+  "approver",
+  // Added to the Postgres enum for service/operator review workflows; it is
+  // intentionally not offered by the browser's member-invite schema.
+  "operator",
+]);
+
 export type VendorFlag = {
   id: string;
   tenantId: string | null;
@@ -153,8 +162,11 @@ async function callerOrgIds(ctx: ApiContext): Promise<string[]> {
  * their wallet list is anchored to.
  */
 async function writeOrgId(ctx: ApiContext): Promise<string | null> {
-  const [orgId] = await callerOrgIds(ctx);
-  return orgId ?? null;
+  const membership = await readCallerMembership(ctx);
+  if (!membership || !VENDOR_REVIEW_WRITER_ROLES.has(membership.role.toLowerCase())) {
+    return null;
+  }
+  return membership.orgId;
 }
 
 export async function listVendorFlags(ctx: ApiContext): Promise<VendorFlag[]> {

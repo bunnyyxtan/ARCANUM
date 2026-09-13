@@ -2,10 +2,10 @@
 
 import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { useAccount } from "wagmi";
+import { useAccount, useDisconnect } from "wagmi";
 
 import { Arrow } from "@/components/arcanum/arrow";
-import { useWorkspaceMode } from "@/lib/auth-session";
+import { publishAuthSession, useWorkspaceMode } from "@/lib/auth-session";
 import { trpc } from "@/lib/trpc";
 
 const DISMISS_PREFIX = "arcanum-workspace-named:";
@@ -30,9 +30,14 @@ const DISMISS_PREFIX = "arcanum-workspace-named:";
  */
 export function WorkspaceGate({ children }: Readonly<{ children: ReactNode }>) {
   const { address } = useAccount();
-  const { isAuthenticated } = useWorkspaceMode();
+  const { dataMode, isAuthenticated } = useWorkspaceMode();
+  const { disconnect } = useDisconnect();
   const utils = trpc.useUtils();
-  const org = trpc.org.getCurrent.useQuery(undefined, { retry: false, staleTime: 30_000 });
+  const org = trpc.org.getCurrent.useQuery(undefined, {
+    enabled: isAuthenticated,
+    retry: false,
+    staleTime: 30_000,
+  });
   const [name, setName] = useState("");
   const [dismissedOrgId, setDismissedOrgId] = useState<string | null>(null);
   // Renames close the panel the moment the owner hits save: the new name goes
@@ -88,6 +93,10 @@ export function WorkspaceGate({ children }: Readonly<{ children: ReactNode }>) {
     data.hasCustomName === false &&
     data.callerRole === "owner" &&
     dismissedOrgId !== data.id;
+
+  if (dataMode === "connected_unsigned") {
+    return <UnsignedWorkspaceGate onDisconnect={disconnect} />;
+  }
 
   // First-run setup is for the signed-in owner only. A read-only visitor (or
   // a stale session after the wallet disconnected) browses straight through;
@@ -173,7 +182,6 @@ export function WorkspaceGate({ children }: Readonly<{ children: ReactNode }>) {
               value={name}
               onChange={(event) => setName(event.target.value)}
               maxLength={120}
-              autoFocus
               placeholder="Acme Research Collective"
               className="mt-3 w-full border-b border-[var(--wl-line)] bg-transparent py-3 text-[18px] outline-none transition-colors placeholder:text-[var(--wl-mute)] focus:border-[var(--wl-signal)]"
             />
@@ -237,6 +245,58 @@ export function WorkspaceGate({ children }: Readonly<{ children: ReactNode }>) {
             </li>
           ))}
         </ul>
+      </section>
+    </div>
+  );
+}
+
+function UnsignedWorkspaceGate({ onDisconnect }: Readonly<{ onDisconnect: () => void }>) {
+  const retrySignIn = () => {
+    window.dispatchEvent(new Event("arcanum:wallet-auth-retry"));
+  };
+
+  const disconnectWallet = () => {
+    publishAuthSession(null);
+    void fetch("/api/auth/logout", { credentials: "include", method: "POST" });
+    onDisconnect();
+  };
+
+  return (
+    <div className="mx-auto flex min-h-[76vh] max-w-[1400px] items-center px-5 py-16 md:px-8">
+      <section
+        aria-labelledby="unsigned-workspace-title"
+        className="warm-reveal is-visible w-full max-w-[640px]"
+      >
+        <p className="font-mono text-[10px] uppercase tracking-[.2em] text-[var(--wl-signal)]">
+          WALLET / SIGN-IN REQUIRED
+        </p>
+        <h1
+          id="unsigned-workspace-title"
+          className="font-display mt-5 text-[clamp(2.6rem,5.4vw,4.4rem)] font-semibold leading-[.88] tracking-[-.015em]"
+        >
+          Authorize this wallet.
+        </h1>
+        <p className="mt-6 max-w-[520px] text-[15px] leading-[1.6] text-[var(--wl-secondary2)]">
+          This wallet is connected, but its signed Arcanum session is not active. Sign in to load
+          workspace data and use protected actions. Nothing is shown as an empty workspace until
+          authorization succeeds.
+        </p>
+        <div className="mt-11 flex flex-wrap items-center gap-4">
+          <button
+            type="button"
+            onClick={retrySignIn}
+            className="warm-pill rounded-full bg-[var(--wl-signal)] px-6 py-3 text-[12px] font-semibold text-white"
+          >
+            Sign in / retry
+          </button>
+          <button
+            type="button"
+            onClick={disconnectWallet}
+            className="warm-pill warm-pill-ghost rounded-full border border-[var(--wl-line)] px-5 py-3 text-[12px] font-semibold"
+          >
+            Disconnect
+          </button>
+        </div>
       </section>
     </div>
   );

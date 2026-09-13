@@ -1,3 +1,9 @@
+import type {
+  PaymentIntentResult,
+  PaymentReceiptEnvelope,
+  PaymentReceiptEvidence,
+  PaymentReceiptIssuer,
+} from "@arcanum/shared";
 import type { Account, Address, Chain, Hash, Hex } from "viem";
 
 export type {
@@ -39,7 +45,27 @@ export type ArcanumClientConfig = Readonly<{
   chain: Chain;
   rpcUrl: string;
   dashboardUrl?: string;
+  /**
+   * Origin of the Arcanum deployment that issues payment decision receipts,
+   * e.g. `https://thearcanum.in`. Only the receipt methods need it.
+   */
+  apiUrl?: string;
+  /** Overrides the global fetch used for the receipt API. */
+  fetch?: typeof fetch;
+  /**
+   * Issuer keys the client trusts for payment decision receipts. Defaults to
+   * the registry published with the SDK; set it for a self-hosted Arcanum.
+   */
+  receiptIssuers?: readonly PaymentReceiptIssuer[];
   pollingIntervalMs?: number;
+}>;
+
+export type ExecutePaymentIntentWithReceiptOptions = Readonly<{
+  /**
+   * Act on a receipt that was already issued for this reference. Off by
+   * default, because the earlier attempt may already have paid.
+   */
+  executeReplayedReceipt?: boolean;
 }>;
 
 export type ExecuteUSDCInput = Readonly<{
@@ -86,3 +112,15 @@ export type Escalation = Readonly<{
 }>;
 
 export type Unwatch = () => void;
+
+/** Outcome of a receipt-first payment: the signed decision, what was done about it, and the link between the two. */
+export type PaymentIntentWithReceiptResult = Readonly<{
+  receipt: PaymentReceiptEnvelope;
+  /** True when the reference had already been attested and the stored receipt was reused. */
+  replayed: boolean;
+  result: PaymentIntentResult;
+  /** Evidence rows the API linked to the receipt, or null when nothing was sent onchain. */
+  evidence: readonly PaymentReceiptEvidence[] | null;
+  /** Set when the payment went through but the API could not link it; the tx hash is still in `result`. */
+  evidenceError?: Error;
+}>;

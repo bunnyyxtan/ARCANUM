@@ -1,0 +1,17 @@
+# Receipts
+
+A payment decision receipt is what the policy said about one agent-signed payment intent, at one pinned Arc block, before anything was sent. The Arcanum issuer signs it; anyone can verify it offline against the published issuer registry.
+
+```ts
+const { receipt } = await arc.requestPaymentReceipt(intent)
+console.log(receipt.receipt.decision.verdict) // allow | escalate | deny | freeze
+
+const check = await verifyPaymentReceipt(receipt)
+console.log(check.ok, check.issuer.status, check.request.status)
+```
+
+A receipt is a record of a preflight, not an authorization. The contract decides again at execution time. `executePaymentIntentWithReceipt` puts the receipt id into the `executeUSDC` calldata and links the transaction back to the receipt afterwards, so the decision and what the chain did about it sit side by side, including the cases where they disagree.
+
+Denied intents never reach the chain, so the receipt is the only durable record of a denial.
+
+The full format, trust model and limitations are in the repository's `docs/PAYMENT-RECEIPTS.md`.

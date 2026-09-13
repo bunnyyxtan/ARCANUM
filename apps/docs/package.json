@@ -14,10 +14,10 @@
   "dependencies": {
     "@arcanum/sdk": "3.0.0",
     "@arcanum/shared": "2.0.0",
-    "@sentry/nextjs": "^8.55.0",
+    "@sentry/nextjs": "^10.74.0",
     "nextra": "^3.3.0",
     "nextra-theme-docs": "^3.3.0",
-    "next": "^15.0.0",
+    "next": "^15.5.24",
     "posthog-js": "^1.203.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

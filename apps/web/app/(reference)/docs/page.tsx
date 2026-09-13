@@ -5,6 +5,7 @@ import Link from "next/link";
 import { type ReactNode, useState } from "react";
 
 import { Reveal } from "@/components/arcanum/reveal";
+import { copyText } from "@/lib/clipboard";
 
 const sections = [
   { id: "orientation", number: "00", label: "Read this first" },
@@ -42,13 +43,16 @@ function CodeBlock({ label, children }: { label?: string; children: ReactNode })
 }
 
 export default function DocsPage() {
-  const [copied, setCopied] = useState(false);
-  const copyCommand = () => {
-    void navigator.clipboard
-      ?.writeText("arcana wallet inspect --wallet 0x3f...9a2c --network arc-testnet")
-      .catch(() => {});
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1600);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
+  const copyCommand = async () => {
+    setCopyState("idle");
+    const copied = await copyText(
+      "arcana wallet inspect --wallet 0x3f...9a2c --network arc-testnet",
+    );
+    setCopyState(copied ? "copied" : "failed");
+    if (copied) {
+      window.setTimeout(() => setCopyState("idle"), 1600);
+    }
   };
 
   return (
@@ -135,8 +139,10 @@ export default function DocsPage() {
                 </h2>
                 <p className="mt-5 text-[15px] leading-[1.55] text-[var(--wl-body)]">
                   The agent proposes a transaction. ARCANUM evaluates the proposal against a signed
-                  policy doctrine. Only the governed wallet can settle it, and every verdict becomes
-                  a ledger record. The model never receives the operator key.
+                  policy doctrine. Only the governed wallet can settle it. Successful contract
+                  events and escalations are indexed in the ledger; a reverted policy denial does
+                  not emit a successful DENY event. Signed decision receipts are separate preflight
+                  evidence. The model never receives the operator key.
                 </p>
                 <div className="mt-8 grid border-y border-[var(--wl-line)] sm:grid-cols-3">
                   {[
@@ -209,8 +215,17 @@ export default function DocsPage() {
                     onClick={copyCommand}
                     className="mt-3 font-mono text-[9px] uppercase tracking-[.14em] text-[var(--wl-body)] underline underline-offset-4 transition-colors hover:text-[var(--wl-signal)]"
                   >
-                    {copied ? "COMMAND COPIED" : "COPY INSPECTION COMMAND"}
+                    {copyState === "copied"
+                      ? "COMMAND COPIED"
+                      : copyState === "failed"
+                        ? "COPY FAILED — SELECT ABOVE"
+                        : "COPY INSPECTION COMMAND"}
                   </button>
+                  {copyState === "failed" && (
+                    <p role="alert" className="mt-2 font-mono text-[9px] text-[var(--wl-signal)]">
+                      Clipboard unavailable. Select the command above and copy it manually.
+                    </p>
+                  )}
                 </div>
               </section>
             </Reveal>
@@ -353,8 +368,11 @@ export default function DocsPage() {
                   Deploy your first GuardedWallet.
                 </h2>
                 <p className="mt-5 text-[15px] leading-[1.55] text-[var(--wl-body)]">
-                  Stand up a governed agent wallet on Arc Testnet in five steps. Every transaction
-                  it attempts will be evaluated against a Doctrine before it can settle onchain.
+                  Stand up a governed agent wallet on Arc Testnet in five steps. Every proposed
+                  payment through the governed wallet is evaluated against a Doctrine before it can
+                  settle onchain. Successful movement and escalation events are indexed; a reverted
+                  policy denial leaves no successful DENY event. Signed payment decision receipts
+                  attest the separate preflight evaluation.
                 </p>
                 <ol className="mt-9 space-y-7">
                   {[
@@ -376,7 +394,7 @@ export default function DocsPage() {
                     ],
                     [
                       "Watch the Event Stream",
-                      "Every attempted transaction now flows through the governed event stream with a verdict.",
+                      "Watch indexed movement and escalation events after they settle. Reverted DENY calls do not leave a successful contract event; signed decision receipts are a separate preflight record.",
                     ],
                   ].map(([title, copy], i) => (
                     <li key={title} className="grid grid-cols-[28px_1fr] gap-4">
@@ -399,78 +417,85 @@ export default function DocsPage() {
                   verdicts, no keys required.
                 </p>
                 <CodeBlock label="test.mjs / run: node test.mjs">{`import { ArcanumClient } from "arcanum-sdk";
-import { defineChain, formatUnits, parseUnits } from "viem";
+ import { ARC_TESTNET_RPC_URL, arcTestnet, usdcErc20 } from "arcanum-sdk/chains";
+ import { formatUnits } from "viem";
 
-const arcTestnet = defineChain({
-  id: 5042002,
-  name: "Arc Testnet",
-  nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 6 },
-  rpcUrls: { default: { http: ["https://arc-testnet.drpc.org"] } },
-});
+  const walletAddress = process.env.GUARDED_WALLET;
+  const vendorAddress = process.env.VENDOR_ADDRESS;
+ if (!walletAddress || !vendorAddress) {
+   throw new Error("Set GUARDED_WALLET and VENDOR_ADDRESS first.");
+ }
 
-// A live GuardedWallet on Arc Testnet. Swap in your own after you deploy it.
-const client = new ArcanumClient({
-  walletAddress: "0x34Ce73E82d48bF377597D8A3c80f9a6DF2085EFa",
-  chain: arcTestnet,
-  rpcUrl: "https://arc-testnet.drpc.org",
-});
+ // The SDK chain definition is sourced from Arc's current Testnet config.
+ // Arc's native USDC gas balance uses 18 decimals.
+ const client = new ArcanumClient({
+   walletAddress,
+   chain: arcTestnet,
+   rpcUrl: process.env.ARC_TESTNET_RPC ?? ARC_TESTNET_RPC_URL,
+ });
 
-const policy = await client.getPolicy();
-console.log("Per-tx cap:", formatUnits(policy.perTxCap, 6), "USDC");
+ const policy = await client.getPolicy();
+ // GuardedWallet policy and ERC20 USDC amounts use six-decimal token units.
+ console.log("Per-tx cap:", formatUnits(policy.perTxCap, 6), "USDC");
 
-const allowed = await client.simulate({
-  to: "0xF45C70f2b08397419b11751041c0D9547CcEDEaD", // allowlisted vendor
-  amount: parseUnits("1", 6),
-});
-console.log("Allowlisted vendor:", allowed.verdict);
+ const allowed = await client.simulate({
+   to: vendorAddress,
+   amount: usdcErc20(1),
+ });
+ console.log("Vendor verdict:", allowed.verdict, allowed.reason);
 
-const denied = await client.simulate({
-  to: "0xB1a111A87A454977F5fB2c02F547D0f346e23Ca8", // unknown vendor
-  amount: parseUnits("1", 6),
-});
-console.log("Unknown vendor:", denied.verdict, denied.reason ?? "");`}</CodeBlock>
+ const denied = await client.simulate({
+   to: vendorAddress,
+   amount: usdcErc20(1000000),
+ });
+ console.log("Large payment verdict:", denied.verdict, denied.reason);`}</CodeBlock>
                 <p className="mt-6 text-[13px] leading-[1.5] text-[var(--wl-secondary2)]">
                   Ready to deploy your own? Save this as deploy.mjs, set OPERATOR_KEY to a funded
                   Arc Testnet key, and run it.
                 </p>
                 <CodeBlock label="deploy.mjs / run: node deploy.mjs">{`import { WalletFactoryAbi } from "arcanum-sdk";
-import { createWalletClient, defineChain, http, parseUnits } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
+ import { ARC_TESTNET_RPC_URL, arcTestnet } from "arcanum-sdk/chains";
+ import { createWalletClient, http, parseUnits } from "viem";
+ import { privateKeyToAccount } from "viem/accounts";
 
-const arcTestnet = defineChain({
-  id: 5042002,
-  name: "Arc Testnet",
-  nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 6 },
-  rpcUrls: { default: { http: ["https://arc-testnet.drpc.org"] } },
-});
+ const operatorKey = process.env.OPERATOR_KEY;
+  const agentSigner = process.env.AGENT_SIGNER_ADDRESS;
+ if (!operatorKey || !agentSigner) {
+   throw new Error("Set OPERATOR_KEY and AGENT_SIGNER_ADDRESS first.");
+ }
 
-// The operator account that owns the Doctrine. Gas on Arc is paid in USDC.
-const account = privateKeyToAccount(process.env.OPERATOR_KEY);
-const walletClient = createWalletClient({ account, chain: arcTestnet, transport: http() });
+ // The operator account owns the Doctrine. Arc native USDC gas uses 18 decimals;
+ // GuardedWallet policy values below are ERC20 USDC base units (6 decimals).
+  const account = privateKeyToAccount(operatorKey);
+ const walletClient = createWalletClient({
+   account,
+   chain: arcTestnet,
+   transport: http(process.env.ARC_TESTNET_RPC ?? ARC_TESTNET_RPC_URL),
+ });
 
-// WalletFactory on Arc Testnet
-const WALLET_FACTORY = "0x51A560589e23AcD2e57173641267f4583e0e65E7";
+ // Current Arc Testnet deployment manifest:
+ // packages/contracts/deployments/arc-testnet.json
+ const WALLET_FACTORY = "0xbE1bC48F26e7166D872828d40e82A6407dbD350C";
 
-const policy = {
-  perTxCap: parseUnits("50", 6),
-  daily24hCap: parseUnits("500", 6),
-  monthlyCap: parseUnits("5000", 6),
-  allowedCategories: 0b11111n,
-  escalationThreshold: parseUnits("25", 6),
-  requireAllowlist: true,
-  freezeOnBlockedVendor: true,
-};
+ const policy = {
+   perTxCap: parseUnits("50", 6),
+   daily24hCap: parseUnits("500", 6),
+   monthlyCap: parseUnits("5000", 6), // wallet-wide monthly cap
+   allowedCategories: 0b11111n,
+   escalationThreshold: parseUnits("25", 6),
+   requireAllowlist: true,
+   freezeOnBlockedVendor: true,
+ };
 
-const agentSigner = "0xYourAgentSignerAddress"; // your AI agent's signing address
-const council = [account.address]; // escalation approvers
+ const council = [account.address]; // use additional approvers for a real quorum
 
-const txHash = await walletClient.writeContract({
-  address: WALLET_FACTORY,
-  abi: WalletFactoryAbi,
-  functionName: "createWallet",
-  args: [account.address, "ResearchAgent", policy, [agentSigner], council, 1, 3600],
-});
-console.log("Deployed:", txHash);`}</CodeBlock>
+ const txHash = await walletClient.writeContract({
+   address: WALLET_FACTORY,
+   abi: WalletFactoryAbi,
+   functionName: "createWallet",
+   args: [account.address, "ResearchAgent", policy, [agentSigner], council, 1, 3600],
+ });
+ console.log("Deployed:", txHash);`}</CodeBlock>
                 <div className="mt-8 space-y-3">
                   <div className="flex gap-3 border-l-2 border-[var(--wl-signal)] bg-[rgba(var(--wl-signal-rgb),.06)] px-4 py-3">
                     <div>
@@ -500,8 +525,10 @@ console.log("Deployed:", txHash);`}</CodeBlock>
                         INFO
                       </div>
                       <p className="mt-1 text-[12.5px] leading-[1.5] text-[var(--wl-body)]">
-                        USDC token amounts are expressed in 6-decimal base units. One dollar is
-                        parseUnits("1", 6).
+                        GuardedWallet policy and deployed ERC20 USDC amounts are expressed in
+                        6-decimal base units. Arc native USDC gas uses 18 decimals; source-chain
+                        ERC20/CCTP amounts also use 6. One GuardedWallet dollar is parseUnits("1",
+                        6).
                       </p>
                     </div>
                   </div>

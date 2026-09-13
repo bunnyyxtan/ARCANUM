@@ -2,6 +2,7 @@ import { syncSupabaseAuthSession } from "@arcanum/api/server";
 import {
   type AuthSessionData,
   getSessionOptions,
+  isCurrentSession,
   verifyBodySchema,
   verifySiweLogin,
 } from "@arcanum/auth";
@@ -21,6 +22,11 @@ export async function POST(request: Request) {
 
   try {
     const session = await getIronSession<AuthSessionData>(await cookies(), getSessionOptions());
+    if (session.user && !isCurrentSession(session.user)) {
+      await session.destroy();
+      return NextResponse.json({ error: "Missing nonce" }, { status: 400 });
+    }
+
     if (!session.nonce) {
       return NextResponse.json({ error: "Missing nonce" }, { status: 400 });
     }

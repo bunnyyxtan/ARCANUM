@@ -9,17 +9,16 @@ import { TRPCError } from "@trpc/server";
 import { http, createPublicClient, formatUnits, isAddress } from "viem";
 import { z } from "zod";
 
-import { verifyPolicyUpdatedReceipt } from "../chain";
+import { readWalletPolicySnapshot, verifyPolicyUpdatedReceipt } from "../chain";
 import {
   categoryNamesFromMask,
   readSupabasePolicies,
   readSupabasePolicy,
-  readSupabaseWalletByLooseId,
   readSupabaseWallets,
   recordSupabaseDeployedPolicy,
 } from "../supabase";
 import { protectedProcedure, publicProcedure, router } from "../trpc";
-import { findWalletByLooseId } from "./helpers";
+import { findWalletByLooseId, requireChainWalletOwner, requireWalletOwner } from "./helpers";
 
 function onChainPolicyWriteOnly(): never {
   throw new TRPCError({
@@ -132,21 +131,7 @@ export const policiesRouter = router({
     .input(deployedPolicyInputSchema)
     .mutation(async ({ ctx, input }) => {
       const walletAddress = input.walletAddress.toLowerCase();
-      const wallet = await readSupabaseWalletByLooseId(ctx, walletAddress);
-
-      if (!wallet || wallet.address.toLowerCase() !== walletAddress) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Governed wallet was not found for the signed-in owner.",
-        });
-      }
-
-      if (wallet.ownerAddress.toLowerCase() !== ctx.session.walletAddress.toLowerCase()) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Only the governed wallet owner can record a policy deployment.",
-        });
-      }
+      const wallet = await requireWalletOwner(ctx, walletAddress);
 
       let policyEvent: Awaited<ReturnType<typeof verifyPolicyUpdatedReceipt>>;
       try {
@@ -163,7 +148,17 @@ export const policiesRouter = router({
         });
       }
 
-      const chainPolicy = policyEvent.policy;
+      // Re-check immediately before the mirror write so a transfer during
+      // receipt verification cannot let the former owner commit metadata.
+      await requireChainWalletOwner(ctx, wallet.address);
+      const snapshot = await readWalletPolicySnapshot(
+        ctx.publicClient,
+        wallet.address as `0x${string}`,
+      );
+      const receiptVersion = Number(policyEvent.version);
+      const chainVersion = Number(snapshot.policyVersion);
+      const staleReceipt = receiptVersion !== chainVersion;
+      const chainPolicy = staleReceipt ? snapshot.policy : policyEvent.policy;
 
       const result = await recordSupabaseDeployedPolicy(ctx, wallet, {
         walletAddress: walletAddress as `0x${string}`,
@@ -175,6 +170,7 @@ export const policiesRouter = router({
         allowedCategories: categoryNamesFromMask(Number(chainPolicy.allowedCategories)),
         requireAllowlist: chainPolicy.requireAllowlist,
         freezeOnBlockedVendor: chainPolicy.freezeOnBlockedVendor,
+        version: chainVersion,
       });
 
       if (!result.ok) {
@@ -184,7 +180,13 @@ export const policiesRouter = router({
         });
       }
 
-      return result.data;
+      return {
+        ...result.data,
+        staleReceipt,
+        message: staleReceipt
+          ? `Receipt policy version ${receiptVersion} was stale; current chain version ${chainVersion} was recorded.`
+          : undefined,
+      };
     }),
 
   count: publicProcedure.query(async ({ ctx }) => {

@@ -6,6 +6,11 @@ import { useAccount } from "wagmi";
 
 export type AuthSessionUser = {
   walletAddress: string;
+  /**
+   * Returned by the session endpoint when available. It is part of the query
+   * identity because a same-wallet session can be issued for another tenant.
+   */
+  tenantId?: string;
 };
 
 type AuthSessionResponse = {
@@ -73,6 +78,27 @@ export function publishAuthSession(user: AuthSessionUser | null) {
   cachedUser = user;
   cachedAt = Date.now();
   window.dispatchEvent(new CustomEvent("arcanum:wallet-auth-updated", { detail: user }));
+}
+
+/**
+ * Query data is scoped to the connected wallet and the signed session, not
+ * merely to the route. A wallet switch must therefore produce a new scope
+ * before any old in-flight response can be observed by the next account.
+ */
+export function workspaceIdentityKey(input: {
+  address: string | null | undefined;
+  isConnected: boolean;
+  signedAddress: string | null | undefined;
+  tenantId?: string | null;
+}) {
+  const address = input.address?.toLowerCase();
+  if (!input.isConnected || !address) {
+    return "anonymous";
+  }
+
+  const signedAddress = input.signedAddress?.toLowerCase() ?? "unsigned";
+  const tenant = input.tenantId ?? "unknown-tenant";
+  return `wallet:${address}:session:${signedAddress}:tenant:${tenant}`;
 }
 
 export function useAuthSession() {
@@ -146,5 +172,6 @@ export function useWorkspaceMode() {
     isResolving: isConnecting || isReconnecting,
     sessionStatus: session.status,
     signedAddress,
+    tenantId: session.user?.tenantId ?? null,
   };
 }

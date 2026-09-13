@@ -7,6 +7,7 @@ import { formatUsd } from "@/lib/format/money";
 
 import { StatusPill } from "@/components/arcanum/status-pill";
 import type { AgentDetailController } from "../_hooks/use-agent-detail-controller";
+import { AgentFundingPanel } from "./agent-funding-panel";
 import { AgentSignerPanel } from "./agent-signer-panel";
 
 export function AgentWalletFile({ controller }: { controller: AgentDetailController }) {
@@ -86,6 +87,7 @@ export function AgentWalletFile({ controller }: { controller: AgentDetailControl
           </p>
         )}
       </div>
+      <AgentFundingPanel governedWalletAddress={governedWalletAddress} />
       <AgentSignerPanel governedWalletAddress={governedWalletAddress} />
       <div className="flex flex-wrap gap-2">
         <Link

@@ -26,3 +26,14 @@ allow-list. The equivalent inspection query is:
 ```sh
 psql "$SUPABASE_DB_URL" -c "select p.oid::regprocedure from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.prosecdef and has_function_privilege('anon',p.oid,'EXECUTE');"
 ```
+
+## Reconciling doctrine mirrors
+
+The `doctrines` table mirrors each governed wallet's onchain policy, keyed by
+the wallet and the chain's `policyVersion()`. If a mirror drifts (a deploy was
+recorded from a stale receipt, or a migration changed how a field is derived),
+audit it from `packages/api` with `npx tsx scripts/reconcile-doctrines.ts`.
+The script needs `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and `ARC_RPC_URL`,
+reads every wallet's policy from one chain snapshot, prints a per-wallet drift
+table and writes nothing. Pass `--apply` only after reviewing that table and
+after every migration up to `20260912170000` has been applied.

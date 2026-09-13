@@ -1,29 +1,33 @@
 "use client";
 
 import { EmberMark } from "@/components/warm/EmberMark";
-import {
-  ARC_EXPLORER_URL,
-  ARC_NETWORK_BADGE,
-  ARC_NETWORK_NAME,
-  arcChain,
-  escalationStatusFromIndex,
-} from "@arcanum/shared";
+import { ARC_EXPLORER_URL, ARC_NETWORK_BADGE, ARC_NETWORK_NAME, arcChain } from "@arcanum/shared";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Link from "next/link";
 
 import { Arrow } from "@/components/arcanum/arrow";
 import { ThemeToggle } from "@/components/warm/ThemeToggle";
-import { useEffect, useRef, useState } from "react";
+import { type MouseEvent as ReactMouseEvent, useEffect, useRef, useState } from "react";
 import type { Address, Hash } from "viem";
 import { useAccount, usePublicClient, useSwitchChain, useWriteContract } from "wagmi";
 
 import { describeChainError } from "@/lib/chain-errors";
 import { escalationManagerAbi } from "@/lib/contracts";
 import { contractAddresses } from "@/lib/deployment";
+import {
+  type EscalationChainTerms,
+  compareEscalationTerms,
+  escalationChainTermsFromDetail,
+  escalationExpiryState,
+  escalationStatusLabel,
+  escalationVotePreflightError,
+  formatBaseUnits,
+} from "@/lib/escalation-truth";
 import { isConfiguredAddress, isZeroAddress, shortAddress } from "@/lib/format/address";
-import { formatUsd } from "@/lib/format/money";
 import { getCountdownState } from "@/lib/format/time";
 import { trpc } from "@/lib/trpc";
+
+import { allowTrustedMutation } from "../../../(dashboard)/escalations/_lib/helpers";
 
 function isTxHashValue(value: string | null | undefined): value is `0x${string}` {
   return /^0x[a-fA-F0-9]{64}$/.test(value ?? "");
@@ -45,10 +49,16 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
   const utils = trpc.useUtils();
 
   const submittingRef = useRef(false);
+  const linkIdRef = useRef<string | null>(null);
   const [stage, setStage] = useState<Stage>("idle");
-  const [lastAction, setLastAction] = useState<"approve" | "reject" | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [contractTxHash, setContractTxHash] = useState<Hash | null>(null);
+  const [chainRead, setChainRead] = useState<{
+    state: "idle" | "loading" | "error";
+    error?: string;
+    terms?: EscalationChainTerms;
+  }>({ state: "idle" });
+  const [settledTerms, setSettledTerms] = useState<EscalationChainTerms | null>(null);
   const [now, setNow] = useState<number | undefined>(undefined);
 
   useEffect(() => {
@@ -56,6 +66,16 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    const nextLinkId = escalationId ?? `invalid:${txHash}`;
+    if (linkIdRef.current === nextLinkId) return;
+    linkIdRef.current = nextLinkId;
+    setSettledTerms(null);
+    setStage("idle");
+    setActionError(null);
+    setContractTxHash(null);
+  }, [escalationId, txHash]);
 
   const approvalQuery = trpc.escalations.publicByKey.useQuery(
     { escalationKey: escalationId ?? "0x" },
@@ -68,26 +88,124 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
   );
   const escalation = approvalQuery.data;
 
-  const amount =
-    escalation?.amount !== undefined && escalation?.amount !== null
-      ? formatUsd(Number(escalation.amount) / 1_000_000)
-      : "NO DATA";
-  const counterparty = escalation?.counterparty
-    ? shortAddress(escalation.counterparty)
-    : "ESCALATION NOT FOUND";
-  const walletLabel = escalation?.walletAddress ?? "UNKNOWN";
+  useEffect(() => {
+    let cancelled = false;
+    if (!escalation || !escalationManagerAddress || !escalationId || !publicClient) {
+      setChainRead({ state: "idle" });
+      return () => {
+        cancelled = true;
+      };
+    }
+    setChainRead({ state: "loading" });
+    void publicClient
+      .readContract({
+        address: escalationManagerAddress,
+        abi: escalationManagerAbi,
+        functionName: "getEscalation",
+        args: [escalationId],
+      })
+      .then((detail) => {
+        if (cancelled) return;
+        const terms = escalationChainTermsFromDetail(detail);
+        if (isZeroAddress(terms.walletAddress)) {
+          throw new Error(`Escalation was not found on ${ARC_NETWORK_NAME}.`);
+        }
+        const binding = compareEscalationTerms(
+          {
+            walletAddress: escalation.walletAddress,
+            counterpartyAddress: escalation.counterpartyAddress,
+            amountBaseUnits: escalation.amountBaseUnits,
+          },
+          terms,
+        );
+        if (!binding.ok) {
+          throw new Error(
+            `Displayed escalation terms do not match the current chain request (${binding.reason}).`,
+          );
+        }
+        setChainRead({ state: "idle", terms });
+      })
+      .catch((caught) => {
+        if (!cancelled) {
+          setChainRead({
+            state: "error",
+            error: caught instanceof Error ? caught.message : "Chain request could not be read.",
+          });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [escalation, escalationId, escalationManagerAddress, publicClient]);
+
+  const chainTerms = settledTerms ?? chainRead.terms;
+  const chainExpiryState =
+    chainTerms && now !== undefined
+      ? escalationExpiryState({
+          status: chainTerms.status,
+          expiresAt: chainTerms.expiresAt,
+          nowSeconds: BigInt(Math.floor(now / 1000)),
+        })
+      : null;
+  const displayBinding =
+    escalation && chainTerms
+      ? compareEscalationTerms(
+          {
+            walletAddress: escalation.walletAddress,
+            counterpartyAddress: escalation.counterpartyAddress,
+            amountBaseUnits: escalation.amountBaseUnits,
+          },
+          chainTerms,
+        )
+      : null;
+  const canonicalTermsReady = Boolean(
+    chainTerms &&
+      !isZeroAddress(chainTerms.walletAddress) &&
+      !isZeroAddress(chainTerms.counterpartyAddress) &&
+      displayBinding?.ok,
+  );
+  const amount = canonicalTermsReady ? formatBaseUnits(chainTerms?.amountBaseUnits) : "UNVERIFIED";
+  const counterparty = canonicalTermsReady
+    ? shortAddress(chainTerms?.counterpartyAddress ?? "")
+    : "TERMS UNVERIFIED";
+  const walletLabel = canonicalTermsReady
+    ? (chainTerms?.walletAddress ?? "UNKNOWN")
+    : "TERMS UNVERIFIED";
   const reason = escalation
     ? `Held under policy version ${escalation.policyVersion}.`
     : "No escalation was found for this id.";
-  const quorum = escalation ? `${escalation.signatureCount} / ${escalation.threshold}` : "N/A";
-  const escalationStatus = escalation?.status ?? null;
-  const stateLine = escalation
-    ? `ESC / ${escalationStatus}`
-    : approvalQuery.isLoading
-      ? "ESC / LOADING"
-      : "ESC / NOT FOUND";
+  const quorum = chainTerms
+    ? `${chainTerms.signaturesCount} / ${chainTerms.threshold}`
+    : escalation
+      ? `${escalation.signatureCount} / ${escalation.threshold}`
+      : "N/A";
+  const escalationStatus = chainTerms?.status ?? null;
   const createdLabel = "WITHHELD FROM PUBLIC VIEW";
   const countdown = getCountdownState(escalation?.expiresAt ?? null, now);
+  const chainExpirySeconds = chainTerms ? Number(chainTerms.expiresAt) : null;
+  const chainExpiryMalformed =
+    chainExpirySeconds !== null &&
+    (!Number.isSafeInteger(chainExpirySeconds) || chainExpirySeconds < 0);
+  const chainExpired = chainExpiryMalformed || chainExpiryState === "UNSWEPT";
+  const expiredUnsettled = chainExpiryState === "UNSWEPT";
+  const readModelExpiryReached = Boolean(escalation?.status === "PENDING" && countdown.isExpired);
+  const expiryVerificationRequired =
+    !expiredUnsettled && readModelExpiryReached && chainRead.state !== "idle";
+  const stateLine = escalation
+    ? escalationStatus
+      ? `ESC / ${
+          expiredUnsettled
+            ? "EXPIRED · UNSWEPT"
+            : expiryVerificationRequired
+              ? "EXPIRY · VERIFYING"
+              : escalationStatus
+        }`
+      : chainRead.state === "error"
+        ? "ESC / ERROR"
+        : "ESC / CHECKING CHAIN"
+    : approvalQuery.isLoading || chainRead.state === "loading"
+      ? "ESC / LOADING"
+      : "ESC / NOT FOUND";
 
   const isBusy =
     submittingRef.current ||
@@ -105,24 +223,59 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
         ? `${ARC_NETWORK_NAME} RPC is unavailable.`
         : !escalation
           ? "No escalation found for this id."
-          : countdown.isExpired
-            ? "Escalation is expired. Expired requests cannot be signed."
-            : escalationStatus && escalationStatus !== "PENDING"
-              ? `Escalation is already ${escalationStatus.toLowerCase()}.`
-              : null;
+          : chainRead.state === "loading"
+            ? "Reading the canonical request from Arc."
+            : chainRead.state === "error"
+              ? "Unable to read the canonical request from Arc."
+              : !canonicalTermsReady
+                ? `Displayed terms do not match the canonical request (${displayBinding?.reason ?? "unknown"}).`
+                : chainTerms?.status !== "PENDING"
+                  ? `Escalation is already ${chainTerms?.status.toLowerCase()}.`
+                  : chainExpiryMalformed
+                    ? "Canonical escalation expiry is malformed."
+                    : chainExpired
+                      ? "Escalation is expired. Expired requests cannot be signed."
+                      : null;
+  const sweepDisabledReason = !escalationId
+    ? "Escalation id is missing or malformed."
+    : !escalationManagerAddress
+      ? "EscalationManager address is not configured."
+      : !publicClient
+        ? `${ARC_NETWORK_NAME} RPC is unavailable.`
+        : chainRead.state === "loading"
+          ? "Reading the canonical request from Arc."
+          : chainRead.state === "error"
+            ? "Unable to read the canonical request from Arc."
+            : !canonicalTermsReady
+              ? `Displayed terms do not match the canonical request (${displayBinding?.reason ?? "unknown"}).`
+              : chainTerms?.status !== "PENDING"
+                ? `Escalation is already ${chainTerms?.status.toLowerCase()}.`
+                : chainExpiryMalformed
+                  ? "Canonical escalation expiry is malformed."
+                  : chainExpiryState !== "UNSWEPT"
+                    ? "Escalation is not yet expired onchain."
+                    : null;
 
   const actionsDisabled =
-    Boolean(disabledReason) || isBusy || stage === "pending_indexer" || stage === "done";
+    Boolean(disabledReason) ||
+    expiryVerificationRequired ||
+    isBusy ||
+    stage === "pending_indexer" ||
+    stage === "done";
+  const sweepActionsDisabled =
+    Boolean(sweepDisabledReason) || isBusy || stage === "pending_indexer" || stage === "done";
 
   const statusLine =
     actionError ??
-    (stage === "pending_indexer"
-      ? "Contract confirmed. Updating the record."
-      : stage === "checking"
-        ? `Checking approver permission on ${ARC_NETWORK_NAME}.`
-        : disabledReason);
+    (expiredUnsettled
+      ? (sweepDisabledReason ?? "Expired request can be settled by any connected wallet.")
+      : stage === "pending_indexer"
+        ? "Contract confirmed. Updating the record."
+        : stage === "checking"
+          ? `Checking approver permission on ${ARC_NETWORK_NAME}.`
+          : disabledReason);
 
-  const readPreflight = async () => {
+  const readPreflight = async (action: "approve" | "reject" | "sweepExpired") => {
     if (!escalationManagerAddress || !escalationId || !publicClient || !address) {
       throw new Error(disabledReason ?? "Escalation action is unavailable.");
     }
@@ -133,18 +286,44 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
       functionName: "getEscalation",
       args: [escalationId],
     });
-    const wallet = detail[0] as Address;
-    const status = escalationStatusFromIndex(Number(detail[8])) ?? "INVALIDATED";
+    const terms = escalationChainTermsFromDetail(detail);
 
-    if (isZeroAddress(wallet)) {
+    if (isZeroAddress(terms.walletAddress)) {
       throw new Error(`Escalation was not found on ${ARC_NETWORK_NAME}.`);
     }
-    if (status !== "PENDING") {
-      throw new Error(`Escalation is already ${status.toLowerCase()}.`);
+    if (!escalation) {
+      throw new Error("Escalation read model is unavailable.");
+    }
+    const binding = compareEscalationTerms(
+      {
+        walletAddress: escalation.walletAddress,
+        counterpartyAddress: escalation.counterpartyAddress,
+        amountBaseUnits: escalation.amountBaseUnits,
+      },
+      terms,
+    );
+    if (!binding.ok) {
+      throw new Error(
+        `Displayed escalation terms do not match the current chain request (${binding.reason}).`,
+      );
+    }
+    if (terms.status !== "PENDING") {
+      throw new Error(`Escalation is already ${terms.status.toLowerCase()}.`);
     }
 
-    const expiresAtMs = Number(detail[5]) * 1000;
-    if (Number.isFinite(expiresAtMs) && Date.now() >= expiresAtMs) {
+    const expiresAtSeconds = Number(terms.expiresAt);
+    if (!Number.isSafeInteger(expiresAtSeconds) || expiresAtSeconds < 0) {
+      throw new Error("Escalation expiry returned by Arc is malformed.");
+    }
+    const expiresAtMs = expiresAtSeconds * 1000;
+    const expired = Date.now() >= expiresAtMs;
+    if (action === "sweepExpired") {
+      if (!expired) {
+        throw new Error("Escalation has not expired yet. It cannot be swept.");
+      }
+      return terms;
+    }
+    if (expired) {
       throw new Error("Escalation is expired. Expired requests cannot be signed.");
     }
 
@@ -153,7 +332,7 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
         address: escalationManagerAddress,
         abi: escalationManagerAbi,
         functionName: "isRequiredSigner",
-        args: [wallet, address],
+        args: [terms.walletAddress, address],
       }),
       publicClient.readContract({
         address: escalationManagerAddress,
@@ -166,30 +345,44 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
     if (!requiredSigner) {
       throw new Error("Connected wallet is not an authorized approver for this escalation.");
     }
-    if (alreadySigned) {
-      throw new Error("This approver has already voted on this escalation.");
-    }
+    const voteError = escalationVotePreflightError({
+      action,
+      status: terms.status,
+      alreadySigned,
+    });
+    if (voteError) throw new Error(voteError);
 
-    return { signaturesCount: Number(detail[7]), threshold: Number(detail[6]) };
+    return terms;
   };
 
-  const submit = async (action: "approve" | "reject") => {
+  const submit = async (
+    action: "approve" | "reject" | "sweepExpired",
+    event: ReactMouseEvent<HTMLButtonElement>,
+  ) => {
+    if (!allowTrustedMutation(`public-escalations.${action}`, event)) return;
     if (!isConnected || !address) {
       openConnectModal?.();
       return;
     }
-    if (actionsDisabled || submittingRef.current || !escalationManagerAddress || !escalationId) {
+    const actionDisabled = action === "sweepExpired" ? sweepActionsDisabled : actionsDisabled;
+    if (
+      actionDisabled ||
+      submittingRef.current ||
+      !escalationManagerAddress ||
+      !escalationId ||
+      !publicClient
+    ) {
       return;
     }
+    const client = publicClient;
 
     submittingRef.current = true;
-    setLastAction(action);
     setActionError(null);
     setContractTxHash(null);
     setStage("checking");
 
     try {
-      const preflight = await readPreflight();
+      await readPreflight(action);
 
       if (chainId !== arcChain.id) {
         setStage("wallet");
@@ -207,34 +400,68 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
       setContractTxHash(hash);
       setStage("confirming");
 
-      const receipt = await publicClient?.waitForTransactionReceipt({
+      const receipt = await client.waitForTransactionReceipt({
         hash,
         confirmations: 1,
       });
-      if (receipt?.status !== "success") {
+      if (receipt.status !== "success") {
         throw new Error("Escalation transaction reverted.");
       }
 
-      await utils.escalations.publicByKey.invalidate({ escalationKey: escalationId });
+      const settledDetail = await client.readContract({
+        address: escalationManagerAddress,
+        abi: escalationManagerAbi,
+        functionName: "getEscalation",
+        args: [escalationId],
+      });
+      const settled = escalationChainTermsFromDetail(settledDetail);
+      const settledBinding = compareEscalationTerms(
+        {
+          walletAddress: escalation?.walletAddress,
+          counterpartyAddress: escalation?.counterpartyAddress,
+          amountBaseUnits: escalation?.amountBaseUnits,
+        },
+        settled,
+      );
+      if (!settledBinding.ok) {
+        throw new Error(
+          `Settled chain terms no longer match the displayed request (${settledBinding.reason}).`,
+        );
+      }
+      setSettledTerms(settled);
+      setChainRead({ state: "idle", terms: settled });
+      setStage("pending_indexer");
+      try {
+        await Promise.all([
+          utils.escalations.publicByKey.invalidate({ escalationKey: escalationId }),
+          approvalQuery.refetch(),
+        ]);
+      } catch {
+        // The receipt and settled chain read are authoritative; a cache
+        // refresh failure must not replace that outcome with a false error.
+      }
       setStage("done");
 
       const { toast } = await import("sonner");
-      if (action === "approve") {
-        const nextCount = preflight.signaturesCount + 1;
-        toast.success(
-          nextCount >= preflight.threshold
-            ? "ESCALATION APPROVED / QUORUM REACHED"
-            : `ESCALATION APPROVED / ${nextCount} OF ${preflight.threshold} QUORUM`,
-          {
-            description:
-              nextCount >= preflight.threshold
-                ? `Release for ${amount} to ${counterparty} executed. The record will update shortly.`
-                : `Vote for ${amount} to ${counterparty} confirmed onchain. The record will update shortly.`,
-          },
-        );
+      if (settled.status === "PENDING") {
+        toast.success(`VOTE RECORDED / ${settled.signaturesCount} OF ${settled.threshold} QUORUM`, {
+          description: `Vote for ${amount} to ${counterparty} confirmed onchain. Quorum remains pending.`,
+        });
+      } else if (settled.status === "EXECUTED") {
+        toast.success(escalationStatusLabel(settled.status), {
+          description: `Release for ${amount} to ${counterparty} executed onchain.`,
+        });
+      } else if (settled.status === "DENIED") {
+        toast.warning(escalationStatusLabel(settled.status), {
+          description: `Policy re-evaluation denied release for ${amount} to ${counterparty}.`,
+        });
+      } else if (settled.status === "EXPIRED") {
+        toast.success("ESCALATION EXPIRED · SETTLED", {
+          description: `Expiry for ${amount} to ${counterparty} is now finalized onchain.`,
+        });
       } else {
-        toast.success("ESCALATION REJECTED", {
-          description: `Rejection for ${amount} to ${counterparty} confirmed onchain. The record will update shortly.`,
+        toast.warning(escalationStatusLabel(settled.status), {
+          description: `The decision settled as ${settled.status}; no execution was inferred.`,
         });
       }
     } catch (caught) {
@@ -248,7 +475,17 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
     }
   };
 
-  const decided = stage === "done";
+  const outcomeTerms =
+    settledTerms ?? (chainTerms && chainTerms.status !== "PENDING" ? chainTerms : null);
+  const decided = stage === "done" || Boolean(outcomeTerms);
+  const settledHeading =
+    outcomeTerms?.status === "EXECUTED"
+      ? "Release executed onchain."
+      : outcomeTerms?.status === "PENDING"
+        ? "Vote recorded; quorum remains pending."
+        : outcomeTerms
+          ? `${escalationStatusLabel(outcomeTerms.status)}.`
+          : "Decision state is settled.";
   const contractTxUrl = contractTxHash
     ? `${process.env.NEXT_PUBLIC_ARCSCAN_URL ?? ARC_EXPLORER_URL}/tx/${contractTxHash}`
     : null;
@@ -366,48 +603,115 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
               YOUR SIGNATURE
             </p>
 
-            {!decided && stage !== "checking" && stage !== "wallet" && stage !== "confirming" && (
-              <>
-                <h3 className="font-display mt-5 text-[22px] font-medium tracking-[-.015em]">
-                  Bless or restrain
-                  <br />
-                  the request.
-                </h3>
-                <p className="mt-4 text-[13px] leading-[1.5] text-[var(--wl-body)]">
-                  Your decision is signed onchain and becomes part of the immutable decision record.
-                  There is no silent approval.
-                </p>
-                <div className="mt-7 grid grid-cols-1 gap-3 sm:grid-cols-2 md:flex">
-                  <button
-                    type="button"
-                    onClick={() => void submit("approve")}
-                    disabled={actionsDisabled}
-                    className="pa-action group relative min-h-12 md:min-h-0 overflow-hidden rounded-full bg-[var(--wl-signal)] px-5 py-3 text-[11px] font-semibold text-[var(--wl-bg)] transition duration-[220ms] hover:-translate-y-0.5 hover:shadow-[0_10px_26px_-9px_rgba(var(--wl-signal-rgb),.5)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-none"
-                  >
-                    <span className="relative z-10">
-                      {!isConnected ? "Connect to approve" : "Approve transaction"}{" "}
-                      <Arrow glyph="↗" className="ml-2 inline-block group-disabled:translate-x-0" />
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void submit("reject")}
-                    disabled={actionsDisabled}
-                    className="pa-action group relative min-h-12 md:min-h-0 overflow-hidden rounded-full border border-[var(--wl-line)] px-5 py-3 text-[11px] font-semibold text-[var(--wl-ink)] transition duration-[220ms] hover:-translate-y-0.5 hover:border-[var(--wl-ink)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
-                  >
-                    <span className="relative z-10">
-                      Reject{" "}
-                      <Arrow glyph="↗" className="ml-2 inline-block group-disabled:translate-x-0" />
-                    </span>
-                  </button>
-                </div>
-                {statusLine && (
-                  <p className="mt-5 font-mono text-[10px] leading-[1.5] text-[var(--wl-secondary)]">
-                    {statusLine}
+            {!decided &&
+              !expiredUnsettled &&
+              !expiryVerificationRequired &&
+              stage !== "checking" &&
+              stage !== "wallet" &&
+              stage !== "confirming" && (
+                <>
+                  <h3 className="font-display mt-5 text-[22px] font-medium tracking-[-.015em]">
+                    Bless or restrain
+                    <br />
+                    the request.
+                  </h3>
+                  <p className="mt-4 text-[13px] leading-[1.5] text-[var(--wl-body)]">
+                    Your decision is signed onchain and becomes part of the immutable decision
+                    record. There is no silent approval.
                   </p>
-                )}
-              </>
-            )}
+                  <div className="mt-7 grid grid-cols-1 gap-3 sm:grid-cols-2 md:flex">
+                    <button
+                      type="button"
+                      onClick={(event) => void submit("approve", event)}
+                      disabled={actionsDisabled}
+                      className="pa-action group relative min-h-12 md:min-h-0 overflow-hidden rounded-full bg-[var(--wl-signal)] px-5 py-3 text-[11px] font-semibold text-[var(--wl-bg)] transition duration-[220ms] hover:-translate-y-0.5 hover:shadow-[0_10px_26px_-9px_rgba(var(--wl-signal-rgb),.5)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-none"
+                    >
+                      <span className="relative z-10">
+                        {!isConnected ? "Connect to approve" : "Approve transaction"}{" "}
+                        <Arrow
+                          glyph="↗"
+                          className="ml-2 inline-block group-disabled:translate-x-0"
+                        />
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(event) => void submit("reject", event)}
+                      disabled={actionsDisabled}
+                      className="pa-action group relative min-h-12 md:min-h-0 overflow-hidden rounded-full border border-[var(--wl-line)] px-5 py-3 text-[11px] font-semibold text-[var(--wl-ink)] transition duration-[220ms] hover:-translate-y-0.5 hover:border-[var(--wl-ink)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
+                    >
+                      <span className="relative z-10">
+                        Reject{" "}
+                        <Arrow
+                          glyph="↗"
+                          className="ml-2 inline-block group-disabled:translate-x-0"
+                        />
+                      </span>
+                    </button>
+                  </div>
+                  {statusLine && (
+                    <p className="mt-5 font-mono text-[10px] leading-[1.5] text-[var(--wl-secondary)]">
+                      {statusLine}
+                    </p>
+                  )}
+                </>
+              )}
+
+            {!decided &&
+              expiredUnsettled &&
+              stage !== "checking" &&
+              stage !== "wallet" &&
+              stage !== "confirming" && (
+                <div className="py-8">
+                  <p className="font-mono text-[10px] uppercase tracking-[.15em] text-[var(--wl-amber)]">
+                    EXPIRED · UNSWEPT
+                  </p>
+                  <h3 className="font-display mt-5 text-[25px] font-medium tracking-[-.015em]">
+                    Settlement is still pending.
+                  </h3>
+                  <p className="mt-4 text-[13px] leading-[1.5] text-[var(--wl-body)]">
+                    This request passed its expiry while still pending. Approve and reject are
+                    disabled; any connected wallet may settle the expiry onchain.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={(event) => void submit("sweepExpired", event)}
+                    disabled={sweepActionsDisabled}
+                    className="pa-action group relative mt-7 min-h-12 overflow-hidden rounded-full bg-[var(--wl-signal)] px-5 py-3 text-[11px] font-semibold text-[var(--wl-bg)] transition duration-[220ms] hover:-translate-y-0.5 hover:shadow-[0_10px_26px_-9px_rgba(var(--wl-signal-rgb),.5)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-none md:min-h-0"
+                  >
+                    <span className="relative z-10">
+                      {!isConnected ? "Connect wallet to settle" : "Settle expired request"}{" "}
+                      <Arrow glyph="↗" className="ml-2 inline-block group-disabled:translate-x-0" />
+                    </span>
+                  </button>
+                  {statusLine && (
+                    <p className="mt-5 font-mono text-[10px] leading-[1.5] text-[var(--wl-secondary)]">
+                      {statusLine}
+                    </p>
+                  )}
+                </div>
+              )}
+
+            {!decided &&
+              expiryVerificationRequired &&
+              stage !== "checking" &&
+              stage !== "wallet" &&
+              stage !== "confirming" && (
+                <div className="py-8">
+                  <p className="font-mono text-[10px] uppercase tracking-[.15em] text-[var(--wl-amber)]">
+                    EXPIRY · VERIFYING ONCHAIN
+                  </p>
+                  <p className="mt-4 text-[13px] leading-[1.5] text-[var(--wl-body)]">
+                    The read model has reached expiry. Decisions stay disabled until the canonical
+                    EscalationManager state is confirmed.
+                  </p>
+                  {statusLine && (
+                    <p className="mt-5 font-mono text-[10px] leading-[1.5] text-[var(--wl-secondary)]">
+                      {statusLine}
+                    </p>
+                  )}
+                </div>
+              )}
 
             {(stage === "checking" || stage === "wallet" || stage === "confirming") && (
               <div className="py-12">
@@ -428,17 +732,22 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
             {decided && (
               <div className="py-8">
                 <p className="font-mono text-[10px] uppercase tracking-[.15em] text-[var(--wl-green)]">
-                  DECISION RECORDED
+                  {stage === "pending_indexer"
+                    ? "ONCHAIN SETTLED · REFRESHING READ MODEL"
+                    : "DECISION RECORDED"}
                 </p>
                 <h3
                   className={`font-display mt-5 text-[25px] font-medium ${
-                    lastAction === "approve" ? "text-[var(--wl-green)]" : "text-[var(--wl-signal)]"
+                    outcomeTerms?.status === "EXECUTED"
+                      ? "text-[var(--wl-green)]"
+                      : "text-[var(--wl-signal)]"
                   }`}
                 >
-                  {lastAction === "approve" ? "Approved by operator." : "Rejected by operator."}
+                  {settledHeading}
                 </h3>
                 <p className="mt-4 text-[13px] leading-[1.5] text-[var(--wl-body)]">
-                  The signed record is now visible to the agent operator and the public ledger.
+                  The settled chain status and signature count above are authoritative; no action
+                  intent was used to infer execution.
                 </p>
                 {contractTxUrl && (
                   <a

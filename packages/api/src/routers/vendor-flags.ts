@@ -1,7 +1,9 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
+import { readCallerMembership } from "../supabase";
 import {
+  VENDOR_REVIEW_WRITER_ROLES,
   flagVendor,
   listVendorFlagHistory,
   listVendorFlags,
@@ -39,6 +41,20 @@ const NO_REGISTER = new TRPCError({
   message: "No governed wallet is linked to this account yet.",
 });
 
+// Membership is the authority for workspace capabilities. The role carried in
+// a SIWE session is intentionally not consulted because it is only a
+// convenience snapshot and can be stale after a membership change.
+async function requireVendorReviewWriter(ctx: Parameters<typeof readCallerMembership>[0]) {
+  const membership = await readCallerMembership(ctx);
+  if (!membership || !VENDOR_REVIEW_WRITER_ROLES.has(membership.role.toLowerCase())) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Only workspace owners and approvers can change the vendor review register.",
+    });
+  }
+  return membership;
+}
+
 export const vendorFlagsRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
     try {
@@ -59,6 +75,7 @@ export const vendorFlagsRouter = router({
   }),
 
   flag: protectedProcedure.input(vendorFlagCreateSchema).mutation(async ({ ctx, input }) => {
+    await requireVendorReviewWriter(ctx);
     try {
       const flag = await flagVendor(ctx, {
         tenantId: tenantIdFor(ctx),
@@ -87,6 +104,7 @@ export const vendorFlagsRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      await requireVendorReviewWriter(ctx);
       try {
         const flag = await updateVendorFlagNote(ctx, {
           tenantId: tenantIdFor(ctx),
@@ -112,6 +130,7 @@ export const vendorFlagsRouter = router({
     }),
 
   unflag: protectedProcedure.input(vendorFlagInputSchema).mutation(async ({ ctx, input }) => {
+    await requireVendorReviewWriter(ctx);
     try {
       // Clearing a flag that is already clear is a legitimate idempotent
       // success, so the result is the same either way.

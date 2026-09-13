@@ -31,35 +31,6 @@ export function rowsForWallets(rows: SupabaseRow[], wallets: Wallet[]) {
   return rows.filter((row) => walletForRow(row, wallets) !== null);
 }
 
-/**
- * Vendors are organisation-scoped: the table has no wallet column, so a row can
- * only be tied to the org. Keep every row for an org the caller owns a wallet
- * in, and attribute it to that org's first wallet purely for display.
- */
-export function orgScopedRowsForWallets(rows: SupabaseRow[], wallets: Wallet[]) {
-  if (wallets.length === 0) {
-    return [] as { row: SupabaseRow; wallet: Wallet }[];
-  }
-
-  const walletsByOrg = new Map<string, Wallet>();
-  for (const wallet of wallets) {
-    if (!walletsByOrg.has(wallet.orgId)) {
-      walletsByOrg.set(wallet.orgId, wallet);
-    }
-  }
-
-  const matched: { row: SupabaseRow; wallet: Wallet }[] = [];
-  for (const row of rows) {
-    const wallet =
-      walletForRow(row, wallets) ?? walletsByOrg.get(stringField(row, ["organization_id"], ""));
-    if (wallet) {
-      matched.push({ row, wallet });
-    }
-  }
-
-  return matched;
-}
-
 export function rowsForWalletIdentity(rows: SupabaseRow[], wallets: Wallet[]) {
   const walletAddresses = new Set(wallets.map((wallet) => wallet.address.toLowerCase()));
   const walletIds = new Set(wallets.map((wallet) => wallet.id));

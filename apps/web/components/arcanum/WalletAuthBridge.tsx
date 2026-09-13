@@ -106,7 +106,7 @@ export function WalletAuthBridge() {
         authedAddressRef.current = address;
         failedAddressRef.current = null;
         publishAuthSession(sessionUser);
-        await utils.org.getCurrent.invalidate();
+        await Promise.all([utils.org.getCurrent.invalidate(), utils.receipts.invalidate()]);
         toast.success("WALLET AUTHORIZED");
       } catch (error) {
         failedAddressRef.current = address;
@@ -137,7 +137,7 @@ export function WalletAuthBridge() {
         signingRef.current = false;
       }
     },
-    [address, disconnect, isConnected, signMessageAsync, utils.org.getCurrent],
+    [address, disconnect, isConnected, signMessageAsync, utils.org.getCurrent, utils.receipts],
   );
 
   useEffect(() => {

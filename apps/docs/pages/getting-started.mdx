@@ -1,15 +1,19 @@
 # 10-minute DAO Treasury Agent
 
-Helix DAO wants `TreasuryRebalancerAgent` to rebalance USDC positions across Aave, Compound, and Morpho on Arc. The agent gets a $10K monthly budget, $5K per-transfer and daily caps, a $1K escalation threshold, and a 2-of-3 council for human release.
+Helix DAO wants `TreasuryRebalancerAgent` to rebalance USDC positions across Aave, Compound, and Morpho on Arc. The agent gets a $10K wallet-wide monthly budget, $5K per-payment and daily caps, a $1K escalation threshold, and a 2-of-3 council for human release.
 
 ## Step 1 - Install
 
 These snippets are Arc Testnet examples for local development. Keep private keys
 in local environment variables only, and do not commit `.env` files.
 
+Arc native USDC gas uses 18 decimals. GuardedWallet policy, vendor caps, and
+payment amounts are deployed ERC20 USDC base units with 6 decimals, so the
+`parseUnits(..., 6)` calls below are intentional.
+
 ```ts
 import { ArcanumClient } from "arcanum-sdk"
-import { arcTestnet } from "arcanum-sdk/chains"
+import { ARC_TESTNET_RPC_URL, arcTestnet } from "arcanum-sdk/chains"
 import { createWalletClient, http, parseUnits } from "viem"
 import { privateKeyToAccount } from "viem/accounts"
 ```
@@ -21,10 +25,15 @@ npm install arcanum-sdk viem
 ## Step 2 - Deploy through WalletFactory
 
 ```ts
-import { WalletFactoryAbi } from "@arcanum/contracts"
+import { WalletFactoryAbi } from "arcanum-sdk"
 
 const owner = privateKeyToAccount(process.env.DAO_DEPLOYER_KEY as `0x${string}`)
-const client = createWalletClient({ account: owner, chain: arcTestnet, transport: http(process.env.ARC_TESTNET_RPC!) })
+const client = createWalletClient({
+  account: owner,
+  chain: arcTestnet,
+  transport: http(process.env.ARC_TESTNET_RPC ?? ARC_TESTNET_RPC_URL),
+})
+const WALLET_FACTORY = "0xbE1bC48F26e7166D872828d40e82A6407dbD350C" as `0x${string}`
 
 const policy = {
   perTxCap: parseUnits("5000", 6),
@@ -37,7 +46,7 @@ const policy = {
 }
 
 const hash = await client.writeContract({
-  address: process.env.WALLET_FACTORY as `0x${string}`,
+  address: WALLET_FACTORY,
   abi: WalletFactoryAbi,
   functionName: "createWallet",
   args: [
@@ -63,7 +72,7 @@ The constructor above installs the first policy. Later updates use `GuardedWalle
 ## Step 4 - Seed the vendor registry
 
 ```ts
-import { GuardedWalletAbi } from "@arcanum/contracts"
+import { GuardedWalletAbi } from "arcanum-sdk"
 
 for (const vendor of [
   { address: process.env.AAVE_POOL as `0x${string}`, category: 1 },

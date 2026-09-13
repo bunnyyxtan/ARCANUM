@@ -1,5 +1,8 @@
+"use client";
+
 import { ARC_NETWORK_BADGE, ARC_NETWORK_NAME } from "@arcanum/shared";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { CSSProperties, MouseEvent } from "react";
 import type { Hash } from "viem";
 
@@ -36,6 +39,7 @@ export function PolicyHeader({
   setSelectedPolicyWalletAddress,
   unsavedCount,
 }: PolicyHeaderProps) {
+  const router = useRouter();
   return (
     <>
       <div
@@ -102,9 +106,19 @@ export function PolicyHeader({
           </span>
           <select
             value={selectedPolicyWalletAddress}
-            onChange={(event) => setSelectedPolicyWalletAddress(event.target.value)}
+            onChange={(event) => {
+              const nextWallet = policyWalletOptions.find(
+                (wallet) => wallet.address === event.target.value,
+              );
+              if (!nextWallet) return;
+              setSelectedPolicyWalletAddress(nextWallet.address);
+              router.push(`/agents/${nextWallet.address}/policy`);
+            }}
             className="border-b border-[var(--wl-faint)] bg-transparent py-2 font-mono text-[12px] outline-none focus:border-[var(--wl-signal)]"
           >
+            <option value="" disabled>
+              No governed wallet selected
+            </option>
             {policyWalletOptions.map((wallet) => (
               <option key={wallet.id} value={wallet.address}>
                 {wallet.label} · {shortAddress(wallet.address)}

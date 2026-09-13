@@ -35,6 +35,7 @@ export type SupabaseCreatedWalletInput = {
   signers: `0x${string}`[];
   council: `0x${string}`[];
   quorum: number;
+  allowedCategories: string[];
 };
 
 export type SupabaseDeployedPolicyInput = {
@@ -47,11 +48,12 @@ export type SupabaseDeployedPolicyInput = {
   allowedCategories: string[];
   requireAllowlist: boolean;
   freezeOnBlockedVendor: boolean;
+  version: number;
 };
 
 export type SupabaseEscalationDecisionInput = {
   escalationKey: `0x${string}`;
-  status: "released" | "denied" | "expired" | "cancelled" | "invalidated";
+  status: "released" | "rejected" | "denied" | "expired" | "cancelled" | "invalidated";
   txHash: `0x${string}`;
   approvalsCount: number;
 };
@@ -81,8 +83,13 @@ export async function recordSupabaseDeployedPolicy(
     const nextCategories = [...input.allowedCategories]
       .map((category) => category.toLowerCase())
       .sort();
+    const currentVersion = numberField(current, ["version"], 0);
+    if (input.version < currentVersion) {
+      return { ok: true, data: { version: currentVersion } };
+    }
     const unchanged =
       Boolean(current) &&
+      input.version === currentVersion &&
       moneyEquals(current, "daily_cap_usdc", input.dailyCap) &&
       moneyEquals(current, "per_tx_cap_usdc", input.perTxCap) &&
       moneyEquals(current, "monthly_cap_usdc", input.monthlyCap) &&
@@ -98,7 +105,7 @@ export async function recordSupabaseDeployedPolicy(
       };
     }
 
-    const version = numberField(current, ["version"], 0) + 1;
+    const version = input.version;
     const now = new Date().toISOString();
 
     await writeDoctrineRow(
@@ -161,7 +168,7 @@ export async function recordSupabaseEscalationDecision(
     if (input.status === "released") {
       patch.release_tx_hash = input.txHash;
     }
-    if (input.status === "denied") {
+    if (input.status === "rejected" || input.status === "denied") {
       patch.deny_tx_hash = input.txHash;
     }
 
@@ -224,6 +231,7 @@ export async function recordSupabaseCreatedWallet(
       p_daily_cap: input.dailyCap,
       p_monthly_cap: input.monthlyCap,
       p_escalation_threshold: input.escalationThreshold,
+      p_allowed_categories: input.allowedCategories,
       p_require_allowlist: input.requireAllowlist,
       p_freeze_on_blocked_vendor: input.freezeOnBlockedVendor,
       p_signers: input.signers.map((address) => address.toLowerCase()),
@@ -297,6 +305,11 @@ export async function ensureOwnerWorkspaceForWallet(
   client: SupabaseServiceRoleClient,
   ownerAddress: string,
 ) {
+  if (process.env.ARCANUM_DEPLOYMENT_MODE === "multi-tenant") {
+    throw new Error(
+      "multi-tenant mode requires tenant-scoped Supabase identity, which this build does not implement; run single-tenant",
+    );
+  }
   const walletAddress = ownerAddress.toLowerCase();
   const now = new Date().toISOString();
   const [existingProfile] = await client.selectRows("profiles", {
@@ -373,19 +386,13 @@ export async function writeDoctrineRow(
   row: SupabaseRow,
   governedWalletId: string,
 ) {
-  const version = numberField(row, ["version"], 1);
-  const [existing] = await client.selectRows("doctrines", {
-    filters: { governed_wallet_id: governedWalletId, version },
-    limit: 1,
-  });
-  const existingId = stringField(existing, ["id"], "");
-
-  if (existingId) {
-    await client.patchRows("doctrines", row, { id: existingId });
-    return;
-  }
-
-  await client.upsertRows("doctrines", [{ ...row, created_at: new Date().toISOString() }]);
+  // Keyed by chain version: an insert takes the column default for
+  // `created_at`, and a merge for an already-mirrored version must not move it.
+  await client.upsertRows(
+    "doctrines",
+    [{ ...row, governed_wallet_id: governedWalletId }],
+    "governed_wallet_id,version",
+  );
 }
 
 export async function writePublicWalletProfileRow(

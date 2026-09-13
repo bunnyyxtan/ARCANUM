@@ -17,10 +17,14 @@ export function useVendorFilters(vendors: readonly Vendor[]) {
     [vendors, category, query],
   );
   return {
-    approvedCount: vendors.filter((vendor) => vendor.trust !== "blocked").length,
+    approvedCount: vendors.filter(
+      (vendor) => vendor.trust === "approved" || vendor.trust === "confidential",
+    ).length,
     blockedCount: vendors.filter((vendor) => vendor.trust === "blocked").length,
     category,
-    categoryCount: new Set(vendors.map((vendor) => vendor.category)).size,
+    categoryCount: new Set(
+      vendors.filter((vendor) => vendor.trust !== "removed").map((vendor) => vendor.category),
+    ).size,
     query,
     setCategory,
     setQuery,

@@ -24,7 +24,8 @@ export function VendorHeader({
             Vendors
           </h1>
           <p className="mt-5 max-w-[480px] text-[14px] leading-[1.45] text-[var(--wl-secondary2)]">
-            The counterparties your agents can pay, with a cap and an accountable name attached.
+            The counterparties your agents can pay, with a per-payment cap and an accountable name
+            attached.
           </p>
         </div>
         <button

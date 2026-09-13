@@ -134,39 +134,27 @@ export function useLiveAgents() {
     retry: false,
     staleTime: 30_000,
   });
-  // Shares react-query's cache with useLiveLedger, so this costs no extra request.
-  const ledgerQuery = trpc.ledger.list.useQuery(
-    { page: 0, pageSize: 100 },
-    { enabled, retry: false, refetchOnWindowFocus: false, staleTime: 30_000 },
-  );
+  const activityQuery = trpc.analytics.walletActivity24h.useQuery(undefined, {
+    enabled,
+    retry: false,
+    refetchOnWindowFocus: false,
+    staleTime: 30_000,
+  });
 
   const walletAddressById = new Map(
     (enabled ? (walletsQuery.data ?? []) : []).map((wallet) => [wallet.id, wallet.address]),
   );
 
-  const transfers = enabled ? (ledgerQuery.data ?? []) : [];
-  const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
-  const spendByWallet = new Map<string, number>();
-  const lastSeenByWallet = new Map<string, number>();
-
-  for (const transfer of transfers) {
-    const at = new Date(transfer.timestamp ?? 0).getTime();
-    if (Number.isFinite(at)) {
-      lastSeenByWallet.set(
-        transfer.walletId,
-        Math.max(lastSeenByWallet.get(transfer.walletId) ?? 0, at),
-      );
-    }
-    if (transfer.verdict === "ALLOW" && at >= dayAgo) {
-      spendByWallet.set(
-        transfer.walletId,
-        (spendByWallet.get(transfer.walletId) ?? 0) + usdcNumber(transfer.amount),
-      );
-    }
-  }
+  const activityByWallet = new Map(
+    (enabled ? (activityQuery.data?.rows ?? []) : []).map((activity) => [
+      activity.walletId,
+      activity,
+    ]),
+  );
+  const activityUnavailable = enabled && activityQuery.isError;
 
   const agents: Agent[] = (enabled ? (query.data?.agents ?? []) : []).map((agent) => {
-    const lastSeen = lastSeenByWallet.get(agent.walletId);
+    const activity = activityByWallet.get(agent.walletId);
     return {
       id: agent.id,
       name: agent.label,
@@ -176,9 +164,11 @@ export function useLiveAgents() {
       owner: "Owner synced in Supabase",
       status: agentStatus(agent.status),
       posture: agent.postureScore ?? 0,
-      dailySpend: spendByWallet.get(agent.walletId) ?? 0,
+      dailySpend: activity ? usdcNumber(activity.spendBaseUnits) : 0,
       dailyLimit: agent.daily24hCap === null ? 0 : usdcNumber(agent.daily24hCap),
-      lastActivity: lastSeen ? formatTimestampOrNA(new Date(lastSeen)) : "No activity yet",
+      lastActivity: activity?.lastActivityAt
+        ? formatTimestampOrNA(new Date(activity.lastActivityAt))
+        : "No activity yet",
       doctrineVersion: agent.policyVersion === null ? "unknown" : `v${agent.policyVersion}`,
       mandate: agent.type.toUpperCase(),
       categories: [],
@@ -186,19 +176,27 @@ export function useLiveAgents() {
   });
   return {
     ...query,
-    data: agents,
+    // Do not render agents with invented daily spend/activity when the
+    // aggregate read failed. The registry turns this explicit error into a
+    // retryable "Registry read failed" state.
+    data: activityUnavailable ? [] : agents,
+    isError: query.isError || activityUnavailable,
+    error: query.error ?? activityQuery.error,
+    isLoading: query.isLoading || activityQuery.isLoading,
     legacyWalletCount: enabled ? (query.data?.legacyWalletCount ?? 0) : 0,
   };
 }
 
-export function useLiveLedger() {
+export function useLiveLedger(page = 0) {
   const enabled = useLiveQueriesEnabled();
   const query = trpc.ledger.list.useQuery(
-    { page: 0, pageSize: 100 },
+    { page, pageSize: 100 },
     { enabled, retry: false, refetchOnWindowFocus: false, staleTime: 30_000 },
   );
-  const ledger: LedgerEntry[] = (enabled ? (query.data ?? []) : []).map(ledgerEntryFromTransfer);
-  return { ...query, data: ledger };
+  const ledger: LedgerEntry[] = (enabled ? (query.data?.rows ?? []) : []).map(
+    ledgerEntryFromTransfer,
+  );
+  return { ...query, data: ledger, pageInfo: query.data };
 }
 
 export function useLiveLedgerByWallet(wallet: string | null | undefined) {
@@ -218,8 +216,10 @@ export function useLiveLedgerByWallet(wallet: string | null | undefined) {
       staleTime: 30_000,
     },
   );
-  const ledger: LedgerEntry[] = (wallet ? (query.data ?? []) : []).map(ledgerEntryFromTransfer);
-  return { ...query, data: ledger };
+  const ledger: LedgerEntry[] = (wallet ? (query.data?.rows ?? []) : []).map(
+    ledgerEntryFromTransfer,
+  );
+  return { ...query, data: ledger, pageInfo: query.data };
 }
 
 function escalationExpiryPercent(createdAt: Date | string, expiresAt: Date | string): number {
@@ -240,24 +240,35 @@ export function useLiveEscalations(
     retry: false,
     staleTime: 30_000,
   });
-  const escalations: Escalation[] = (enabled ? (query.data ?? []) : []).map((item) => ({
-    id: item.id,
-    agentId: item.walletId,
-    agentName: "Governed Wallet",
-    wallet: item.walletId,
-    amount: usdcNumber(item.amount),
-    counterparty: vendorName(item.toAddress),
-    category: "compute",
-    reason: item.reason,
-    status: item.status,
-    quorumCurrent: item.signaturesCount,
-    quorumRequired: item.threshold,
-    deviation: 0,
-    createdAt: toIsoTimestamp(item.createdAt),
-    expiresAt: toIsoTimestamp(item.expiresAt),
-    expiresIn: formatTimestampOrNA(item.expiresAt),
-    expiryPercent: escalationExpiryPercent(item.createdAt, item.expiresAt),
-  }));
+  const escalations: Escalation[] = (enabled ? (query.data ?? []) : []).map((item) => {
+    // walletId is a stable Supabase identity. walletAddress is the only
+    // governed-wallet value that may be sent to a chain contract.
+    const walletAddress = item.walletAddress ?? "";
+    const counterpartyAddress = item.counterpartyAddress ?? item.toAddress ?? "";
+    const amountBaseUnits = item.amountBaseUnits ?? item.amount ?? "0";
+    return {
+      id: item.id,
+      agentId: item.walletId,
+      agentName: "Governed Wallet",
+      walletId: item.walletId,
+      walletAddress,
+      ownerAddress: item.ownerAddress ?? "",
+      amount: amountBaseUnits,
+      amountBaseUnits,
+      counterparty: vendorName(counterpartyAddress),
+      counterpartyAddress,
+      category: "compute",
+      reason: item.reason,
+      status: item.status,
+      quorumCurrent: item.signaturesCount,
+      quorumRequired: item.threshold,
+      deviation: 0,
+      createdAt: toIsoTimestamp(item.createdAt),
+      expiresAt: toIsoTimestamp(item.expiresAt),
+      expiresIn: formatTimestampOrNA(item.expiresAt),
+      expiryPercent: escalationExpiryPercent(item.createdAt, item.expiresAt),
+    };
+  });
   return { ...query, data: escalations };
 }
 
@@ -305,13 +316,16 @@ export function useLiveVendors() {
     address: vendor.address,
     category: normalizeCategory(vendor.category),
     trust:
-      vendor.status === "blocked"
-        ? "blocked"
-        : vendor.perVendorCap !== "0"
-          ? "confidential"
-          : "approved",
+      vendor.status === "removed"
+        ? "removed"
+        : vendor.status === "blocked"
+          ? "blocked"
+          : vendor.perVendorCap !== null && vendor.perVendorCap !== "0"
+            ? "confidential"
+            : "approved",
     approvedBy: [vendor.addedBy],
-    confidential: vendor.perVendorCap !== "0",
+    confidential: vendor.perVendorCap !== null && vendor.perVendorCap !== "0",
+    perVendorCap: vendor.perVendorCap ?? null,
     createdAt: formatTimestampOrNA(vendor.addedAt),
     lastUsed: "Never used",
     walletAddress:
@@ -550,9 +564,9 @@ export function useLiveDashboardMetrics() {
 
   return {
     postureIndex: enabled ? (posture.data ?? 0) : 0,
-    valueGoverned: enabled ? usdcNumber(valueGoverned.data ?? "0") : 0,
+    valueGoverned: enabled ? usdcNumber(valueGoverned.data?.valueBaseUnits ?? "0") : 0,
     activeAgents: enabled ? (activeAgents.data ?? 0) : 0,
-    threatsBlocked: enabled ? (threatsBlocked.data ?? 0) : 0,
+    threatsBlocked: enabled ? (threatsBlocked.data?.count ?? 0) : 0,
     pendingEscalations: enabled ? (pendingEscalations.data ?? 0) : 0,
     isLoading:
       posture.isLoading ||

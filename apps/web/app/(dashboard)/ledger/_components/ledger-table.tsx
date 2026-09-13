@@ -60,8 +60,33 @@ export function LedgerTable({ ledger }: { ledger: LedgerController }) {
         )}
       </div>
       <div className="flex justify-between border-t border-[var(--wl-line)] px-5 py-3 font-mono text-[9px] uppercase tracking-[.1em] text-[var(--wl-mute)]">
-        <span>{filters.visibleRows.length} visible records</span>
-        <span>live record · ARC / USDC</span>
+        <span>
+          {filters.visibleRows.length} visible on page ·{" "}
+          {liveLedger.pageInfo?.totalCount === null ? "—" : (liveLedger.pageInfo?.totalCount ?? 0)}{" "}
+          total records
+        </span>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            disabled={ledger.page === 0}
+            onClick={() => ledger.setPage((current) => Math.max(0, current - 1))}
+            className="disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            ← PREV
+          </button>
+          <span>
+            PAGE {(ledger.page ?? 0) + 1}
+            {liveLedger.pageInfo?.hasNext ? " · MORE" : ""}
+          </span>
+          <button
+            type="button"
+            disabled={!liveLedger.pageInfo?.hasNext}
+            onClick={() => ledger.setPage((current) => current + 1)}
+            className="disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            NEXT →
+          </button>
+        </div>
       </div>
     </section>
   );

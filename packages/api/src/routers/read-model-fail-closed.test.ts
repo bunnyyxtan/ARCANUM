@@ -34,6 +34,7 @@ function sessionCtx(supabase: ApiContext["supabase"]): ApiContext {
 const brokenSupabase: NonNullable<ApiContext["supabase"]> = {
   configured: true,
   selectRows: () => Promise.reject(new Error("connect ECONNREFUSED (simulated outage)")),
+  insertRows: () => Promise.reject(new Error("connect ECONNREFUSED (simulated outage)")),
   upsertRows: () => Promise.reject(new Error("connect ECONNREFUSED (simulated outage)")),
   patchRows: () => Promise.reject(new Error("connect ECONNREFUSED (simulated outage)")),
   callFunction: () => Promise.reject(new Error("connect ECONNREFUSED (simulated outage)")),

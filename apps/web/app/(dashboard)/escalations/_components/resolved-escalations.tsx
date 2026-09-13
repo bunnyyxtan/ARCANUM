@@ -1,4 +1,4 @@
-import { formatUsd } from "@/lib/format/money";
+import { formatBaseUnits } from "@/lib/escalation-truth";
 import type { Escalation } from "@/lib/types";
 
 import { formatFooterTimestamp } from "../_lib/helpers";
@@ -34,8 +34,8 @@ export function ResolvedEscalations({ items }: Readonly<{ items: readonly Escala
                 {item.status}
               </span>
               <span className="truncate text-[13px]">
-                {formatUsd(item.amount)} <span className="text-[var(--wl-mute)]">→</span>{" "}
-                {item.counterparty}
+                {formatBaseUnits(item.amountBaseUnits)}{" "}
+                <span className="text-[var(--wl-mute)]">→</span> {item.counterparty}
               </span>
             </div>
             <div className="flex items-baseline gap-5 pl-[112px] md:pl-0">

@@ -32,7 +32,9 @@ jobs:
           DATABASE_URL: ${{ secrets.INDEXER_DATABASE_URL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          ARC_TESTNET_RPC: https://arc-testnet.drpc.org
+          # The RPC endpoint is chosen in packages/indexer/ponder.config.ts
+          # (public Tenderly gateway, one request per second). A keyed provider
+          # goes in INDEXER_RPC_URL / INDEXER_RPC_REQUESTS_PER_SECOND here.
           # The legacy drizzle Postgres mirror only exists in the local dev
           # database; here the handlers stop after their Supabase sync.
           ARCANUM_DISABLE_PG_MIRROR: "1"
