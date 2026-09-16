@@ -74,7 +74,7 @@ if (!databaseUrl) {
 //   second, and rejects any query whose topic0 list is longer than about eight
 //   entries with "requested range too large" (code -32012), whatever the block
 //   range. Ponder >= 0.17 merges every event of a contract into one such query,
-//   so the wallet source (12 events) can never be fetched from it.
+//   so the wallet source (13 events) can never be fetched from it.
 // - arc-testnet.drpc.org (free plan) rejects eth_getLogs above 100 blocks.
 // - arc-testnet.gateway.tenderly.co accepts 100,000 block ranges and long
 //   topic lists, and allows roughly 80 requests per minute before answering
@@ -112,13 +112,31 @@ const envValue = (name: string) => {
   return value ? value : undefined;
 };
 
-// INDEXER_RPC_URL is the indexer-only override (a keyed provider goes here),
-// ARC_RPC_URL the override shared with the API and web proxy. ARC_TESTNET_RPC
-// is deliberately not consulted: it names the official endpoint for the app's
-// low-volume reads, which the backfill cannot use.
+// The official public endpoints serve the app's low-volume reads but reject
+// the merged log queries described above, so they are never used here, even
+// when the shared ARC_RPC_URL names one of them (an env file copied from the
+// app does exactly that). ARC_TESTNET_RPC is not consulted for the same reason.
+const OFFICIAL_ARC_RPC_HOSTS = new Set(["rpc.mainnet.arc.io", "rpc.testnet.arc.network"]);
+const isOfficialArcRpc = (url: string) => {
+  try {
+    return OFFICIAL_ARC_RPC_HOSTS.has(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+};
+
+// INDEXER_RPC_URL is the indexer-only override (a keyed provider goes here)
+// and is used as given. ARC_RPC_URL, the override shared with the API and web
+// proxy, is honoured only when it does not point at an official endpoint.
+const sharedRpcUrl = envValue("ARC_RPC_URL");
+if (sharedRpcUrl && isOfficialArcRpc(sharedRpcUrl) && !envValue("INDEXER_RPC_URL")) {
+  console.warn(
+    `Ignoring ARC_RPC_URL=${sharedRpcUrl} for the indexer: the official Arc endpoint rejects Ponder's merged log queries. Set INDEXER_RPC_URL to override the default gateway.`,
+  );
+}
 const rpcUrl =
   envValue("INDEXER_RPC_URL") ??
-  envValue("ARC_RPC_URL") ??
+  (sharedRpcUrl && !isOfficialArcRpc(sharedRpcUrl) ? sharedRpcUrl : undefined) ??
   (IS_ARC_MAINNET ? DEFAULT_ARC_MAINNET_INDEXER_RPC_URL : DEFAULT_ARC_TESTNET_INDEXER_RPC_URL);
 if (!rpcUrl) {
   throw new Error("No Arc RPC URL is configured for the indexer (set INDEXER_RPC_URL)");

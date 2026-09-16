@@ -35,9 +35,12 @@ three repository secrets before the schedule can run.
    `packages/contracts/deployments/arc-mainnet.json` and the `arcMainnet`
    chain namespace; the backfill reads from Tenderly's public Arc gateway
    (`https://arc.gateway.tenderly.co`) unless `INDEXER_RPC_URL` names a keyed
-   provider. The official `https://rpc.mainnet.arc.io` endpoint is not usable
-   here: it rejects the merged 13-topic GuardedWallet query at any block range
-   (see the note in `packages/indexer/ponder.config.ts`). A testnet job reads
+   provider (`ARC_RPC_URL`, the override shared with the app, is used second
+   unless it names an official endpoint). The official
+   `https://rpc.mainnet.arc.io` endpoint is not usable here: it rejects the
+   merged 13-topic GuardedWallet query at any block range, so the indexer
+   ignores it with a warning even when `ARC_RPC_URL` points at it (see the note
+   in `packages/indexer/ponder.config.ts`). A testnet job reads
    `INDEXER_DATABASE_URL_TESTNET`, `SUPABASE_URL_TESTNET` and
    `SUPABASE_SERVICE_ROLE_KEY_TESTNET`, which must point at a separate
    database, and skips itself while they are absent.
