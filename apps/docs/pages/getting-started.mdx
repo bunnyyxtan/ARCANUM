@@ -5,7 +5,10 @@ Helix DAO wants `TreasuryRebalancerAgent` to rebalance USDC positions across Aav
 ## Step 1 - Install
 
 These snippets are Arc Testnet examples for local development. Keep private keys
-in local environment variables only, and do not commit `.env` files.
+in local environment variables only, and do not commit `.env` files. For Arc
+Mainnet, import `arcMainnet` and `ARC_MAINNET_RPC_URL` from `arcanum-sdk/chains`
+instead and take the factory address from the
+[mainnet deployment](/contracts/deployments); the wallets then hold real USDC.
 
 Arc native USDC gas uses 18 decimals. GuardedWallet policy, vendor caps, and
 payment amounts are deployed ERC20 USDC base units with 6 decimals, so the

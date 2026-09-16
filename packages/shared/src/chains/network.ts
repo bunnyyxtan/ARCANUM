@@ -19,14 +19,24 @@ import {
  * Single switch that selects which Arc network the whole system talks to.
  *
  * Defaults to testnet so nothing changes until the switch is flipped
- * deliberately. Selecting mainnet without the required published values
- * fails loudly at startup instead of silently reading the wrong chain.
+ * deliberately. The mainnet values default to the parameters Circle published
+ * at launch; an operator override that blanks one of them fails loudly at
+ * startup instead of silently reading the wrong chain.
  */
-const rawNetwork = (
-  process.env.NEXT_PUBLIC_ARC_NETWORK ??
-  process.env.ARC_NETWORK ??
-  "testnet"
-).toLowerCase();
+const publicNetwork = process.env.NEXT_PUBLIC_ARC_NETWORK?.trim().toLowerCase();
+const serverNetwork = process.env.ARC_NETWORK?.trim().toLowerCase();
+
+// Both variables name the same switch (the public one exists so the browser
+// bundle can see it). A server that has them disagreeing would sign for one
+// chain while its pages point at the other, so that is a startup error, not
+// a precedence rule.
+if (publicNetwork && serverNetwork && publicNetwork !== serverNetwork) {
+  throw new Error(
+    `NEXT_PUBLIC_ARC_NETWORK="${publicNetwork}" and ARC_NETWORK="${serverNetwork}" disagree; set both to the same Arc network.`,
+  );
+}
+
+const rawNetwork = publicNetwork || serverNetwork || "testnet";
 
 if (rawNetwork !== "testnet" && rawNetwork !== "mainnet") {
   throw new Error(
@@ -48,9 +58,9 @@ if (IS_ARC_MAINNET) {
 
   if (missing.length > 0) {
     throw new Error(
-      `Arc network is set to mainnet but these values are not configured: ${missing.join(
+      `Arc network is set to mainnet but these values are blank: ${missing.join(
         ", ",
-      )}. Circle publishes them at mainnet launch - fill them in before switching.`,
+      )}. Unset the override to use the published Arc Mainnet value, or set a valid one.`,
     );
   }
 }

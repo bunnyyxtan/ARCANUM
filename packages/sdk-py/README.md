@@ -1,12 +1,15 @@
 # arcanum-sdk
 
-Python SDK for direct GuardedWallet execution on Arc Testnet. It signs
-transactions with the caller's agent account and never talks to an
+Python SDK for direct GuardedWallet execution on Arc (mainnet and testnet). It
+signs transactions with the caller's agent account and never talks to an
 Arcanum-hosted API.
 
-The example below is for local Arc Testnet development. Never hard-code private
-keys, commit `.env` files, or paste wallet secrets into issues, screenshots, or
-logs.
+The example below is for local Arc Testnet development; for Arc Mainnet use
+`arc_mainnet` and `ARC_MAINNET_RPC_URL` from `arcanum_sdk.chains` and the
+addresses in `packages/contracts/deployments/arc-mainnet.json`. Mainnet wallets
+hold real USDC and the contracts are unaudited, so keep pilot caps small. Never
+hard-code private keys, commit `.env` files, or paste wallet secrets into
+issues, screenshots, or logs.
 
 ```python
 import os

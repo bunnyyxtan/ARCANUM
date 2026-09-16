@@ -1,10 +1,13 @@
 # arcanum-sdk
 
-TypeScript SDK for Arc Testnet GuardedWallet integrations.
+TypeScript SDK for GuardedWallet integrations on Arc (mainnet and testnet).
 
 The SDK talks directly to Arc RPC through `viem`. It does not require an
 Arcanum-hosted API, and it does not custody agent keys. Write examples below are
-for Arc Testnet and local development only.
+for Arc Testnet and local development only; for Arc Mainnet import `arcMainnet`
+and `ARC_MAINNET_RPC_URL` from `arcanum-sdk/chains` and use the addresses in
+`packages/contracts/deployments/arc-mainnet.json`. Mainnet wallets hold real
+USDC and the contracts are unaudited, so keep pilot caps small.
 
 ## Install
 
