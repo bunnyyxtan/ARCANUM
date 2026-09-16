@@ -1,10 +1,46 @@
 # Deployments
 
-The committed network manifest is the source of truth for contract consumers:
+The committed network manifests are the source of truth for contract consumers, one per
+network:
 
 ```txt
+packages/contracts/deployments/arc-mainnet.json
 packages/contracts/deployments/arc-testnet.json
 ```
+
+Each runtime serves one network, selected by `NEXT_PUBLIC_ARC_NETWORK` (`testnet` by default,
+or `mainnet`), and reads only the matching manifest. A mainnet manifest must carry the broadcast
+evidence (`deployedAt` and every `txHashes` entry) or the consumers refuse to start, so a dry-run
+manifest with predicted addresses can never bind a mainnet build.
+
+## Arc Mainnet (chain 5042)
+
+Deployed 16 September 2026, indexed from block 21,141,720. Explorer:
+[explorer.arc.io](https://explorer.arc.io). The contracts are unaudited; the hosted deployment
+runs as a limited pilot with small per-wallet caps.
+
+| Module | Address |
+| --- | --- |
+| WalletFactory | `0x7077A28C003D9274d45263b04Ac9cB9a58Ab5342` |
+| PolicyEngine | `0xb74De5aD09a75dea03f5ddD77A25e1Ca11724483` |
+| EscalationManager | `0x2a653D3d90BFA13bE9d8F9eB2Cc87578967128EF` |
+| AnomalyOracle | `0xb2ae97dB77c8fdF8D9CE00743A4B095E4f2AdD8F` |
+| VendorRegistry | `0x722C2f83ca55503Cf3104bABeb3EaA9d676B1469` |
+
+## Arc Testnet (chain 5042002)
+
+Deployed 7 September 2026, indexed from block 60,951,839. Explorer:
+[testnet.arcscan.app](https://testnet.arcscan.app).
+
+| Module | Address |
+| --- | --- |
+| WalletFactory | `0xbE1bC48F26e7166D872828d40e82A6407dbD350C` |
+| PolicyEngine | `0x7777ac24A19202E619bF67B92375E714e72033A4` |
+| EscalationManager | `0xb5907700Df79B9030FafDaA48C26AE355512cCcd` |
+| AnomalyOracle | `0x2eae369C3f93ebf5Bbe62FBE6d2CD976977f7AE8` |
+| VendorRegistry | `0xeA4597b02Ea2958A80afc47c417422598b9c548C` |
+
+## Manifest contents
 
 A v2 manifest contains:
 
@@ -21,6 +57,8 @@ broadcast, the operator must finalize the manifest:
 ```bash
 cd packages/contracts
 node scripts/finalize-manifest.mjs arc-testnet https://rpc.testnet.arc.network
+# or, for mainnet:
+node scripts/finalize-manifest.mjs arc-mainnet https://rpc.mainnet.arc.io
 ```
 
 Finalization matches deployment transactions to manifest addresses, checks runtime code hashes

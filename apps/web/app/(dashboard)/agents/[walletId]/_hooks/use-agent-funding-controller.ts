@@ -206,7 +206,7 @@ export function useAgentFundingController(governedWalletAddress: Address | null)
       ) {
         setError(
           IS_ARC_MAINNET
-            ? "CCTP funding is available only on Arc Testnet."
+            ? "CCTP funding through this console is not available on Arc Mainnet yet."
             : !isConnected
               ? "Connect the source wallet that will fund this agent."
               : "Resolve the active CCTP transfer before requesting a new quote.",

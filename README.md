@@ -19,6 +19,7 @@
   <a href="https://github.com/bunnyyxtan/ARCANUM/actions/workflows/ci.yml"><img src="https://github.com/bunnyyxtan/ARCANUM/actions/workflows/ci.yml/badge.svg" alt="CI status" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-2f3542" alt="AGPL-3.0 license" /></a>
   <a href="https://github.com/bunnyyxtan/ARCANUM/releases/latest"><img src="https://img.shields.io/github/v/release/bunnyyxtan/ARCANUM?label=release&color=ff5a1f" alt="Latest release" /></a>
+  <img src="https://img.shields.io/badge/network-Arc%20Mainnet%20pilot-ff5a1f" alt="Arc Mainnet pilot" />
   <img src="https://img.shields.io/badge/network-Arc%20Testnet-6e9e7c" alt="Arc Testnet" />
 </p>
 
@@ -132,7 +133,27 @@ Every governed wallet has public explorer and badge pages, so anyone can show th
 
 ## Deployed contracts
 
-Network: **Arc Testnet** · Explorer: [testnet.arcscan.app](https://testnet.arcscan.app)
+### Arc Mainnet (limited pilot)
+
+Network: **Arc Mainnet** (chain 5042) · Explorer: [explorer.arc.io](https://explorer.arc.io)
+
+| Module | Address | Responsibility |
+| --- | --- | --- |
+| WalletFactory | `0x7077A28C003D9274d45263b04Ac9cB9a58Ab5342` | Deploys GuardedWallet instances |
+| PolicyEngine | `0xb74De5aD09a75dea03f5ddD77A25e1Ca11724483` | Evaluates doctrine rules on every spend |
+| EscalationManager | `0x2a653D3d90BFA13bE9d8F9eB2Cc87578967128EF` | Quorum approvals for sensitive actions |
+| AnomalyOracle | `0xb2ae97dB77c8fdF8D9CE00743A4B095E4f2AdD8F` | Anomaly signals for the policy layer |
+| VendorRegistry | `0x722C2f83ca55503Cf3104bABeb3EaA9d676B1469` | Vendor allowlist, categories, and caps |
+
+Recorded in `packages/contracts/deployments/arc-mainnet.json` (deployed 16 September 2026,
+indexed from block 21,141,720). Gas on Arc is paid in USDC and the wallets hold real USDC. The
+contracts have not received an independent third-party audit, so this deployment is a limited
+pilot: keep per-wallet caps small, deposit only what you can afford to lose, and expect the
+operator to freeze wallets if a defect is found.
+
+### Arc Testnet
+
+Network: **Arc Testnet** (chain 5042002) · Explorer: [testnet.arcscan.app](https://testnet.arcscan.app)
 
 | Module | Address | Responsibility |
 | --- | --- | --- |
@@ -144,10 +165,12 @@ Network: **Arc Testnet** · Explorer: [testnet.arcscan.app](https://testnet.arcs
 
 These are the protocol v2 contracts recorded in the committed manifest
 `packages/contracts/deployments/arc-testnet.json` (deployed 7 September 2026, indexed from block
-60,951,839); the app and indexer read addresses from that manifest. The earlier v1 deployment is
-retired and owners must redeploy v1 wallets through the v2 factory.
-Neither deployment has received an independent third-party audit and neither should hold
-production funds.
+60,951,839). The earlier v1 testnet deployment is retired and owners must redeploy v1 wallets
+through the v2 factory.
+
+Each runtime serves one network, selected by `NEXT_PUBLIC_ARC_NETWORK` (`testnet` or `mainnet`),
+and reads its addresses from the matching manifest. Neither deployment has received an
+independent third-party audit.
 
 ## Architecture
 
@@ -158,7 +181,7 @@ Next.js web app (dashboard, explorer, badges, approver portal)
         |
 tRPC API  ·  SIWE sessions
         |
-Supabase read models  <──  Ponder indexer  <──  Arc Testnet contracts
+Supabase read models  <──  Ponder indexer  <──  Arc contracts (mainnet or testnet)
                                                  WalletFactory · GuardedWallet
                                                  PolicyEngine · EscalationManager
                                                  AnomalyOracle · VendorRegistry
@@ -216,7 +239,8 @@ Fill in the variables before starting. The essentials:
 
 | Variable | Required | Description |
 | --- | ---: | --- |
-| `ARC_TESTNET_RPC` | Yes | Arc Testnet RPC URL for server-side reads |
+| `NEXT_PUBLIC_ARC_NETWORK` | Yes | `testnet` (default) or `mainnet`; one deployment serves one network |
+| `ARC_RPC_URL` | Recommended | RPC URL for server-side reads on the selected network (`ARC_TESTNET_RPC` is honored on testnet only) |
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anon key (client-safe) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes | Server-only Supabase key, never client-side |
@@ -256,19 +280,19 @@ Open the URL printed by Next.js.
 
 ## Status
 
-Arcanum is a working Arc Testnet build, running publicly at [thearcanum.in](https://thearcanum.in).
+Arcanum runs publicly at [thearcanum.in](https://thearcanum.in) on Arc Mainnet as a limited
+pilot. The Arc Testnet contracts stay deployed for development and self-hosting.
 
-- The listed Arc Testnet contracts are the legacy v1 deployment pending the committed v2 cutover.
-- The contracts have internal tests and automated analyzers, but no independent third-party audit.
-- The dashboard, public explorer, badge routes, and approver portal are live.
+- The contracts have internal tests, invariants and automated analyzers, but no independent third-party audit.
+- The dashboard, public explorer, badge routes, receipts and approver portal are live.
 - Advanced write paths and indexer reconciliation are still being hardened.
-- A formal audit is required before any mainnet or production-funds use.
+- The mainnet pilot keeps per-wallet caps small; an independent audit is the prerequisite for lifting those limits.
 
 Arcanum is non-custodial. It is not an exchange, not a token sale, not a fiat ramp, and not a hosted wallet provider.
 
 ## Roadmap
 
-- Testnet hardening: read-model resilience, indexer recovery, richer failure states
+- Pilot hardening: read-model resilience, indexer recovery, richer failure states
 - Governance depth: doctrine templates, per-signer controls, stronger anomaly scoring
 - Developer experience: deeper SDK examples, integration guides, self-hosting docs
 - Audit path: internal reviews and automated coverage ahead of external audit
@@ -279,7 +303,7 @@ Contributions are welcome through focused pull requests. Read [CONTRIBUTING.md](
 
 ## Security
 
-Do not report vulnerabilities through public issues. Follow the private process in [SECURITY.md](./.github/SECURITY.md). Treat all contracts as unaudited testnet code.
+Do not report vulnerabilities through public issues. Follow the private process in [SECURITY.md](./.github/SECURITY.md). Treat all contracts as unaudited code, on the mainnet pilot as much as on testnet.
 
 ## License
 

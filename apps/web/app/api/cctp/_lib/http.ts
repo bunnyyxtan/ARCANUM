@@ -20,7 +20,10 @@ export function jsonResponse(body: unknown, status = 200) {
  */
 export function guardRequest(request: Request): Response | undefined {
   if (IS_ARC_MAINNET) {
-    return jsonResponse({ error: "CCTP funding is available on Arc Testnet only." }, 400);
+    return jsonResponse(
+      { error: "CCTP funding through this console is not available on Arc Mainnet yet." },
+      400,
+    );
   }
   const now = Date.now();
   const key = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";

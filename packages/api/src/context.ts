@@ -1,6 +1,6 @@
 import type { ArcanumSession } from "@arcanum/auth";
 import { type ArcanumDb, db } from "@arcanum/db";
-import { arcChain } from "@arcanum/shared";
+import { IS_ARC_MAINNET, arcChain } from "@arcanum/shared";
 import { http, type PublicClient, createPublicClient } from "viem";
 
 import { type SupabaseServiceRoleClient, createSupabaseServiceRoleClient } from "./supabase";
@@ -42,9 +42,11 @@ export function createContext(input?: {
       input?.publicClient ??
       createPublicClient({
         chain: arcChain,
+        // ARC_TESTNET_RPC is the legacy testnet-only name; consulting it on
+        // mainnet would let a copied env file point a mainnet API at testnet.
         transport: http(
           process.env.ARC_RPC_URL ??
-            process.env.ARC_TESTNET_RPC ??
+            (IS_ARC_MAINNET ? undefined : process.env.ARC_TESTNET_RPC) ??
             arcChain.rpcUrls.default.http[0],
         ),
       }),

@@ -47,10 +47,11 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@arcanum/shared"],
   async headers() {
     // The CSP must allow direct browser connections to the active Arc RPC.
-    // Testnet origins stay listed always (harmless); mainnet origins come
-    // from env because Circle has not published them yet. next.config runs
-    // in Node at build time, so plain env reads are fine here.
+    // The published testnet and mainnet origins stay listed always (harmless
+    // on the other network); an operator's RPC override is added from env.
+    // next.config runs in Node at build time, so plain env reads are fine here.
     const extraConnectOrigins = [
+      "https://rpc.mainnet.arc.io",
       process.env.NEXT_PUBLIC_ARC_MAINNET_RPC_URL,
       process.env.NEXT_PUBLIC_ARC_MAINNET_WS_URL,
     ]

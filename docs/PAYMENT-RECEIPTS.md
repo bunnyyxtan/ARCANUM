@@ -2,7 +2,7 @@
 
 A payment decision receipt is a signed, offline-verifiable statement of what a
 governed wallet's policy decided about one agent payment intent, at one pinned
-Arc Testnet block, before anything was sent onchain. Agents attach the receipt
+Arc block, before anything was sent onchain. Agents attach the receipt
 id to the transaction that acts on it, and the API later links the two, so an
 auditor can put the decision and its consequence side by side.
 
@@ -51,7 +51,7 @@ flowchart TB
     E --> G["Public /verify<br/>paste any envelope"]
   end
 
-  subgraph onchain["Onchain: Arc Testnet"]
+  subgraph onchain["Onchain: Arc"]
     direction TB
     H["Authorized agent signer<br/>host-held key or Circle Wallet"] -->|"executeUSDC(to, amount, reason{receiptId})"| I["GuardedWallet"]
     I -->|"allow"| J["USDC transfer<br/>TransferExecuted"]
@@ -121,8 +121,12 @@ receipt can never be signed by a key verifiers cannot resolve. Retired keys
 stay listed so old receipts keep verifying and a receipt dated after retirement
 is reported as such.
 
-The current key is `arc-testnet-2026-09`
-(`0x768020000608ab6afc28a15b2b03a00273ef3288`, Arc Testnet, chain 5042002).
+The current keys are `arc-mainnet-2026-09`
+(`0xee52de6c75b868e919999c08691a9b648f8c61dd`, Arc Mainnet, chain 5042) and
+`arc-testnet-2026-09` (`0x768020000608ab6afc28a15b2b03a00273ef3288`, Arc
+Testnet, chain 5042002). Each deployment holds only the private key for the
+chain it serves; the mainnet key was generated for the mainnet deployment and
+is not derived from the testnet key.
 
 ### Verification
 
@@ -365,7 +369,7 @@ agent signer, some Arc Testnet USDC in it, and Node 24.
   unless the agent puts the receipt id into the transaction calldata, which
   the SDK does by default.
 - **Evidence trusts the RPC.** Linking re-reads the transaction from the
-  configured Arc Testnet RPC; a lying RPC could misclassify evidence. The
+  configured Arc RPC; a lying RPC could misclassify evidence. The
   transaction hash is stored so anyone can re-check it independently.
 - **Replay protection is client-side.** The contract does not know about
   receipts or references, so a second `executeUSDC` for the same reference
@@ -384,5 +388,7 @@ agent signer, some Arc Testnet USDC in it, and Node 24.
 - **No receipts for input errors or outages.** A request the API cannot
   evaluate produces an error, not a signed statement, so the absence of a
   receipt proves nothing by itself.
-- **Testnet only.** The contracts are unaudited and the issuer registry lists
-  only an Arc Testnet key.
+- **Unaudited contracts, one issuer key per network.** The registry binds each
+  key to one chain id, so a receipt for Arc Testnet never verifies against the
+  Arc Mainnet key or the other way round; a mainnet receipt is still a
+  statement about unaudited pilot contracts.

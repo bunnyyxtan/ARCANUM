@@ -1,3 +1,5 @@
+import { ARC_NETWORK_NAME } from "@arcanum/shared";
+
 import { formatUsd, formatUsdCompact } from "@/lib/format/money";
 
 import type { AgentDetailController } from "../_hooks/use-agent-detail-controller";
@@ -91,7 +93,8 @@ export function AgentBehavior({ controller }: { controller: AgentDetailControlle
             No spend recorded yet
           </p>
           <p className="mx-auto mt-3 max-w-[360px] text-[12px] leading-[1.5] text-[var(--wl-body)]">
-            Behavior charts populate once this governed wallet settles payments on Arc Testnet.
+            Behavior charts populate once this governed wallet settles payments on{" "}
+            {ARC_NETWORK_NAME}.
           </p>
         </div>
       )}

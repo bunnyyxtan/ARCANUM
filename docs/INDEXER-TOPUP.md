@@ -27,6 +27,18 @@ three repository secrets before the schedule can run.
    | `SUPABASE_URL` | the value of `NEXT_PUBLIC_SUPABASE_URL` |
    | `SUPABASE_SERVICE_ROLE_KEY` | the value of `SUPABASE_SERVICE_ROLE_KEY` |
 
+   The workflow runs one job per Arc network, and one database serves one
+   network. The three secrets above belong to the stack behind thearcanum.in,
+   which serves Arc Mainnet since 2026-09-16 (its testnet rows were archived
+   in the `testnet_archive` schema before the switch). The mainnet job sets
+   `ARC_NETWORK=mainnet`, which selects
+   `packages/contracts/deployments/arc-mainnet.json` and the `arcMainnet`
+   chain namespace; the public `https://rpc.mainnet.arc.io` endpoint is used
+   unless `INDEXER_RPC_URL` names a keyed provider. A testnet job reads
+   `INDEXER_DATABASE_URL_TESTNET`, `SUPABASE_URL_TESTNET` and
+   `SUPABASE_SERVICE_ROLE_KEY_TESTNET`, which must point at a separate
+   database, and skips itself while they are absent.
+
 2. **Run it once by hand.** Actions tab → "Indexer top-up" → "Run workflow".
    The first run does the historical backfill; if it stops at the timeout,
    run it once or twice more until a run ends quickly. After that the

@@ -1,6 +1,6 @@
 "use client";
 
-import { ARC_NETWORK_BADGE } from "@arcanum/shared";
+import { ARC_NETWORK_BADGE, ARC_NETWORK_NAME, IS_ARC_MAINNET } from "@arcanum/shared";
 import Link from "next/link";
 import { type ReactNode, useMemo, useState } from "react";
 
@@ -25,12 +25,14 @@ const terms: Term[] = [
     related: ["Restraint", "Operator"],
   },
   {
-    term: "Arc testnet",
+    term: ARC_NETWORK_NAME,
     letter: "A",
-    definition:
-      "The rehearsal network where operators validate wallet behavior before production capital is at risk.",
-    detail:
-      "The signing flow, policy trace, and ledger shape should be practiced here first. Testnet USDC is a safe way to inspect the complete control loop.",
+    definition: IS_ARC_MAINNET
+      ? "The production network where governed wallets move real USDC."
+      : "The rehearsal network where operators validate wallet behavior before production capital is at risk.",
+    detail: IS_ARC_MAINNET
+      ? "On mainnet every payment moves real USDC; rehearse on Arc Testnet first."
+      : "The signing flow, policy trace, and ledger shape should be practiced here first. Testnet USDC is a safe way to inspect the complete control loop.",
     related: ["Governed wallet", "Ledger"],
   },
   {
@@ -67,7 +69,7 @@ const terms: Term[] = [
       "The append-only record of proposals, policy verdicts, transactions, and human decisions.",
     detail:
       "A ledger entry answers four questions: what was requested, what policy said, what moved onchain, and who stepped in. It is the memory of the control loop.",
-    related: ["Restraint", "Arc testnet"],
+    related: ["Restraint", ARC_NETWORK_NAME],
   },
   {
     term: "Operator",
@@ -91,8 +93,7 @@ const terms: Term[] = [
     letter: "S",
     definition:
       "Sign-In with Ethereum: a wallet-signed message that establishes an operator session without sharing a private key.",
-    detail:
-      "The message binds the operator to the workspace domain, Arc testnet, a nonce, and an expiry. Re-check the domain and chain before signing.",
+    detail: `The message binds the operator to the workspace domain, ${ARC_NETWORK_NAME}, a nonce, and an expiry. Re-check the domain and chain before signing.`,
     related: ["Operator", "Governed wallet"],
   },
 ];

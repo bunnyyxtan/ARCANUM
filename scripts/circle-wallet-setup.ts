@@ -29,7 +29,8 @@
  *     GUARDED_WALLET          the governed wallet
  *     OWNER_PRIVATE_KEY       the governed wallet's owner key (never commit it)
  *     GAS_USDC                native USDC to send the signer for gas (default "0.5")
- *     ARC_TESTNET_RPC         optional RPC override
+ *     ARC_NETWORK             testnet (default) or mainnet; on mainnet the gas top-up is real USDC
+ *     ARC_RPC_URL             optional RPC override (ARC_TESTNET_RPC is honoured on testnet only)
  *
  * The dashboard keeps its own list of signers for the wallet page; a signer
  * added here is authorized onchain (policy, receipts and evidence all read
@@ -50,10 +51,22 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 
 import { GuardedWalletAbi } from "../packages/contracts/index";
-import { ARC_TESTNET_RPC_URL, arcTestnet } from "../packages/sdk/src/chains";
+import { ARC_RPC_URL, IS_ARC_MAINNET, arcChain } from "../packages/sdk/src/chains";
 import { CircleWalletsApi } from "../packages/sdk/src/circle-api";
 
 const CIRCLE_BLOCKCHAIN = process.env.CIRCLE_BLOCKCHAIN?.trim() || "EVM-TESTNET";
+
+// ARC_NETWORK selects chain, default RPC and USDC together. A testnet-only RPC
+// override is ignored on mainnet instead of pointing a mainnet run at testnet.
+function rpcUrl(): string {
+  const override = process.env.ARC_RPC_URL?.trim();
+  if (override) return override;
+  if (!IS_ARC_MAINNET) {
+    const legacy = process.env.ARC_TESTNET_RPC?.trim();
+    if (legacy) return legacy;
+  }
+  return ARC_RPC_URL;
+}
 
 function requireEnv(name: string): string {
   const value = process.env[name]?.trim();
@@ -142,9 +155,9 @@ async function authorize(): Promise<void> {
   const guardedWallet = addressEnv("GUARDED_WALLET");
   const owner = privateKeyToAccount(hexEnv("OWNER_PRIVATE_KEY"));
   const gasUsdc = process.env.GAS_USDC?.trim() || "0.5";
-  const transport = http(process.env.ARC_TESTNET_RPC?.trim() || ARC_TESTNET_RPC_URL);
-  const publicClient = createPublicClient({ chain: arcTestnet, transport });
-  const walletClient = createWalletClient({ account: owner, chain: arcTestnet, transport });
+  const transport = http(rpcUrl());
+  const publicClient = createPublicClient({ chain: arcChain, transport });
+  const walletClient = createWalletClient({ account: owner, chain: arcChain, transport });
 
   const onchainOwner = await publicClient.readContract({
     address: guardedWallet,
@@ -182,11 +195,11 @@ async function authorize(): Promise<void> {
     console.log(`addSigner   ${hash} (block ${receipt.blockNumber})`);
   }
 
-  const wanted = parseUnits(gasUsdc, arcTestnet.nativeCurrency.decimals);
+  const wanted = parseUnits(gasUsdc, arcChain.nativeCurrency.decimals);
   const balance = await publicClient.getBalance({ address: signer });
   if (balance >= wanted) {
     console.log(
-      `gas         signer already holds ${formatUnits(balance, arcTestnet.nativeCurrency.decimals)} USDC, skipped`,
+      `gas         signer already holds ${formatUnits(balance, arcChain.nativeCurrency.decimals)} USDC, skipped`,
     );
   } else {
     const hash = await walletClient.sendTransaction({ to: signer, value: wanted - balance });
@@ -195,7 +208,7 @@ async function authorize(): Promise<void> {
       throw new Error(`gas transfer reverted in ${hash}.`);
     }
     console.log(
-      `gas         sent ${formatUnits(wanted - balance, arcTestnet.nativeCurrency.decimals)} USDC in ${hash}`,
+      `gas         sent ${formatUnits(wanted - balance, arcChain.nativeCurrency.decimals)} USDC in ${hash}`,
     );
   }
   console.log(

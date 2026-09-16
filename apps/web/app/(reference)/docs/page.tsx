@@ -1,11 +1,18 @@
 "use client";
 
-import { ARC_NETWORK_BADGE } from "@arcanum/shared";
+import { ARC_NETWORK, ARC_NETWORK_BADGE, ARC_NETWORK_NAME, IS_ARC_MAINNET } from "@arcanum/shared";
 import Link from "next/link";
 import { type ReactNode, useState } from "react";
 
 import { Reveal } from "@/components/arcanum/reveal";
 import { copyText } from "@/lib/clipboard";
+import { contractAddresses } from "@/lib/deployment";
+import { type SdkSnippetInput, sdkDeploySnippet, sdkTestSnippet } from "./sdk-snippets";
+
+const sdkSnippetInput: SdkSnippetInput = {
+  network: ARC_NETWORK,
+  walletFactory: contractAddresses.walletFactory,
+};
 
 const sections = [
   { id: "orientation", number: "00", label: "Read this first" },
@@ -47,7 +54,7 @@ export default function DocsPage() {
   const copyCommand = async () => {
     setCopyState("idle");
     const copied = await copyText(
-      "arcana wallet inspect --wallet 0x3f...9a2c --network arc-testnet",
+      `arcana wallet inspect --wallet 0x3f...9a2c --network arc-${ARC_NETWORK}`,
     );
     setCopyState(copied ? "copied" : "failed");
     if (copied) {
@@ -92,7 +99,8 @@ export default function DocsPage() {
                 READING TIME / 08 MIN
               </p>
               <p className="mt-3 text-[12px] leading-[1.5] text-[var(--wl-secondary2)]">
-                For workspace operators. Assumes an Arc testnet wallet and a signed SIWE session.
+                For workspace operators. Assumes an {ARC_NETWORK_NAME} wallet and a signed SIWE
+                session.
               </p>
             </div>
           </div>
@@ -175,14 +183,16 @@ export default function DocsPage() {
                 </h2>
                 <p className="mt-5 text-[15px] leading-[1.55] text-[var(--wl-body)]">
                   Create the wallet from the operator console, then bind the first doctrine before
-                  funding it. Use Arc testnet for the complete rehearsal: the same signing ceremony,
-                  a safe balance.
+                  funding it.{" "}
+                  {IS_ARC_MAINNET
+                    ? "Rehearse on Arc Testnet first; this console is running on Arc Mainnet with real USDC."
+                    : "Use Arc Testnet for the complete rehearsal: the same signing ceremony, a safe balance."}
                 </p>
                 <ol className="mt-9 space-y-7">
                   {[
                     [
                       "Connect the operator",
-                      "Open the console with your EOA and complete Sign-In with Ethereum (SIWE). The message includes your workspace domain, Arc testnet, a nonce, and an expiry. Never paste a private key into an agent runtime.",
+                      `Open the console with your EOA and complete Sign-In with Ethereum (SIWE). The message includes your workspace domain, ${ARC_NETWORK_NAME}, a nonce, and an expiry. Never paste a private key into an agent runtime.`,
                     ],
                     [
                       "Name the boundary",
@@ -190,7 +200,7 @@ export default function DocsPage() {
                     ],
                     [
                       "Fund the rehearsal",
-                      "Send a small USDC balance on Arc testnet. Confirm the chain ID and token contract in the wallet drawer before your first proposal.",
+                      `Send a small ${IS_ARC_MAINNET ? "real" : "test"} USDC balance on ${ARC_NETWORK_NAME}. Confirm the chain ID and token contract in the wallet drawer before your first proposal.`,
                     ],
                   ].map(([title, copy], i) => (
                     <li key={title} className="grid grid-cols-[28px_1fr] gap-4">
@@ -209,7 +219,7 @@ export default function DocsPage() {
                 <div className="mt-9">
                   <CodeBlock label="TERMINAL">{`arcana wallet inspect \\
   --wallet 0x3f...9a2c \\
-  --network arc-testnet`}</CodeBlock>
+  --network arc-${ARC_NETWORK}`}</CodeBlock>
                   <button
                     type="button"
                     onClick={copyCommand}
@@ -368,11 +378,11 @@ export default function DocsPage() {
                   Deploy your first GuardedWallet.
                 </h2>
                 <p className="mt-5 text-[15px] leading-[1.55] text-[var(--wl-body)]">
-                  Stand up a governed agent wallet on Arc Testnet in five steps. Every proposed
-                  payment through the governed wallet is evaluated against a Doctrine before it can
-                  settle onchain. Successful movement and escalation events are indexed; a reverted
-                  policy denial leaves no successful DENY event. Signed payment decision receipts
-                  attest the separate preflight evaluation.
+                  Stand up a governed agent wallet on {ARC_NETWORK_NAME} in five steps. Every
+                  proposed payment through the governed wallet is evaluated against a Doctrine
+                  before it can settle onchain. Successful movement and escalation events are
+                  indexed; a reverted policy denial leaves no successful DENY event. Signed payment
+                  decision receipts attest the separate preflight evaluation.
                 </p>
                 <ol className="mt-9 space-y-7">
                   {[
@@ -382,7 +392,7 @@ export default function DocsPage() {
                     ],
                     [
                       "Configure the signer",
-                      "Point the client at Arc Testnet and supply an admin signer that will own the Doctrine.",
+                      `Point the client at ${ARC_NETWORK_NAME} and supply an admin signer that will own the Doctrine.`,
                     ],
                     [
                       "Deploy the wallet with a Doctrine",
@@ -390,7 +400,7 @@ export default function DocsPage() {
                     ],
                     [
                       "Fund the wallet",
-                      "Transfer test USDC to the deployed address; it appears in the AGENT REGISTER immediately.",
+                      `Transfer ${IS_ARC_MAINNET ? "real" : "test"} USDC to the deployed address; it appears in the AGENT REGISTER immediately.`,
                     ],
                     [
                       "Watch the Event Stream",
@@ -413,89 +423,19 @@ export default function DocsPage() {
                 <CodeBlock label="TERMINAL / bash">npm install arcanum-sdk viem</CodeBlock>
                 <p className="mt-6 text-[13px] leading-[1.5] text-[var(--wl-secondary2)]">
                   Snippets are files, not terminal commands. Save the block below as test.mjs, then
-                  run node test.mjs. It reads a live GuardedWallet on Arc Testnet: real policy, real
-                  verdicts, no keys required.
+                  run node test.mjs. It reads a live GuardedWallet on {ARC_NETWORK_NAME}: real
+                  policy, real verdicts, no keys required.
                 </p>
-                <CodeBlock label="test.mjs / run: node test.mjs">{`import { ArcanumClient } from "arcanum-sdk";
- import { ARC_TESTNET_RPC_URL, arcTestnet, usdcErc20 } from "arcanum-sdk/chains";
- import { formatUnits } from "viem";
-
-  const walletAddress = process.env.GUARDED_WALLET;
-  const vendorAddress = process.env.VENDOR_ADDRESS;
- if (!walletAddress || !vendorAddress) {
-   throw new Error("Set GUARDED_WALLET and VENDOR_ADDRESS first.");
- }
-
- // The SDK chain definition is sourced from Arc's current Testnet config.
- // Arc's native USDC gas balance uses 18 decimals.
- const client = new ArcanumClient({
-   walletAddress,
-   chain: arcTestnet,
-   rpcUrl: process.env.ARC_TESTNET_RPC ?? ARC_TESTNET_RPC_URL,
- });
-
- const policy = await client.getPolicy();
- // GuardedWallet policy and ERC20 USDC amounts use six-decimal token units.
- console.log("Per-tx cap:", formatUnits(policy.perTxCap, 6), "USDC");
-
- const allowed = await client.simulate({
-   to: vendorAddress,
-   amount: usdcErc20(1),
- });
- console.log("Vendor verdict:", allowed.verdict, allowed.reason);
-
- const denied = await client.simulate({
-   to: vendorAddress,
-   amount: usdcErc20(1000000),
- });
- console.log("Large payment verdict:", denied.verdict, denied.reason);`}</CodeBlock>
+                <CodeBlock label="test.mjs / run: node test.mjs">
+                  {sdkTestSnippet(sdkSnippetInput)}
+                </CodeBlock>
                 <p className="mt-6 text-[13px] leading-[1.5] text-[var(--wl-secondary2)]">
                   Ready to deploy your own? Save this as deploy.mjs, set OPERATOR_KEY to a funded
-                  Arc Testnet key, and run it.
+                  {ARC_NETWORK_NAME} key, and run it.
                 </p>
-                <CodeBlock label="deploy.mjs / run: node deploy.mjs">{`import { WalletFactoryAbi } from "arcanum-sdk";
- import { ARC_TESTNET_RPC_URL, arcTestnet } from "arcanum-sdk/chains";
- import { createWalletClient, http, parseUnits } from "viem";
- import { privateKeyToAccount } from "viem/accounts";
-
- const operatorKey = process.env.OPERATOR_KEY;
-  const agentSigner = process.env.AGENT_SIGNER_ADDRESS;
- if (!operatorKey || !agentSigner) {
-   throw new Error("Set OPERATOR_KEY and AGENT_SIGNER_ADDRESS first.");
- }
-
- // The operator account owns the Doctrine. Arc native USDC gas uses 18 decimals;
- // GuardedWallet policy values below are ERC20 USDC base units (6 decimals).
-  const account = privateKeyToAccount(operatorKey);
- const walletClient = createWalletClient({
-   account,
-   chain: arcTestnet,
-   transport: http(process.env.ARC_TESTNET_RPC ?? ARC_TESTNET_RPC_URL),
- });
-
- // Current Arc Testnet deployment manifest:
- // packages/contracts/deployments/arc-testnet.json
- const WALLET_FACTORY = "0xbE1bC48F26e7166D872828d40e82A6407dbD350C";
-
- const policy = {
-   perTxCap: parseUnits("50", 6),
-   daily24hCap: parseUnits("500", 6),
-   monthlyCap: parseUnits("5000", 6), // wallet-wide monthly cap
-   allowedCategories: 0b11111n,
-   escalationThreshold: parseUnits("25", 6),
-   requireAllowlist: true,
-   freezeOnBlockedVendor: true,
- };
-
- const council = [account.address]; // use additional approvers for a real quorum
-
- const txHash = await walletClient.writeContract({
-   address: WALLET_FACTORY,
-   abi: WalletFactoryAbi,
-   functionName: "createWallet",
-   args: [account.address, "ResearchAgent", policy, [agentSigner], council, 1, 3600],
- });
- console.log("Deployed:", txHash);`}</CodeBlock>
+                <CodeBlock label="deploy.mjs / run: node deploy.mjs">
+                  {sdkDeploySnippet(sdkSnippetInput)}
+                </CodeBlock>
                 <div className="mt-8 space-y-3">
                   <div className="flex gap-3 border-l-2 border-[var(--wl-signal)] bg-[rgba(var(--wl-signal-rgb),.06)] px-4 py-3">
                     <div>
@@ -503,7 +443,7 @@ export default function DocsPage() {
                         RESTRAINT
                       </div>
                       <p className="mt-1 text-[12.5px] leading-[1.5] text-[var(--wl-body)]">
-                        Onchain policy changes affect real testnet state. Test with small limits
+                        Onchain policy changes affect real onchain state. Test with small limits
                         first.
                       </p>
                     </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { ARC_NETWORK_NAME } from "@arcanum/shared";
 import { useEffect, useRef, useState } from "react";
 
 import { EmberMark } from "@/components/warm/EmberMark";
@@ -528,7 +529,7 @@ export default function LandingPage() {
           </div>
         </footer>
         <p className="px-6 pb-6 font-mono text-[9px] tracking-[.04em] text-[var(--wl-mute)] lg:px-10">
-          Built on the Arc testnet. Arc is a trademark of Circle Internet Group, Inc. or its
+          Built on {ARC_NETWORK_NAME}. Arc is a trademark of Circle Internet Group, Inc. or its
           affiliates. ARCANUM is an independent project and is not affiliated with, sponsored by, or
           endorsed by Circle Internet Group, Inc.
         </p>

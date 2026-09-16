@@ -1,7 +1,8 @@
 "use client";
 
 import { EmberMark } from "@/components/warm/EmberMark";
-import { ARC_EXPLORER_URL, ARC_NETWORK_BADGE, ARC_NETWORK_NAME, arcChain } from "@arcanum/shared";
+import { getArcscanTxUrl } from "@/lib/arcscan";
+import { ARC_NETWORK_BADGE, ARC_NETWORK_NAME, IS_ARC_MAINNET, arcChain } from "@arcanum/shared";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Link from "next/link";
 
@@ -486,9 +487,7 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
         : outcomeTerms
           ? `${escalationStatusLabel(outcomeTerms.status)}.`
           : "Decision state is settled.";
-  const contractTxUrl = contractTxHash
-    ? `${process.env.NEXT_PUBLIC_ARCSCAN_URL ?? ARC_EXPLORER_URL}/tx/${contractTxHash}`
-    : null;
+  const contractTxUrl = contractTxHash ? getArcscanTxUrl(contractTxHash) : null;
 
   return (
     <main className="min-h-[100dvh] bg-[var(--wl-bg)] text-[var(--wl-ink)]">
@@ -619,6 +618,12 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
                     Your decision is signed onchain and becomes part of the immutable decision
                     record. There is no silent approval.
                   </p>
+                  {IS_ARC_MAINNET && (
+                    <p className="mt-3 border-l-2 border-[var(--wl-signal)] pl-3 text-[12px] leading-[1.5] text-[var(--wl-body)]">
+                      This is {ARC_NETWORK_NAME}. Approving releases real USDC through unaudited
+                      pilot contracts, and the release cannot be reversed.
+                    </p>
+                  )}
                   <div className="mt-7 grid grid-cols-1 gap-3 sm:grid-cols-2 md:flex">
                     <button
                       type="button"

@@ -1,3 +1,4 @@
+import { ARC_MAINNET_CHAIN_ID } from "../chains/arc-mainnet";
 import { ARC_TESTNET_CHAIN_ID } from "../chains/arc-testnet";
 
 /**
@@ -23,6 +24,13 @@ export const PAYMENT_RECEIPT_ISSUERS: readonly PaymentReceiptIssuer[] = [
     address: "0x768020000608ab6afc28a15b2b03a00273ef3288",
     chainId: ARC_TESTNET_CHAIN_ID,
     validFrom: "2026-09-10T00:00:00Z",
+    retiredAt: null,
+  },
+  {
+    keyId: "arc-mainnet-2026-09",
+    address: "0xee52de6c75b868e919999c08691a9b648f8c61dd",
+    chainId: ARC_MAINNET_CHAIN_ID,
+    validFrom: "2026-09-16T00:00:00Z",
     retiredAt: null,
   },
 ];

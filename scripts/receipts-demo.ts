@@ -36,7 +36,9 @@
  *   AMOUNT_ESCALATE     USDC amount above the escalation threshold (default "50")
  *   AMOUNT_DENY         USDC amount for the denied request (default "1")
  *   ARCANUM_API_URL     default https://thearcanum.in
- *   ARC_TESTNET_RPC     optional RPC override
+ *   ARC_NETWORK         testnet (default) or mainnet; must match the API the
+ *                       script talks to, and on mainnet the amounts are real USDC
+ *   ARC_RPC_URL         optional RPC override (ARC_TESTNET_RPC is honoured on testnet only)
  *
  * Every receipt envelope is written to demo-output/<receiptId>.json so it can
  * be pasted into /verify, and altered for the tamper test.
@@ -49,9 +51,10 @@ import { type LocalAccount, getAddress } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 
 import {
-  ARC_TESTNET_RPC_URL,
-  ARC_TESTNET_USDC_ADDRESS,
-  arcTestnet,
+  ARC_RPC_URL,
+  ARC_USDC_ADDRESS,
+  IS_ARC_MAINNET,
+  arcChain,
 } from "../packages/sdk/src/chains";
 import { circleWalletAccount } from "../packages/sdk/src/circle";
 import {
@@ -117,12 +120,26 @@ function agentSigner(): LocalAccount {
   });
 }
 
+// The network switch (ARC_NETWORK) picks the chain, the default RPC and the
+// USDC address together, so the receipt the API pins and the transaction that
+// acts on it can never be on different chains. A testnet-only RPC override is
+// ignored on mainnet rather than pointing a mainnet run at testnet reads.
+function rpcUrl(): string {
+  const override = process.env.ARC_RPC_URL?.trim();
+  if (override) return override;
+  if (!IS_ARC_MAINNET) {
+    const legacy = process.env.ARC_TESTNET_RPC?.trim();
+    if (legacy) return legacy;
+  }
+  return ARC_RPC_URL;
+}
+
 function client(signer: LocalAccount): ArcanumClient {
   return new ArcanumClient({
     walletAddress: hexEnv("GUARDED_WALLET"),
     agentSigner: signer,
-    chain: arcTestnet,
-    rpcUrl: process.env.ARC_TESTNET_RPC?.trim() || ARC_TESTNET_RPC_URL,
+    chain: arcChain,
+    rpcUrl: rpcUrl(),
     apiUrl: process.env.ARCANUM_API_URL?.trim() || "https://thearcanum.in",
   });
 }
@@ -151,7 +168,7 @@ function intentFor(scenario: Scenario, agentSignerAddress: `0x${string}`): Payme
     governedWalletAddress: hexEnv("GUARDED_WALLET"),
     agentSignerAddress,
     vendorAddress: vendor,
-    tokenAddress: ARC_TESTNET_USDC_ADDRESS,
+    tokenAddress: ARC_USDC_ADDRESS,
     tokenSymbol: "USDC",
     amount,
     purpose,
