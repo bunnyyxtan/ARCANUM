@@ -5,7 +5,7 @@ import {
   VendorRegistryAbi,
   WalletFactoryAbi,
 } from "@arcanum/contracts";
-import { ARC_CHAIN_ID, ARC_RPC_URL, IS_ARC_MAINNET } from "@arcanum/shared";
+import { ARC_CHAIN_ID, IS_ARC_MAINNET } from "@arcanum/shared";
 import { rateLimit } from "@ponder/utils";
 import { createConfig, factory } from "ponder";
 import { http, getAbiItem } from "viem";
@@ -86,7 +86,22 @@ if (!databaseUrl) {
 // used on purpose: the round-robin load balancer would bound throughput by the
 // slowest queue, and a fallback to the official endpoint would fail the same
 // merged queries again.
+//
+// Mainnet has the same shape (measured 2026-09-16, the day after launch):
+//
+// - rpc.mainnet.arc.io (the official public endpoint, the app's ARC_RPC_URL)
+//   rejects the merged GuardedWallet query (13 topic0 values) with "requested
+//   range too large" (-32012) at any block range, caps plain queries at 5,000
+//   blocks with the same message, and answers "rate limit exceeded" (-32005)
+//   from the second request per second. Ponder's getLogs retry helper does not
+//   recognise that message, so it never splits the query and the backfill
+//   stalls. The first mainnet top-up passed only because no wallet existed
+//   yet: the wallet source is skipped while the factory has no children.
+// - arc.gateway.tenderly.co accepts the 13-topic query and 100,000 block
+//   ranges, and reports a limit Ponder does understand ("query exceeds max
+//   block range 100000"), so it is the mainnet default as well.
 const DEFAULT_ARC_TESTNET_INDEXER_RPC_URL = "https://arc-testnet.gateway.tenderly.co";
+const DEFAULT_ARC_MAINNET_INDEXER_RPC_URL = "https://arc.gateway.tenderly.co";
 const DEFAULT_RPC_REQUESTS_PER_SECOND = 1;
 
 // A blank variable is "unset": `.env.example` ships these keys empty, and an
@@ -104,7 +119,7 @@ const envValue = (name: string) => {
 const rpcUrl =
   envValue("INDEXER_RPC_URL") ??
   envValue("ARC_RPC_URL") ??
-  (IS_ARC_MAINNET ? ARC_RPC_URL : DEFAULT_ARC_TESTNET_INDEXER_RPC_URL);
+  (IS_ARC_MAINNET ? DEFAULT_ARC_MAINNET_INDEXER_RPC_URL : DEFAULT_ARC_TESTNET_INDEXER_RPC_URL);
 if (!rpcUrl) {
   throw new Error("No Arc RPC URL is configured for the indexer (set INDEXER_RPC_URL)");
 }
