@@ -9,3 +9,8 @@ const transferTool = async (to: `0x${string}`, amount: bigint, reason: string) =
 ```
 
 Keep the agent's key in your operator environment and keep policy in the wallet.
+
+Disable automatic retries for this payment tool. A `TransactionRecoveryError` means
+the submitted payment may already have executed, not that it was denied. Persist
+the hash and original input with `onSubmitted`, then use `reconcileUSDC` for same-hash
+read-only recovery. Never ask the agent to retry with a new reference.

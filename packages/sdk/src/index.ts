@@ -29,16 +29,18 @@ export {
   EscalationRequiredError,
   InsufficientUSDCError,
   PolicyDeniedError,
+  TransactionRecoveryError,
   TransferRevertedError,
   WalletFrozenError,
 } from "./errors";
-export type { ArcanumErrorCode, ArcanumVerdict } from "./errors";
+export type { ArcanumErrorCode, ArcanumVerdict, TransactionRecoveryCode } from "./errors";
 export type {
   ArcanumClientConfig,
   Escalation,
   EscalationResolved,
   ExecutePaymentIntentWithReceiptOptions,
   ExecuteUSDCInput,
+  ExecuteUSDCOptions,
   ExecuteUSDCResult,
   NormalizedPaymentIntentInput,
   NormalizedSignedPaymentIntentInput,
@@ -51,6 +53,7 @@ export type {
   SignedPaymentIntentInput,
   SimulateInput,
   SimulationResult,
+  SubmittedUSDCTransaction,
   SupportedPaymentToken,
   Unwatch,
   VendorInfo,

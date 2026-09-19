@@ -111,7 +111,13 @@ if (decision.decision === "allow" || decision.decision === "escalate") {
 
 `reference` is descriptive metadata, not an idempotency guarantee. If receipt
 waiting times out, do not submit the transfer again: keep the transaction hash
-and call `await arcanum.confirm(txHash)`. Resubmission can transfer funds twice.
+and call `await arcanum.reconcileUSDC(txHash, originalInput)`. The execution
+methods throw `TransactionRecoveryError` with `txHash` and `submission.input`
+when a submitted payment's outcome cannot be established. `confirm(txHash)`
+only confirms receipt status; it does not classify the payment outcome.
+An optional `onSubmitted` callback (second argument to execution methods) lets
+you durably store the hash and exact input before confirmation.
+Resubmission can transfer funds twice. See `docs/SDK-TRANSACTION-RECOVERY.md`.
 
 Use the signed intent when calling the Arcanum API from an agent service. The
 signature proves that the authorized agent signer approved the exact request;
@@ -176,7 +182,9 @@ transaction was sent. The same `reference` returns the same receipt
 `executePaymentIntentWithReceipt` does not act on a replayed receipt, since
 the earlier attempt may already have paid and the contract does not
 deduplicate references: it returns `errorCode: "RECEIPT_REPLAYED"` unless
-called with `{ executeReplayedReceipt: true }` or a fresh reference.
+called with `{ executeReplayedReceipt: true }`. That override is not a recovery
+mechanism: first establish that the earlier attempt was never submitted.
+Never use a fresh reference to recover an uncertain payment; it can pay twice.
 See the repository's `docs/PAYMENT-RECEIPTS.md` for the format, the trust
 model and the API.
 

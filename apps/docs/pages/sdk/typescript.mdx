@@ -33,8 +33,27 @@ const result = await arc.executeUSDC({
 
 Payment-intent methods use `reference` as the caller's stable business reference. Version 3
 replaces the former `idempotencyKey` name; do not send both.
-The reference does not make execution idempotent. If receipt waiting times out, retain the
-submitted hash and call `confirm(txHash)`; resubmitting can transfer funds twice.
+The reference does not make execution idempotent. Execution methods throw
+`TransactionRecoveryError` when a submitted payment's outcome is uncertain; this is
+not a denial. Retain its `txHash` and `submission.input`, then call
+`reconcileUSDC(txHash, originalInput)` on the same chain/wallet without a signer.
+`confirm(txHash)` only checks receipt status, not the payment outcome.
+
+Pass `{ onSubmitted: async (submission) => persistSubmission(submission) }` as the
+second argument to `executeUSDC`, `executePaymentIntent`, or
+`executePaymentIntentWithReceipt`. Implement `persistSubmission` in your durable
+store (serialize the bigint amount as a decimal string and restore it with `BigInt`).
+The callback runs before confirmation; its failure still means the transaction may
+have executed. Never automatically retry a payment or invent a fresh reference after
+uncertainty. There is no exactly-once guarantee, including crashes before hash persistence.
+
+The repository CLI requires `--execute --reference <stable-business-reference>` and
+keeps an atomic, fsynced execution journal in `demo-output`. An unresolved journal
+blocks further executions for that chain/wallet, including different references.
+Use `receipts-demo.ts recover --reference <original-reference>` for read-only recovery;
+then retry only `link <receiptId> <txHash>` if evidence attachment is needed.
+Keep the directory on durable shared storage; do not delete markers to bypass the
+guard. A missing saved hash or interrupted filesystem lock needs operator investigation.
 
 ## Circle Wallets as the signer
 
@@ -60,6 +79,7 @@ the repository's `docs/CIRCLE-WALLETS.md`.
 ## API
 
 - `executeUSDC({ to, amount, reason, metadata })`
+- `reconcileUSDC(txHash, originalInput)` (read-only outcome recovery)
 - `createPaymentIntent({ ..., reference })`
 - `simulate({ to, amount })`
 - `getPolicy()`
@@ -74,3 +94,6 @@ the repository's `docs/CIRCLE-WALLETS.md`.
 `AgentNotAuthorizedError`, and `InsufficientUSDCError` extend `ArcanumError`.
 `TransferRevertedError` means the submitted chain transaction reverted; inspect its cause and
 transaction hash rather than treating it as a policy denial.
+`TransactionRecoveryError` deliberately does not extend `ArcanumError` and has no
+policy verdict. Its `txHash`, `code`, `cause`, and optional `submission` support
+same-hash recovery; an agent must not convert it into “denied” or “not submitted.”
