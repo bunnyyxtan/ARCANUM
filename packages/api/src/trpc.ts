@@ -1,4 +1,4 @@
-import { type ArcanumSession, isCurrentSession } from "@arcanum/auth";
+import { type ArcanumSession, SessionStoreUnavailableError, validateSession } from "@arcanum/auth";
 import { defaultTenantId } from "@arcanum/db";
 import { TRPCError, initTRPC } from "@trpc/server";
 import superjson from "superjson";
@@ -28,6 +28,7 @@ export const router = t.router;
 // path, at 600 queries and 60 mutations a minute, which is far above what a page
 // load costs and far below what a scraper wants.
 export const publicProcedure = t.procedure.use(async ({ ctx, next, path, type }) => {
+  await requireTrackedSessionIfPresent(ctx);
   await enforceRateLimit(ctx, type, path);
   return next();
 });
@@ -36,12 +37,7 @@ export const publicProcedure = t.procedure.use(async ({ ctx, next, path, type })
 export const rateLimitedPublicProcedure = publicProcedure;
 
 export const protectedProcedure = t.procedure.use(async ({ ctx, next, path, type }) => {
-  // Do not treat a sealed value as authorization by itself. In particular,
-  // existing seals issued with iron-session's old fourteen-day default can
-  // still unseal after the seven-day cookie expires.
-  if (ctx.session && !isCurrentSession(ctx.session)) {
-    throw new TRPCError({ code: "UNAUTHORIZED", message: "SIWE session expired" });
-  }
+  await requireTrackedSessionIfPresent(ctx);
 
   const session = ctx.session ?? createLocalDevSession(ctx.env.allowDevAuth);
 
@@ -67,7 +63,12 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next, path, type
 // access. Ownership is checked against the read model at the call site instead.
 
 function createLocalDevSession(allowDevAuth: boolean): ArcanumSession | null {
-  if (!allowDevAuth) {
+  if (
+    !allowDevAuth ||
+    process.env.NODE_ENV !== "development" ||
+    process.env.ARCANUM_SESSION_STORE_MODE !== "local-test" ||
+    process.env.ARCANUM_REQUIRE_AUTH === "true"
+  ) {
     return null;
   }
 
@@ -77,4 +78,24 @@ function createLocalDevSession(allowDevAuth: boolean): ArcanumSession | null {
     role: "owner",
     expiresAt: Date.now() + 60 * 60 * 1000,
   };
+}
+
+// Public resolvers also use ctx.session for wallet-scoped service-role reads.
+// Therefore validate before BOTH public and protected procedures, including
+// non-HTTP createCaller callers. No per-process positive authorization cache.
+async function requireTrackedSessionIfPresent(ctx: ApiContext) {
+  if (!ctx.session) return;
+  try {
+    if (
+      await validateSession({ user: ctx.session, sessionId: ctx.sessionId }, ctx.expectedTenantId)
+    )
+      return;
+  } catch (error) {
+    if (!(error instanceof SessionStoreUnavailableError)) throw error;
+    throw new TRPCError({ code: "SERVICE_UNAVAILABLE", message: error.message, cause: error });
+  }
+  throw new TRPCError({
+    code: "UNAUTHORIZED",
+    message: "SIWE session expired or revoked. Sign in again.",
+  });
 }

@@ -130,7 +130,9 @@ export function fakeSupabase(tables: Record<string, SupabaseRow[]>) {
     payment_receipts: (row) =>
       [row.chain_id, row.wallet_address, row.agent_signer_address, row.reference].join("|"),
     payment_receipt_evidence: (row) =>
-      [row.receipt_id, row.kind, row.outcome, row.tx_hash ?? ""].join("|"),
+      row.kind === "execution" && typeof row.tx_hash === "string"
+        ? `execution:${row.tx_hash.toLowerCase()}`
+        : [row.receipt_id, row.kind, row.outcome, row.tx_hash ?? ""].join("|"),
   };
 
   function matches(row: SupabaseRow, options?: Record<string, unknown>) {

@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { useAccount, useDisconnect } from "wagmi";
 
 import { Arrow } from "@/components/arcanum/arrow";
-import { publishAuthSession, useWorkspaceMode } from "@/lib/auth-session";
+import { publishAuthSession, signOutAuthSession, useWorkspaceMode } from "@/lib/auth-session";
 import { trpc } from "@/lib/trpc";
 
 const DISMISS_PREFIX = "arcanum-workspace-named:";
@@ -257,7 +257,7 @@ function UnsignedWorkspaceGate({ onDisconnect }: Readonly<{ onDisconnect: () => 
 
   const disconnectWallet = () => {
     publishAuthSession(null);
-    void fetch("/api/auth/logout", { credentials: "include", method: "POST" });
+    void signOutAuthSession().catch((error: Error) => toast.error(error.message));
     onDisconnect();
   };
 

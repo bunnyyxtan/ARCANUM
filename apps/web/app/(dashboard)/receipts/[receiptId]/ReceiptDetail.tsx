@@ -467,8 +467,8 @@ export function ReceiptDetail({ receiptId }: { receiptId: string }) {
                           OBSERVED {formatUtc(row.observedAt)}
                           {row.blockNumber !== null && ` · BLOCK ${row.blockNumber}`}
                           {row.calldataNamesReceipt === true && " · CALLDATA NAMES THIS RECEIPT"}
-                          {row.calldataNamesReceipt === false &&
-                            " · CALLDATA DOES NOT NAME THIS RECEIPT"}
+                          {row.calldataNamesReceipt !== true &&
+                            " · HISTORICAL UNBOUND OBSERVATION: CAUSAL LINK NOT PROVEN"}
                         </p>
                         {row.escalationKey && (
                           <p className="mt-1 break-all font-mono text-[10px] text-[var(--wl-mute)]">

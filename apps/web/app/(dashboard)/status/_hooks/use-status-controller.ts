@@ -14,6 +14,7 @@ export function useStatusController() {
     retry: false,
     refetchOnWindowFocus: false,
     staleTime: 60_000,
+    refetchInterval: 60_000,
   });
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const indexer = health.data?.indexer;
@@ -34,29 +35,37 @@ export function useStatusController() {
 
   const indexerState: HealthState = health.isLoading
     ? "CHECKING"
-    : indexer?.status === "available"
+    : !health.isError && indexer?.status === "available"
       ? "OPERATIONAL"
       : "DEGRADED";
   const readModelState: HealthState = health.isLoading
     ? "CHECKING"
-    : supabase?.readModel.status === "available"
+    : !health.isError && supabase?.readModel.status === "available"
       ? "OPERATIONAL"
       : "DEGRADED";
   const rpcState: HealthState = health.isLoading
     ? "CHECKING"
-    : rpc?.status === "available"
+    : !health.isError && rpc?.status === "available"
       ? "OPERATIONAL"
       : "DEGRADED";
 
   return {
+    overallState: health.isLoading
+      ? "CHECKING"
+      : !health.isError && health.data?.ok
+        ? "OPERATIONAL"
+        : "DEGRADED",
+    readiness: health.data?.readiness,
+    lastCatchupAt: indexer?.lastCatchupAt ?? null,
+    freshnessSeconds: indexer?.staleAfterSeconds ?? 900,
     indexer: {
       // The headline number is the chain height the read model is level with,
       // so it compares directly with the RPC card. The last event block sits in
       // the label: on a quiet chain it is older, and that is not lag.
       metric: health.isLoading
         ? "…"
-        : (indexer?.lastSeenChainBlock ?? indexer?.lastIndexedBlock) != null
-          ? String(indexer?.lastSeenChainBlock ?? indexer?.lastIndexedBlock)
+        : indexer?.lastSeenChainBlock != null
+          ? String(indexer.lastSeenChainBlock)
           : "-",
       metricLabel: health.isLoading
         ? "CHECKING"

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { TransactionRecovery } from "@/components/TransactionRecovery";
 import { WalletAuthBridge } from "@/components/arcanum/WalletAuthBridge";
 import { DashboardRouteGuard } from "@/components/arcanum/dashboard-route-guard";
 import { WorkspaceGate } from "@/components/arcanum/workspace-gate";
@@ -16,6 +17,7 @@ export default function DashboardLayout({ children }: Readonly<{ children: React
         <div className="min-h-screen bg-[var(--wl-bg)] text-[var(--wl-ink)]">
           <Header />
           <main>
+            <TransactionRecovery />
             <WorkspaceGate>{children}</WorkspaceGate>
           </main>
         </div>

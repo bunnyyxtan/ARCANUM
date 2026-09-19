@@ -6,10 +6,12 @@
  * "agent runtime" step of the walkthrough in docs/PAYMENT-RECEIPTS.md.
  *
  *   npx tsx scripts/receipts-demo.ts allow              receipt only, nothing onchain
- *   npx tsx scripts/receipts-demo.ts allow --execute    receipt, then executeUSDC, evidence link
+ *   npx tsx scripts/receipts-demo.ts allow --execute --reference invoice-123
  *   npx tsx scripts/receipts-demo.ts deny               receipt only (--execute is refused)
- *   npx tsx scripts/receipts-demo.ts escalate --execute receipt, then onchain hold, evidence link
- *   npx tsx scripts/receipts-demo.ts all [--execute]    the three above; deny stays receipt-only
+ *   npx tsx scripts/receipts-demo.ts escalate --execute --reference invoice-456
+ *   npx tsx scripts/receipts-demo.ts all               receipt-only scenarios
+ *   npx tsx scripts/receipts-demo.ts recover --reference invoice-123
+ *                                                        read-only same-hash reconciliation
  *   npx tsx scripts/receipts-demo.ts link <receiptId> <txHash>
  *                                                        re-post a hold's tx after the council
  *                                                        decided, to record escalation/<status>
@@ -17,8 +19,9 @@
  * With --execute the receipt is requested and shown first, and the payment is
  * sent only when that receipt is newly issued and its verdict is the one the
  * scenario expects. A different verdict stops the run with exit code 1, so a
- * misconfigured policy can never turn the deny or escalate scenario into a
- * transfer. The transaction acts on that inspected receipt, not on a second
+ * deny scenario never submits. Policy can change before mining; the mined
+ * outcome, not the receipt's preflight, is reported. The transaction acts on
+ * that inspected receipt, not on a second
  * request: its recipient and amount come from the receipt body and its id
  * travels in the executeUSDC reason bytes, the same way the SDK's
  * executePaymentIntentWithReceipt sends it.
@@ -42,6 +45,10 @@
  *
  * Every receipt envelope is written to demo-output/<receiptId>.json so it can
  * be pasted into /verify, and altered for the tamper test.
+ * Keep demo-output on durable shared storage for every process using this CLI.
+ * An unresolved execution blocks new references for the same chain/wallet.
+ * Do not delete journals/markers to retry. A crash before hash persistence (or
+ * during a filesystem critical section) requires operator investigation.
  */
 
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -61,9 +68,17 @@ import {
   ArcanumClient,
   type PaymentIntentInput,
   type PaymentReceiptEnvelope,
+  TransactionRecoveryError,
   TransferRevertedError,
   verifyPaymentReceipt,
 } from "../packages/sdk/src/index";
+import {
+  assertReceiptExecutionAvailable,
+  executeReceiptJournaled,
+  readReceiptExecution,
+  recoverReceiptExecution,
+  requestedReceiptReference,
+} from "./lib/receipt-execution";
 
 type Scenario = "allow" | "deny" | "escalate";
 
@@ -134,7 +149,7 @@ function rpcUrl(): string {
   return ARC_RPC_URL;
 }
 
-function client(signer: LocalAccount): ArcanumClient {
+function client(signer?: LocalAccount): ArcanumClient {
   return new ArcanumClient({
     walletAddress: hexEnv("GUARDED_WALLET"),
     agentSigner: signer,
@@ -144,7 +159,11 @@ function client(signer: LocalAccount): ArcanumClient {
   });
 }
 
-function intentFor(scenario: Scenario, agentSignerAddress: `0x${string}`): PaymentIntentInput {
+function intentFor(
+  scenario: Scenario,
+  agentSignerAddress: `0x${string}`,
+  reference?: string,
+): PaymentIntentInput {
   const vendor = {
     allow: () => hexEnv("VENDOR_ALLOWED"),
     escalate: () => hexEnv("VENDOR_ALLOWED"),
@@ -172,9 +191,9 @@ function intentFor(scenario: Scenario, agentSignerAddress: `0x${string}`): Payme
     tokenSymbol: "USDC",
     amount,
     purpose,
-    // Fresh per run: the reference is the idempotency key, and a reused one
-    // returns the earlier receipt instead of a new decision.
-    reference: `ethonline-demo-${scenario}-${new Date().toISOString().replace(/[:.]/g, "-")}`,
+    // Stable receipt reference, NOT onchain payment idempotency.
+    // --execute requires an explicit operator-supplied business reference.
+    reference: reference ?? `ethonline-demo-${scenario}`,
   };
 }
 
@@ -203,13 +222,28 @@ async function describe(envelope: PaymentReceiptEnvelope, replayed: boolean): Pr
 
 class ScenarioMismatch extends Error {}
 
-async function runScenario(scenario: Scenario, execute: boolean): Promise<void> {
+async function runScenario(
+  scenario: Scenario,
+  execute: boolean,
+  reference?: string,
+): Promise<void> {
   if (execute && scenario === "deny") {
     throw new Error("The deny scenario is receipt-only; run it without --execute.");
   }
+  if (execute) {
+    if (!reference) throw new Error("--execute requires --reference.");
+    assertReceiptExecutionAvailable(
+      {
+        chainId: arcChain.id,
+        walletAddress: hexEnv("GUARDED_WALLET"),
+        reference,
+      },
+      OUTPUT_DIR,
+    );
+  }
   const signer = agentSigner();
   const arcanum = client(signer);
-  const intent = intentFor(scenario, signer.address);
+  const intent = intentFor(scenario, signer.address, reference);
   console.log(`\n== ${scenario}${execute ? " (execute)" : ""}`);
   console.log(
     `signer      ${signer.address}${signer.source === "custom" ? " (Circle wallet)" : ""}`,
@@ -234,7 +268,9 @@ async function runScenario(scenario: Scenario, execute: boolean): Promise<void> 
     return;
   }
   if (replayed) {
-    throw new ScenarioMismatch("this reference already had a receipt; nothing was sent onchain");
+    throw new ScenarioMismatch(
+      "This reference already had a receipt; this invocation did not submit. Investigate the earlier attempt; do not change the reference to retry.",
+    );
   }
 
   const txHash = await executeInspected(arcanum, receipt);
@@ -267,16 +303,26 @@ async function executeInspected(
 ): Promise<`0x${string}` | undefined> {
   const { receiptId, request, amountBaseUnits } = envelope.receipt;
   try {
-    const execution = await arcanum.executeUSDC({
-      to: getAddress(request.vendorAddress),
-      amount: BigInt(amountBaseUnits),
-      reason: request.purpose,
-      metadata: {
+    const execution = await executeReceiptJournaled(
+      arcanum,
+      {
+        chainId: arcChain.id,
+        walletAddress: arcanum.walletAddress,
         reference: request.reference,
-        tokenSymbol: request.tokenSymbol ?? "USDC",
-        receiptId,
       },
-    });
+      receiptId,
+      {
+        to: getAddress(request.vendorAddress),
+        amount: BigInt(amountBaseUnits),
+        reason: request.purpose,
+        metadata: {
+          reference: request.reference,
+          tokenSymbol: request.tokenSymbol ?? "USDC",
+          receiptId,
+        },
+      },
+      OUTPUT_DIR,
+    );
     const detail = execution.error ? ` ${execution.error.message}` : "";
     console.log(`execution   ${execution.verdict.toLowerCase()}${detail}`);
     if (execution.escalationId) {
@@ -310,8 +356,31 @@ async function link(receiptId: string, txHash: string): Promise<void> {
 async function main(): Promise<void> {
   const [command, ...rest] = process.argv.slice(2);
   const execute = rest.includes("--execute");
+  if (command === "recover") {
+    if (execute) throw new Error("recover is read-only; --execute is forbidden.");
+    const reference = requestedReceiptReference(rest, true);
+    if (!reference) throw new Error("recover requires --reference.");
+    const identity = {
+      chainId: arcChain.id,
+      walletAddress: hexEnv("GUARDED_WALLET"),
+      reference,
+    };
+    const saved = readReceiptExecution(identity, OUTPUT_DIR);
+    try {
+      // No agentSigner() call: recovery does not need private keys or Circle credentials.
+      const result = await recoverReceiptExecution(client(), identity, OUTPUT_DIR);
+      console.log(`recovered   ${result.verdict.toLowerCase()} ${result.txHash}`);
+      if (result.escalationId) console.log(`escalation  ${result.escalationId}`);
+    } catch (error) {
+      if (!(error instanceof TransferRevertedError)) throw error;
+      console.log(`recovered   reverted ${error.txHash}`);
+    }
+    console.log(`evidence    attach separately: link ${saved.receiptId} ${saved.txHash}`);
+    return;
+  }
 
   if (command === "link") {
+    if (execute) throw new Error("link only attaches evidence; --execute is forbidden.");
     const [receiptId, txHash] = rest.filter((arg) => !arg.startsWith("--"));
     if (!receiptId || !txHash) {
       throw new Error("Usage: link <receiptId> <txHash>");
@@ -320,20 +389,32 @@ async function main(): Promise<void> {
     return;
   }
   if (command === "all") {
+    if (execute) {
+      throw new Error("Execute one scenario at a time with --reference; all is read-only.");
+    }
     for (const scenario of SCENARIOS) {
-      await runScenario(scenario, execute && scenario !== "deny");
+      await runScenario(scenario, false);
     }
     return;
   }
   if (!isScenario(command)) {
     throw new Error(
-      "Usage: receipts-demo.ts <allow|deny|escalate|all> [--execute] | link <receiptId> <txHash>",
+      "Usage: receipts-demo.ts <allow|deny|escalate> [--execute --reference <stable-ref>] | all | recover --reference <stable-ref> | link <receiptId> <txHash>",
     );
   }
-  await runScenario(command, execute);
+  await runScenario(command, execute, requestedReceiptReference(rest, execute));
 }
 
 main().catch((error: unknown) => {
+  if (error instanceof TransactionRecoveryError) {
+    console.error(`\nexecution unresolved: ${error.code}; tx ${error.txHash}`);
+    console.error(error.message);
+    console.error(
+      "Keep demo-output intact. Run recover --reference <original-reference> on the same wallet/network. Never rerun --execute or change the reference to recover.",
+    );
+    process.exitCode = 1;
+    return;
+  }
   if (error instanceof ScenarioMismatch) {
     console.error(`\nstopped: ${error.message}`);
     process.exitCode = 1;

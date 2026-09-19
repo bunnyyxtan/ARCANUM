@@ -1,10 +1,11 @@
 "use client";
 
+import { useRecoverableWrite } from "@/components/TransactionRecovery";
 import { useState } from "react";
 import { toast } from "sonner";
 import { stringToHex } from "viem";
 import type { Address } from "viem";
-import { useAccount, usePublicClient, useReadContract, useWriteContract } from "wagmi";
+import { useAccount, usePublicClient, useReadContract } from "wagmi";
 
 import { describeChainError } from "@/lib/chain-errors";
 import { guardedWalletControlAbi } from "@/lib/contracts";
@@ -20,8 +21,13 @@ export type AnomalyRowState = "idle" | "frozen" | "dismissed";
 export function useAnomalyAction(item: Anomaly, onNotice: (message: string) => void) {
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient({ chainId: arcChain.id });
-  const { writeContractAsync } = useWriteContract();
   const walletAddress = isEvmAddress(item.wallet) ? (item.wallet as Address) : undefined;
+  const {
+    writeContractAsync,
+    waitForTransactionReceipt,
+    recoveryBlocked,
+    isPending: writePending,
+  } = useRecoverableWrite(walletAddress, "freeze");
   const ownerQuery = useReadContract({
     address: walletAddress,
     abi: guardedWalletControlAbi,
@@ -50,7 +56,9 @@ export function useAnomalyAction(item: Anomaly, onNotice: (message: string) => v
         ? "Checking governed wallet owner."
         : !isOwner
           ? "Only the governed wallet owner can freeze this wallet."
-          : null;
+          : recoveryBlocked
+            ? "Resolve pending transactions in Transaction recovery before writing."
+            : null;
 
   const settle = async (
     next: "frozen" | "dismissed",
@@ -89,7 +97,7 @@ export function useAnomalyAction(item: Anomaly, onNotice: (message: string) => v
           args: [reason],
           chainId: arcChain.id,
         });
-        const receipt = await publicClient.waitForTransactionReceipt({ hash, confirmations: 1 });
+        const receipt = await waitForTransactionReceipt({ hash, confirmations: 1 });
         if (receipt.status !== "success") throw new Error("Wallet freeze transaction reverted.");
         const frozen = await publicClient.readContract({
           address: walletAddress,
@@ -131,7 +139,7 @@ export function useAnomalyAction(item: Anomaly, onNotice: (message: string) => v
     dismissPending: dismiss.isPending,
     frozen: state === "frozen" || frozenQuery.data === true,
     isConnected,
-    isPending: acknowledge.isPending || dismiss.isPending,
+    isPending: writePending || acknowledge.isPending || dismiss.isPending,
     restrainDisabledReason,
     settle,
     state,

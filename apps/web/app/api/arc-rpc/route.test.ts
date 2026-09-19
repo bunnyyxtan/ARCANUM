@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { POST } from "./route";
 
@@ -13,11 +13,68 @@ function rpcRequest(body: string) {
   });
 }
 
+beforeEach(() => {
+  for (const name of [
+    "UPSTASH_REDIS_REST_URL",
+    "UPSTASH_REDIS_REST_TOKEN",
+    "SUPABASE_URL",
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "ARCANUM_REQUIRE_RATE_LIMIT_BACKEND",
+  ]) {
+    vi.stubEnv(name, "");
+  }
+  vi.stubEnv("NODE_ENV", "test");
+  vi.stubEnv("ARCANUM_ALLOW_IN_MEMORY_RATE_LIMIT", "true");
+  globalThis.__arcanumApiRateLimitBuckets?.clear();
+});
+
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });
 
 describe("Arc RPC proxy", () => {
+  it("shares a quota for an anonymous caller and rejects before body/upstream work", async () => {
+    const upstream = vi
+      .fn()
+      .mockImplementation(() => Promise.resolve(new Response('{"result":"0x1"}')));
+    vi.stubGlobal("fetch", upstream);
+    const request = () =>
+      new Request("http://localhost/api/arc-rpc", {
+        method: "POST",
+        body: '{"method":"eth_blockNumber"}',
+      });
+    for (let i = 0; i < 80; i++) expect((await POST(request())).status).toBe(200);
+    const denied = await POST(request());
+    expect(denied.status).toBe(429);
+    expect(Number(denied.headers.get("Retry-After"))).toBeGreaterThan(0);
+    expect(upstream).toHaveBeenCalledTimes(80);
+  });
+
+  it("returns sanitized 503 without touching upstream or request body when no production store exists", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const upstream = vi.fn();
+    vi.stubGlobal("fetch", upstream);
+    const response = await POST(rpcRequest("{"));
+    expect(response.status).toBe(503);
+    expect(response.headers.get("Retry-After")).toBe("5");
+    expect(await response.json()).toMatchObject({
+      error: { message: "Rate limit service unavailable." },
+    });
+    expect(upstream).not.toHaveBeenCalled();
+  });
+
+  it("does not leak upstream exception details", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new Error("https://rpc.example/secret-token")),
+    );
+    const response = await POST(rpcRequest('{"method":"eth_blockNumber"}'));
+    expect(response.status).toBe(502);
+    expect(await response.text()).not.toContain("secret-token");
+  });
+
   it("rejects methods outside the read allowlist", async () => {
     const upstream = vi.fn();
     vi.stubGlobal("fetch", upstream);

@@ -6,7 +6,7 @@ import { SiweMessage } from "siwe";
 import { toast } from "sonner";
 import { useAccount, useDisconnect, useSignMessage } from "wagmi";
 
-import { fetchAuthSession, publishAuthSession } from "@/lib/auth-session";
+import { fetchAuthSession, publishAuthSession, signOutAuthSession } from "@/lib/auth-session";
 import { trpc } from "@/lib/trpc";
 
 type AuthErrorResponse = {
@@ -55,6 +55,7 @@ export function WalletAuthBridge() {
         }
 
         const nonceResponse = await fetch("/api/auth/nonce", {
+          method: "POST",
           cache: "no-store",
           credentials: "include",
         });
@@ -127,7 +128,7 @@ export function WalletAuthBridge() {
               authedAddressRef.current = null;
               failedAddressRef.current = null;
               publishAuthSession(null);
-              void fetch("/api/auth/logout", { credentials: "include", method: "POST" });
+              void signOutAuthSession().catch((error: Error) => toast.error(error.message));
               disconnect();
             },
           },
@@ -146,7 +147,7 @@ export function WalletAuthBridge() {
         authedAddressRef.current = null;
         failedAddressRef.current = null;
         publishAuthSession(null);
-        void fetch("/api/auth/logout", { credentials: "include", method: "POST" });
+        void signOutAuthSession().catch((error: Error) => toast.error(error.message));
       }
       return;
     }

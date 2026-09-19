@@ -11,7 +11,7 @@ import {
 import { beforeEach, describe, expect, it } from "vitest";
 
 import type { ApiContext } from "../context";
-import type { SupabaseRow } from "../supabase/client";
+import { SupabaseRequestError, type SupabaseRow } from "../supabase/client";
 import { type EvidenceDeps, attachPaymentReceiptEvidence } from "./evidence";
 import { handleAttachEvidence } from "./http";
 import { issuePaymentReceipt } from "./service";
@@ -37,6 +37,7 @@ type FakeTx = {
   to: Address | null;
   input: Hex;
   status: "success" | "reverted";
+  blockNumber: bigint;
   logs: { address: Address; topics: Hex[]; data: Hex; logIndex: number }[];
 };
 
@@ -62,7 +63,13 @@ function executeCall(overrides: Partial<{ to: Address; amount: bigint; reason: s
     args: [
       overrides.to ?? VENDOR,
       overrides.amount ?? AMOUNT,
-      stringToHex(overrides.reason ?? `Monthly API quota receipt:${RECEIPT_ID}`),
+      stringToHex(
+        overrides.reason ??
+          JSON.stringify({
+            reason: "Monthly API quota",
+            metadata: { receiptId: RECEIPT_ID },
+          }),
+      ),
     ],
   });
 }
@@ -73,6 +80,7 @@ function executedTx(overrides: Partial<FakeTx> = {}): FakeTx {
     to: WALLET,
     input: executeCall(),
     status: "success",
+    blockNumber: 61_000_010n,
     logs: [
       eventLog("TransferExecuted", {
         wallet: WALLET,
@@ -105,10 +113,10 @@ function withTransaction(ctx: ApiContext, tx: FakeTx | null): ApiContext {
       return {
         transactionHash: TX_HASH,
         status: tx.status,
-        blockNumber: 61_000_010n,
+        blockNumber: tx.blockNumber,
         logs: tx.logs.map((log) => ({
           ...log,
-          blockNumber: 61_000_010n,
+          blockNumber: tx.blockNumber,
           transactionHash: TX_HASH,
           removed: false,
         })),
@@ -167,6 +175,71 @@ describe("attachPaymentReceiptEvidence", () => {
       calldataNamesReceipt: true,
       details: { receiptVerdict: "allow", verdictMatches: true },
     });
+  });
+
+  it("rejects a transaction mined at or before the receipt evaluation block", async () => {
+    for (const blockNumber of [60_999_999n, 61_000_000n]) {
+      const ctx = withTransaction(context({ tables }), executedTx({ blockNumber }));
+      await expect(
+        attachPaymentReceiptEvidence(
+          ctx,
+          { receiptId: RECEIPT_ID, txHash: TX_HASH },
+          evidenceDeps(),
+        ),
+      ).rejects.toMatchObject({
+        code: "EVIDENCE_MISMATCH",
+        message: expect.stringContaining("did not occur after receipt evaluation block"),
+      });
+    }
+    expect(tables.payment_receipt_evidence).toHaveLength(0);
+  });
+
+  it("requires exact structured receipt metadata, not free text or loose substrings", async () => {
+    const cases = [
+      "Monthly API quota",
+      `Monthly API quota receipt:${RECEIPT_ID}`,
+      JSON.stringify({ reason: "Monthly API quota", metadata: {} }),
+      JSON.stringify({
+        reason: "Monthly API quota",
+        metadata: { receiptId: "0f0f0f0f-0f0f-4f0f-8f0f-0f0f0f0f0f0f" },
+      }),
+      JSON.stringify({
+        reason: "Monthly API quota",
+        metadata: { receiptDigest: `0x${"ff".repeat(32)}` },
+      }),
+    ];
+    for (const reason of cases) {
+      const ctx = withTransaction(
+        context({ tables }),
+        executedTx({ input: executeCall({ reason }) }),
+      );
+      await expect(
+        attachPaymentReceiptEvidence(
+          ctx,
+          { receiptId: RECEIPT_ID, txHash: TX_HASH },
+          evidenceDeps(),
+        ),
+      ).rejects.toMatchObject({ code: "EVIDENCE_MISMATCH" });
+    }
+    expect(tables.payment_receipt_evidence).toHaveLength(0);
+  });
+
+  it("accepts an exact structured receipt digest binding", async () => {
+    const digest = String(tables.payment_receipts[0]?.receipt_digest);
+    const tx = executedTx({
+      input: executeCall({
+        reason: JSON.stringify({
+          reason: "Monthly API quota",
+          metadata: { receiptDigest: digest.toUpperCase().replace("0X", "0x") },
+        }),
+      }),
+    });
+    const attached = await attachPaymentReceiptEvidence(
+      withTransaction(context({ tables }), tx),
+      { receiptId: RECEIPT_ID, txHash: TX_HASH },
+      evidenceDeps(),
+    );
+    expect(attached.evidence[0]?.calldataNamesReceipt).toBe(true);
   });
 
   it("is idempotent for the same observation", async () => {
@@ -296,17 +369,6 @@ describe("attachPaymentReceiptEvidence", () => {
       [{ logs: [] }, "emitted no transfer"],
       [
         {
-          input: executeCall({
-            reason: JSON.stringify({
-              reason: "Monthly API quota",
-              metadata: { receiptId: "0f0f0f0f-0f0f-4f0f-8f0f-0f0f0f0f0f0f" },
-            }),
-          }),
-        },
-        "names receipt 0f0f0f0f-0f0f-4f0f-8f0f-0f0f0f0f0f0f",
-      ],
-      [
-        {
           logs: [
             eventLog("TransferExecuted", {
               wallet: WALLET,
@@ -408,7 +470,7 @@ describe("attachPaymentReceiptEvidence", () => {
     expect(tables.payment_receipt_evidence).toHaveLength(0);
   });
 
-  it("links one transaction to one receipt only", async () => {
+  it("rejects a transaction whose structured binding names another receipt", async () => {
     const ctx = withTransaction(context({ tables }), executedTx());
     await attachPaymentReceiptEvidence(
       ctx,
@@ -429,11 +491,40 @@ describe("attachPaymentReceiptEvidence", () => {
         evidenceDeps(),
       ),
     ).rejects.toMatchObject({
-      code: "EVIDENCE_CONFLICT",
-      httpStatus: 409,
-      message: expect.stringContaining(`already linked to receipt ${RECEIPT_ID}`),
+      code: "EVIDENCE_MISMATCH",
+      message: expect.stringContaining("names a different receipt"),
     });
     expect(tables.payment_receipt_evidence).toHaveLength(1);
+  });
+
+  it("reports an atomic database loser when another receipt claims the hash after the precheck", async () => {
+    const ctx = withTransaction(context({ tables }), executedTx());
+    const store = ctx.supabase;
+    if (!store) throw new Error("Expected receipt store.");
+    const otherReceiptId = "aaaaaaaa-1111-4222-8333-444444444444";
+    ctx.supabase = {
+      ...store,
+      insertRows: async (table, rows) => {
+        if (table === "payment_receipt_evidence") {
+          tables.payment_receipt_evidence.push({
+            ...rows[0],
+            id: "bbbbbbbb-1111-4222-8333-444444444444",
+            receipt_id: otherReceiptId,
+            observed_at: "2026-09-10T10:01:00+00:00",
+          });
+          throw new SupabaseRequestError(table, "POST", 409, "duplicate key value");
+        }
+        return store.insertRows(table, rows);
+      },
+    };
+
+    await expect(
+      attachPaymentReceiptEvidence(ctx, { receiptId: RECEIPT_ID, txHash: TX_HASH }, evidenceDeps()),
+    ).rejects.toMatchObject({
+      code: "EVIDENCE_CONFLICT",
+      httpStatus: 409,
+      message: expect.stringContaining(`already linked to receipt ${otherReceiptId}`),
+    });
   });
 
   it("tells the caller to wait when the transaction is not mined yet", async () => {
@@ -475,15 +566,6 @@ describe("attachPaymentReceiptEvidence", () => {
       outcome: "reverted",
       details: { receiptVerdict: "deny", verdictMatches: null },
     });
-
-    // The policy was loosened after issuance and the same call went through.
-    const loosened = await attachPaymentReceiptEvidence(
-      withTransaction(context({ tables }), executedTx()),
-      { receiptId: RECEIPT_ID, txHash: TX_HASH },
-      evidenceDeps(),
-    );
-    expect(loosened.evidence.map((item) => item.outcome)).toEqual(["reverted", "executed"]);
-    expect(loosened.evidence[1]?.details).toMatchObject({ verdictMatches: false });
   });
 
   it("serves the REST route with the same semantics", async () => {

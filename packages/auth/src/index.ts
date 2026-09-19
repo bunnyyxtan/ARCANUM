@@ -17,12 +17,14 @@ export type ArcanumSession = {
 export type AuthSessionData = {
   nonce?: string;
   user?: ArcanumSession;
+  /** Opaque bearer value, sealed HttpOnly cookie only; never return in JSON. */
+  sessionId?: string;
 };
 
 // Keep the application lifetime and the cryptographic seal lifetime as one
 // contract. The browser cookie's max-age is not an authorization boundary:
 // callers can replay a seal without a browser enforcing that attribute.
-export const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
+export const SESSION_TTL_SECONDS = 60 * 60 * 12;
 export const SESSION_TTL_MS = SESSION_TTL_SECONDS * 1000;
 
 const arcanumSessionSchema = z.object({
@@ -41,9 +43,8 @@ export const verifyBodySchema = z.object({
  * Validate the application session independently of iron-session's seal.
  *
  * A seal can be cryptographically valid after the application session has
- * expired (including seals issued before the seven-day TTL was configured).
- * Every server boundary that turns a sealed value into authorization must
- * apply this check.
+ * expired. This is only a shape/expiry check, NOT authorization. Server
+ * boundaries must also use validateSession to check the revocation store.
  */
 export function isCurrentSession(session: unknown, now = Date.now()): session is ArcanumSession {
   const parsed = arcanumSessionSchema.safeParse(session);
@@ -102,7 +103,7 @@ export function getSessionOptions() {
       maxAge: SESSION_TTL_SECONDS,
     },
     // iron-session defaults to a fourteen-day seal. Set this explicitly so a
-    // manually replayed seal cannot outlive the seven-day application session.
+    // manually replayed seal cannot outlive the twelve-hour application session.
     ttl: SESSION_TTL_SECONDS,
   } satisfies SessionOptions;
 }
@@ -216,3 +217,13 @@ function toSession(
     expiresAt: Date.now() + SESSION_TTL_MS,
   };
 }
+
+export {
+  createTrackedSession,
+  validateSession,
+  revokeSession,
+  revokeAllSessions,
+  SessionStoreUnavailableError,
+  assertSessionStoreReady,
+} from "./sessions";
+export { isSameOriginAuthRequest } from "./origin";

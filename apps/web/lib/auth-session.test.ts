@@ -1,12 +1,52 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { fetchAuthSession, workspaceIdentityKey } from "./auth-session";
+import {
+  fetchAuthSession,
+  publishAuthSession,
+  signOutAuthSession,
+  workspaceIdentityKey,
+} from "./auth-session";
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
 describe("fetchAuthSession", () => {
+  it("does not let a pending authenticated read restore identity after signout", async () => {
+    vi.stubGlobal("window", { dispatchEvent: vi.fn() });
+    let resolveRead!: (response: Response) => void;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        () =>
+          new Promise<Response>((resolve) => {
+            resolveRead = resolve;
+          }),
+      ),
+    );
+    const pending = fetchAuthSession({ force: true });
+    publishAuthSession(null);
+    resolveRead(Response.json({ user: { walletAddress: "0xaaa" } }));
+    await expect(pending).resolves.toEqual({ status: "anonymous", user: null });
+    await expect(fetchAuthSession()).resolves.toEqual({ status: "anonymous", user: null });
+  });
+
+  it("reports revocation outages and publishes cache clearing only on success", async () => {
+    const dispatchEvent = vi.fn();
+    vi.stubGlobal("window", { dispatchEvent });
+    const fetchMock = vi.fn().mockResolvedValue(new Response("outage", { status: 503 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(signOutAuthSession(true)).rejects.toThrow("Sessions may still be active");
+    expect(dispatchEvent).not.toHaveBeenCalled();
+    fetchMock.mockResolvedValue(Response.json({ ok: true }));
+    await signOutAuthSession(true);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      "/api/auth/logout-all",
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(dispatchEvent).toHaveBeenCalledOnce();
+  });
+
   it("distinguishes an anonymous session", async () => {
     vi.stubGlobal(
       "fetch",

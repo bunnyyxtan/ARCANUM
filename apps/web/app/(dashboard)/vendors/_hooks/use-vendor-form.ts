@@ -126,7 +126,7 @@ export function useAddVendor(
         chainId: arcChain.id,
       });
       form.setVendorTxHash(hash);
-      const receipt = await write.publicClient?.waitForTransactionReceipt({
+      const receipt = await write.waitForTransactionReceipt({
         hash,
         confirmations: 1,
       });

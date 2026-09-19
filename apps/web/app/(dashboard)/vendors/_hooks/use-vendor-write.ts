@@ -1,5 +1,6 @@
 "use client";
 
+import { useRecoverableWrite } from "@/components/TransactionRecovery";
 import { useWorkspaceMode } from "@/lib/auth-session";
 import { errorText } from "@/lib/chain-errors";
 import { guardedWalletControlAbi } from "@/lib/contracts";
@@ -10,13 +11,7 @@ import { ARC_NETWORK_NAME, arcChain } from "@arcanum/shared";
 import { useRef } from "react";
 import { toast } from "sonner";
 import type { Address } from "viem";
-import {
-  useAccount,
-  usePublicClient,
-  useReadContract,
-  useSwitchChain,
-  useWriteContract,
-} from "wagmi";
+import { useAccount, usePublicClient, useReadContract, useSwitchChain } from "wagmi";
 
 type LiveVendors = ReturnType<typeof useLiveVendors>;
 
@@ -29,7 +24,12 @@ export function useVendorWrite(
   const { address, chainId, isConnected } = useAccount();
   const publicClient = usePublicClient({ chainId: arcChain.id });
   const { switchChainAsync, isPending: switchPending } = useSwitchChain();
-  const { writeContractAsync, isPending: writePending } = useWriteContract();
+  const {
+    writeContractAsync,
+    waitForTransactionReceipt,
+    recoveryBlocked,
+    isPending: writePending,
+  } = useRecoverableWrite(selectedWalletAddress, "addVendor");
   const utils = trpc.useUtils();
   const recordVendorStateMutation = trpc.vendors.recordOnChainState.useMutation();
   const vendorSubmittingRef = useRef(false);
@@ -58,7 +58,9 @@ export function useVendorWrite(
             ? `Could not verify governed wallet owner on ${ARC_NETWORK_NAME}.`
             : !address || !isSameAddress(owner, address)
               ? `Only the governed wallet owner (${shortAddress(owner)}) can manage its VendorRegistry.`
-              : null;
+              : recoveryBlocked
+                ? "Resolve pending transactions in Transaction recovery before writing."
+                : null;
   const ensureVendorWriteReady = async () => {
     if (vendorWriteDisabledReason) throw new Error(vendorWriteDisabledReason);
     if (!selectedGovernedWalletAddress || !publicClient) {
@@ -103,6 +105,7 @@ export function useVendorWrite(
     vendorSubmittingRef,
     vendorWriteDisabledReason,
     writeContractAsync,
+    waitForTransactionReceipt,
     writePending,
   };
 }

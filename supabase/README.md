@@ -3,6 +3,11 @@
 Database migrations for the Supabase project that backs the production read
 model at [thearcanum.in](https://thearcanum.in).
 
+This public directory contains incremental application migrations, not a complete
+empty-database bootstrap or a production database export. Earlier migrations
+assume an existing read-model schema. Do not apply the directory to an empty
+database and assume that every prerequisite table has been created.
+
 ## Layout
 
 | Path | Purpose |
@@ -17,6 +22,29 @@ possible and includes the row-level security and function definitions it needs.
 
 Never run untested SQL against the production database. Test against a
 development database first.
+
+## Shared security state
+
+The revocable-session and distributed-rate-limit migrations are application
+source, not optional operational examples. Apply them to a compatible development
+schema before testing the corresponding API, then review them before any
+production rollout. They create service-role-only tables and RPCs with explicit
+RLS and grants. Publishing their source does not apply them to a hosted database.
+
+The receipt execution-uniqueness migration likewise belongs to the application
+schema. If it reports historical duplicate links, stop and review those records;
+do not delete evidence automatically to make a uniqueness check pass.
+
+To exercise the security invariants without touching an existing database:
+
+```sh
+npm ci
+bash .github/scripts/security-sql-test.sh /usr/lib/postgresql/17/bin
+```
+
+The runner requires PostgreSQL 17 tools, clears inherited database credentials,
+starts its own disposable local cluster, and never applies SQL to the hosted
+Supabase project.
 
 Check SECURITY DEFINER grants with `node scripts/check-definer-grants.mjs`. The
 script uses the existing `psql` executable and `SUPABASE_DB_URL` (or

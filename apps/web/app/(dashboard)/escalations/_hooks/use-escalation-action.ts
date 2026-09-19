@@ -1,10 +1,11 @@
 "use client";
 
+import { useRecoverableWrite } from "@/components/TransactionRecovery";
 import { ARC_NETWORK_NAME, arcChain } from "@arcanum/shared";
 import { type MouseEvent as ReactMouseEvent, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { type Address, type Hash, isAddress } from "viem";
-import { useAccount, usePublicClient, useSwitchChain, useWriteContract } from "wagmi";
+import { useAccount, usePublicClient, useSwitchChain } from "wagmi";
 
 import { describeChainError, errorText } from "@/lib/chain-errors";
 import { copyText } from "@/lib/clipboard";
@@ -41,7 +42,6 @@ function useEscalationActionInternal(
   const { address, chainId, isConnected } = useAccount();
   const publicClient = usePublicClient({ chainId: arcChain.id });
   const { switchChainAsync, isPending: switchPending } = useSwitchChain();
-  const { writeContractAsync, isPending: writePending } = useWriteContract();
   const utils = trpc.useUtils();
   const recordDecision = trpc.escalations.recordDecision.useMutation();
   const submittingRef = useRef(false);
@@ -63,6 +63,12 @@ function useEscalationActionInternal(
     ? (contractAddresses.escalationManager as Address)
     : null;
   const escalationId = isTxHashValue(item.id) ? item.id : null;
+  const {
+    writeContractAsync,
+    waitForTransactionReceipt,
+    recoveryBlocked,
+    isPending: writePending,
+  } = useRecoverableWrite(escalationManagerAddress, "approve", escalationId ?? "");
   const isBusy =
     submittingRef.current ||
     switchPending ||
@@ -79,7 +85,8 @@ function useEscalationActionInternal(
         : !isConnected || !address
           ? "Connect the approver wallet first."
           : null;
-  const actionsDisabled = Boolean(disabledReason) || isBusy || txStage === "pending_indexer";
+  const actionsDisabled =
+    recoveryBlocked || Boolean(disabledReason) || isBusy || txStage === "pending_indexer";
   const sweepDisabledReason = !escalationId
     ? "Escalation id is missing."
     : !escalationManagerAddress
@@ -90,7 +97,7 @@ function useEscalationActionInternal(
           ? "Connect any wallet to settle this expired request."
           : null;
   const sweepActionsDisabled =
-    Boolean(sweepDisabledReason) || isBusy || txStage === "pending_indexer";
+    recoveryBlocked || Boolean(sweepDisabledReason) || isBusy || txStage === "pending_indexer";
   const chainExpiry =
     chainTerms && nowMs > 0
       ? escalationExpiryState({
@@ -353,7 +360,7 @@ function useEscalationActionInternal(
       });
       setContractTxHash(hash);
       setTxStage("confirming");
-      const receipt = await publicClient?.waitForTransactionReceipt({ hash, confirmations: 1 });
+      const receipt = await waitForTransactionReceipt({ hash, confirmations: 1 });
       if (receipt?.status !== "success") throw new Error("Escalation transaction reverted.");
       if (!publicClient) throw new Error(`${ARC_NETWORK_NAME} RPC is unavailable.`);
       const settledDetail = await publicClient.readContract({

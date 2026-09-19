@@ -57,7 +57,7 @@ export function useVendorMutations(
         args: [vendor.address as Address],
         chainId: arcChain.id,
       });
-      const receipt = await write.publicClient?.waitForTransactionReceipt({
+      const receipt = await write.waitForTransactionReceipt({
         hash,
         confirmations: 1,
       });
@@ -124,7 +124,7 @@ export function useVendorMutations(
         ],
         chainId: arcChain.id,
       });
-      const receipt = await write.publicClient?.waitForTransactionReceipt({
+      const receipt = await write.waitForTransactionReceipt({
         hash,
         confirmations: 1,
       });

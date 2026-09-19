@@ -1,5 +1,6 @@
 "use client";
 
+import { useRecoverableWrite } from "@/components/TransactionRecovery";
 import { ARC_NETWORK_NAME, arcChain } from "@arcanum/shared";
 import {
   type MouseEvent as ReactMouseEvent,
@@ -10,7 +11,7 @@ import {
 } from "react";
 import { toast } from "sonner";
 import type { Address, Hash } from "viem";
-import { useAccount, usePublicClient, useSwitchChain, useWriteContract } from "wagmi";
+import { useAccount, usePublicClient, useSwitchChain } from "wagmi";
 
 import { describeChainError, errorText } from "@/lib/chain-errors";
 import { guardedWalletControlAbi } from "@/lib/contracts";
@@ -63,7 +64,12 @@ export function usePolicyWrite(
   const { address, chainId, isConnected } = useAccount();
   const publicClient = usePublicClient({ chainId: arcChain.id });
   const { switchChainAsync, isPending: switchPending } = useSwitchChain();
-  const { writeContractAsync, isPending: writePending } = useWriteContract();
+  const {
+    writeContractAsync,
+    waitForTransactionReceipt,
+    recoveryBlocked,
+    isPending: writePending,
+  } = useRecoverableWrite(selectedGovernedWalletAddress, "setPolicy");
   const recordDeployedPolicy = trpc.policies.recordDeployed.useMutation();
   const policySubmittingRef = useRef(false);
   const routeWalletIdRef = useRef(routeWalletId);
@@ -201,13 +207,7 @@ export function usePolicyWrite(
         chainId: arcChain.id,
       });
       state.setPolicyTxHash(hash);
-      const receipt = await publicClient
-        ?.waitForTransactionReceipt({ hash, confirmations: 1, timeout: 120_000 })
-        .catch(() => {
-          throw new Error(
-            "The policy transaction was sent but its confirmation did not arrive within 2 minutes. It may still confirm. Check the wallet's activity before retrying.",
-          );
-        });
+      const receipt = await waitForTransactionReceipt({ hash, confirmations: 1, timeout: 120_000 });
       if (receipt?.status !== "success") throw new Error("Policy transaction reverted.");
       draft.setActivePolicyDraft(capturedDraft);
       state.setPolicyPendingIndexer(true);
@@ -279,7 +279,7 @@ export function usePolicyWrite(
 
   return {
     address,
-    policyBusy: state.policySaving || switchPending || writePending,
+    policyBusy: recoveryBlocked || state.policySaving || switchPending || writePending,
     policyNetworkNotice:
       isConnected && chainId !== arcChain.id
         ? `Wallet will be asked to switch to ${ARC_NETWORK_NAME}.`

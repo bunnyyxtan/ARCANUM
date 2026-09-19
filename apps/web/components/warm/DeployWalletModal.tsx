@@ -1,5 +1,6 @@
 "use client";
 
+import { TransactionRecovery, useRecoverableWrite } from "@/components/TransactionRecovery";
 import { ARC_NETWORK_BADGE, ARC_NETWORK_NAME, arcChain } from "@arcanum/shared";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -8,7 +9,7 @@ import { toast } from "sonner";
 import { parseUnits } from "viem";
 import type { Address, Hash } from "viem";
 import { isAddress as isViemAddress } from "viem";
-import { useAccount, usePublicClient, useSwitchChain, useWriteContract } from "wagmi";
+import { useAccount, usePublicClient, useSwitchChain } from "wagmi";
 
 import { getArcscanAddressUrl, getArcscanTxUrl } from "@/lib/arcscan";
 import { useWorkspaceMode } from "@/lib/auth-session";
@@ -202,12 +203,17 @@ export function DeployWalletModal({
 }: Readonly<{ onClose: () => void; onWalletCreated?: (result: CreatedWalletResult) => void }>) {
   const { address, chainId, isConnected } = useAccount();
   const workspace = useWorkspaceMode();
+  const walletFactoryAddress = configuredAddress(contractAddresses.walletFactory);
   const publicClient = usePublicClient({ chainId: arcChain.id });
   const { switchChainAsync, isPending: switchPending } = useSwitchChain();
-  const { writeContractAsync, isPending: writePending } = useWriteContract();
+  const {
+    writeContractAsync,
+    waitForTransactionReceipt,
+    recoveryBlocked,
+    isPending: writePending,
+  } = useRecoverableWrite(walletFactoryAddress, "createWallet");
   const recordCreatedWallet = trpc.agents.recordCreatedWallet.useMutation();
   const deployment = deployContractStatus();
-  const walletFactoryAddress = configuredAddress(contractAddresses.walletFactory);
   const [form, setForm] = useState<DeployWalletFormState>(initialDeployWalletForm);
   const [txHash, setTxHash] = useState<Hash | null>(null);
   const [createdWallet, setCreatedWallet] = useState<Address | null>(null);
@@ -238,6 +244,7 @@ export function DeployWalletModal({
     chainId === arcChain.id;
   const isBusy = writePending || switchPending || status === "confirming" || submittingRef.current;
   const primaryDisabled =
+    recoveryBlocked ||
     isBusy ||
     !deployment.ready ||
     !isConnected ||
@@ -406,7 +413,7 @@ export function DeployWalletModal({
       });
       setTxHash(hash);
 
-      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      const receipt = await waitForTransactionReceipt({ hash });
       const wallet = walletCreatedFromVerifiedReceipt(receipt, {
         factoryAddress: walletFactoryAddress,
         ownerAddress: address,
@@ -531,6 +538,7 @@ export function DeployWalletModal({
           </button>
         </div>
         <div className="min-h-0 space-y-4 overflow-y-auto overscroll-contain p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] text-[12px] leading-relaxed text-[var(--wl-secondary)] sm:p-5">
+          <TransactionRecovery />
           {hasSuccess ? (
             <div
               className={`space-y-4 border bg-[var(--wl-green-tint)] p-4 ${persistenceFailed ? "border-[var(--wl-amber)]" : "border-[var(--wl-green)]"}`}

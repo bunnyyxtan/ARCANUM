@@ -264,12 +264,39 @@ failing test first.
 | j | hardening pass: adversarial review of a–g, decisions 18–23, one commit per finding with a failing test first | done 2026-09-10 |
 | k | Circle Wallets as the agent signer (decision 24): `arcanum-sdk/circle` adapter + tests, `scripts/circle-wallet-setup.ts`, demo runner signer switch, `docs/CIRCLE-WALLETS.md`; a Circle-signed allowed run recorded in `demo-evidence.md` | done 2026-09-11: wallet `0xbf4be36c…675c39` authorized in `0x0069221c…7a89a2`, receipt `d6cd633b-…` paid in `0x7e62f73b…d619a3` |
 | l | CCTP V2 inbound funding (decision 25): browser-safe SDK, read-only quote/status API, wallet funding panel, CLI, intent-bound recovery and `docs/CCTP-FUNDING.md` | live 5 USDC settled on 2026-09-11: Sepolia burn `0xe53412c4…a28bbd9`, manually relayed Arc mint `0xe0e35685…2219103`; wallet 0.5 → 5.5 USDC, CCTP fee 0, separate relay gas 0.003565276 USDC; no reburn; automatic forwarding not proven; fixes tested and reviewed; code in `c7ea5ba`, `d7918c7`, `3f5631a`; production deployment is separate |
+| m | Arc Mainnet on its launch day (2026-09-16): finalized manifest, network switch in the shared, web and indexer loaders, `arc-mainnet-2026-09` receipt issuer, in-place production switch (testnet rows archived), indexer RPC fixes, pilot wallet with 0.02 USDC caps | done 2026-09-16: `5593de1`, `1f2d702`, `27c446e`; first indexed block 21,141,720; denied receipt `902fe3ae-…`, allowed 0.01 USDC receipt `947dcb81-…` paid in `0xda45ae3b…c32a9c`, owner freeze `0x021c0446…018dc7`; recorded in [`demo-evidence.md`](./demo-evidence.md#arc-mainnet-pilot-16-september-2026) |
+
+This status table is a historical event record. Subsequent private mainnet
+operational hardening is later maintenance, not another event feature and not
+a formal audit. Receipt, API, SDK and operational repairs were implemented and
+source-tested locally after the event. The recorded checks passed:
+
+- API: 187 tests in the combined run.
+- Web: 207 tests in the combined run.
+- SDK: 106 tests.
+- Real PostgreSQL: 17 tests total; recorded subsets were auth 6, rate limiting
+  6 and receipt evidence concurrency 4.
+- Receipt CLI: 10 tests.
+- Backup/load: 10 tests.
+- Production-mode Next build: passed.
+
+An independent source reviewer then found that historical unbound escalation
+evidence could be displayed without a clear guard label. The helper and label
+were fixed for all evidence kinds and two tests were added. The targeted web
+receipt suite then passed 4 of 4, including both new escalation cases. Final
+web typecheck and the three-file Biome check also passed. The earlier combined
+web run remains 207 tests; no full 209-test rerun is claimed. At this
+local-verification snapshot no later repair had been committed or published,
+no application change had been deployed, and no production migration had been
+applied. Publishing the source does not require the migration; deploying the
+stricter API does.
 
 Test state after slices a–g: shared 18/18, api 94/94, sdk 18/18; biome +
 tsc clean in shared/api/sdk/web; web `next build` passes. After slice j:
 shared 18/18, api 98/98, sdk 22/22, web 34/34. Code-review subagent had two
 internal failures this session before a retry succeeded; budget time for
-that.
+that. These counts describe the named historical slices only and do not cover
+the later maintenance results recorded separately above.
 
 Each slice: implement → lint/typecheck/test in touched workspaces → code
 review pass → fix severe findings → commit → push both remotes.

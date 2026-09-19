@@ -1,5 +1,5 @@
-import { appRouter, createContext } from "@arcanum/api/server";
-import { type AuthSessionData, getSessionOptions, isCurrentSession } from "@arcanum/auth";
+import { appRouter, createContext, rateLimitFailure } from "@arcanum/api/server";
+import { type AuthSessionData, getSessionOptions, resolveTenantId } from "@arcanum/auth";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { getIronSession } from "iron-session";
 import { cookies } from "next/headers";
@@ -9,6 +9,17 @@ function handler(request: Request) {
     endpoint: "/api/trpc",
     req: request,
     router: appRouter,
+    responseMeta({ errors }) {
+      const retryAfter = errors
+        .map(rateLimitFailure)
+        .reduce((maximum, failure) => Math.max(maximum, failure?.retryAfter ?? 0), 0);
+      return {
+        headers: {
+          "Cache-Control": "no-store",
+          ...(retryAfter > 0 ? { "Retry-After": String(retryAfter) } : {}),
+        },
+      };
+    },
     createContext: async () => {
       const secret = process.env.SIWE_SECRET;
       if (!secret || secret.length < 32) {
@@ -20,21 +31,12 @@ function handler(request: Request) {
         });
       }
       const session = await getIronSession<AuthSessionData>(await cookies(), getSessionOptions());
-      if (session.user && !isCurrentSession(session.user)) {
-        // A seal can outlive the application session (and old seals can have
-        // been issued with a fourteen-day TTL). Remove it before the request
-        // reaches a resolver rather than merely treating this request as
-        // anonymous while leaving the replayable cookie behind.
-        await session.destroy();
-        return createContext({
-          session: null,
-          env: { authConfigured: true },
-          requestFingerprint: clientFingerprint(request),
-        });
-      }
-
       return createContext({
         session: session.user ?? null,
+        // Every public/protected procedure validates this against the store.
+        // Keep invalid cookies as invalid credentials, not anonymous fallbacks.
+        sessionId: session.sessionId,
+        expectedTenantId: resolveTenantId(request.headers.get("host")),
         env: { authConfigured: true },
         requestFingerprint: clientFingerprint(request),
       });

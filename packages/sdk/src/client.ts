@@ -22,11 +22,10 @@ import {
   type Address,
   type Hash,
   type Hex,
+  type TransactionReceipt,
   createPublicClient,
   createWalletClient,
   decodeErrorResult,
-  decodeEventLog,
-  encodeEventTopics,
   encodeFunctionData,
   erc20Abi,
   parseUnits,
@@ -36,19 +35,21 @@ import {
 import {
   AgentNotAuthorizedError,
   ArcanumError,
-  EscalationRequiredError,
   InsufficientUSDCError,
   PolicyDeniedError,
+  TransactionRecoveryError,
   TransferRevertedError,
   WalletFrozenError,
 } from "./errors";
 import { type AttachedReceiptEvidence, ReceiptApi, type RequestedReceipt } from "./receipts";
+import { transactionOutcome } from "./transaction-outcome";
 import type {
   ArcanumClientConfig,
   Escalation,
   EscalationResolved,
   ExecutePaymentIntentWithReceiptOptions,
   ExecuteUSDCInput,
+  ExecuteUSDCOptions,
   ExecuteUSDCResult,
   PaymentIntentInput,
   PaymentIntentResult,
@@ -82,6 +83,8 @@ const ESCALATION_STATUSES = [
   "CANCELLED",
   "INVALIDATED",
 ] as const;
+const DAY_WINDOW = 86_400n;
+const MONTH_WINDOW = 30n * DAY_WINDOW;
 
 export class ArcanumClient {
   readonly walletAddress: Address;
@@ -256,7 +259,10 @@ export class ArcanumClient {
     });
   }
 
-  async executePaymentIntent(input: PaymentIntentInput): Promise<PaymentIntentResult> {
+  async executePaymentIntent(
+    input: PaymentIntentInput,
+    options: ExecuteUSDCOptions = {},
+  ): Promise<PaymentIntentResult> {
     const intent = paymentIntentInputSchema.parse(input);
     const preflight = await this.createPaymentIntent(intent);
 
@@ -273,15 +279,18 @@ export class ArcanumClient {
     }
 
     try {
-      const execution = await this.executeUSDC({
-        to: intent.vendorAddress,
-        amount: BigInt(preflight.amountBaseUnits),
-        reason: intent.purpose,
-        metadata: {
-          reference: intent.reference,
-          tokenSymbol: intent.tokenSymbol ?? "USDC",
+      const execution = await this.executeUSDC(
+        {
+          to: intent.vendorAddress,
+          amount: BigInt(preflight.amountBaseUnits),
+          reason: intent.purpose,
+          metadata: {
+            reference: intent.reference,
+            tokenSymbol: intent.tokenSymbol ?? "USDC",
+          },
         },
-      });
+        options,
+      );
 
       return paymentIntentExecutionResult(intent, preflight, execution);
     } catch (error) {
@@ -387,7 +396,7 @@ export class ArcanumClient {
         result: createPaymentIntentResult(intent, {
           decision: "validation_error",
           reason:
-            "A receipt for this reference was already issued, so the payment may already have been sent. Inspect the receipt's evidence, then retry with executeReplayedReceipt or a new reference.",
+            "A receipt for this reference was already issued, so the payment may already have been sent. Recover and reconcile the original transaction hash before considering any further payment; a new reference does not prevent duplicate payment.",
           amountBaseUnits: receipt.receipt.amountBaseUnits,
           policyReference: preflight.policyReference,
           errorCode: "RECEIPT_REPLAYED",
@@ -398,16 +407,19 @@ export class ArcanumClient {
 
     let result: PaymentIntentResult;
     try {
-      const execution = await this.executeUSDC({
-        to: intent.vendorAddress,
-        amount: BigInt(receipt.receipt.amountBaseUnits),
-        reason: intent.purpose,
-        metadata: {
-          reference: intent.reference,
-          tokenSymbol: intent.tokenSymbol ?? "USDC",
-          receiptId: receipt.receipt.receiptId,
+      const execution = await this.executeUSDC(
+        {
+          to: intent.vendorAddress,
+          amount: BigInt(receipt.receipt.amountBaseUnits),
+          reason: intent.purpose,
+          metadata: {
+            reference: intent.reference,
+            tokenSymbol: intent.tokenSymbol ?? "USDC",
+            receiptId: receipt.receipt.receiptId,
+          },
         },
-      });
+        options,
+      );
       result = paymentIntentExecutionResult(intent, preflight, execution);
     } catch (error) {
       if (error instanceof TransferRevertedError) {
@@ -447,7 +459,12 @@ export class ArcanumClient {
     }
   }
 
-  async executeUSDC(input: ExecuteUSDCInput): Promise<ExecuteUSDCResult> {
+  async executeUSDC(
+    requestedInput: ExecuteUSDCInput,
+    options: ExecuteUSDCOptions = {},
+  ): Promise<ExecuteUSDCResult> {
+    // Retain the exact submitted terms even if a caller mutates its object while awaiting.
+    const input = snapshotExecutionInput(requestedInput);
     await this.assertSignerAndWalletOpen();
     const simulation = await this.simulate(input);
 
@@ -466,29 +483,72 @@ export class ArcanumClient {
       functionName: "executeUSDC",
       args: [input.to, input.amount, reasonBytes(input.reason, input.metadata)],
     });
-    const receipt = await this.publicClient.waitForTransactionReceipt({ hash: txHash });
-    await this.assertReceiptSucceeded(txHash, receipt.status, receipt.blockNumber);
-    const escalationId = findEscalationId(receipt.logs);
-
-    if (simulation.verdict === "ESCALATE") {
-      this.logEscalationLink(escalationId);
-      return {
-        verdict: "ESCALATE",
+    const submission = Object.freeze({
+      txHash,
+      walletAddress: this.walletAddress,
+      chainId: this.publicClient.chain?.id,
+      input,
+    });
+    try {
+      await options.onSubmitted?.(submission);
+    } catch (cause) {
+      throw new TransactionRecoveryError(
         txHash,
-        escalationId,
-        error: new EscalationRequiredError(simulation.reason, escalationId),
-      };
+        "SUBMISSION_PERSISTENCE_FAILED",
+        "The onSubmitted callback failed after submission.",
+        { cause, submission },
+      );
     }
+    return this.reconcileUSDC(txHash, input);
+  }
 
-    if (simulation.verdict === "FREEZE") {
-      return {
-        verdict: "FREEZE",
+  /**
+   * Read-only recovery of this exact hash and original input. Never simulates,
+   * signs, resubmits, or follows a replacement hash as if it were this payment.
+   */
+  async reconcileUSDC(txHash: Hash, requestedInput: ExecuteUSDCInput): Promise<ExecuteUSDCResult> {
+    const input = snapshotExecutionInput(requestedInput);
+    const submission = {
+      txHash,
+      walletAddress: this.walletAddress,
+      chainId: this.publicClient.chain?.id,
+      input,
+    };
+    try {
+      const transaction = await this.publicClient.getTransaction({ hash: txHash });
+      if (
+        !transaction.to ||
+        !sameAddress(transaction.to, this.walletAddress) ||
+        transaction.hash.toLowerCase() !== txHash.toLowerCase() ||
+        transaction.input.toLowerCase() !== encodeExecuteUSDC(input).toLowerCase() ||
+        transaction.value !== 0n
+      ) {
+        throw new TransactionRecoveryError(
+          txHash,
+          "OUTCOME_INCONSISTENT",
+          "Transaction does not match the wallet and original executeUSDC input.",
+          { submission },
+        );
+      }
+      // Establish that this hash is the submitted call before classifying its
+      // receipt. In particular, a reverted unrelated call is not evidence that
+      // this payment reverted.
+      const receipt = await this.confirm(txHash);
+      const outcome = transactionOutcome(submission, receipt.logs, transaction.from);
+      if (outcome.verdict === "ESCALATE") {
+        this.logEscalationLink(outcome.escalationId);
+      }
+      return outcome;
+    } catch (cause) {
+      if (cause instanceof TransferRevertedError) throw cause;
+      if (cause instanceof TransactionRecoveryError && cause.submission) throw cause;
+      throw new TransactionRecoveryError(
         txHash,
-        error: new WalletFrozenError(simulation.reason),
-      };
+        cause instanceof TransactionRecoveryError ? cause.code : "CONFIRMATION_UNAVAILABLE",
+        "Could not establish the submitted payment outcome.",
+        { cause, submission },
+      );
     }
-
-    return { verdict: "ALLOW", txHash };
   }
 
   async getPolicy(): Promise<PolicyEnvelope> {
@@ -538,7 +598,31 @@ export class ArcanumClient {
    * submitting the same reference again can execute the transfer twice.
    */
   async confirm(txHash: Hash) {
-    const receipt = await this.publicClient.waitForTransactionReceipt({ hash: txHash });
+    let receipt: TransactionReceipt;
+    try {
+      receipt = await this.publicClient.waitForTransactionReceipt({ hash: txHash });
+    } catch (cause) {
+      throw new TransactionRecoveryError(
+        txHash,
+        "CONFIRMATION_UNAVAILABLE",
+        "Transaction confirmation is unavailable.",
+        { cause },
+      );
+    }
+    if (receipt.transactionHash?.toLowerCase() !== txHash.toLowerCase()) {
+      throw new TransactionRecoveryError(
+        txHash,
+        "OUTCOME_INCONSISTENT",
+        "Confirmation returned a different transaction hash.",
+      );
+    }
+    if (receipt.status !== "success" && receipt.status !== "reverted") {
+      throw new TransactionRecoveryError(
+        txHash,
+        "CONFIRMATION_UNAVAILABLE",
+        "Confirmation has no recognized receipt status.",
+      );
+    }
     await this.assertReceiptSucceeded(txHash, receipt.status, receipt.blockNumber);
     return receipt;
   }
@@ -560,19 +644,56 @@ export class ArcanumClient {
   }
 
   async simulate(input: SimulateInput): Promise<SimulationResult> {
-    const [policy, dailySpent, monthlySpent, policyEngine, vendorRegistry] = await Promise.all([
-      this.getPolicy(),
-      this.getDailySpent(),
-      this.getMonthlySpent(),
-      this.policyEngine(),
-      this.vendorRegistry(),
+    const block = await this.publicClient.getBlock({ blockTag: "latest" });
+    const guardedWallet = {
+      address: this.walletAddress,
+      abi: GuardedWalletAbi,
+      blockNumber: block.number,
+    } as const;
+    const [
+      storedPolicy,
+      dailySpent,
+      monthlySpent,
+      spendDay,
+      spendMonth,
+      policyEngine,
+      vendorRegistry,
+    ] = await Promise.all([
+      this.publicClient.readContract({ ...guardedWallet, functionName: "policy" }),
+      this.publicClient.readContract({ ...guardedWallet, functionName: "dailySpent" }),
+      this.publicClient.readContract({ ...guardedWallet, functionName: "monthlySpent" }),
+      this.publicClient.readContract({ ...guardedWallet, functionName: "spendDay" }),
+      this.publicClient.readContract({ ...guardedWallet, functionName: "spendMonth" }),
+      this.publicClient.readContract({ ...guardedWallet, functionName: "policyEngine" }),
+      this.publicClient.readContract({ ...guardedWallet, functionName: "vendorRegistry" }),
     ]);
+    const policy: PolicyEnvelope = {
+      perTxCap: storedPolicy[0],
+      daily24hCap: storedPolicy[1],
+      monthlyCap: storedPolicy[2],
+      allowedCategories: storedPolicy[3],
+      escalationThreshold: storedPolicy[4],
+      requireAllowlist: storedPolicy[5],
+      freezeOnBlockedVendor: storedPolicy[6],
+    };
+    const blockDay = block.timestamp / DAY_WINDOW;
+    const blockMonth = block.timestamp / MONTH_WINDOW;
+    const effectiveDailySpent = blockDay === spendDay ? dailySpent : 0n;
+    const effectiveMonthlySpent = blockMonth === spendMonth ? monthlySpent : 0n;
     const result = await this.publicClient.readContract({
       account: this.walletAddress,
       address: policyEngine,
       abi: PolicyEngineAbi,
       functionName: "evaluate",
-      args: [policy, input.to, input.amount, dailySpent, monthlySpent, vendorRegistry],
+      args: [
+        policy,
+        input.to,
+        input.amount,
+        effectiveDailySpent,
+        effectiveMonthlySpent,
+        vendorRegistry,
+      ],
+      blockNumber: block.number,
     });
     const verdictIndex = Number(result[0]);
     const reasonIndex = Number(result[1]);
@@ -740,7 +861,8 @@ export class ArcanumClient {
         if (decodeError instanceof Error && decodeError.name === "AbiErrorSignatureNotFoundError") {
           return undefined;
         }
-        throw decodeError;
+        // Diagnostic replay cannot erase the authoritative reverted receipt/hash.
+        return undefined;
       }
     }
   }
@@ -756,6 +878,13 @@ export class ArcanumClient {
   }
 }
 
+function snapshotExecutionInput(input: ExecuteUSDCInput): ExecuteUSDCInput {
+  return Object.freeze({
+    ...input,
+    ...(input.metadata ? { metadata: Object.freeze({ ...input.metadata }) } : {}),
+  });
+}
+
 function reasonBytes(
   reason: string,
   metadata?: Readonly<Record<string, string | number | boolean>>,
@@ -769,30 +898,6 @@ function reasonBytes(
         });
 
   return stringToHex(payload);
-}
-
-const TRANSFER_ESCALATED_TOPIC = encodeEventTopics({
-  abi: GuardedWalletAbi,
-  eventName: "TransferEscalated",
-})[0];
-
-function findEscalationId(logs: ReadonlyArray<{ data: Hex; topics: readonly Hex[] }>) {
-  for (const log of logs) {
-    if (log.topics[0]?.toLowerCase() !== TRANSFER_ESCALATED_TOPIC?.toLowerCase()) {
-      continue;
-    }
-
-    const decoded = decodeEventLog({
-      abi: GuardedWalletAbi,
-      data: log.data,
-      topics: [...log.topics] as [`0x${string}`, ...`0x${string}`[]],
-    });
-    if (decoded.eventName === "TransferEscalated") {
-      return decoded.args.escalationId as Hex;
-    }
-  }
-
-  return undefined;
 }
 
 export function encodeExecuteUSDC(input: ExecuteUSDCInput) {
@@ -850,7 +955,7 @@ function paymentIntentExecutionResult(
 ): PaymentIntentResult {
   return createPaymentIntentResult(intent, {
     decision: verdictToPaymentDecision(execution.verdict),
-    reason: execution.error?.reason ?? preflight.reason,
+    reason: execution.reason ?? execution.error?.reason ?? "NONE",
     amountBaseUnits: preflight.amountBaseUnits,
     policyReference: preflight.policyReference,
     escalationId: execution.escalationId,
@@ -865,7 +970,7 @@ function paymentIntentExecutionErrorResult(
   preflight: PaymentIntentResult,
   error: unknown,
 ): PaymentIntentResult {
-  if (error instanceof TransferRevertedError) {
+  if (error instanceof TransferRevertedError || error instanceof TransactionRecoveryError) {
     throw error;
   }
   if (error instanceof ArcanumError) {

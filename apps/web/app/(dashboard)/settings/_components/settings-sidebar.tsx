@@ -1,5 +1,6 @@
 import type { SettingsController } from "../_hooks/use-settings-controller";
 import { settingsTabs } from "../_lib/settings";
+import { SessionControls } from "./session-controls";
 
 export function SettingsSidebar({ settings }: { settings: SettingsController }) {
   return (
@@ -24,6 +25,7 @@ export function SettingsSidebar({ settings }: { settings: SettingsController }) 
       <p className="mt-7 px-4 font-mono text-[9px] uppercase leading-[1.6] tracking-[.12em] text-[var(--wl-mute)]">
         Changes are reviewed by the workspace owner before they affect a wallet.
       </p>
+      <SessionControls />
     </aside>
   );
 }

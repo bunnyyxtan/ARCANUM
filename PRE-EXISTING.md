@@ -2,9 +2,12 @@
 
 Arcanum is an existing, open-source project. This submission enters under the
 continuity route: the repository, its history and its production deployment
-predate the event, and one new feature, **payment decision receipts**, was
-built during it. This document separates the two so judges can see exactly
-what is new.
+predate the event. The new event feature is **payment decision receipts**.
+The product was also deployed to **Arc Mainnet** on 16 September 2026, the
+day Arc's public mainnet opened. That deployment used the existing contracts
+and the event receipt implementation; it is deployment work, not a second new
+feature. This document separates the pre-existing work, event feature,
+event-day deployment and later maintenance.
 
 ## Links
 
@@ -17,6 +20,7 @@ what is new.
 | Existing application | https://thearcanum.in |
 | Deployed feature | [`/receipts`](https://thearcanum.in/receipts) (dashboard, wallet sign-in), [`/verify`](https://thearcanum.in/verify) (public verifier), [`/api/receipts/issuers`](https://thearcanum.in/api/receipts/issuers) (issuer registry) |
 | New feature documentation | [`docs/PAYMENT-RECEIPTS.md`](./docs/PAYMENT-RECEIPTS.md) |
+| Arc Mainnet deployment | [`packages/contracts/deployments/arc-mainnet.json`](./packages/contracts/deployments/arc-mainnet.json) (chain 5042, deployed 16 September 2026, indexed from block 21,141,720); receipt issuer `arc-mainnet-2026-09` at `0xee52de6c75b868e919999c08691a9b648f8c61dd`; the pilot payment under policy [`0xda45ae3b…c32a9c`](https://explorer.arc.io/tx/0xda45ae3b4f0ae0de24406ddaff2e698cbe1b8daac5c5abac94de6954e1c32a9c); every transaction in [`docs/ethonline-2026/demo-evidence.md`](./docs/ethonline-2026/demo-evidence.md#arc-mainnet-pilot-16-september-2026) |
 
 ## Baseline
 
@@ -29,7 +33,9 @@ are the protocol v2 release and routine hardening that were already in flight
 and are unrelated to receipts: `feat: protocol v2`, `chore: testnet v2
 deployment`, `feat: mainnet config`, `feat: synced-through height`, the
 Supabase and dashboard refactors, CI widening and test coverage. None of that
-is claimed as hackathon work. The last commit before the event opened is
+is claimed as hackathon work; `feat: mainnet config` in particular only added
+chain constants for a network that did not exist yet, and the deployment
+itself is on the event branch (see "Arc Mainnet deployment" below). The last commit before the event opened is
 `f1e6746` (2 September 2026). Everything that touches receipts is on the event
 branch, after the tag, with real commit dates.
 
@@ -99,12 +105,70 @@ The two Circle commits of 2026-09-11 are decision 24: a Circle
 developer-controlled wallet becomes the agent's signer and nothing else;
 custody, policy and evidence are unchanged ([`docs/CIRCLE-WALLETS.md`](./docs/CIRCLE-WALLETS.md)).
 
-Nothing in `packages/contracts` changed. Receipts sit beside the existing
+No Solidity source in `packages/contracts` changed (the mainnet deployment
+below added a manifest, a runbook and readiness checks under it, not contract
+code). Receipts sit beside the existing
 preflight: the contract still decides at execution time and the receipt
 records what the policy said at a pinned block beforehand. The existing
 `paymentIntents.create` preflight gained one correction as a side effect
 (a zero vendor address is now reported as a validation error instead of being
 sent on to policy evaluation); its behaviour is otherwise unchanged.
+
+## Arc Mainnet deployment (16 September 2026)
+
+Arc's public mainnet opened on 16 September 2026, the last day of the event.
+The same day the contracts were deployed to it, the production app was
+switched to it, and one governed wallet made one policy-checked USDC payment
+with a signed receipt. All of it is on the event branch after the tag:
+
+| Commit | Scope |
+| --- | --- |
+| `5593de1` `feat(mainnet): Arc Mainnet deployment, network switch and receipt issuer` | the finalized manifest `packages/contracts/deployments/arc-mainnet.json` with the deployment runbook `MANUAL_ARC_MAINNET_DEPLOY.md` and mainnet checks in `scripts/check-arc-deploy-readiness.mjs`; the shared, web and indexer deployment loaders read the manifest of the selected network instead of importing the testnet one, and `NEXT_PUBLIC_ARC_NETWORK` / `ARC_NETWORK` must agree or the app refuses to start; mainnet chain constants, explorer links and wagmi config; the receipt issuer `arc-mainnet-2026-09` (chain 5042) in the issuer registry; `arc_mainnet` in the Python SDK; the CCTP funding console refuses mainnet; terms, privacy, glossary and docs pages state the pilot terms; README, SDK READMEs, docs site and `.env.example` list the mainnet deployment |
+| `1f2d702` `indexer: read Arc mainnet from the Tenderly gateway` | the official mainnet RPC rejects the indexer's merged log query, so the backfill defaults to Tenderly's public Arc gateway at one request per second |
+| `27c446e` `indexer: ignore official Arc endpoints named by ARC_RPC_URL` | review follow-up: an env file copied from the app cannot route the indexer back to an endpoint that cannot serve it |
+
+The contracts were broadcast through CREATE2 with the maintainer's deployer
+key `0x836BEEa5…20Bd4`, with `0x77d9Da1f…27cAD` as protocol admin; addresses
+and deployment transactions are in the manifest and the README, and the first
+indexed block is 21,141,720. https://thearcanum.in was switched to mainnet in
+place, on the same Vercel and Supabase projects: the chain-derived testnet
+rows were archived in a `testnet_archive` schema after a verified dump,
+accounts were kept, and the scheduled indexer was re-pointed. The pilot that
+followed is recorded transaction by transaction in
+[`docs/ethonline-2026/demo-evidence.md`](./docs/ethonline-2026/demo-evidence.md#arc-mainnet-pilot-16-september-2026):
+a wallet with 0.02 USDC caps, a denied intent (no vendor record, receipt
+only), an allowed 0.01 USDC payment whose receipt is named in the calldata and
+whose `execution/executed` evidence row matches the verdict, and an owner
+freeze afterwards.
+
+What this deployment is not: the contracts have not had an independent audit,
+so the live terms describe a limited pilot with small caps and the operator's
+right to freeze; the CCTP funding console and the Circle signer demonstration
+remain testnet-only (the console answers 400 on mainnet by design); and the
+receipt runs, the video and the evidence rows recorded before 16 September
+were made on Arc Testnet, so their dashboard links no longer resolve on the
+live app, while their transactions stay on Arc Testnet and their envelopes
+still verify on `/verify` through the retained testnet issuer entry.
+
+## Later maintenance
+
+Operational hardening added privately after the event is later maintenance.
+It is not part of the newly developed Payment Decision Receipts feature, does
+not change the frozen `pre-ethonline-2026` baseline, and is not a formal audit
+or an independent security review. Receipt, API, SDK and operational repairs
+have been implemented and source-tested locally. An independent source
+reviewer found that unbound escalation evidence could be displayed without a
+clear label; the helper and label were corrected for every evidence kind and
+two guard tests were added. The combined run before those two follow-up tests
+passed 187 API and 207 web tests; the SDK passed 106 tests. The separate real
+PostgreSQL, receipt CLI, backup/load and production-mode Next build checks
+also passed as recorded in the build log. Afterwards, the targeted web receipt
+suite passed 4 of 4, including the two new escalation cases; final web
+typecheck and the three-file Biome check passed. A full 209-test web rerun is
+not claimed. At this local-verification snapshot the later work had not yet
+been committed, published or deployed, and no production migration had been
+applied. Source publication alone does not require that migration; deployment
+of the stricter API does.
 
 ## Version control and dependencies
 
@@ -162,11 +226,13 @@ are.
   [`docs/ethonline-2026/build-log.md`](./docs/ethonline-2026/build-log.md).
 - **Operation and demonstration.** The issuer key, the production migration
   and the deployment live on the maintainer's infrastructure and were rolled
-  out under the maintainer's authority. The testnet demonstration referenced
-  by the submission is run by the maintainer against the deployed API; its
-  transactions are real Arc Testnet transactions. The submission video's
-  voiceover is text-to-speech generated from a script written and approved by
-  the maintainer.
+  out under the maintainer's authority, as was the Arc Mainnet broadcast of
+  16 September, which used the maintainer's deployer key. The testnet
+  demonstration referenced by the submission is run by the maintainer against
+  the deployed API; its transactions are real Arc Testnet transactions, and
+  the mainnet pilot's are real Arc Mainnet transactions. A text-to-speech
+  voiceover script was written and approved by the maintainer, but no
+  submission video URL is recorded or available in this repository.
 
 ### Attribution: what the agent wrote
 
@@ -197,6 +263,18 @@ in this diff. Specifically:
   The implementation was checked against Circle's V2 contract sources; no
   existing wallet contract or payment receipt format was replaced.
 - `supabase/migrations/20260910120000_payment_receipts.sql`.
+- The Arc Mainnet work: the manifest, runbook and readiness script under
+  `packages/contracts/deployments` and `packages/contracts/scripts`,
+  `packages/shared/src/deployment.ts`, `packages/shared/src/chains/*`, the
+  mainnet entry in `packages/shared/src/receipts/issuers.ts`,
+  `apps/web/lib/deployment.ts`, `apps/web/lib/arcscan.ts`,
+  `apps/web/lib/wagmi.ts`, `apps/web/next.config.ts`, the reference pages
+  under `apps/web/app/(reference)/**`, `apps/web/app/api/cctp/_lib/http.ts`,
+  `packages/api/src/context.ts`, `packages/indexer/src/deployment.ts`,
+  `packages/indexer/ponder.config.ts`, `packages/sdk-py/src/arcanum_sdk/chains.py`,
+  the indexer top-up workflow, the demo and Circle setup scripts' network
+  handling, and the README, docs-site, `.env.example` and
+  `docs/INDEXER-TOPUP.md` changes that describe the mainnet deployment.
 - Documentation: `docs/PAYMENT-RECEIPTS.md`, `docs/CIRCLE-WALLETS.md`,
   `docs/ethonline-2026/*`, the README and SDK README sections,
   `apps/docs/pages/concepts/receipts.mdx`, `apps/docs/pages/api-reference.mdx`,

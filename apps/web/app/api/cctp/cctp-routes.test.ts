@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@arcanum/api/server", () => ({
+  consumeRateLimit: vi.fn(),
+  clientRateLimitIdentity: (request: Request) => request.headers.get("x-forwarded-for"),
+  rateLimitFailure: vi.fn(),
+}));
 vi.mock("@arcanum/shared", () => ({ IS_ARC_MAINNET: false }));
 vi.mock("@/lib/cctp", () => ({
   getCctpQuote: vi.fn(),
@@ -7,6 +12,7 @@ vi.mock("@/lib/cctp", () => ({
 }));
 
 import { getCctpQuote, getCctpStatus } from "@/lib/cctp";
+import { consumeRateLimit, rateLimitFailure } from "@arcanum/api/server";
 import { GET as quote } from "./quote/route";
 import { GET as status } from "./status/route";
 
@@ -19,7 +25,7 @@ function request(path: string, ip = `test-${++identity}`) {
 const recipient = "0x1111111111111111111111111111111111111111";
 const hash = `0x${"ab".repeat(32)}`;
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => vi.resetAllMocks());
 
 describe("CCTP read-only routes", () => {
   it.each(["0", "-1", "1e6", "1.0000001", "NaN", "01", ""])(
@@ -73,10 +79,35 @@ describe("CCTP read-only routes", () => {
 
   it("rate limits repeated polling without contacting the provider again", async () => {
     const ip = `rate-limit-${++identity}`;
-    for (let i = 0; i < 30; i++) await quote(request("quote?amount=0", ip));
+    vi.mocked(consumeRateLimit).mockRejectedValueOnce(new Error("limited"));
+    vi.mocked(rateLimitFailure).mockReturnValueOnce({
+      status: 429,
+      retryAfter: 42,
+      message: "Too many requests. Try again shortly.",
+    });
     const response = await quote(request("quote?amount=5", ip));
     expect(response.status).toBe(429);
-    expect(response.headers.get("retry-after")).toBeTruthy();
+    expect(response.headers.get("retry-after")).toBe("42");
+    expect(consumeRateLimit).toHaveBeenCalledWith({
+      scope: "cctp:read",
+      identity: ip,
+      limit: 30,
+      windowMs: 60_000,
+    });
+    expect(getCctpQuote).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when the shared limit store is unavailable", async () => {
+    vi.mocked(consumeRateLimit).mockRejectedValueOnce(new Error("private provider error"));
+    vi.mocked(rateLimitFailure).mockReturnValueOnce({
+      status: 503,
+      retryAfter: 5,
+      message: "Rate limit service unavailable.",
+    });
+    const response = await quote(request("quote?amount=5"));
+    expect(response.status).toBe(503);
+    expect(response.headers.get("retry-after")).toBe("5");
+    expect(await response.text()).not.toContain("private provider error");
     expect(getCctpQuote).not.toHaveBeenCalled();
   });
 });

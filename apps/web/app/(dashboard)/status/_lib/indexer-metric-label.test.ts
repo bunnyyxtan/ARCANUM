@@ -3,6 +3,15 @@ import { describe, expect, it } from "vitest";
 import { indexerMetricLabel } from "./indexer-metric-label";
 
 describe("indexerMetricLabel", () => {
+  it("does not invent an event on a quiet deployment", () => {
+    expect(
+      indexerMetricLabel({
+        lastIndexedBlock: null,
+        lastSeenChainBlock: 250,
+        status: "available",
+      }),
+    ).toBe("SYNCED THROUGH · NO EVENTS OBSERVED");
+  });
   it("names the last event block when the read model has run ahead of it", () => {
     expect(
       indexerMetricLabel({

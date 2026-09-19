@@ -153,11 +153,12 @@ describe("session lifetime enforcement", () => {
     process.env = { ...originalEnv };
   });
 
-  it("sets the iron-session seal and cookie lifetime to exactly seven days", async () => {
+  it("sets the iron-session seal and cookie lifetime to exactly twelve hours", async () => {
     const { getSessionOptions, SESSION_TTL_SECONDS } = await authModule();
     const options = getSessionOptions();
 
     expect(options.ttl).toBe(SESSION_TTL_SECONDS);
+    expect(SESSION_TTL_SECONDS).toBe(12 * 60 * 60);
     expect(options.cookieOptions?.maxAge).toBe(SESSION_TTL_SECONDS);
   });
 

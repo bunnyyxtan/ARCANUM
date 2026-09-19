@@ -1,4 +1,4 @@
-# Testnet evidence
+# Evidence: Arc Testnet runs and the Arc Mainnet pilot
 
 Real runs of the receipt workflow on Arc Testnet, recorded as they happen,
 with separate CCTP funding evidence below.
@@ -10,6 +10,12 @@ refers to. Rows are filled in only after the run exists.
 Explorer: [Arcscan testnet](https://testnet.arcscan.app). Receipt links open
 the dashboard and need a signed-in workspace member; the `/verify` page does
 not.
+
+Since 16 September 2026 https://thearcanum.in serves Arc Mainnet and the
+testnet rows below were archived out of the live database, so their dashboard
+links no longer resolve; the transactions remain on Arc Testnet and the
+envelopes still verify on `/verify`. The mainnet pilot of the same day is
+recorded in the [last section](#arc-mainnet-pilot-16-september-2026).
 
 ## Runs
 
@@ -111,3 +117,68 @@ The reason forwarding did not complete during the observation window is not
 established; the version-1 forwarding frame matches Circle's published format.
 The local `demo-output/cctp/settlement-evidence.json` retains both chain hashes,
 amounts, timestamps and separately accounted gas.
+
+## Arc Mainnet pilot (16 September 2026)
+
+Arc's public mainnet (chain 5042) opened on 16 September 2026. Explorer:
+[explorer.arc.io](https://explorer.arc.io). Gas on Arc is paid in USDC, so
+every amount below is real USDC.
+
+Deployment, recorded in `packages/contracts/deployments/arc-mainnet.json`:
+deployer `0x836BEEa5C4382196393C5DF8bA345E09F7b20Bd4`, protocol admin
+`0x77d9Da1f1a29f499da7f238a1CbD896c0Da27cAD`, 10:17 UTC, first indexed block
+21,141,720. The manifest identifies Arc Mainnet as chain 5042. The two
+recorded receipt envelopes identify issuer `arc-mainnet-2026-09` at
+`0xee52de6c75b868e919999c08691a9b648f8c61dd`, matching the public issuer
+registry.
+
+| Contract | Address | Deployment transaction |
+| --- | --- | --- |
+| PolicyEngine | `0xb74De5aD09a75dea03f5ddD77A25e1Ca11724483` | [`0x73cc7e63…41946d`](https://explorer.arc.io/tx/0x73cc7e63c9d6ca71f4dc14ce4b00f1c12942f58672f52ab9233faf977441946d) |
+| EscalationManager | `0x2a653D3d90BFA13bE9d8F9eB2Cc87578967128EF` | [`0xaa8a3a7d…590546`](https://explorer.arc.io/tx/0xaa8a3a7d1626e31c0db4ed6738604fbec172f536d1c328d0795f6cfb5e590546) |
+| AnomalyOracle | `0xb2ae97dB77c8fdF8D9CE00743A4B095E4f2AdD8F` | [`0x6b9caf48…2b142c`](https://explorer.arc.io/tx/0x6b9caf4841e7fe23c60cc2611892629e99439884180b632129633fb89e2b142c) |
+| VendorRegistry | `0x722C2f83ca55503Cf3104bABeb3EaA9d676B1469` | [`0x1bc247bf…120c09`](https://explorer.arc.io/tx/0x1bc247bfe91c31a27894862e13ce0e9522b83461f90b422444ee891cce120c09) |
+| WalletFactory | `0x7077A28C003D9274d45263b04Ac9cB9a58Ab5342` | [`0x548d0be7…fdc59e`](https://explorer.arc.io/tx/0x548d0be7e5941bd04edf872e8e69253ac03435cc466f77efe3532a0570fdc59e) |
+
+Pilot wallet `0x0a6626c96c0677c6f7509de5078f0cbb539543a0` ("Mainnet pilot
+2026-09-16"): owner `0x836BEEa5…20Bd4`, agent signer
+`0x24a727c925f8be49206442f7e4a67c59ac4c4790`, council of two with threshold 1
+(`0x836BEEa5…20Bd4`, `0x77d9Da1f…27cAD`). Policy at creation: per-payment cap
+0.02 USDC, 24-hour budget 0.05 USDC, 30-day budget 0.10 USDC, review
+threshold 0.02 USDC, approved vendors required, freeze on blocked vendor on,
+all five categories enabled. Approved vendor: `0x77d9Da1f…27cAD` (category
+API, per-vendor cap 0.02 USDC). Both receipts below are signed by issuer
+`arc-mainnet-2026-09` (chain 5042) and verify with `verifyPaymentReceipt`
+(format valid; digest, issuer and request signature verified), the same
+result `POST /api/receipts/verify` on https://thearcanum.in returns for them.
+
+| Step | Receipt id | Verdict / reason | Evaluated at block | Transaction | Evidence |
+| --- | --- | --- | --- | --- | --- |
+| Wallet created with policy, agent signer and council | | | | [`0x5546ecf0…30cae3`](https://explorer.arc.io/tx/0x5546ecf0e07ad7edeb06a82ad66670287323ee1cc6a2b2f540bae07ac630cae3) (block 21,164,693) | governance timeline: `OWNERSHIP_TRANSFERRED`, `POLICY_UPDATED`, `SIGNER_AUTHORIZED`, `WALLET_COUNCIL_REGISTERED` |
+| Vendor approved | | | | [`0xc05cd474…def298`](https://explorer.arc.io/tx/0xc05cd47432ebd665aa47f8792c86ebbd81a93521053e9835844e04facfdef298) (block 21,165,943) | `VENDOR_ALLOWED` |
+| Denied payment (0.01 USDC to `0x6a7104cd…46de6f`, no vendor record) | `902fe3ae-2ec2-4623-bc6e-64987f18bafa` | deny / ALLOWLIST_REQUIRED | 21,166,100 | none (a deny never reaches the chain) | none; receipt digest `0xb6a724a2…c7dde7` |
+| Allowed payment (0.01 USDC to the approved vendor) | `947dcb81-9de4-4c99-b85e-16682ab32ef0` | allow / NONE | 21,166,144 | [`0xda45ae3b…c32a9c`](https://explorer.arc.io/tx/0xda45ae3b4f0ae0de24406ddaff2e698cbe1b8daac5c5abac94de6954e1c32a9c) (block 21,166,149; the calldata names the receipt) | `execution/executed`, `verdictMatches: true`; receipt digest `0x04222370…2460c3` |
+| Owner freeze after the pilot | | | | [`0x021c0446…018dc7`](https://explorer.arc.io/tx/0x021c04465a4aae37550cb17af38c16dbe5cf2b9309c83fec0d0bf049ff018dc7) (block 21,168,985) | `WALLET_FROZEN`, source `OWNER`, data "mainnet pilot complete" |
+
+The wallet stays frozen with its remaining balance as the record of the
+pilot. The read model behind the dashboard (wallet status `frozen`, one
+ledger row for the allowed payment, six governance events) was rebuilt from
+the chain by the scheduled indexer and agrees with the explorer and with the
+receipts; `GET /api/public-stats` reports 0.01 USDC of governed volume.
+
+No screenshot or video URL for this pilot is recorded or available in the
+repository. The evidence above consists of the deployment manifest, saved
+receipt envelopes, transaction links and the recorded evidence rows. It does
+not claim a formal audit. Later private operational hardening and the
+receipt, API and SDK repairs are outside this historical evidence record.
+Those repairs were implemented and source-tested locally, including 187 API,
+207 web and 106 SDK tests plus the database, CLI, backup/load and
+production-mode build checks listed in the build log. A later independent
+source review produced an unbound-escalation display correction and two more
+web guard tests. The targeted web receipt suite passed 4 of 4, including those
+two cases; final web typecheck and the three-file Biome check passed. This is
+separate from the 207-test combined web run, and no full 209-test rerun is
+claimed. At the local-verification snapshot the maintenance had not yet been
+committed, published or deployed, and no production migration had been
+applied. Source publication alone does not require it; deployment of the
+stricter API does.

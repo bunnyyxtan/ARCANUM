@@ -42,8 +42,16 @@ export function allowedCategoryNames(mask: string): string {
   return names.length > 0 ? names.join(", ") : "NONE";
 }
 
-/** What the chain did relative to the verdict, as recorded by the evidence service. */
+/**
+ * What a causally bound transaction did relative to the verdict.
+ * Historical rows that predate strict structured calldata binding remain
+ * visible, but must never be presented as proof that the transaction acted on
+ * this receipt.
+ */
 export function chainAgreement(evidence: PaymentReceiptEvidence): boolean | null {
+  if (evidence.calldataNamesReceipt !== true) {
+    return null;
+  }
   const value = evidence.details.verdictMatches;
   return typeof value === "boolean" ? value : null;
 }

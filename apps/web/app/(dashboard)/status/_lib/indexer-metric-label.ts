@@ -30,6 +30,9 @@ export function indexerMetricLabel(indexer: IndexerHeights | undefined) {
       ? "SYNCED THROUGH · CURSOR UNKNOWN · LAST EVENT BLOCK"
       : "SYNCED THROUGH · CURSOR UNKNOWN";
   }
+  if (indexer.lastIndexedBlock == null) {
+    return "SYNCED THROUGH · NO EVENTS OBSERVED";
+  }
   if (indexer.lastIndexedBlock != null && indexer.lastSeenChainBlock > indexer.lastIndexedBlock) {
     return `SYNCED THROUGH · LAST EVENT AT BLOCK ${indexer.lastIndexedBlock}`;
   }

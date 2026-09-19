@@ -5,7 +5,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const rejected = guardRequest(request);
+  const rejected = await guardRequest(request);
   if (rejected) return rejected;
 
   const amount = new URL(request.url).searchParams.get("amount");

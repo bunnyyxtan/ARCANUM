@@ -6,6 +6,7 @@ import {
 } from "@arcanum/shared";
 
 import type { ApiContext } from "../context";
+import { boundedHealthCheck } from "../health/freshness";
 import { type SupabaseRow, createSupabaseServiceRoleClient, safeSupabaseError } from "./client";
 import { booleanField, numberOrNull, stringField } from "./fields";
 import { PUBLIC_AGGREGATE_WINDOW, formatUsdcBaseUnits, readSupabasePublicLedger } from "./ledger";
@@ -279,14 +280,10 @@ export async function readSupabasePublicWalletProfile(ctx: ApiContext, address: 
 }
 
 async function safeHealthRead(operation: () => Promise<SupabaseRow[] | undefined>) {
-  try {
-    return { ok: true as const, data: (await operation()) ?? [] };
-  } catch (error) {
-    return {
-      ok: false as const,
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
+  const result = await boundedHealthCheck(operation, 2_000);
+  return result.ok && Array.isArray(result.data)
+    ? { ok: true as const, data: result.data }
+    : { ok: false as const, error: "Read-model health probe unavailable." };
 }
 
 function checkpointBlock(row: SupabaseRow) {

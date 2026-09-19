@@ -91,9 +91,10 @@ const ESCALATION_OUTCOMES: Record<EscalationChainStatus, PaymentReceiptEvidenceO
  * from the chain and must agree with the receipt: the transaction has to be
  * an `executeUSDC` call from the receipt's agent signer to the receipt's
  * wallet, for the receipt's vendor and amount, and the single wallet event it
- * emitted has to name the same signer, vendor and amount. Reason bytes that
- * name another receipt disqualify it, and a transaction already linked to
- * another receipt cannot be linked again: one call acted on one decision.
+ * emitted has to name the same signer, vendor and amount. The transaction must
+ * be mined after the pinned evaluation and its structured reason metadata must
+ * name this exact receipt id or digest. A transaction already linked to another
+ * receipt cannot be linked again: one call acted on one decision.
  *
  * A reverted call is recorded as such; the chain keeps no reason for it, so
  * the record says the transfer did not happen, not why. A successful call is
@@ -127,6 +128,12 @@ export async function attachPaymentReceiptEvidence(
 
   const { transaction, receipt } = await readTransaction(ctx, txHash);
   const request = body.request;
+  if (receipt.blockNumber <= BigInt(body.evaluation.blockNumber)) {
+    throw new ReceiptError(
+      "EVIDENCE_MISMATCH",
+      `Transaction block ${receipt.blockNumber} did not occur after receipt evaluation block ${body.evaluation.blockNumber}.`,
+    );
+  }
   if (
     transaction.to?.toLowerCase() !== request.governedWalletAddress ||
     transaction.from.toLowerCase() !== request.agentSignerAddress
@@ -148,11 +155,20 @@ export async function attachPaymentReceiptEvidence(
     );
   }
 
-  const named = receiptNamedInCalldata(call.reason);
-  if (named && named !== body.receiptId) {
+  const binding = receiptBindingInCalldata(call.reason);
+  if (!binding) {
     throw new ReceiptError(
       "EVIDENCE_MISMATCH",
-      `Transaction names receipt ${named} in its reason bytes, not ${body.receiptId}.`,
+      "Transaction reason metadata does not name a receipt id or digest; causal receipt evidence requires an exact structured binding.",
+    );
+  }
+  if (
+    (binding.receiptId !== undefined && binding.receiptId !== body.receiptId) ||
+    (binding.receiptDigest !== undefined && binding.receiptDigest !== stored.envelope.receiptDigest)
+  ) {
+    throw new ReceiptError(
+      "EVIDENCE_MISMATCH",
+      "Transaction reason metadata names a different receipt id or digest.",
     );
   }
 
@@ -169,7 +185,18 @@ export async function attachPaymentReceiptEvidence(
   const scope = { walletId: stored.walletId, orgId: stored.orgId };
   const observed = await classifyExecution(ctx, stored, receipt, txHash, call.reason, deps);
   for (const evidence of observed) {
-    await insertReceiptEvidence(ctx, evidence, scope);
+    const outcome = await insertReceiptEvidence(ctx, evidence, scope);
+    if (outcome === "duplicate" && evidence.kind === "execution" && evidence.txHash) {
+      const linked = (await findReceiptsLinkedToTransaction(ctx, evidence.txHash)).filter(
+        (receiptId) => receiptId !== body.receiptId,
+      );
+      if (linked.length > 0) {
+        throw new ReceiptError(
+          "EVIDENCE_CONFLICT",
+          `Transaction ${txHash} is already linked to receipt ${linked[0]}; one call acted on one decision.`,
+        );
+      }
+    }
   }
 
   return { receiptId: body.receiptId, evidence: await readReceiptEvidence(ctx, body.receiptId) };
@@ -396,18 +423,23 @@ function eventMatchesReceipt(event: WalletEvent, body: StoredReceipt["envelope"]
   }
 }
 
-/** Whether the agent named the receipt in the executeUSDC reason bytes. */
+/** New evidence reaches here only after the exact structured binding was checked. */
 function calldataNamesReceipt(reasonBytes: Hex, receiptId: string, stored: StoredReceipt) {
-  const text = safeHexToString(reasonBytes).toLowerCase();
-  return text.includes(receiptId.toLowerCase()) || text.includes(stored.envelope.receiptDigest);
+  const binding = receiptBindingInCalldata(reasonBytes);
+  return Boolean(
+    binding &&
+      (binding.receiptId === receiptId.toLowerCase() ||
+        binding.receiptDigest === stored.envelope.receiptDigest),
+  );
 }
 
 /**
- * The receipt id the SDK puts in the reason metadata (`{ reason, metadata:
- * { receiptId } }`), when the calldata carries one. Free-text reasons name
- * nothing, so they neither confirm nor contradict a receipt.
+ * The receipt id or digest the SDK puts in structured reason metadata. Free
+ * text and loose substrings are deliberately not bindings.
  */
-function receiptNamedInCalldata(reasonBytes: Hex): string | null {
+function receiptBindingInCalldata(
+  reasonBytes: Hex,
+): { receiptId?: string; receiptDigest?: string } | null {
   const text = safeHexToString(reasonBytes);
   if (!text.startsWith("{")) {
     return null;
@@ -418,13 +450,20 @@ function receiptNamedInCalldata(reasonBytes: Hex): string | null {
       typeof parsed === "object" && parsed !== null
         ? (parsed as { metadata?: unknown }).metadata
         : undefined;
-    const receiptId =
-      typeof metadata === "object" && metadata !== null
-        ? (metadata as { receiptId?: unknown }).receiptId
-        : undefined;
-    return typeof receiptId === "string" && receiptId.length > 0 ? receiptId.toLowerCase() : null;
+    if (typeof metadata !== "object" || metadata === null || Array.isArray(metadata)) return null;
+    const receiptId = (metadata as { receiptId?: unknown }).receiptId;
+    const receiptDigest = (metadata as { receiptDigest?: unknown }).receiptDigest;
+    const binding = {
+      ...(typeof receiptId === "string" && receiptId.length > 0
+        ? { receiptId: receiptId.toLowerCase() }
+        : {}),
+      ...(typeof receiptDigest === "string" && /^0x[0-9a-fA-F]{64}$/.test(receiptDigest)
+        ? { receiptDigest: receiptDigest.toLowerCase() }
+        : {}),
+    };
+    return binding.receiptId || binding.receiptDigest ? binding : null;
   } catch {
-    // Reason bytes that merely start with a brace are free text, not metadata.
+    // Malformed JSON is free text, not receipt metadata.
     return null;
   }
 }

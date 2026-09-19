@@ -13,6 +13,44 @@ permissions:
 # run in sdk.yml. Everything TypeScript is gated here, in the order a reviewer
 # would want failures reported: formatting, types, behaviour, then the build.
 jobs:
+  security-sql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install PostgreSQL 17 tools
+        run: |
+          set -euo pipefail
+          sudo install -d /usr/share/postgresql-common/pgdg
+          curl --fail --silent --show-error --location https://www.postgresql.org/media/keys/ACCC4CF8.asc |
+            sudo tee /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc >/dev/null
+          . /etc/os-release
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" |
+            sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+          sudo apt-get update
+          sudo apt-get install -y postgresql-17
+      - run: npm ci
+      - name: Disposable SQL and receipt execution regressions
+        run: bash .github/scripts/security-sql-test.sh /usr/lib/postgresql/17/bin
+  runtime-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Runtime dependency security gate
+        # Registry failure also blocks. Do not auto-fix or silently waive findings.
+        run: npm audit --omit=dev --audit-level=high
+      - name: Patched indexer runtime compatibility (offline)
+        run: node scripts/check-indexer-runtime.mjs
   workspace:
     runs-on: ubuntu-latest
     steps:
@@ -53,5 +91,7 @@ jobs:
           --workspace @arcanum/indexer
           --workspace @arcanum/sdk
           --workspace @arcanum/shared
+      - name: Atomic indexer finalization regression
+        run: node .github/scripts/indexer-catchup-evidence.pglite.test.mjs
       - name: Build
         run: npm run build

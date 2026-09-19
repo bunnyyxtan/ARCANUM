@@ -8,6 +8,9 @@ import { type SupabaseServiceRoleClient, createSupabaseServiceRoleClient } from 
 export type ApiContext = {
   db: ArcanumDb;
   session: ArcanumSession | null;
+  /** Opaque cookie credential; never exposed by a resolver. */
+  sessionId?: string;
+  expectedTenantId?: string;
   publicClient: PublicClient;
   supabase: SupabaseServiceRoleClient | null;
   requestFingerprint: string | null;
@@ -16,6 +19,8 @@ export type ApiContext = {
 
 export function createContext(input?: {
   session?: ArcanumSession | null;
+  sessionId?: string;
+  expectedTenantId?: string;
   database?: ArcanumDb;
   publicClient?: PublicClient;
   supabase?: SupabaseServiceRoleClient | null;
@@ -25,6 +30,8 @@ export function createContext(input?: {
   return {
     db: input?.database ?? db,
     session: input?.session ?? null,
+    sessionId: input?.sessionId,
+    expectedTenantId: input?.expectedTenantId,
     supabase: input?.supabase ?? createSupabaseServiceRoleClient(),
     requestFingerprint: input?.requestFingerprint ?? null,
     env: {
@@ -36,7 +43,9 @@ export function createContext(input?: {
       // disables the bypass unconditionally.
       allowDevAuth:
         input?.env?.allowDevAuth ??
-        (process.env.NODE_ENV === "development" && process.env.ARCANUM_REQUIRE_AUTH !== "true"),
+        (process.env.NODE_ENV === "development" &&
+          process.env.ARCANUM_SESSION_STORE_MODE === "local-test" &&
+          process.env.ARCANUM_REQUIRE_AUTH !== "true"),
     },
     publicClient:
       input?.publicClient ??

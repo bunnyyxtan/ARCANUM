@@ -6,11 +6,12 @@ import { ARC_NETWORK_BADGE, ARC_NETWORK_NAME, IS_ARC_MAINNET, arcChain } from "@
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Link from "next/link";
 
+import { TransactionRecovery, useRecoverableWrite } from "@/components/TransactionRecovery";
 import { Arrow } from "@/components/arcanum/arrow";
 import { ThemeToggle } from "@/components/warm/ThemeToggle";
 import { type MouseEvent as ReactMouseEvent, useEffect, useRef, useState } from "react";
 import type { Address, Hash } from "viem";
-import { useAccount, usePublicClient, useSwitchChain, useWriteContract } from "wagmi";
+import { useAccount, usePublicClient, useSwitchChain } from "wagmi";
 
 import { describeChainError } from "@/lib/chain-errors";
 import { escalationManagerAbi } from "@/lib/contracts";
@@ -46,7 +47,12 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
   const { openConnectModal } = useConnectModal();
   const publicClient = usePublicClient({ chainId: arcChain.id });
   const { switchChainAsync, isPending: switchPending } = useSwitchChain();
-  const { writeContractAsync, isPending: writePending } = useWriteContract();
+  const {
+    writeContractAsync,
+    waitForTransactionReceipt,
+    recoveryBlocked,
+    isPending: writePending,
+  } = useRecoverableWrite(escalationManagerAddress, "approve", escalationId ?? "");
   const utils = trpc.useUtils();
 
   const submittingRef = useRef(false);
@@ -258,13 +264,18 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
                     : null;
 
   const actionsDisabled =
+    recoveryBlocked ||
     Boolean(disabledReason) ||
     expiryVerificationRequired ||
     isBusy ||
     stage === "pending_indexer" ||
     stage === "done";
   const sweepActionsDisabled =
-    Boolean(sweepDisabledReason) || isBusy || stage === "pending_indexer" || stage === "done";
+    recoveryBlocked ||
+    Boolean(sweepDisabledReason) ||
+    isBusy ||
+    stage === "pending_indexer" ||
+    stage === "done";
 
   const statusLine =
     actionError ??
@@ -401,7 +412,7 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
       setContractTxHash(hash);
       setStage("confirming");
 
-      const receipt = await client.waitForTransactionReceipt({
+      const receipt = await waitForTransactionReceipt({
         hash,
         confirmations: 1,
       });
@@ -515,6 +526,7 @@ export function ApprovePublicPage({ txHash }: Readonly<{ txHash: string }>) {
         </div>
       </nav>
       <div className="mx-auto max-w-[1080px] px-5 py-6 md:px-9 md:py-16">
+        <TransactionRecovery />
         <header className="rise border-b border-[var(--wl-line)] pb-10">
           <p className="font-mono text-[10px] uppercase tracking-[.2em] text-[var(--wl-signal)]">
             QUORUM / HUMAN SIGNATURE

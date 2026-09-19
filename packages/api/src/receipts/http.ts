@@ -9,6 +9,7 @@ import { type ZodTypeAny, z } from "zod";
 
 import type { ApiContext } from "../context";
 import { enforceRateLimit } from "../rate-limit";
+import { rateLimitFailure } from "../rate-limit-store";
 import { isReceiptError } from "./errors";
 import { type EvidenceDeps, attachPaymentReceiptEvidence, defaultEvidenceDeps } from "./evidence";
 import { type ReceiptServiceDeps, defaultReceiptServiceDeps, issuePaymentReceipt } from "./service";
@@ -88,8 +89,23 @@ async function guarded(
     if (isReceiptError(error)) {
       return json(error.toJSON(), error.httpStatus);
     }
+    const limited = rateLimitFailure(error);
+    if (limited) {
+      return json(
+        {
+          error: {
+            code: limited.status === 429 ? "RATE_LIMITED" : "SERVICE_UNAVAILABLE",
+            message: limited.message,
+          },
+        },
+        limited.status,
+        { "retry-after": String(limited.retryAfter) },
+      );
+    }
     if (error instanceof TRPCError && error.code === "TOO_MANY_REQUESTS") {
-      return json({ error: { code: "RATE_LIMITED", message: error.message } }, 429);
+      return json({ error: { code: "RATE_LIMITED", message: error.message } }, 429, {
+        "retry-after": "60",
+      });
     }
     console.error(`[arcanum-receipts] ${path} failed`, error);
     return json(
