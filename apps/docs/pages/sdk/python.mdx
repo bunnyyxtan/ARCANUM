@@ -3,24 +3,29 @@
 Version `3.0.0` of `arcanum-sdk` mirrors the direct-RPC TypeScript surface for Python agent
 stacks. It uses `web3.py` and signs locally with `eth-account`.
 
+The package is not on PyPI yet; install it from a checkout of the repository:
+
 ```bash
-pip install arcanum-sdk==3.0.0
+pip install ./packages/sdk-py
 ```
 
-The example is for Arc Testnet development. Keep private keys outside source control.
+The example targets Arc Mainnet, where the hosted product runs and wallets hold real USDC;
+the contracts are unaudited, so keep pilot caps small. For development, use `arc_testnet` and
+`ARC_TESTNET_RPC_URL` instead. Keep private keys outside source control.
 
 ```python
 import os
 from eth_account import Account
-from arcanum_sdk import ArcanumClient, arc_testnet
+from arcanum_sdk import ArcanumClient, arc_mainnet
+from arcanum_sdk.chains import ARC_MAINNET_RPC_URL
 
 agent_signer = Account.from_key(os.environ["AGENT_PRIVATE_KEY"])
 
 arc = ArcanumClient(
     wallet_address="0x0000000000000000000000000000000000000001",
     agent_signer=agent_signer,
-    chain=arc_testnet,
-    rpc_url=os.environ["ARC_TESTNET_RPC"],
+    chain=arc_mainnet,
+    rpc_url=os.environ.get("ARC_MAINNET_RPC_URL", ARC_MAINNET_RPC_URL),
 )
 
 result = arc.execute_usdc(
@@ -42,8 +47,8 @@ from arcanum_sdk import AsyncArcanumClient
 async_client = AsyncArcanumClient(
     wallet_address="0x0000000000000000000000000000000000000001",
     agent_signer=agent_signer,
-    chain=arc_testnet,
-    rpc_url=os.environ["ARC_TESTNET_RPC"],
+    chain=arc_mainnet,
+    rpc_url=os.environ.get("ARC_MAINNET_RPC_URL", ARC_MAINNET_RPC_URL),
 )
 ```
 

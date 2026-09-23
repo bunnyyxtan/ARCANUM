@@ -143,7 +143,7 @@ with the same spend-window arithmetic the contract uses, produces the verdict
 and reason, and stores the envelope in a Supabase table made immutable by
 trigger. Requests are idempotent per intent reference: a second request
 returns the original receipt flagged as replayed. Evidence linkage re-reads
-the transaction from the Arc Testnet RPC, records whether its calldata names
+the transaction from the configured Arc RPC, records whether its calldata names
 the receipt, and appends `execution/executed`, `execution/escalated`,
 `execution/frozen` or `execution/reverted`, later `escalation/<status>`, each
 with whether the onchain outcome matched the verdict. Network selection is
@@ -174,9 +174,9 @@ identifier, since Circle's transaction signing is not offered for named
 chains such as `ARC-TESTNET`.
 
 Stack: Solidity and Foundry (unchanged during the event), TypeScript, viem,
-tRPC, Next.js, Supabase, Ponder, Circle Developer-Controlled Wallets, Arc
-(Mainnet since 16 September 2026; the recorded receipt runs are on Arc
-Testnet).
+tRPC, Next.js, Supabase, Ponder, Circle Developer-Controlled Wallets, Arc.
+The hosted product has run on Arc Mainnet since 16 September 2026; the
+receipt runs recorded in the demonstration above are on Arc Testnet.
 
 ## Disclosures
 

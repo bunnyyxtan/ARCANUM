@@ -4,7 +4,8 @@ Helix DAO wants `TreasuryRebalancerAgent` to rebalance USDC positions across Aav
 
 ## Step 1 - Install
 
-These snippets are Arc Testnet examples for local development. Keep private keys
+This tutorial deliberately runs on Arc Testnet, so nothing in it moves real
+money; the hosted product itself runs on Arc Mainnet. Keep private keys
 in local environment variables only, and do not commit `.env` files. For Arc
 Mainnet, import `arcMainnet` and `ARC_MAINNET_RPC_URL` from `arcanum-sdk/chains`
 instead and take the factory address from the
@@ -146,7 +147,7 @@ const result = await arc.executeUSDC({
 
 ## Step 9 - Observe the dashboard
 
-Start the indexer and dashboard, connect the council wallet, and open `/dashboard`. The event stream reflects contract events from Arc testnet.
+Start the indexer and dashboard, connect the council wallet, and open `/dashboard`. The event stream reflects contract events from the network the deployment is configured for, Arc Testnet in this tutorial.
 
 ## Step 10 - Manufacture an anomaly
 

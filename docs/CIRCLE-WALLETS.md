@@ -12,11 +12,17 @@ Arcanum stays as it is.
 ## What changes, and what does not
 
 The adapter is a [viem local account](https://viem.sh/docs/accounts/local).
-`ArcanumClient` accepts it exactly where it accepted `privateKeyToAccount`:
+`ArcanumClient` accepts it exactly where it accepted `privateKeyToAccount`.
+The example targets Arc Mainnet, which is what the hosted receipt API at
+thearcanum.in evaluates against; the Circle wallet then has to be created on
+Circle's generic `EVM` blockchain with a mainnet API key (see the end of
+Setup). The recorded runs in this document happened on Arc Testnet with an
+`EVM-TESTNET` wallet, `arcTestnet`, `ARC_TESTNET_RPC_URL` and a testnet
+deployment of the API:
 
 ```ts
 import { ArcanumClient } from "arcanum-sdk";
-import { arcTestnet, ARC_TESTNET_RPC_URL } from "arcanum-sdk/chains";
+import { arcMainnet, ARC_MAINNET_RPC_URL } from "arcanum-sdk/chains";
 import { circleWalletAccount } from "arcanum-sdk/circle";
 
 const agentSigner = circleWalletAccount({
@@ -29,8 +35,8 @@ const agentSigner = circleWalletAccount({
 const arcanum = new ArcanumClient({
   walletAddress: process.env.GUARDED_WALLET as `0x${string}`,
   agentSigner,
-  chain: arcTestnet,
-  rpcUrl: ARC_TESTNET_RPC_URL,
+  chain: arcMainnet,
+  rpcUrl: ARC_MAINNET_RPC_URL,
   apiUrl: "https://thearcanum.in",
 });
 ```

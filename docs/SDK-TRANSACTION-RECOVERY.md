@@ -20,7 +20,7 @@ return that definitive revert as a deny result with its hash.
 ## Persist before waiting; reconcile without submitting
 
 ```ts
-import { TransactionRecoveryError } from "@arcanum/sdk";
+import { TransactionRecoveryError } from "arcanum-sdk";
 
 try {
   const result = await client.executeUSDC(input, {

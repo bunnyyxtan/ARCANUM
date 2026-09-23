@@ -20,7 +20,7 @@
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-2f3542" alt="AGPL-3.0 license" /></a>
   <a href="https://github.com/bunnyyxtan/ARCANUM/releases/latest"><img src="https://img.shields.io/github/v/release/bunnyyxtan/ARCANUM?label=release&color=ff5a1f" alt="Latest release" /></a>
   <img src="https://img.shields.io/badge/network-Arc%20Mainnet%20pilot-ff5a1f" alt="Arc Mainnet pilot" />
-  <img src="https://img.shields.io/badge/network-Arc%20Testnet-6e9e7c" alt="Arc Testnet" />
+  <img src="https://img.shields.io/badge/dev%20network-Arc%20Testnet-6e9e7c" alt="Arc Testnet for development" />
 </p>
 
 <p align="center">
@@ -83,7 +83,7 @@ Unlike an off-chain spend dashboard that an agent can bypass, the enforcement li
 </p>
 
 <p align="center">
-  <sub>The doctrine editor: capital envelope, allowed counterparty categories, and escalation thresholds, signed and deployed on Arc Testnet.</sub>
+  <sub>The doctrine editor: capital envelope, allowed counterparty categories, and escalation thresholds, signed by the owner and enforced onchain.</sub>
 </p>
 
 ## Core capabilities
@@ -168,7 +168,7 @@ These are the protocol v2 contracts recorded in the committed manifest
 60,951,839). The earlier v1 testnet deployment is retired and owners must redeploy v1 wallets
 through the v2 factory.
 
-Each runtime serves one network, selected by `NEXT_PUBLIC_ARC_NETWORK` (`testnet` or `mainnet`),
+Each runtime serves one network, selected by `NEXT_PUBLIC_ARC_NETWORK` (`mainnet` or `testnet`),
 and reads its addresses from the matching manifest. Neither deployment has received an
 independent third-party audit.
 
@@ -239,8 +239,8 @@ Fill in the variables before starting. The essentials:
 
 | Variable | Required | Description |
 | --- | ---: | --- |
-| `NEXT_PUBLIC_ARC_NETWORK` | Yes | `testnet` (default) or `mainnet`; one deployment serves one network |
-| `ARC_RPC_URL` | Recommended | RPC URL for server-side reads on the selected network (`ARC_TESTNET_RPC` is honored on testnet only) |
+| `NEXT_PUBLIC_ARC_NETWORK` | Yes | `mainnet` (what thearcanum.in runs) or `testnet` (the code default for development and self-hosting); one deployment serves one network |
+| `ARC_RPC_URL` | Recommended | RPC URL for server-side reads on the selected network (on testnet only, the legacy `ARC_TESTNET_RPC` is a fallback when this is unset) |
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anon key (client-safe) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes | Server-only Supabase key, never client-side |

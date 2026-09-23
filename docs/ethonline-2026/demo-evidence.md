@@ -71,7 +71,7 @@ lie, and the verifier says which part.
   variables); the receipt's `agentSignerAddress` and the transaction `from`
   are that address. See `docs/CIRCLE-WALLETS.md` for what this does and does
   not prove.
-- Offline verification runs `verifyPaymentReceipt` from `@arcanum/sdk` on the
+- Offline verification runs `verifyPaymentReceipt` from `arcanum-sdk` on the
   envelope file in `demo-output/` with the default issuer registry. Each
   check is reported on its own: envelope format, receipt digest, issuer
   signature, and the agent's request signature.
