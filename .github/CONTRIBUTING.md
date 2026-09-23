@@ -1,7 +1,8 @@
 # Contributing
 
 Thank you for helping build Arcanum. Keep changes small, reviewable, and honest
-about what is testnet-only or still pending.
+about what runs on the Arc Mainnet pilot, what is testnet-only, and what is
+still pending.
 
 Public app and docs: [https://thearcanum.in](https://thearcanum.in)
 
@@ -54,7 +55,9 @@ where available.
   A change to `packages/auth`, `packages/api/src/rate-limit.ts`, or
   `packages/indexer/src/supabase-sync.ts` without a test needs a reason in
   the PR description.
-- Keep docs builder-focused and clear about Arc Testnet status.
+- Keep docs builder-focused and clear about which network a feature or
+  example targets; the hosted product runs on Arc Mainnet, and mainnet wallets
+  hold real USDC.
 - Avoid adding hosted-service assumptions to self-hosted paths.
 
 ## Commit Style

@@ -7,20 +7,22 @@ contract state, simulates policy decisions, and signs `executeUSDC` with an agen
 npm install arcanum-sdk viem
 ```
 
-The write example below is for Arc Testnet development. Keep private keys outside source
-control; production operators should use managed signer infrastructure or user-controlled
-wallets.
+The write example below targets Arc Mainnet, where the hosted product runs and wallets hold
+real USDC; the contracts are unaudited, so keep pilot caps small. For development, import
+`arcTestnet` and `ARC_TESTNET_RPC_URL` instead and use the testnet factory. Keep private keys
+outside source control; production operators should use managed signer infrastructure or
+user-controlled wallets.
 
 ```ts
 import { ArcanumClient } from "arcanum-sdk"
-import { ARC_TESTNET_RPC_URL, arcTestnet, usdcErc20 } from "arcanum-sdk/chains"
+import { ARC_MAINNET_RPC_URL, arcMainnet, usdcErc20 } from "arcanum-sdk/chains"
 import { privateKeyToAccount } from "viem/accounts"
 
 const arc = new ArcanumClient({
   walletAddress: "0x0000000000000000000000000000000000000001",
   agentSigner: privateKeyToAccount(process.env.AGENT_PRIVATE_KEY as `0x${string}`),
-  chain: arcTestnet,
-  rpcUrl: process.env.ARC_TESTNET_RPC ?? ARC_TESTNET_RPC_URL,
+  chain: arcMainnet,
+  rpcUrl: process.env.ARC_MAINNET_RPC_URL ?? ARC_MAINNET_RPC_URL,
 })
 
 const result = await arc.executeUSDC({

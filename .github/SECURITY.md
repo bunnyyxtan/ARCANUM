@@ -1,7 +1,9 @@
 # Security
 
-Arcanum is an Arc Testnet prototype under active development. The contracts are
-not audited and should not be treated as mainnet infrastructure.
+Arcanum runs a limited pilot on Arc Mainnet with real USDC and keeps a full
+deployment on Arc Testnet for development. The contracts have not had an
+independent audit; keep pilot caps small and treat every deployment as
+unaudited code.
 
 Project website: [https://thearcanum.in](https://thearcanum.in)
 
@@ -29,7 +31,7 @@ or live user secrets in reports.
 
 - Spam, phishing, or social engineering reports
 - Third-party wallet bugs
-- Arc network or testnet faucet issues
+- Arc network outages, RPC problems, or testnet faucet issues
 - Issues that require leaked private keys or compromised user devices
 - Claims about testnet asset value
 - Denial-of-service reports without a practical security impact

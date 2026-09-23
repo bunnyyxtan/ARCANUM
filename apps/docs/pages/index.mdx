@@ -4,20 +4,22 @@ Arcanum is Arc-native protocol infrastructure for teams that want AI agents to h
 
 ```ts
 import { ArcanumClient } from "arcanum-sdk"
-import { arcTestnet } from "arcanum-sdk/chains"
+import { ARC_MAINNET_RPC_URL, arcMainnet } from "arcanum-sdk/chains"
 import { privateKeyToAccount } from "viem/accounts"
 
 const arc = new ArcanumClient({
   walletAddress: "0x0000000000000000000000000000000000000001",
   agentSigner: privateKeyToAccount(process.env.AGENT_PRIVATE_KEY as `0x${string}`),
-  chain: arcTestnet,
-  rpcUrl: process.env.ARC_TESTNET_RPC!,
+  chain: arcMainnet,
+  rpcUrl: process.env.ARC_MAINNET_RPC_URL ?? ARC_MAINNET_RPC_URL,
 })
 ```
 
-The signer example above is for Arc Testnet agent services. Never hard-code
-private keys or commit `.env` files; production operators should use managed
-signer infrastructure or user-controlled wallets.
+The example targets Arc Mainnet, where the hosted product runs and wallets hold
+real USDC; the contracts are unaudited, so keep pilot caps small. For
+development, import `arcTestnet` and `ARC_TESTNET_RPC_URL` instead. Never
+hard-code private keys or commit `.env` files; production operators should use
+managed signer infrastructure or user-controlled wallets.
 
 ## Built for Arc builders
 
@@ -32,7 +34,7 @@ Arcanum's source is public for audit from day one, and the protocol layer is des
 
 ## Start here
 
-1. [Open the public Arc Testnet app](https://thearcanum.in)
+1. [Open the hosted app on Arc Mainnet](https://thearcanum.in)
 2. [Run the 10-minute TreasuryRebalancer tutorial](/getting-started)
 3. [Read the architecture commitments](/architecture)
 4. [Self-host the dashboard and indexer](/self-host)
