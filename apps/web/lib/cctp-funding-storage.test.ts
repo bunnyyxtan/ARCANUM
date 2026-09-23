@@ -5,7 +5,6 @@ import {
   cctpFundingLockName,
   cctpFundingPendingKey,
   cctpFundingTransferKey,
-  fundingSnapshotMatches,
   isStrictTransactionHash,
   linkPendingFundingMarker,
   loadFundingStorage,

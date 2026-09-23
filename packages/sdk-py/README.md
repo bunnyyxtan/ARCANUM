@@ -4,26 +4,26 @@ Python SDK for direct GuardedWallet execution on Arc (mainnet and testnet). It
 signs transactions with the caller's agent account and never talks to an
 Arcanum-hosted API.
 
-The example below is for local Arc Testnet development; for Arc Mainnet use
-`arc_mainnet` and `ARC_MAINNET_RPC_URL` from `arcanum_sdk.chains` and the
-addresses in `packages/contracts/deployments/arc-mainnet.json`. Mainnet wallets
-hold real USDC and the contracts are unaudited, so keep pilot caps small. Never
-hard-code private keys, commit `.env` files, or paste wallet secrets into
+The example below targets Arc Mainnet, where the hosted product runs; mainnet
+wallets hold real USDC and the contracts are unaudited, so keep pilot caps
+small. For development use `arc_testnet` and `ARC_TESTNET_RPC_URL` instead; the
+deployed addresses for both networks are in `packages/contracts/deployments/`.
+Never hard-code private keys, commit `.env` files, or paste wallet secrets into
 issues, screenshots, or logs.
 
 ```python
 import os
 
-from arcanum_sdk import ArcanumClient, arc_testnet
 from eth_account import Account
+from arcanum_sdk import ArcanumClient, arc_mainnet
 
 agent_signer = Account.from_key(os.environ["AGENT_PRIVATE_KEY"])
 
 arc = ArcanumClient(
     wallet_address="0x0000000000000000000000000000000000000001",
     agent_signer=agent_signer,
-    chain=arc_testnet,
-    rpc_url=os.environ.get("ARC_TESTNET_RPC", "https://rpc.testnet.arc.network"),
+    chain=arc_mainnet,
+    rpc_url=arc_mainnet["rpc_url"],
 )
 
 result = arc.execute_usdc(

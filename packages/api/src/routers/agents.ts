@@ -1,4 +1,3 @@
-import { agents, wallets } from "@arcanum/db/schema";
 import {
   agentByWalletInputSchema,
   agentCreatedWalletInputSchema,
@@ -25,13 +24,10 @@ import {
 } from "../supabase";
 import { protectedProcedure, publicProcedure, router } from "../trpc";
 import {
-  actorFor,
-  failClosed,
   findAgentByWalletLooseId,
   findWalletByLooseId,
   requireChainWalletOwner,
   requireWalletOwner,
-  tenantIdFor,
 } from "./helpers";
 
 function onChainAgentRestraintWriteOnly(): never {

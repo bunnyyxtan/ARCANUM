@@ -7,14 +7,19 @@ import { useAccount } from "wagmi";
 
 import { CCTP_ROUTE, type CctpQuote, type CctpStatus, buildCctpTransactions } from "@/lib/cctp";
 import {
+  CctpFundingApiError,
+  clearMatchingActiveFundingMarker,
+  requestCctpQuote,
+  requestCctpStatus,
+  revalidateCctpQuoteForBurn,
+} from "@/lib/cctp-funding-api";
+import {
   assertImportableCctpStatus,
   assertSelectedFundingAccount,
   assertStatusMatchesFundingIntent,
   assertSuccessfulApprovalReceipt,
   assertValidCctpQuote,
-  assertValidCctpStatus,
   burnNonceForIntent,
-  canUseOriginalQuoteForBurn,
   createFundingWalletClient,
   fundingIntentFromStatus,
   fundingStateForStage,
@@ -92,28 +97,6 @@ export function useAgentFundingController(governedWalletAddress: Address | null)
       throw new Error("Connected account or destination changed. The funding flow was stopped.");
     }
   }, []);
-
-  const requestStatus = useCallback(
-    async (hash: Hash, recipient: Address, sender: Address, signal?: AbortSignal) => {
-      const response = await fetch(
-        `/api/cctp/status?burnTxHash=${encodeURIComponent(hash)}&recipient=${encodeURIComponent(recipient)}`,
-        { signal },
-      );
-      const body: unknown = await response.json().catch(() => null);
-      if (!response.ok) {
-        const apiError =
-          body && typeof body === "object" && "error" in body && typeof body.error === "string"
-            ? body.error
-            : "Status fetch failed";
-        throw new Error(apiError);
-      }
-      if (!body || typeof body !== "object" || !("transfer" in body)) {
-        throw new Error("Malformed CCTP status response.");
-      }
-      return assertValidCctpStatus(body.transfer, hash, recipient, sender);
-    },
-    [],
-  );
 
   // A stored burn hash is authoritative recovery data. A pending marker without one
   // intentionally blocks new writes: a wallet may have broadcast while the UI lost its reply.
@@ -220,19 +203,7 @@ export function useAgentFundingController(governedWalletAddress: Address | null)
       setState("QUOTING");
       setError(null);
       try {
-        const response = await fetch(`/api/cctp/quote?amount=${encodeURIComponent(value)}`);
-        const body: unknown = await response.json().catch(() => null);
-        if (!response.ok) {
-          const apiError =
-            body && typeof body === "object" && "error" in body && typeof body.error === "string"
-              ? body.error
-              : "Failed to fetch CCTP quote.";
-          throw new Error(apiError);
-        }
-        if (!body || typeof body !== "object" || !("quote" in body)) {
-          throw new Error("Malformed CCTP quote response.");
-        }
-        const nextQuote = assertValidCctpQuote(body.quote, value);
+        const nextQuote = await requestCctpQuote(value);
         if (scopeRef.current !== expectedScope || quoteRequestRef.current !== requestId) return;
         setQuote(nextQuote);
         setState("QUOTED");
@@ -352,24 +323,7 @@ export function useAgentFundingController(governedWalletAddress: Address | null)
           if (checked.chainId !== CCTP_ROUTE.sourceChainId) {
             throw new Error("Network changed after approval. No burn was sent.");
           }
-          const quoteResponse = await fetch(`/api/cctp/quote?amount=${encodeURIComponent(amount)}`);
-          const quoteBody: unknown = await quoteResponse.json().catch(() => null);
-          if (
-            !quoteResponse.ok ||
-            !quoteBody ||
-            typeof quoteBody !== "object" ||
-            !("quote" in quoteBody)
-          ) {
-            throw new Error(
-              "Could not revalidate the CCTP quote before burning. No burn was sent.",
-            );
-          }
-          const refreshedQuote = assertValidCctpQuote(quoteBody.quote, amount);
-          if (!canUseOriginalQuoteForBurn(quote, refreshedQuote)) {
-            throw new Error(
-              "CCTP requires a higher fee or the approved quote expired. Review a new quote; no burn was sent.",
-            );
-          }
+          await revalidateCctpQuoteForBurn(quote, amount);
           assertCurrentScope(expectedScope);
           const finalCheck = await verifyWallet();
           if (finalCheck.chainId !== CCTP_ROUTE.sourceChainId) {
@@ -521,7 +475,7 @@ export function useAgentFundingController(governedWalletAddress: Address | null)
     const poll = async () => {
       controller = new AbortController();
       try {
-        const nextStatus = await requestStatus(
+        const nextStatus = await requestCctpStatus(
           burnTxHash,
           governedWalletAddress,
           wagmiAddress,
@@ -536,9 +490,14 @@ export function useAgentFundingController(governedWalletAddress: Address | null)
       } catch (caught) {
         if (stopped || (caught instanceof DOMException && caught.name === "AbortError")) return;
         if (scopeRef.current !== expectedScope) return;
-        setError(`Status check failed: ${messageFor(caught, "network error")}. Retrying.`);
-        setState("POLLING_STATUS");
-        timer = setTimeout(poll, 10_000);
+        const retryable = caught instanceof CctpFundingApiError && caught.retryable;
+        setError(
+          retryable
+            ? `Status check failed: ${messageFor(caught, "network error")}. Retrying.`
+            : `Status recovery stopped: ${messageFor(caught, "invalid response")}`,
+        );
+        setState(retryable ? "POLLING_STATUS" : "RECOVERY_REQUIRED");
+        if (retryable) timer = setTimeout(poll, 10_000);
       }
     };
     void poll();
@@ -547,7 +506,7 @@ export function useAgentFundingController(governedWalletAddress: Address | null)
       if (timer) clearTimeout(timer);
       controller?.abort();
     };
-  }, [burnTxHash, governedWalletAddress, requestStatus, scope, wagmiAddress]);
+  }, [burnTxHash, governedWalletAddress, scope, wagmiAddress]);
 
   const reset = useCallback(async () => {
     if (
@@ -681,7 +640,11 @@ export function useAgentFundingController(governedWalletAddress: Address | null)
             }
             // Status is bound to the requested recipient. Unknown hashes also require a
             // confirmed source burn whose sender was validated against this Wagmi account.
-            const recoveredStatus = await requestStatus(value, governedWalletAddress, wagmiAddress);
+            const recoveredStatus = await requestCctpStatus(
+              value,
+              governedWalletAddress,
+              wagmiAddress,
+            );
             assertCurrentScope(expectedScope);
             if (!fundingSnapshotMatches(storage, governedWalletAddress, wagmiAddress, snapshot)) {
               throw new Error("CCTP recovery data changed in another tab. Import was not saved.");
@@ -695,6 +658,17 @@ export function useAgentFundingController(governedWalletAddress: Address | null)
                   governedWalletAddress,
                   wagmiAddress,
                 );
+                if (snapshot.pending) {
+                  clearMatchingActiveFundingMarker(
+                    storage,
+                    existing.transfer,
+                    snapshot.pending,
+                    recoveredStatus,
+                    value,
+                    governedWalletAddress,
+                    wagmiAddress,
+                  );
+                }
               }
               assertCurrentScope(expectedScope);
               setBurnTxHash(value);
@@ -762,15 +736,7 @@ export function useAgentFundingController(governedWalletAddress: Address | null)
         setError(messageFor(caught, "Unable to validate and recover this CCTP burn hash."));
       }
     },
-    [
-      assertCurrentScope,
-      burnTxHash,
-      governedWalletAddress,
-      isConnected,
-      requestStatus,
-      scope,
-      wagmiAddress,
-    ],
+    [assertCurrentScope, burnTxHash, governedWalletAddress, isConnected, scope, wagmiAddress],
   );
 
   return {

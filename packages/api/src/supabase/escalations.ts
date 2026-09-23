@@ -1,4 +1,4 @@
-import type { Anomaly, Escalation } from "@arcanum/db/schema";
+import type { Escalation } from "@arcanum/db/schema";
 import { ARC_CHAIN_ID, ARC_NETWORK, deploymentManifestFor } from "@arcanum/shared";
 import { readWalletOwner } from "../chain";
 import type { ApiContext } from "../context";
@@ -9,7 +9,7 @@ import {
   unconfiguredWrite,
   warnSupabase,
 } from "./client";
-import { dateField, moneyBaseUnits, numberField, stringField } from "./fields";
+import { dateField, numberField, stringField } from "./fields";
 import {
   anomalyFromRow,
   escalationAmountBaseUnits,

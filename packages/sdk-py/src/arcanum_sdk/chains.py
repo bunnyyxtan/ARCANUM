@@ -40,7 +40,7 @@ def resolve_chain(network: str | None = None) -> dict:
     Defaults to ``ARC_NETWORK`` and then to testnet, so existing callers keep
     the behaviour they have today.
     """
-    selected = (network or os.getenv("ARC_NETWORK") or "testnet").lower()
+    selected = (network or os.getenv("ARC_NETWORK") or "testnet").strip().lower()
 
     if selected == "testnet":
         return arc_testnet

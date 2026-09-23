@@ -8,8 +8,11 @@ packages/contracts/deployments/arc-mainnet.json
 packages/contracts/deployments/arc-testnet.json
 ```
 
-Each runtime serves one network, selected by `NEXT_PUBLIC_ARC_NETWORK` (`testnet` by default,
-or `mainnet`), and reads only the matching manifest. A mainnet manifest must carry the broadcast
+Each runtime serves one network, selected by `NEXT_PUBLIC_ARC_NETWORK` in the
+client and `ARC_NETWORK` on the server (`mainnet`, which is what thearcanum.in
+runs, or `testnet`, the default when neither is set for development), and reads
+only the matching manifest. Set both explicitly when they are configured so they
+cannot disagree. A mainnet manifest must carry the broadcast
 evidence (`deployedAt` and every `txHashes` entry) or the consumers refuse to start, so a dry-run
 manifest with predicted addresses can never bind a mainnet build.
 

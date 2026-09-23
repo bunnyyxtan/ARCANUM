@@ -181,7 +181,6 @@ export function CommandPalette() {
         <div
           ref={dialogRef}
           className="cmd-backdrop fixed inset-0 z-[70] flex items-start justify-center bg-[rgba(var(--wl-ink-rgb),.28)] px-5 pt-[12vh]"
-          // biome-ignore lint/a11y/useSemanticElements: custom ARIA dialog is managed by useDialogFocus; native showModal lifecycle is intentionally not used
           role="dialog"
           aria-modal="true"
           aria-label="Command palette"

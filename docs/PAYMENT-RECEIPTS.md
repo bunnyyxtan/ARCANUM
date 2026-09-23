@@ -130,8 +130,8 @@ is not derived from the testnet key.
 
 ### Verification
 
-`verifyPaymentReceipt(envelope)` from `@arcanum/shared` (re-exported by the
-SDK) runs four independent checks and reports each one: `format`,
+`verifyPaymentReceipt(envelope)` from the public `arcanum-sdk` package runs four
+independent checks and reports each one: `format`,
 `receiptDigest`, `issuer` (registry lookup, chain match, validity window,
 signature recovery) and `request` (the agent's signature recovers to
 `request.agentSignerAddress`, the request digest matches, `amountBaseUnits`
@@ -274,18 +274,20 @@ recording.
 ## SDK
 
 ```ts
-import { ArcanumClient, arcTestnet, ARC_TESTNET_RPC_URL } from "arcanum-sdk";
+import { ArcanumClient, verifyPaymentReceipt } from "arcanum-sdk";
+import { arcMainnet, ARC_MAINNET_RPC_URL } from "arcanum-sdk/chains";
 
 const arcanum = new ArcanumClient({
   walletAddress: process.env.GUARDED_WALLET as `0x${string}`,
   agentSigner,
-  chain: arcTestnet,
-  rpcUrl: ARC_TESTNET_RPC_URL,
+  chain: arcMainnet,
+  rpcUrl: ARC_MAINNET_RPC_URL,
   apiUrl: "https://thearcanum.in",
 });
 
 // Receipt only: nothing moves onchain.
 const { receipt, replayed } = await arcanum.requestPaymentReceipt(intent);
+const verification = await verifyPaymentReceipt(receipt);
 
 // Receipt first, then execution only for allow/escalate, then evidence.
 const outcome = await arcanum.executePaymentIntentWithReceipt(intent);
@@ -320,14 +322,19 @@ error carries no hash, and the transaction has to be linked afterwards with
 `attachPaymentReceiptEvidence`. Receipts can be verified with the SDK's
 re-exported `verifyPaymentReceipt` without contacting the API.
 
-## Testnet walkthrough
+## Local walkthrough on Arc Testnet
 
-Prerequisites: a governed wallet deployed from the dashboard with an authorized
-agent signer, some Arc Testnet USDC in it, and Node 24.
+This walkthrough deliberately uses Arc Testnet and a local issuer key. It does
+not authorize or document importing a production issuer key, and the sample key
+must never be used for Arc Mainnet. Production deployments manage their
+network-specific issuer key separately. Prerequisites:
+a governed wallet deployed from the dashboard with an authorized agent signer,
+some Arc Testnet USDC in it, and Node 24.
 
-1. Configure the API. Put the issuer key in `apps/web/.env.local` as
-   `ARCANUM_RECEIPT_ISSUER_PRIVATE_KEY` (locally, any key whose address you add
-   to the issuer registry works; production uses the published key). Apply
+1. Configure the local API. Put a test-only private key whose address you add to
+   the testnet issuer registry in `apps/web/.env.local` as
+   `ARCANUM_RECEIPT_ISSUER_PRIVATE_KEY`. Never use this sample key on mainnet.
+   Apply
    `supabase/migrations/20260910120000_payment_receipts.sql`.
 2. Start the app (`npm run dev`) and sign in.
 3. From an agent runtime, request a receipt for a small payment inside the

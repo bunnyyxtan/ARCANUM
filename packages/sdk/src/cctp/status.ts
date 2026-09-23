@@ -504,24 +504,11 @@ function verifyMessageLayout(
   const uint32 = (offset: number) => Number.parseInt(raw.slice(offset * 2, offset * 2 + 8), 16);
   const bytes32 = (offset: number) => `0x${raw.slice(offset * 2, offset * 2 + 64)}`.toLowerCase();
   if (
-    uint32(0) !== 1 ||
-    uint32(4) !== CCTP_ROUTE.sourceDomain ||
-    uint32(8) !== CCTP_ROUTE.destinationDomain ||
+    !hasImmutableMessageIdentity(raw, { amount, maxFee, recipient, sender }) ||
     bytes32(12) !== CCTP_ZERO_BYTES32 ||
-    bytes32(44) !== bytes32Address(CCTP_ROUTE.sourceTokenMessenger).toLowerCase() ||
-    bytes32(76) !== bytes32Address(CCTP_ROUTE.destinationTokenMessenger).toLowerCase() ||
-    bytes32(108) !== CCTP_ZERO_BYTES32 ||
-    uint32(140) !== 2_000 ||
     uint32(144) !== 0 ||
-    uint32(148) !== 1 ||
-    bytes32(152) !== bytes32Address(CCTP_ROUTE.sourceUsdc).toLowerCase() ||
-    bytes32(184) !== bytes32Address(recipient).toLowerCase() ||
-    word(216) !== amount ||
-    bytes32(248) !== bytes32Address(sender).toLowerCase() ||
-    word(280) !== maxFee ||
     word(312) !== 0n ||
-    word(344) !== 0n ||
-    `0x${raw.slice(376 * 2)}`.toLowerCase() !== CCTP_FORWARD_HOOK_V1
+    word(344) !== 0n
   ) {
     throw new Error(
       "Source MessageSent payload does not bind the expected CCTP route, sender, recipient, amount, and hook.",
@@ -537,6 +524,41 @@ interface AttestedFields {
   nonce: Hex;
   feeExecuted: bigint;
   expirationBlock: bigint;
+}
+
+interface ImmutableMessageIdentity {
+  recipient: Address;
+  sender: Address;
+  amount: bigint;
+  maxFee: bigint;
+}
+
+/**
+ * Checks only fields that are identical in the source and Iris-attested CCTP
+ * messages. Nonce, executed finality, fee and expiration are deliberately
+ * validated by their direction-specific callers because Iris fills those
+ * source placeholders during attestation.
+ */
+function hasImmutableMessageIdentity(raw: string, identity: ImmutableMessageIdentity): boolean {
+  const word = (offset: number) => BigInt(`0x${raw.slice(offset * 2, offset * 2 + 64)}`);
+  const uint32 = (offset: number) => Number.parseInt(raw.slice(offset * 2, offset * 2 + 8), 16);
+  const bytes32 = (offset: number) => `0x${raw.slice(offset * 2, offset * 2 + 64)}`.toLowerCase();
+  return (
+    uint32(0) === 1 &&
+    uint32(4) === CCTP_ROUTE.sourceDomain &&
+    uint32(8) === CCTP_ROUTE.destinationDomain &&
+    bytes32(44) === bytes32Address(CCTP_ROUTE.sourceTokenMessenger).toLowerCase() &&
+    bytes32(76) === bytes32Address(CCTP_ROUTE.destinationTokenMessenger).toLowerCase() &&
+    bytes32(108) === CCTP_ZERO_BYTES32 &&
+    uint32(140) === 2_000 &&
+    uint32(148) === 1 &&
+    bytes32(152) === bytes32Address(CCTP_ROUTE.sourceUsdc).toLowerCase() &&
+    bytes32(184) === bytes32Address(identity.recipient).toLowerCase() &&
+    word(216) === identity.amount &&
+    bytes32(248) === bytes32Address(identity.sender).toLowerCase() &&
+    word(280) === identity.maxFee &&
+    `0x${raw.slice(376 * 2)}`.toLowerCase() === CCTP_FORWARD_HOOK_V1
+  );
 }
 
 /**
@@ -638,29 +660,15 @@ function attestedMessageFields(value: unknown, burn: ValidBurn): AttestedFields 
   if (raw.length !== (148 + 228 + 32) * 2) return undefined;
   const word = (offset: number) => BigInt(`0x${raw.slice(offset * 2, offset * 2 + 64)}`);
   const uint32 = (offset: number) => Number.parseInt(raw.slice(offset * 2, offset * 2 + 8), 16);
-  const bytes32 = (offset: number) => `0x${raw.slice(offset * 2, offset * 2 + 64)}`.toLowerCase();
   const nonce = `0x${raw.slice(12 * 2, 44 * 2)}` as Hex;
   const feeExecuted = word(312);
   const expirationBlock = word(344);
   if (
-    uint32(0) !== 1 ||
-    uint32(4) !== CCTP_ROUTE.sourceDomain ||
-    uint32(8) !== CCTP_ROUTE.destinationDomain ||
+    !hasImmutableMessageIdentity(raw, burn) ||
     nonce.toLowerCase() === CCTP_ZERO_BYTES32 ||
-    bytes32(44) !== bytes32Address(CCTP_ROUTE.sourceTokenMessenger).toLowerCase() ||
-    bytes32(76) !== bytes32Address(CCTP_ROUTE.destinationTokenMessenger).toLowerCase() ||
-    bytes32(108) !== CCTP_ZERO_BYTES32 ||
-    uint32(140) !== 2_000 ||
     uint32(144) < 2_000 ||
-    uint32(148) !== 1 ||
-    bytes32(152) !== bytes32Address(CCTP_ROUTE.sourceUsdc).toLowerCase() ||
-    bytes32(184) !== bytes32Address(burn.recipient).toLowerCase() ||
-    word(216) !== burn.amount ||
-    bytes32(248) !== bytes32Address(burn.sender).toLowerCase() ||
-    word(280) !== burn.maxFee ||
     feeExecuted > burn.maxFee ||
-    feeExecuted >= burn.amount ||
-    `0x${raw.slice(376 * 2)}`.toLowerCase() !== CCTP_FORWARD_HOOK_V1
+    feeExecuted >= burn.amount
   ) {
     return undefined;
   }

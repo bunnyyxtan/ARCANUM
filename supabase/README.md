@@ -23,17 +23,27 @@ possible and includes the row-level security and function definitions it needs.
 Never run untested SQL against the production database. Test against a
 development database first.
 
-## Shared security state
+## Application security migrations
 
 The revocable-session and distributed-rate-limit migrations are application
-source, not optional operational examples. Apply them to a compatible development
-schema before testing the corresponding API, then review them before any
-production rollout. They create service-role-only tables and RPCs with explicit
-RLS and grants. Publishing their source does not apply them to a hosted database.
+security controls, not optional operational examples. Apply them to a
+compatible development schema before testing the corresponding API, then review
+them before any production rollout. They create service-role-only tables and
+RPCs with explicit RLS and grants. Publishing their source does not apply it to
+a hosted database.
 
-The receipt execution-uniqueness migration likewise belongs to the application
+For revocable sessions, every user must sign in again after rollout: previously
+issued cookies have no server-side session record and are intentionally rejected.
+The local-only `ARCANUM_SESSION_STORE_MODE=local-test` mode is accepted only in
+development or test and is refused in production. Missing schema or storage
+configuration fails closed; no cookie is issued when the session store is
+unavailable.
+
+The receipt-execution uniqueness migration is also part of the application
 schema. If it reports historical duplicate links, stop and review those records;
 do not delete evidence automatically to make a uniqueness check pass.
+
+## Security test instructions
 
 To exercise the security invariants without touching an existing database:
 

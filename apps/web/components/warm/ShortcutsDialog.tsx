@@ -18,7 +18,6 @@ export function ShortcutsDialog({ open, onClose }: { open: boolean; onClose: () 
     <div
       ref={dialogRef}
       className="fixed inset-0 z-[65] flex items-center justify-center bg-[rgba(var(--wl-ink-rgb),.14)] p-5"
-      // biome-ignore lint/a11y/useSemanticElements: custom ARIA dialog is managed by useDialogFocus; native showModal lifecycle is intentionally not used
       role="dialog"
       aria-modal="true"
       aria-label="Keyboard shortcuts"

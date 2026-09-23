@@ -34,14 +34,6 @@ function normalizeCategory(category: string | null | undefined): Category {
   return "other";
 }
 
-function categoryLabel(category: Category) {
-  if (category === "subcontracting") {
-    return "SUBCONTRACTING";
-  }
-
-  return category.toUpperCase();
-}
-
 function vendorName(address: string | null | undefined) {
   return address ? shortAddress(address) : "Counterparty";
 }
@@ -288,7 +280,7 @@ export function useLiveAnomalies() {
   const walletAddressById = new Map(
     (enabled ? (walletsQuery.data ?? []) : []).map((wallet) => [wallet.id, wallet.address]),
   );
-  const anomalies: Anomaly[] = (enabled ? (query.data ?? []) : []).map((item, index) => ({
+  const anomalies: Anomaly[] = (enabled ? (query.data ?? []) : []).map((item) => ({
     id: item.id,
     agentId: item.agentId ?? item.walletId,
     agentName: "Agent",

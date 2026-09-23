@@ -6,8 +6,6 @@ import { Fraunces, IBM_Plex_Mono, Schibsted_Grotesk } from "next/font/google";
 import Script from "next/script";
 import type { ReactNode } from "react";
 
-import { configuredPublicOrigin } from "@/lib/public-url";
-
 import { Providers } from "./providers";
 
 const fraunces = Fraunces({
@@ -29,10 +27,6 @@ const plexMono = IBM_Plex_Mono({
   weight: ["400", "500"],
   variable: "--font-plex-mono",
 });
-
-const publicOrigin = configuredPublicOrigin();
-const publicDescription =
-  "Open, non-custodial governance for autonomous agent wallets on Arc. Spending limits, vendor rules, signer control, approval flows, and risk checks before funds move.";
 
 export const viewport: Viewport = {
   width: "device-width",

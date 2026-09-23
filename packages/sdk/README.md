@@ -3,11 +3,12 @@
 TypeScript SDK for GuardedWallet integrations on Arc (mainnet and testnet).
 
 The SDK talks directly to Arc RPC through `viem`. It does not require an
-Arcanum-hosted API, and it does not custody agent keys. Write examples below are
-for Arc Testnet and local development only; for Arc Mainnet import `arcMainnet`
-and `ARC_MAINNET_RPC_URL` from `arcanum-sdk/chains` and use the addresses in
-`packages/contracts/deployments/arc-mainnet.json`. Mainnet wallets hold real
-USDC and the contracts are unaudited, so keep pilot caps small.
+Arcanum-hosted API, and it does not custody agent keys. The examples below
+target Arc Mainnet, where the hosted product runs; mainnet wallets hold real
+USDC and the contracts are unaudited, so keep pilot caps small. For
+development, import `arcTestnet`, `ARC_TESTNET_RPC_URL` and
+`ARC_TESTNET_USDC_ADDRESS` from `arcanum-sdk/chains` instead; the deployed
+addresses for both networks are in `packages/contracts/deployments/`.
 
 ## Install
 
@@ -20,9 +21,9 @@ npm install arcanum-sdk viem
 ```ts
 import { ArcanumClient } from "arcanum-sdk";
 import {
-  ARC_TESTNET_RPC_URL,
-  ARC_TESTNET_USDC_ADDRESS,
-  arcTestnet,
+  ARC_MAINNET_RPC_URL,
+  ARC_MAINNET_USDC_ADDRESS,
+  arcMainnet,
   usdcErc20,
 } from "arcanum-sdk/chains";
 import { privateKeyToAccount } from "viem/accounts";
@@ -34,8 +35,8 @@ const agentSigner = privateKeyToAccount(
 const arcanum = new ArcanumClient({
   walletAddress: process.env.GUARDED_WALLET as `0x${string}`,
   agentSigner,
-  chain: arcTestnet,
-  rpcUrl: process.env.ARC_TESTNET_RPC ?? ARC_TESTNET_RPC_URL,
+  chain: arcMainnet,
+  rpcUrl: process.env.ARC_RPC_URL ?? ARC_MAINNET_RPC_URL,
 });
 
 const simulation = await arcanum.simulate({
@@ -47,7 +48,7 @@ if (simulation.verdict === "ALLOW") {
   await arcanum.executeUSDC({
     to: process.env.VENDOR_ADDRESS as `0x${string}`,
     amount: usdcErc20(12),
-    reason: "Arc Testnet API invoice",
+    reason: "API invoice",
     metadata: { category: "API" },
   });
 }
@@ -66,16 +67,16 @@ decimals; do not use the native gas scale for those values.
 
 `createPaymentIntent` is a read-only policy preflight for agent backends. It
 validates the configured GuardedWallet, checks that the agent signer is
-authorized, evaluates the current policy/vendor state on Arc Testnet, and
-returns `allow`, `deny`, `escalate`, `freeze`, `validation_error`, or
-`unsupported`. It does not submit a transfer and never returns a fake
+authorized, evaluates the current policy/vendor state on the configured Arc
+network, and returns `allow`, `deny`, `escalate`, `freeze`, `validation_error`,
+or `unsupported`. It does not submit a transfer and never returns a fake
 transaction hash.
 
 `executePaymentIntent` performs the same preflight first, then submits the real
 `GuardedWallet.executeUSDC` transaction only when policy returns an executable
 path:
 
-- `allow` transfers real Arc Testnet USDC from the GuardedWallet.
+- `allow` transfers USDC from the GuardedWallet.
 - `escalate` creates an onchain escalation and does not transfer immediately.
 - `freeze` submits the guarded wallet call so the contract can freeze/block the
   wallet without transferring funds.
@@ -89,10 +90,10 @@ const intent = {
   governedWalletAddress: process.env.GUARDED_WALLET as `0x${string}`,
   agentSignerAddress: agentSigner.address,
   vendorAddress: process.env.VENDOR_ADDRESS as `0x${string}`,
-  tokenAddress: ARC_TESTNET_USDC_ADDRESS,
+  tokenAddress: ARC_MAINNET_USDC_ADDRESS,
   tokenSymbol: "USDC" as const,
   amount: "12.50",
-  purpose: "Arc Testnet API invoice",
+  purpose: "API invoice",
   reference: "invoice-2026-0001",
 };
 
@@ -123,7 +124,7 @@ Use the signed intent when calling the Arcanum API from an agent service. The
 signature proves that the authorized agent signer approved the exact request;
 the API still evaluates policy from chain state and does not custody keys. Use
 the SDK execution method only from an agent runtime that controls the authorized
-testnet signer.
+agent signer.
 
 ## Payment decision receipts
 
@@ -144,8 +145,8 @@ self-hosted issuer.
 metadata, then links the transaction hash back to the receipt. When execution
 returns a hash, the result carries it even if linking fails (`evidenceError`
 sits next to it). If the RPC drops out while waiting for inclusion, the
-execution error has no hash; link the transaction later with
-`attachPaymentReceiptEvidence`.
+`TransactionRecoveryError` retains the submitted hash and exact input; reconcile
+that hash, then link it later with `attachPaymentReceiptEvidence`.
 
 The signed preflight receipt is separate from indexed contract events. A
 successful payment or escalation can produce an onchain event after settlement;
@@ -157,8 +158,8 @@ settled.
 const arcanum = new ArcanumClient({
   walletAddress,
   agentSigner,
-  chain: arcTestnet,
-  rpcUrl: ARC_TESTNET_RPC_URL,
+  chain: arcMainnet,
+  rpcUrl: ARC_MAINNET_RPC_URL,
   apiUrl: "https://thearcanum.in",
 });
 
@@ -202,7 +203,7 @@ as with a private key. Node.js only (the entity secret ciphertext needs
 
 ```ts
 import { ArcanumClient } from "arcanum-sdk";
-import { arcTestnet, ARC_TESTNET_RPC_URL } from "arcanum-sdk/chains";
+import { arcMainnet, ARC_MAINNET_RPC_URL } from "arcanum-sdk/chains";
 import { circleWalletAccount } from "arcanum-sdk/circle";
 
 const agentSigner = circleWalletAccount({
@@ -215,15 +216,15 @@ const agentSigner = circleWalletAccount({
 const arcanum = new ArcanumClient({
   walletAddress: process.env.GUARDED_WALLET as `0x${string}`,
   agentSigner,
-  chain: arcTestnet,
-  rpcUrl: ARC_TESTNET_RPC_URL,
+  chain: arcMainnet,
+  rpcUrl: ARC_MAINNET_RPC_URL,
   apiUrl: "https://thearcanum.in",
 });
 ```
 
-Create the wallet as an EOA on Circle's generic `EVM-TESTNET` (or `EVM`)
-identifier, since Circle's transaction-signing endpoint is not available for
-named chains such as `ARC-TESTNET`, then authorise its address on the
+Create the wallet as an EOA on Circle's generic `EVM` identifier (`EVM-TESTNET`
+for Arc Testnet), since Circle's transaction-signing endpoint is not available
+for named chains such as `ARC-TESTNET`, then authorise its address on the
 governed wallet like any signer (`GuardedWallet.addSigner`) and give it a
 little USDC for gas. Every answer from Circle is checked
 before use: a signature must recover to the wallet address, and a signed
@@ -235,10 +236,10 @@ trust model.
 
 ## CCTP inbound funding
 
-The browser-safe `arcanum-sdk/cctp` subpath supports one testnet route:
-Ethereum Sepolia USDC to an Arc Testnet governed wallet, using CCTP V2 and
-Circle's Forwarding Service. It needs no Circle API key and does not load
-the Node-only signing adapter.
+The browser-safe `arcanum-sdk/cctp` subpath supports one route, currently on
+testnet only: Ethereum Sepolia USDC to an Arc Testnet governed wallet, using
+CCTP V2 and Circle's Forwarding Service. It needs no Circle API key and does not
+load the Node-only signing adapter.
 
 ```ts
 import { getCctpQuote, buildCctpTransactions, getCctpStatus } from "arcanum-sdk/cctp";
@@ -274,8 +275,9 @@ recovery rules and Circle trust boundary.
   REST client, `ReceiptRequestError`, and types such as
   `PaymentReceiptEnvelope`, `PaymentReceiptEvidence`, and
   `PaymentIntentWithReceiptResult`
-- Arc Testnet helpers from `arcanum-sdk/chains`, including `arcTestnet`,
-  `ARC_TESTNET_RPC_URL`, `ARC_TESTNET_USDC_ADDRESS`, `usdcErc20`, and `usdcGas`
+- Arc chain helpers from `arcanum-sdk/chains`: `arcMainnet`, `arcTestnet`,
+  `ARC_MAINNET_RPC_URL`, `ARC_TESTNET_RPC_URL`, `ARC_MAINNET_USDC_ADDRESS`,
+  `ARC_TESTNET_USDC_ADDRESS`, `usdcErc20`, and `usdcGas`
 - `circleWalletAccount`, `CircleSignerError` and `CircleWalletAccountConfig`
   from `arcanum-sdk/circle` (Node.js only)
 - `CCTP_ROUTE`, `getCctpQuote`, `buildCctpTransactions`, `getCctpStatus`,

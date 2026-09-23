@@ -7,7 +7,7 @@ import {
 
 import type { ApiContext } from "../context";
 import { boundedHealthCheck } from "../health/freshness";
-import { type SupabaseRow, createSupabaseServiceRoleClient, safeSupabaseError } from "./client";
+import { type SupabaseRow, safeSupabaseError } from "./client";
 import { booleanField, numberOrNull, stringField } from "./fields";
 import { PUBLIC_AGGREGATE_WINDOW, formatUsdcBaseUnits, readSupabasePublicLedger } from "./ledger";
 import { postureFromDoctrineRow, publicProfileFromRow, shortAddress } from "./mappers";

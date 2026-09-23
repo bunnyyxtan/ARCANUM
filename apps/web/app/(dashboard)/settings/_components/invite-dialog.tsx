@@ -14,7 +14,6 @@ export function InviteDialog({ settings }: { settings: SettingsController }) {
     <div
       ref={dialogRef}
       className="fixed inset-0 z-30 flex items-center justify-center bg-[rgba(var(--wl-ink-rgb),.18)] p-5"
-      // biome-ignore lint/a11y/useSemanticElements: custom ARIA dialog is managed by useDialogFocus; native showModal lifecycle is intentionally not used
       role="dialog"
       aria-modal="true"
       aria-label="Invite team member"

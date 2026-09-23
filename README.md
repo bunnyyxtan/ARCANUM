@@ -20,7 +20,6 @@
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-2f3542" alt="AGPL-3.0 license" /></a>
   <a href="https://github.com/bunnyyxtan/ARCANUM/releases/latest"><img src="https://img.shields.io/github/v/release/bunnyyxtan/ARCANUM?label=release&color=ff5a1f" alt="Latest release" /></a>
   <img src="https://img.shields.io/badge/network-Arc%20Mainnet%20pilot-ff5a1f" alt="Arc Mainnet pilot" />
-  <img src="https://img.shields.io/badge/dev%20network-Arc%20Testnet-6e9e7c" alt="Arc Testnet for development" />
 </p>
 
 <p align="center">
@@ -151,7 +150,7 @@ contracts have not received an independent third-party audit, so this deployment
 pilot: keep per-wallet caps small, deposit only what you can afford to lose, and expect the
 operator to freeze wallets if a defect is found.
 
-### Arc Testnet
+### Arc Testnet (development)
 
 Network: **Arc Testnet** (chain 5042002) · Explorer: [testnet.arcscan.app](https://testnet.arcscan.app)
 
@@ -239,7 +238,7 @@ Fill in the variables before starting. The essentials:
 
 | Variable | Required | Description |
 | --- | ---: | --- |
-| `NEXT_PUBLIC_ARC_NETWORK` | Yes | `mainnet` (what thearcanum.in runs) or `testnet` (the code default for development and self-hosting); one deployment serves one network |
+| `NEXT_PUBLIC_ARC_NETWORK` | No | `mainnet` (what thearcanum.in runs) or `testnet` (the code default for development and self-hosting); one deployment serves one network. Set `ARC_NETWORK` as well when configuring server-side code, or leave both unset for testnet. |
 | `ARC_RPC_URL` | Recommended | RPC URL for server-side reads on the selected network (on testnet only, the legacy `ARC_TESTNET_RPC` is a fallback when this is unset) |
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anon key (client-safe) |

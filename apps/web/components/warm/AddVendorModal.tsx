@@ -51,7 +51,6 @@ export function AddVendorModal({
     <div
       ref={dialogRef}
       className="fixed inset-0 z-50 flex items-end justify-center bg-[rgba(var(--wl-ink-rgb),.1)] p-5 sm:items-center"
-      // biome-ignore lint/a11y/useSemanticElements: custom ARIA dialog is managed by useDialogFocus; native showModal lifecycle is intentionally not used
       role="dialog"
       aria-modal="true"
       aria-label="Add vendor"

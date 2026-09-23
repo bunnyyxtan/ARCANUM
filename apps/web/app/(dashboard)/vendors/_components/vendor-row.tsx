@@ -78,7 +78,6 @@ export function VendorRow(props: VendorRowProps) {
         event.preventDefault();
         selectRow();
       }}
-      // biome-ignore lint/a11y/useSemanticElements: the row owns nested action buttons, so a native button would create invalid nested controls.
       role="button"
       tabIndex={0}
       style={{ "--row": index } as CSSProperties}

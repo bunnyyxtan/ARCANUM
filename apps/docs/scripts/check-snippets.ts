@@ -1,4 +1,3 @@
-import { spawn } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { glob } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -27,9 +26,3 @@ try {
 } finally {
   await rm(dir, { recursive: true, force: true });
 }
-
-function spawnUnused() {
-  return spawn;
-}
-
-spawnUnused();

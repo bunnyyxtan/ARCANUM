@@ -6,7 +6,6 @@ import { readModelUnavailable, warnSupabase } from "./client";
 import {
   booleanField,
   dateField,
-  moneyBaseUnits,
   numberField,
   stableHash,
   stableUuid,

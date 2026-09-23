@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import type { Agent } from "@arcanum/db/schema";
 import { decimalUsdcToBaseUnits } from "@arcanum/shared";
 import type { SupabaseRow } from "./client";
 
