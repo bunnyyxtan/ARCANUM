@@ -12,9 +12,8 @@ import { z } from "zod";
 import { readWalletPolicySnapshot, verifyPolicyUpdatedReceipt } from "../chain";
 import {
   categoryNamesFromMask,
-  readSupabasePolicies,
   readSupabasePolicy,
-  readSupabaseWallets,
+  readSupabasePolicyCount,
   recordSupabaseDeployedPolicy,
 } from "../supabase";
 import { protectedProcedure, publicProcedure, router } from "../trpc";
@@ -192,10 +191,6 @@ export const policiesRouter = router({
   count: publicProcedure.query(async ({ ctx }) => {
     // Count the doctrines of every governed wallet the caller owns from the
     // read model; a read-model outage fails closed rather than reporting zero.
-    const wallets = await readSupabaseWallets(ctx);
-    const policiesPerWallet = await Promise.all(
-      wallets.map((wallet) => readSupabasePolicies(ctx, wallet)),
-    );
-    return policiesPerWallet.reduce((sum, rows) => sum + rows.length, 0);
+    return readSupabasePolicyCount(ctx);
   }),
 });

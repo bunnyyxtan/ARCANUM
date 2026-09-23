@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ApiContext } from "../context";
 import type { SupabaseRequestOptions, SupabaseRow } from "../supabase";
 import { escalationStatusFromString } from "../supabase";
+import { oldSchemaAnalyticsRpc } from "../supabase/scoped-analytics.test-support";
 import { agentsRouter } from "./agents";
 import { anomaliesRouter } from "./anomalies";
 import { escalationsRouter } from "./escalations";
@@ -242,7 +243,11 @@ describe("legacy wallet isolation", () => {
       return Promise.resolve([]);
     };
 
-    const result = await agentsRouter.createCaller(context({ selectRows })).list(undefined);
+    // This legacy text-row fixture explicitly models a pre-aggregate schema;
+    // a successful null RPC response is malformed, not missing capability.
+    const result = await agentsRouter
+      .createCaller(context({ selectRows, callFunction: oldSchemaAnalyticsRpc }))
+      .list(undefined);
     expect(result.legacyWalletCount).toBe(1);
     expect(result.agents).toHaveLength(1);
     expect(result.agents[0]?.walletAddress).toBe(WALLET);
@@ -343,6 +348,7 @@ describe("anomaly decision actor", () => {
           id: WALLET_ID,
           organization_id: ORG_ID,
           wallet_address: WALLET,
+          wallet_factory_address: FACTORY,
           owner_address: OWNER,
           created_at: "2026-09-07T00:00:00.000Z",
         },

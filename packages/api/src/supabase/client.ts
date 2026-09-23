@@ -60,6 +60,19 @@ export class SupabaseRequestError extends Error {
   }
 }
 
+/** Structured RPC errors retain SQLSTATE without turning message substrings into capabilities. */
+export class SupabaseRpcError extends Error {
+  constructor(
+    readonly fn: string,
+    readonly status: number,
+    readonly code: string | null,
+    readonly detail: string,
+  ) {
+    super(`rpc ${fn} failed with ${status}: ${detail}`);
+    this.name = "SupabaseRpcError";
+  }
+}
+
 export type SupabaseServiceRoleClient = {
   configured: boolean;
   selectRows: (table: string, options?: SupabaseRequestOptions) => Promise<SupabaseRow[]>;
@@ -191,7 +204,16 @@ export function createSupabaseServiceRoleClient(): SupabaseServiceRoleClient | n
 
     if (!response.ok) {
       const body = await response.text().catch(() => "");
-      throw new Error(`rpc ${fn} failed with ${response.status}: ${safeSupabaseError(body)}`);
+      let code: string | null = null;
+      let detail = safeSupabaseError(body);
+      try {
+        const parsed = JSON.parse(body);
+        if (typeof parsed.code === "string") code = parsed.code;
+        if (typeof parsed.message === "string") detail = safeSupabaseError(parsed.message);
+      } catch {
+        // Non-JSON transport errors remain errors, never schema capabilities.
+      }
+      throw new SupabaseRpcError(fn, response.status, code, detail);
     }
 
     const body = await response.text();

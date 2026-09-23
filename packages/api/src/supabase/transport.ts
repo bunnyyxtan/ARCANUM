@@ -35,6 +35,8 @@ export type ExhaustiveReadOptions = {
   /** Stop after this many rows, while still traversing server-sized pages. */
   stopAfter?: number;
   label?: string;
+  /** Aggregate readers consume full raw pages without retaining the history. */
+  onPage?: (rows: SupabaseRow[]) => void;
 };
 
 function cursorForRow(
@@ -86,11 +88,12 @@ export async function selectRowsExhaustive(
   readOptions: ExhaustiveReadOptions,
 ) {
   const rows: SupabaseRow[] = [];
+  let rowCount = 0;
   let cursor = options.before;
   const seenCursors = new Set<string>();
   let pageCount = 0;
 
-  while (readOptions.stopAfter === undefined || rows.length < readOptions.stopAfter) {
+  while (readOptions.stopAfter === undefined || rowCount < readOptions.stopAfter) {
     if (pageCount >= MAX_READ_PAGES) {
       throw readModelUnavailable(
         readOptions.label ?? `${table}.read`,
@@ -101,7 +104,7 @@ export async function selectRowsExhaustive(
     const remaining =
       readOptions.stopAfter === undefined
         ? READ_PAGE_SIZE
-        : Math.max(1, Math.min(READ_PAGE_SIZE, readOptions.stopAfter - rows.length));
+        : Math.max(1, Math.min(READ_PAGE_SIZE, readOptions.stopAfter - rowCount));
     const page = (await selectRows(ctx, table, {
       ...options,
       before: cursor,
@@ -112,7 +115,12 @@ export async function selectRowsExhaustive(
       break;
     }
 
-    rows.push(...page);
+    rowCount += page.length;
+    if (readOptions.onPage) {
+      readOptions.onPage(page);
+    } else {
+      rows.push(...page);
+    }
     if (page.length < remaining) {
       try {
         if (!pageHasMore(page, remaining)) {

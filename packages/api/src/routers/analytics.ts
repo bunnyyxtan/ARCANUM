@@ -1,14 +1,10 @@
-import {
-  readSupabaseAgents,
-  readSupabaseAnomalies,
-  readSupabaseEscalations,
-  readSupabaseTransfers,
-} from "../supabase";
+import { readSupabaseAgentCounts, readSupabaseEscalations } from "../supabase";
+import { readAnomalyCounts, readLedgerSummary } from "../supabase/analytics";
 import { publicProcedure, router } from "../trpc";
+import { TtlCache } from "../ttl-cache";
 import { tenantIdFor } from "./helpers";
 
-const postureCache = new Map<string, { value: number; expiresAt: number }>();
-const DAY_MS = 24 * 60 * 60 * 1000;
+const postureCache = new TtlCache<number>(512, 30_000);
 
 export type AnalyticsWindow = {
   windowStart: string;
@@ -16,18 +12,6 @@ export type AnalyticsWindow = {
   /** The aggregate is complete for this caller's tenant-scoped wallet set. */
   complete: true;
 };
-
-function currentWindow() {
-  const end = new Date();
-  return {
-    since: new Date(end.getTime() - DAY_MS),
-    until: end,
-  };
-}
-
-function sumBaseUnits(rows: Awaited<ReturnType<typeof readSupabaseTransfers>>) {
-  return rows.reduce((sum, transfer) => sum + BigInt(transfer.amount || "0"), 0n).toString();
-}
 
 // All analytics are derived from the Supabase read model, which fails closed:
 // an outage surfaces as an error the dashboard renders as "read model
@@ -39,71 +23,42 @@ export const analyticsRouter = router({
     const cacheKey = `${tenantId}:${actor}:posture`;
     const cached = postureCache.get(cacheKey);
 
-    if (cached && cached.expiresAt > Date.now()) {
-      return cached.value;
+    if (cached !== undefined) {
+      return cached;
     }
 
     const [supabaseAgents, supabaseTransfers, supabaseAnomalies] = await Promise.all([
-      readSupabaseAgents(ctx),
-      readSupabaseTransfers(ctx),
-      readSupabaseAnomalies(ctx),
+      readSupabaseAgentCounts(ctx),
+      readLedgerSummary(ctx, true),
+      readAnomalyCounts(ctx),
     ]);
 
-    const frozen = supabaseAgents.filter((agent) => agent.status === "frozen").length;
-    const denied = supabaseTransfers.filter((transfer) => transfer.verdict === "DENY").length;
-    const danger = supabaseAnomalies.filter((anomaly) => anomaly.severity === "danger").length;
-    const hasSignal = frozen > 0 || supabaseTransfers.length > 0 || supabaseAnomalies.length > 0;
+    const frozen = supabaseAgents.frozen;
+    const denied = supabaseTransfers.denied;
+    const danger = supabaseAnomalies.danger;
+    const hasSignal = frozen > 0 || supabaseTransfers.total > 0 || supabaseAnomalies.total > 0;
     const value = hasSignal
       ? Math.max(0, Math.min(100, 100 - frozen * 10 - denied * 3 - danger * 8))
       : 0;
 
-    postureCache.set(cacheKey, { value, expiresAt: Date.now() + 30_000 });
+    postureCache.set(cacheKey, value);
     return value;
   }),
 
   valueGoverned24h: publicProcedure.query(async ({ ctx }) => {
-    const { since, until } = currentWindow();
-    const transfers = await readSupabaseTransfers(ctx, { since, until });
+    const { since, until, valueBaseUnits, movementCount } = await readLedgerSummary(ctx);
     // ALLOW is the only outcome that represents an executed movement. An
     // ESCALATE row is held for review and must not inflate governed value.
-    const executed = transfers.filter((transfer) => transfer.verdict === "ALLOW");
     return {
-      valueBaseUnits: sumBaseUnits(executed),
-      movementCount: executed.length,
+      valueBaseUnits: valueBaseUnits.toString(),
+      movementCount,
       outcome: "ALLOW" as const,
       ...windowMetadata(since, until),
     };
   }),
 
   walletActivity24h: publicProcedure.query(async ({ ctx }) => {
-    const { since, until } = currentWindow();
-    // Activity is intentionally read without a pre-scope cap. The Supabase
-    // query is already restricted to this caller's tenant wallet ids, and a
-    // cap before that scope would make one busy wallet hide another wallet's
-    // daily spend or last activity.
-    const transfers = await readSupabaseTransfers(ctx);
-    const activity = new Map<string, { spendBaseUnits: bigint; lastActivityAt: Date | null }>();
-
-    for (const transfer of transfers) {
-      const current = activity.get(transfer.walletId) ?? {
-        spendBaseUnits: 0n,
-        lastActivityAt: null,
-      };
-      if (
-        !current.lastActivityAt ||
-        transfer.timestamp.getTime() > current.lastActivityAt.getTime()
-      ) {
-        current.lastActivityAt = transfer.timestamp;
-      }
-      if (
-        transfer.verdict === "ALLOW" &&
-        transfer.timestamp >= since &&
-        transfer.timestamp <= until
-      ) {
-        current.spendBaseUnits += BigInt(transfer.amount || "0");
-      }
-      activity.set(transfer.walletId, current);
-    }
+    const { since, until, activity } = await readLedgerSummary(ctx, true);
 
     return {
       rows: [...activity.entries()].map(([walletId, value]) => ({
@@ -116,18 +71,13 @@ export const analyticsRouter = router({
   }),
 
   activeAgents: publicProcedure.query(async ({ ctx }) => {
-    const supabaseAgents = await readSupabaseAgents(ctx);
-    return supabaseAgents.filter((agent) => agent.status === "active").length;
+    return (await readSupabaseAgentCounts(ctx)).active;
   }),
 
   threatsBlocked24h: publicProcedure.query(async ({ ctx }) => {
-    const { since, until } = currentWindow();
-    const transfers = await readSupabaseTransfers(ctx, { since, until });
-    const blocked = transfers.filter(
-      (transfer) => transfer.verdict === "DENY" || transfer.verdict === "FREEZE",
-    );
+    const { since, until, blocked24h } = await readLedgerSummary(ctx);
     return {
-      count: blocked.length,
+      count: blocked24h,
       outcomes: ["DENY", "FREEZE"] as const,
       ...windowMetadata(since, until),
     };

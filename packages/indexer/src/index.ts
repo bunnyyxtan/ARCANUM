@@ -1,22 +1,21 @@
 import { ponder } from "ponder:registry";
 import { db, defaultTenantId } from "@arcanum/db";
-import {
-  events,
-  agents,
-  anomalies,
-  escalations,
-  organizations,
-  transfers,
-  vendors,
-  wallets,
-} from "@arcanum/db/schema";
-import { ARC_CHAIN_ID, escalationReasonFromIndex, freezeSourceFromIndex } from "@arcanum/shared";
+import { agents, anomalies, escalations, transfers, vendors, wallets } from "@arcanum/db/schema";
+import { escalationReasonFromIndex, freezeSourceFromIndex } from "@arcanum/shared";
 import { and, eq } from "drizzle-orm";
 
 import { loadDeployment } from "./deployment";
+import {
+  ensureOrganization,
+  findTransferByTx,
+  findWallet,
+  insertEvent,
+  pgMirrorDisabled,
+} from "./legacy-mirror";
 import { transferReasonText } from "./reason-text";
 import {
   syncCheckpoint as persistCheckpoint,
+  startStagedEventReconciliation,
   syncAnomaly,
   syncEscalationApproval,
   syncEscalationStatus,
@@ -30,23 +29,10 @@ import {
 } from "./supabase-sync";
 
 const deployment = loadDeployment();
+startStagedEventReconciliation();
 
 function syncCheckpoint(blockNumber: number) {
   return persistCheckpoint(blockNumber, deployment.startBlock);
-}
-
-/**
- * The drizzle Postgres tables are the legacy dev read model; production reads
- * Supabase only. The GitHub Actions top-up runs where that Postgres does not
- * exist, so it sets this flag and every handler stops after its Supabase sync.
- * Announced loudly at startup so a run that skips the mirror never looks like
- * a run that wrote it.
- */
-const pgMirrorDisabled = process.env.ARCANUM_DISABLE_PG_MIRROR === "1";
-if (pgMirrorDisabled) {
-  console.warn(
-    "[indexer] ARCANUM_DISABLE_PG_MIRROR=1 - the legacy Postgres mirror is off; Supabase is the only write target for this run.",
-  );
 }
 
 function asString(value: unknown) {
@@ -97,85 +83,6 @@ function policyPayload(value: unknown) {
 
 function addressArray(value: unknown) {
   return Array.isArray(value) ? value.map(asAddress) : [];
-}
-
-async function findWallet(walletAddress: string, tenantId: string) {
-  if (pgMirrorDisabled) {
-    return undefined;
-  }
-  return db.query.wallets.findFirst({
-    where: and(eq(wallets.tenantId, tenantId), eq(wallets.address, walletAddress.toLowerCase())),
-  });
-}
-
-async function ensureOrganization(ownerAddress: string, tenantId: string) {
-  if (pgMirrorDisabled) {
-    return undefined;
-  }
-  const owner = ownerAddress.toLowerCase();
-  const existing = await db.query.organizations.findFirst({
-    where: and(eq(organizations.tenantId, tenantId), eq(organizations.ownerWallet, owner)),
-  });
-
-  if (existing) {
-    return existing;
-  }
-
-  const created = await db
-    .insert(organizations)
-    .values({
-      tenantId,
-      name: "Arcanum Workspace",
-      type: "DAO",
-      ownerWallet: owner,
-      multisigAddress: owner,
-      chainId: ARC_CHAIN_ID,
-    })
-    .returning();
-  return created[0];
-}
-
-async function insertEvent(input: {
-  tenantId: string;
-  walletId?: string;
-  type: string;
-  severity: "info" | "warning" | "danger" | "success";
-  payload: Record<string, unknown>;
-  blockNumber: number;
-  txHash: string;
-  timestamp: Date;
-}) {
-  if (pgMirrorDisabled) {
-    return undefined;
-  }
-  const existing = await db.query.events.findFirst({
-    where: and(
-      eq(events.tenantId, input.tenantId),
-      eq(events.txHash, input.txHash),
-      eq(events.type, input.type),
-    ),
-  });
-
-  if (existing) {
-    return existing;
-  }
-
-  await db.insert(events).values({
-    tenantId: input.tenantId,
-    walletId: input.walletId,
-    type: input.type,
-    severity: input.severity,
-    payload: input.payload,
-    blockNumber: input.blockNumber,
-    txHash: input.txHash,
-    timestamp: input.timestamp,
-  });
-}
-
-async function findTransferByTx(tenantId: string, txHash: string) {
-  return db.query.transfers.findFirst({
-    where: and(eq(transfers.tenantId, tenantId), eq(transfers.txHash, txHash)),
-  });
 }
 
 ponder.on("WalletFactory:WalletCreated", async ({ event }) => {

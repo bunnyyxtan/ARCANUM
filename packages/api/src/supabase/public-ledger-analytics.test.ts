@@ -6,6 +6,7 @@ import { ledgerRouter } from "../routers/ledger";
 import type { SupabaseRequestOptions, SupabaseRow } from "./client";
 import { readSupabasePublicWalletProfile } from "./health";
 import { readSupabasePublicLedger } from "./ledger";
+import { oldSchemaAnalyticsRpc } from "./scoped-analytics.test-support";
 
 const OWNER = "0x1111111111111111111111111111111111111111";
 const WALLET = "0x2222222222222222222222222222222222222222";
@@ -52,7 +53,7 @@ function context(
       insertRows: () => Promise.resolve([]),
       upsertRows: () => Promise.resolve([]),
       patchRows: () => Promise.resolve([]),
-      callFunction: () => Promise.resolve(null),
+      callFunction: oldSchemaAnalyticsRpc,
     },
     requestFingerprint: null,
     env: { authConfigured: true, allowDevAuth: false },
@@ -72,7 +73,7 @@ function publicReaderContext(input: {
     label: "Public treasury",
     posture_score: 92,
   };
-  const selectRows = async (table: string, options?: SupabaseRequestOptions) => {
+  const selectRows = async (table: string, _options?: SupabaseRequestOptions) => {
     calls.push(table);
     if (table === "public_wallet_profiles") {
       return [profile];

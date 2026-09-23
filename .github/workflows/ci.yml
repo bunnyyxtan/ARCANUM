@@ -36,6 +36,8 @@ jobs:
       - run: npm ci
       - name: Disposable SQL and receipt execution regressions
         run: bash .github/scripts/security-sql-test.sh /usr/lib/postgresql/17/bin
+      - name: Scoped analytics and atomic ledger SQL regressions
+        run: bash .github/scripts/database-optimization-test.sh /usr/lib/postgresql/17/bin
   runtime-security:
     runs-on: ubuntu-latest
     timeout-minutes: 10

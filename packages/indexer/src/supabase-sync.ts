@@ -13,6 +13,7 @@
 
 import { ARC_CHAIN_ID, deploymentIdentity } from "@arcanum/shared";
 import { loadDeployment } from "./deployment";
+import { assertIdenticalLedgerEvent } from "./ledger-event";
 
 const CHAIN_ID = ARC_CHAIN_ID;
 const DEPLOYMENT = loadDeployment();
@@ -161,6 +162,57 @@ async function insertDuplicateSafe(
 // read that must see a whole queue pages explicitly until a short page.
 const STAGED_PAGE_SIZE = 500;
 const STAGED_MAX_PAGES = 200;
+const MAINTENANCE_INTERVAL_MS = 5_000;
+let lastReconciledAt = Number.NEGATIVE_INFINITY;
+let checkpointCache: { row: Row | undefined; readAt: number } | undefined;
+
+// One writer owns a deployment. Serialize all entry points (including the
+// quiet-chain timer), not just scans: lifecycle replay must not race a handler.
+// A rejected operation still rejects its caller, without poisoning later retries.
+let writeTail: Promise<unknown> = Promise.resolve();
+function serialized<Args extends unknown[], Result>(operation: (...args: Args) => Promise<Result>) {
+  return (...args: Args): Promise<Result> => {
+    const result = writeTail.then(() => operation(...args));
+    writeTail = result.catch(() => undefined);
+    return result;
+  };
+}
+
+async function reconcileIfDue(force = false) {
+  if (!force && Date.now() - lastReconciledAt < MAINTENANCE_INTERVAL_MS) return;
+  lastReconciledAt = Number.NEGATIVE_INFINITY;
+  await reconcileStagedEvents();
+  // Only success earns a throttle window. Failures remain eligible immediately.
+  lastReconciledAt = Date.now();
+}
+
+/** A fresh exhaustive pass; does not claim readiness or advance any height. */
+export const syncStagedEvents = serialized(async () => {
+  if (!configured()) return;
+  await reconcileIfDue(true);
+});
+
+/** Start only in the indexing process, never as an import side effect. */
+export function startStagedEventReconciliation() {
+  let pending = false;
+  const periodicPass = serialized(async () => {
+    if (!configured()) return;
+    await reconcileIfDue();
+  });
+  const timer = setInterval(() => {
+    if (pending) return;
+    pending = true;
+    void periodicPass()
+      .catch((error: unknown) => {
+        console.error("[supabase-sync] periodic staged reconciliation failed; will retry", error);
+      })
+      .finally(() => {
+        pending = false;
+      });
+  }, MAINTENANCE_INTERVAL_MS);
+  timer.unref();
+  return () => clearInterval(timer);
+}
 
 async function readAllStagedRows(filters: Record<string, string | number | null>) {
   const rows: Row[] = [];
@@ -184,7 +236,7 @@ async function readAllStagedRows(filters: Record<string, string | number | null>
 }
 
 async function reconcileStagedEvents() {
-  const rows = await readAllStagedRows({ chain_id: CHAIN_ID });
+  const rows = await readAllStagedRows({ chain_id: CHAIN_ID, deployment_id: DEPLOYMENT_ID });
 
   const addresses = [...new Set(rows.map((row) => str(row, "wallet_address")).filter(Boolean))];
   for (const address of addresses) {
@@ -192,7 +244,10 @@ async function reconcileStagedEvents() {
     if (!wallet) {
       continue;
     }
-    await flushUnlinkedLedgerEvents(wallet);
+    await flushUnlinkedLedgerEvents(
+      wallet,
+      rows.filter((row) => str(row, "wallet_address") === address),
+    );
   }
 }
 
@@ -250,7 +305,10 @@ async function updateCheckpoint(blockNumber: number, startBlock: number) {
       `[supabase-sync] refusing checkpoint block ${blockNumber} below deployment start block ${startBlock}`,
     );
   }
-  const existing = await findCheckpoint();
+  const existing =
+    checkpointCache && Date.now() - checkpointCache.readAt < MAINTENANCE_INTERVAL_MS
+      ? checkpointCache.row
+      : await findCheckpoint();
   const now = new Date().toISOString();
   const checkpointPatch: Row = {
     last_block: blockNumber,
@@ -268,16 +326,18 @@ async function updateCheckpoint(blockNumber: number, startBlock: number) {
     if (blockNumber === lastBlock && str(existing, "status") === "synced") {
       return;
     }
-    await request("PATCH", "indexer_checkpoints", {
+    const [updated] = await request("PATCH", "indexer_checkpoints", {
       filters: { id: str(existing, "id") },
       body: {
         ...checkpointPatch,
         contract_name: CHECKPOINT_CONTRACT,
       },
     });
+    if (!updated) throw new Error("[supabase-sync] checkpoint disappeared during update");
+    checkpointCache = { row: updated, readAt: checkpointCache?.readAt ?? Date.now() };
     return;
   }
-  await request("POST", "indexer_checkpoints", {
+  const [created] = await request("POST", "indexer_checkpoints", {
     body: [
       {
         chain_id: CHAIN_ID,
@@ -296,11 +356,14 @@ async function updateCheckpoint(blockNumber: number, startBlock: number) {
       },
     ],
   });
+  if (!created) throw new Error("[supabase-sync] checkpoint insert returned no row");
+  checkpointCache = { row: created, readAt: Date.now() };
 }
 
 /** Finalize deployment-scoped /ready evidence through the atomic RPC. */
-export async function syncConfirmedCatchup(blockNumber?: number) {
+async function syncConfirmedCatchup(blockNumber?: number) {
   if (!configured()) return;
+  await reconcileIfDue(true);
   await request("POST", "rpc/finalize_indexer_catchup", {
     body: {
       p_deployment_id: DEPLOYMENT_ID,
@@ -319,7 +382,7 @@ export async function syncConfirmedCatchup(blockNumber?: number) {
 }
 
 async function findCheckpoint() {
-  const [existing] = await request("GET", "indexer_checkpoints", {
+  const rows = await request("GET", "indexer_checkpoints", {
     filters: {
       chain_id: CHAIN_ID,
       contract_name: CHECKPOINT_CONTRACT,
@@ -327,7 +390,25 @@ async function findCheckpoint() {
     },
     limit: 2,
   });
-  return existing;
+  if (rows.length > 1) throw new Error("[supabase-sync] duplicate deployment checkpoints");
+  checkpointCache = { row: rows[0], readAt: Date.now() };
+  return rows[0];
+}
+
+let ledgerRpcUnavailable = false;
+
+function isMissingLedgerRpc(error: unknown): boolean {
+  if (!(error instanceof SupabaseRequestError) || error.status !== 404) return false;
+  try {
+    const body = JSON.parse(error.responseBody) as Row;
+    return (
+      body.code === "PGRST202" &&
+      typeof body.message === "string" &&
+      /\bpublic\.insert_ledger_event\b/.test(body.message)
+    );
+  } catch {
+    return false;
+  }
 }
 
 async function upsertLedgerEvent(input: {
@@ -343,48 +424,53 @@ async function upsertLedgerEvent(input: {
   reason: string;
   blockNumber: number;
   timestamp: Date;
-}): Promise<Row | null> {
-  const [existing] = await request("GET", "ledger_events", {
-    filters: {
-      chain_id: CHAIN_ID,
-      tx_hash: input.txHash.toLowerCase(),
-      log_index: input.logIndex,
+}): Promise<Row> {
+  const body: Row = {
+    organization_id: str(input.wallet, "organization_id"),
+    governed_wallet_id: str(input.wallet, "id"),
+    tx_hash: input.txHash.toLowerCase(),
+    log_index: input.logIndex,
+    event_time: input.timestamp.toISOString(),
+    agent_label: str(input.wallet, "label") || null,
+    category: null,
+    counterparty_address: input.counterpartyAddress.toLowerCase(),
+    amount_usdc: usdcDecimal(input.amount),
+    status: input.status,
+    decision_reason: input.reason,
+    block_number: input.blockNumber,
+    chain_id: CHAIN_ID,
+    policy_snapshot: {
+      ...(input.escalationId ? { escalationId: input.escalationId } : {}),
+      ...(input.policyVersion ? { policyVersion: input.policyVersion } : {}),
+      ...(input.councilVersion ? { councilVersion: input.councilVersion } : {}),
     },
-    limit: 1,
-  });
-  if (existing) {
-    return existing;
+    data_source: "live",
+  };
+  if (!ledgerRpcUnavailable) {
+    try {
+      // The RPC returns JSON objects with numeric money/bigint block values
+      // encoded as text, so response.json() cannot round immutable values.
+      const rows = await request("POST", "rpc/insert_ledger_event", { body: { p_event: body } });
+      if (rows.length !== 1 || !rows[0]) {
+        throw new Error("[supabase-sync] ledger RPC must return exactly one row");
+      }
+      return assertIdenticalLedgerEvent(rows[0], body);
+    } catch (error) {
+      if (!isMissingLedgerRpc(error)) throw error;
+      // Only the explicit PostgREST capability error permits the old path.
+      ledgerRpcUnavailable = true;
+    }
   }
-
-  return insertDuplicateSafe(
-    "ledger_events",
-    {
-      organization_id: str(input.wallet, "organization_id"),
-      governed_wallet_id: str(input.wallet, "id"),
-      tx_hash: input.txHash.toLowerCase(),
-      log_index: input.logIndex,
-      event_time: input.timestamp.toISOString(),
-      agent_label: str(input.wallet, "label") || null,
-      category: null,
-      counterparty_address: input.counterpartyAddress.toLowerCase(),
-      amount_usdc: usdcDecimal(input.amount),
-      status: input.status,
-      decision_reason: input.reason,
-      block_number: input.blockNumber,
-      chain_id: CHAIN_ID,
-      policy_snapshot: {
-        ...(input.escalationId ? { escalationId: input.escalationId } : {}),
-        ...(input.policyVersion ? { policyVersion: input.policyVersion } : {}),
-        ...(input.councilVersion ? { councilVersion: input.councilVersion } : {}),
-      },
-      data_source: "live",
-    },
-    {
-      chain_id: CHAIN_ID,
-      tx_hash: input.txHash.toLowerCase(),
-      log_index: input.logIndex,
-    },
-  );
+  const filters = {
+    chain_id: CHAIN_ID,
+    tx_hash: input.txHash.toLowerCase(),
+    log_index: input.logIndex,
+  };
+  const rows = await request("GET", "ledger_events", { filters, limit: 2 });
+  if (rows.length > 1) throw new Error("[supabase-sync] duplicate ledger event identity");
+  const row = rows[0] ?? (await insertDuplicateSafe("ledger_events", body, filters));
+  if (!row) throw new Error("[supabase-sync] ledger insert returned no row");
+  return assertIdenticalLedgerEvent(row, body);
 }
 
 type TransferInput = {
@@ -523,7 +609,7 @@ async function stageVendorRule(input: VendorRuleInput) {
   );
 }
 
-export async function syncVendorRule(input: VendorRuleInput) {
+async function syncVendorRule(input: VendorRuleInput) {
   if (!configured()) return;
   const wallet = await findGovernedWallet(input.walletAddress);
   if (!wallet) {
@@ -690,17 +776,19 @@ async function persistEscalation(wallet: Row, input: EscalatedTransferInput) {
   );
 }
 
-async function flushUnlinkedLedgerEvents(wallet: Row) {
+async function flushUnlinkedLedgerEvents(wallet: Row, stagedRows?: Row[]) {
   const walletAddress = str(wallet, "wallet_address").toLowerCase();
   if (!walletAddress) return;
   // Read the wallet's complete staged set before applying anything: chain
   // order is (block, log), and a partial page could replay a lifecycle status
   // ahead of the escalation it belongs to.
-  const rows = await readAllStagedRows({
-    wallet_address: walletAddress,
-    chain_id: CHAIN_ID,
-    deployment_id: DEPLOYMENT_ID,
-  });
+  const rows =
+    stagedRows ??
+    (await readAllStagedRows({
+      wallet_address: walletAddress,
+      chain_id: CHAIN_ID,
+      deployment_id: DEPLOYMENT_ID,
+    }));
   rows.sort((left, right) => {
     const block = Number(left.block_number) - Number(right.block_number);
     if (block !== 0) return block;
@@ -788,14 +876,14 @@ async function flushUnlinkedLedgerEvents(wallet: Row) {
   }
 }
 
-export async function syncWalletCreated(walletAddress: string, timestamp: Date) {
+async function syncWalletCreated(walletAddress: string, timestamp: Date) {
   if (!configured()) return;
   const wallet = await findGovernedWallet(walletAddress);
   if (!wallet) return;
   await markWalletIndexed(wallet, timestamp);
 }
 
-export async function syncTransferExecuted(input: TransferInput) {
+async function syncTransferExecuted(input: TransferInput) {
   if (!configured()) return;
   const wallet = await findGovernedWallet(input.walletAddress);
   if (!wallet) {
@@ -817,7 +905,7 @@ export async function syncTransferExecuted(input: TransferInput) {
   await markWalletIndexed(wallet, input.timestamp);
 }
 
-export async function syncTransferEscalated(input: EscalatedTransferInput) {
+async function syncTransferEscalated(input: EscalatedTransferInput) {
   if (!configured()) return;
   const wallet = await findGovernedWallet(input.walletAddress);
   if (!wallet) {
@@ -848,7 +936,7 @@ async function applyEscalationApproval(
   return true;
 }
 
-export async function syncEscalationApproval(
+async function syncEscalationApproval(
   input: EscalationLifecycleInput & { approvalsCount: number },
 ) {
   if (!configured()) return;
@@ -897,7 +985,7 @@ async function applyEscalationStatus(
   return true;
 }
 
-export async function syncEscalationStatus(
+async function syncEscalationStatus(
   input: EscalationLifecycleInput & { status: EscalationStatus },
 ) {
   if (!configured()) return;
@@ -909,18 +997,14 @@ export async function syncEscalationStatus(
   await stageEscalationLifecycle("escalation_status", input, { status: input.status });
 }
 
-export async function syncWalletFrozenState(
-  walletAddress: string,
-  frozen: boolean,
-  timestamp: Date,
-) {
+async function syncWalletFrozenState(walletAddress: string, frozen: boolean, timestamp: Date) {
   if (!configured()) return;
   const wallet = await findGovernedWallet(walletAddress);
   if (!wallet) return;
   await markWalletIndexed(wallet, timestamp, frozen);
 }
 
-export async function syncAnomaly(input: {
+async function syncAnomaly(input: {
   walletAddress: string;
   severity: "low" | "medium" | "high" | "critical";
   score: number;
@@ -960,7 +1044,7 @@ export async function syncAnomaly(input: {
   });
 }
 
-export async function syncGovernanceEvent(input: {
+async function syncGovernanceEvent(input: {
   walletAddress: string;
   eventType: string;
   severity: "info" | "warning" | "danger" | "success";
@@ -1008,7 +1092,7 @@ export async function syncGovernanceEvent(input: {
  * WalletFactory is permissionless: an event for a wallet outside this
  * deployment is deliberately skipped before either the event or owner RPC.
  */
-export async function syncOwnershipTransferred(input: {
+async function syncOwnershipTransferred(input: {
   walletAddress: string;
   previousOwner: string;
   newOwner: string;
@@ -1064,8 +1148,41 @@ export async function syncOwnershipTransferred(input: {
 }
 
 /** Record indexing progress so `health.indexer` reports a real checkpoint. */
-export async function syncCheckpoint(blockNumber: number, startBlock: number) {
+async function syncCheckpoint(blockNumber: number, startBlock: number) {
   if (!configured()) return;
-  await reconcileStagedEvents();
-  await updateCheckpoint(blockNumber, startBlock);
+  try {
+    await reconcileIfDue();
+    await updateCheckpoint(blockNumber, startBlock);
+  } catch (error) {
+    checkpointCache = undefined;
+    throw error;
+  }
 }
+
+const queuedCheckpoint = serialized(syncCheckpoint);
+const queuedCatchup = serialized(syncConfirmedCatchup);
+const queuedVendorRule = serialized(syncVendorRule);
+const queuedWalletCreated = serialized(syncWalletCreated);
+const queuedTransferExecuted = serialized(syncTransferExecuted);
+const queuedTransferEscalated = serialized(syncTransferEscalated);
+const queuedEscalationApproval = serialized(syncEscalationApproval);
+const queuedEscalationStatus = serialized(syncEscalationStatus);
+const queuedWalletFrozenState = serialized(syncWalletFrozenState);
+const queuedAnomaly = serialized(syncAnomaly);
+const queuedGovernanceEvent = serialized(syncGovernanceEvent);
+const queuedOwnershipTransferred = serialized(syncOwnershipTransferred);
+
+export {
+  queuedCheckpoint as syncCheckpoint,
+  queuedCatchup as syncConfirmedCatchup,
+  queuedVendorRule as syncVendorRule,
+  queuedWalletCreated as syncWalletCreated,
+  queuedTransferExecuted as syncTransferExecuted,
+  queuedTransferEscalated as syncTransferEscalated,
+  queuedEscalationApproval as syncEscalationApproval,
+  queuedEscalationStatus as syncEscalationStatus,
+  queuedWalletFrozenState as syncWalletFrozenState,
+  queuedAnomaly as syncAnomaly,
+  queuedGovernanceEvent as syncGovernanceEvent,
+  queuedOwnershipTransferred as syncOwnershipTransferred,
+};

@@ -6,12 +6,15 @@ import {
   escalationStatusFromIndex,
 } from "@arcanum/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { assertIdenticalLedgerEvent } from "../src/ledger-event";
 
 type Row = Record<string, unknown>;
 
 const originalEnv = { ...process.env };
 let tables: Record<string, Row[]>;
 let failLedgerWrites: boolean;
+let legacyLedgerUnique: boolean;
+let missingLedgerRpc: boolean;
 
 function tableRows(table: string) {
   const rows = tables[table];
@@ -44,6 +47,36 @@ async function fakeFetch(input: string | URL | Request, init?: RequestInit) {
   const endpoint = new URL(typeof input === "string" || input instanceof URL ? input : input.url);
   const table = endpoint.pathname.split("/").at(-1) ?? "";
   const method = init?.method ?? "GET";
+  if (table === "insert_ledger_event") {
+    if (missingLedgerRpc || legacyLedgerUnique) {
+      return Response.json(
+        {
+          code: "PGRST202",
+          message: "Could not find the function public.insert_ledger_event(p_event)",
+        },
+        { status: 404 },
+      );
+    }
+    if (failLedgerWrites) return new Response("temporary outage", { status: 503 });
+    const body = JSON.parse(String(init?.body)).p_event as Row;
+    const rows = tableRows("ledger_events");
+    const existing = rows.find(
+      (row) =>
+        row.chain_id === body.chain_id &&
+        row.tx_hash === body.tx_hash &&
+        row.log_index === body.log_index,
+    );
+    if (existing) {
+      try {
+        return Response.json([assertIdenticalLedgerEvent(existing, body)]);
+      } catch (error) {
+        return Response.json({ code: "23514", message: String(error) }, { status: 400 });
+      }
+    }
+    const inserted = { id: `ledger_events-${rows.length + 1}`, ...body };
+    rows.push(inserted);
+    return Response.json([inserted]);
+  }
   if (table === "finalize_indexer_catchup" && method === "POST") {
     const body = JSON.parse(String(init?.body ?? "{}")) as Row;
     const checkpoints = tableRows("indexer_checkpoints").filter(
@@ -139,6 +172,19 @@ async function fakeFetch(input: string | URL | Request, init?: RequestInit) {
   const body: Row | Row[] | undefined = init?.body ? JSON.parse(String(init.body)) : undefined;
   if (method === "POST") {
     if (!body) throw new Error("POST body is required");
+    if (table === "ledger_events") {
+      const candidate = Array.isArray(body) ? body[0] : body;
+      if (
+        rows.some(
+          (row) =>
+            row.tx_hash === candidate?.tx_hash &&
+            (legacyLedgerUnique ||
+              (row.chain_id === candidate?.chain_id && row.log_index === candidate?.log_index)),
+        )
+      ) {
+        return new Response('{"code":"23505"}', { status: 409 });
+      }
+    }
     const inserted = (Array.isArray(body) ? body : [body]).map((row, index) => ({
       id: row.id ?? `${table}-${rows.length + index + 1}`,
       ...row,
@@ -209,11 +255,14 @@ describe("Supabase synchronization", () => {
       indexer_catchup_evidence: [],
     };
     failLedgerWrites = false;
+    legacyLedgerUnique = false;
+    missingLedgerRpc = false;
     vi.stubGlobal("fetch", vi.fn(fakeFetch));
     vi.spyOn(console, "error").mockImplementation(() => undefined);
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     process.env = { ...originalEnv };
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
@@ -229,6 +278,318 @@ describe("Supabase synchronization", () => {
       tx_hash: transfer.txHash.toLowerCase(),
       log_index: transfer.logIndex,
     });
+  });
+
+  function requests(table: string, method = "GET") {
+    return vi
+      .mocked(fetch)
+      .mock.calls.filter(
+        ([url, init]) =>
+          new URL(String(url)).pathname.endsWith(`/${table}`) && (init?.method ?? "GET") === method,
+      );
+  }
+
+  it("coalesces empty queue scans and checkpoint reads, not actual progress", async () => {
+    const { syncCheckpoint } = await import("../src/supabase-sync");
+    await Promise.all([30, 30, 31, 32].map((block) => syncCheckpoint(block, 1)));
+    expect(requests("unlinked_ledger_events")).toHaveLength(1);
+    expect(requests("indexer_checkpoints")).toHaveLength(1);
+    expect(requests("indexer_checkpoints", "POST")).toHaveLength(1);
+    expect(requests("indexer_checkpoints", "PATCH")).toHaveLength(2);
+    expect(tableRows("indexer_checkpoints")[0]?.last_block).toBe(32);
+    await expect(syncCheckpoint(31, 1)).rejects.toThrow("ahead of event block");
+    expect(tableRows("indexer_checkpoints")[0]?.last_block).toBe(32);
+  });
+
+  it("expires checkpoint reads even while writes keep arriving", async () => {
+    vi.useFakeTimers();
+    const { syncCheckpoint } = await import("../src/supabase-sync");
+    await syncCheckpoint(30, 1);
+    vi.setSystemTime(Date.now() + 4_000);
+    await syncCheckpoint(31, 1);
+    vi.setSystemTime(Date.now() + 1_001);
+    await syncCheckpoint(32, 1);
+    expect(requests("indexer_checkpoints")).toHaveLength(2);
+    expect(requests("unlinked_ledger_events")).toHaveLength(2);
+  });
+
+  it("does not overlap or accumulate periodic scans behind a slow request", async () => {
+    vi.useFakeTimers();
+    let release: (() => void) | undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.mocked(fetch).mockImplementationOnce(async (url, init) => {
+      await gate;
+      return fakeFetch(url, init);
+    });
+    const { startStagedEventReconciliation, syncCheckpoint } = await import("../src/supabase-sync");
+    const stop = startStagedEventReconciliation();
+    try {
+      await vi.advanceTimersByTimeAsync(20_000);
+      expect(requests("unlinked_ledger_events")).toHaveLength(1);
+      const checkpoint = syncCheckpoint(30, 1);
+      expect(tableRows("indexer_checkpoints")).toHaveLength(0);
+      if (!release) throw new Error("Missing test gate");
+      release();
+      await checkpoint;
+      expect(requests("unlinked_ledger_events")).toHaveLength(1);
+      expect(tableRows("indexer_checkpoints")[0]?.last_block).toBe(30);
+    } finally {
+      stop();
+      release?.();
+    }
+  });
+
+  it("refuses duplicate checkpoint rows rather than caching one arbitrarily", async () => {
+    tables.indexer_checkpoints = ["a", "b"].map((id) => ({
+      ...checkpointIdentity,
+      id,
+      last_block: 20,
+      status: "synced",
+    }));
+    const { syncCheckpoint, syncConfirmedCatchup } = await import("../src/supabase-sync");
+    await expect(syncCheckpoint(30, 1)).rejects.toThrow("duplicate deployment checkpoints");
+    await expect(syncConfirmedCatchup()).rejects.toThrow("finalization rejected");
+    expect(requests("indexer_checkpoints", "PATCH")).toHaveLength(0);
+    expect(tableRows("indexer_catchup_evidence")).toHaveLength(0);
+  });
+
+  it("retries a failed queue scan without pinning or advancing its checkpoint", async () => {
+    const { syncCheckpoint } = await import("../src/supabase-sync");
+    vi.mocked(fetch).mockResolvedValueOnce(new Response("queue unavailable", { status: 503 }));
+    await expect(syncCheckpoint(30, 1)).rejects.toThrow("queue unavailable");
+    expect(tableRows("indexer_checkpoints")).toHaveLength(0);
+    await syncCheckpoint(30, 1);
+    expect(tableRows("indexer_checkpoints")[0]?.last_block).toBe(30);
+  });
+
+  it("invalidates checkpoint cache after a failed write and retries", async () => {
+    const { syncCheckpoint } = await import("../src/supabase-sync");
+    await syncCheckpoint(30, 1);
+    vi.mocked(fetch).mockResolvedValueOnce(new Response("checkpoint unavailable", { status: 503 }));
+    await expect(syncCheckpoint(31, 1)).rejects.toThrow("checkpoint unavailable");
+    expect(tableRows("indexer_checkpoints")[0]?.last_block).toBe(30);
+    await syncCheckpoint(31, 1);
+    expect(requests("indexer_checkpoints")).toHaveLength(2);
+    expect(tableRows("indexer_checkpoints")[0]?.last_block).toBe(31);
+  });
+
+  it("reconciles a late-created wallet on a quiet chain, with retry after failure", async () => {
+    vi.useFakeTimers();
+    const wallet = tableRows("governed_wallets")[0];
+    if (!wallet) throw new Error("Missing fixture wallet");
+    tables.governed_wallets = [];
+    const { syncTransferExecuted, syncCheckpoint, startStagedEventReconciliation } = await import(
+      "../src/supabase-sync"
+    );
+    await syncTransferExecuted(transfer);
+    await syncCheckpoint(30, 1);
+    await syncCheckpoint(31, 1);
+    expect(requests("unlinked_ledger_events")).toHaveLength(1);
+    tables.governed_wallets = [wallet];
+    failLedgerWrites = true;
+    const stop = startStagedEventReconciliation();
+    try {
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(tableRows("unlinked_ledger_events")).toHaveLength(1);
+      expect(tableRows("indexer_checkpoints")[0]?.last_block).toBe(31);
+      failLedgerWrites = false;
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(tableRows("unlinked_ledger_events")).toHaveLength(0);
+      expect(tableRows("ledger_events")).toHaveLength(1);
+      expect(tableRows("indexer_catchup_evidence")).toHaveLength(0);
+      // The complete global snapshot is reused, not fetched again per wallet.
+      expect(requests("unlinked_ledger_events")).toHaveLength(3);
+    } finally {
+      stop();
+    }
+  });
+
+  it("forces a final pass inside the throttle window before catch-up proof", async () => {
+    const wallet = tableRows("governed_wallets")[0];
+    if (!wallet) throw new Error("Missing fixture wallet");
+    tables.governed_wallets = [];
+    const { syncTransferExecuted, syncCheckpoint, syncConfirmedCatchup } = await import(
+      "../src/supabase-sync"
+    );
+    await syncTransferExecuted(transfer);
+    await syncCheckpoint(30, 1);
+    tables.governed_wallets = [wallet];
+    failLedgerWrites = true;
+    await expect(syncConfirmedCatchup()).rejects.toThrow("temporary outage");
+    expect(tableRows("indexer_catchup_evidence")).toHaveLength(0);
+    // A failed forced pass invalidates the throttle, too.
+    await expect(syncCheckpoint(31, 1)).rejects.toThrow("temporary outage");
+    expect(tableRows("indexer_checkpoints")[0]?.last_block).toBe(30);
+    failLedgerWrites = false;
+    await syncConfirmedCatchup();
+    expect(tableRows("unlinked_ledger_events")).toHaveLength(0);
+    expect(tableRows("indexer_catchup_evidence")).toHaveLength(1);
+    const calls = vi.mocked(fetch).mock.calls;
+    expect(String(calls.at(-1)?.[0])).toContain("rpc/finalize_indexer_catchup");
+  });
+
+  it("refuses final proof while an unknown wallet still has staged work", async () => {
+    tables.governed_wallets = [];
+    const { syncTransferExecuted, syncConfirmedCatchup } = await import("../src/supabase-sync");
+    await syncTransferExecuted(transfer);
+    await expect(syncConfirmedCatchup()).rejects.toThrow("finalization rejected");
+    expect(tableRows("indexer_catchup_evidence")).toHaveLength(0);
+  });
+
+  it("serializes concurrent replay without overwriting immutable ledger payloads", async () => {
+    const { syncTransferExecuted } = await import("../src/supabase-sync");
+    await expect(
+      Promise.all([
+        syncTransferExecuted(transfer),
+        syncTransferExecuted({ ...transfer, amount: 999_000_000n }),
+      ]),
+    ).rejects.toThrow("conflicting immutable");
+    expect(tableRows("ledger_events")).toHaveLength(1);
+    expect(tableRows("ledger_events")[0]?.amount_usdc).toBe("1.0");
+    expect(requests("ledger_events")).toHaveLength(0);
+    expect(requests("insert_ledger_event", "POST")).toHaveLength(2);
+    expect(requests("ledger_events", "PATCH")).toHaveLength(0);
+  });
+
+  it("keeps a single-GET ledger replay on legacy tx-only uniqueness and fails a second log safely", async () => {
+    legacyLedgerUnique = true;
+    const { syncTransferExecuted } = await import("../src/supabase-sync");
+    await syncTransferExecuted(transfer);
+    vi.mocked(fetch).mockClear();
+    await syncTransferExecuted(transfer);
+    expect(requests("ledger_events")).toHaveLength(1);
+    expect(requests("ledger_events", "POST")).toHaveLength(0);
+    await expect(syncTransferExecuted({ ...transfer, logIndex: 8 })).rejects.toThrow("23505");
+    expect(tableRows("ledger_events")).toHaveLength(1);
+    expect(tableRows("ledger_events")[0]?.amount_usdc).toBe("1.0");
+  });
+
+  it("returns a raced external insert only when its complete event identity matches", async () => {
+    missingLedgerRpc = true;
+    const { syncTransferExecuted } = await import("../src/supabase-sync");
+    vi.mocked(fetch).mockImplementation(async (url, init) => {
+      if (new URL(String(url)).pathname.endsWith("/ledger_events") && init?.method === "POST") {
+        const body = JSON.parse(String(init.body)) as Row[];
+        tables.ledger_events = [{ ...body[0], id: "external", amount_usdc: "42.0" }];
+      }
+      return fakeFetch(url, init);
+    });
+    await expect(syncTransferExecuted(transfer)).rejects.toThrow("conflicting immutable");
+    expect(tableRows("ledger_events")).toHaveLength(1);
+    expect(tableRows("ledger_events")[0]?.amount_usdc).toBe("42.0");
+    expect(requests("ledger_events")).toHaveLength(2);
+    expect(requests("ledger_events", "POST")).toHaveLength(1);
+  });
+
+  it("fails closed before writing against a schema without ledger log_index", async () => {
+    missingLedgerRpc = true;
+    vi.mocked(fetch).mockImplementation(async (url, init) => {
+      if (new URL(String(url)).pathname.endsWith("/ledger_events")) {
+        return new Response('{"code":"42703","message":"log_index does not exist"}', {
+          status: 400,
+        });
+      }
+      return fakeFetch(url, init);
+    });
+    const { syncTransferExecuted } = await import("../src/supabase-sync");
+    await expect(syncTransferExecuted(transfer)).rejects.toThrow("log_index does not exist");
+    expect(requests("ledger_events", "POST")).toHaveLength(0);
+    expect(tableRows("indexer_checkpoints")).toHaveLength(0);
+  });
+
+  it("uses one ledger RPC for fresh events and one for identical replay", async () => {
+    const { syncTransferExecuted } = await import("../src/supabase-sync");
+    await syncTransferExecuted(transfer);
+    expect(requests("insert_ledger_event", "POST")).toHaveLength(1);
+    expect(requests("ledger_events")).toHaveLength(0);
+    expect(requests("ledger_events", "POST")).toHaveLength(0);
+    vi.mocked(fetch).mockClear();
+    await syncTransferExecuted(transfer);
+    expect(requests("insert_ledger_event", "POST")).toHaveLength(1);
+    expect(requests("ledger_events")).toHaveLength(0);
+  });
+
+  it("validates fresh/replayed large amounts through raw JSON wire responses without rounding", async () => {
+    let wire: string | undefined;
+    vi.mocked(fetch).mockImplementation(async (url, init) => {
+      if (new URL(String(url)).pathname.endsWith("/insert_ledger_event")) {
+        const { p_event: body } = JSON.parse(String(init?.body)) as { p_event: Row };
+        expect(body.amount_usdc).toBe("1234567890123456789.123456");
+        // Models PostgreSQL's SETOF jsonb text projection, then lets request()
+        // perform the real Response.json()/JSON.parse transport boundary.
+        wire ??= JSON.stringify([
+          {
+            ...body,
+            id: "exact-large-ledger-id",
+            amount_usdc: "1234567890123456789.123456",
+            block_number: String(body.block_number),
+          },
+        ]);
+        return new Response(wire, { headers: { "Content-Type": "application/json" } });
+      }
+      return fakeFetch(url, init);
+    });
+    const { syncTransferExecuted } = await import("../src/supabase-sync");
+    const large = { ...transfer, amount: 1234567890123456789123456n };
+    await syncTransferExecuted(large);
+    await syncTransferExecuted(large);
+    expect(requests("insert_ledger_event", "POST")).toHaveLength(2);
+    expect(requests("ledger_events")).toHaveLength(0);
+    expect(requests("ledger_events", "POST")).toHaveLength(0);
+    expect(requests("governed_wallets", "PATCH")).toHaveLength(2);
+  });
+
+  it("preserves the original row after wallet label/org changes and snapshot enrichment", async () => {
+    const { syncTransferExecuted } = await import("../src/supabase-sync");
+    await syncTransferExecuted(transfer);
+    const original = tableRows("ledger_events")[0];
+    if (!original) throw new Error("missing original");
+    const wallet = tableRows("governed_wallets")[0];
+    if (!wallet) throw new Error("missing wallet");
+    wallet.label = "Renamed";
+    wallet.organization_id = "new-organization";
+    original.policy_snapshot = { enrichment: "added later" };
+    await syncTransferExecuted(transfer);
+    expect(tableRows("ledger_events")).toHaveLength(1);
+    expect(tableRows("ledger_events")[0]).toEqual(original);
+    expect(original.agent_label).toBe("Treasury");
+    expect(original.organization_id).toBe("organization-1");
+  });
+
+  it.each([
+    [403, "42501"],
+    [503, "outage"],
+    [400, "42P10"],
+    [400, "42703"],
+    [404, "PGRST204"],
+    [404, "PGRST202"],
+    [409, "23505"],
+  ])("does not fall back for RPC errors %s/%s", async (status, code) => {
+    vi.mocked(fetch).mockImplementation(async (url, init) => {
+      if (new URL(String(url)).pathname.endsWith("/insert_ledger_event")) {
+        return Response.json({ code, message: "RPC failure" }, { status });
+      }
+      return fakeFetch(url, init);
+    });
+    const { syncTransferExecuted } = await import("../src/supabase-sync");
+    await expect(syncTransferExecuted(transfer)).rejects.toThrow("RPC failure");
+    expect(requests("ledger_events")).toHaveLength(0);
+    expect(requests("ledger_events", "POST")).toHaveLength(0);
+    expect(tableRows("indexer_checkpoints")).toHaveLength(0);
+    expect(tableRows("governed_wallets")[0]?.last_indexed_at).toBeUndefined();
+  });
+
+  it("rejects an empty RPC success instead of advancing downstream writes", async () => {
+    vi.mocked(fetch).mockImplementation(async (url, init) =>
+      new URL(String(url)).pathname.endsWith("/insert_ledger_event")
+        ? Response.json([])
+        : fakeFetch(url, init),
+    );
+    const { syncTransferExecuted } = await import("../src/supabase-sync");
+    await expect(syncTransferExecuted(transfer)).rejects.toThrow("exactly one row");
+    expect(requests("governed_wallets", "PATCH")).toHaveLength(0);
   });
 
   it("mirrors ownership transfers in order and makes replay idempotent", async () => {

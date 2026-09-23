@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { FALLBACK_TENANT_ID, defaultTenantId } from "@arcanum/db";
 import type {
   Agent,
@@ -189,8 +188,7 @@ export function vendorCapBaseUnitsFromRow(row: SupabaseRow | undefined): string 
 }
 
 export function transferFromRow(row: SupabaseRow, wallets: Wallet[]): Transfer {
-  const wallet = walletForRow(row, wallets);
-  const walletAddress = requireWalletAddress(wallet);
+  const facts = transferFactsFromRow(row, wallets);
   const txHash = stringField(
     row,
     ["tx_hash", "hash"],
@@ -198,19 +196,31 @@ export function transferFromRow(row: SupabaseRow, wallets: Wallet[]): Transfer {
   );
 
   return {
+    ...facts,
     id: stringField(row, ["id"], stableUuid(`transfer:${txHash}`)),
     tenantId: stringField(row, ["tenant_id"], FALLBACK_TENANT_ID),
-    walletId: wallet?.id ?? stableUuid(`wallet:${walletAddress}`),
     agentId: stringField(row, ["agent_id"], null),
     txHash,
     blockNumber: numberField(row, ["block_number"], 0),
-    timestamp: dateField(row, ["event_time", "created_at"]),
     toAddress: stringField(row, ["to_address", "counterparty_address"], zeroWallet()),
-    amount: moneyBaseUnits(row, ["amount", "amount_usdc"]),
-    verdict: verdictFromString(stringField(row, ["verdict", "status"], "ALLOW")),
     reason: stringField(row, ["decision_reason"], "indexed from Supabase"),
     vendorCategory: stringField(row, ["vendor_category", "category"], "other"),
     dailySpentAfter: moneyBaseUnits(row, ["daily_spent_after"], 0),
+  };
+}
+
+/** Shared legacy-compatible facts without hashing/materializing display fields. */
+export function transferFactsFromRow(
+  row: SupabaseRow,
+  wallets: Wallet[],
+): Pick<Transfer, "walletId" | "timestamp" | "amount" | "verdict"> {
+  const wallet = walletForRow(row, wallets);
+  const walletAddress = requireWalletAddress(wallet);
+  return {
+    walletId: wallet?.id ?? stableUuid(`wallet:${walletAddress}`),
+    timestamp: dateField(row, ["event_time", "created_at"]),
+    amount: moneyBaseUnits(row, ["amount", "amount_usdc"]),
+    verdict: verdictFromString(stringField(row, ["verdict", "status"], "ALLOW")),
   };
 }
 
