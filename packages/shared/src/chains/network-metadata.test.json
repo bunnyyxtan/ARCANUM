@@ -1,0 +1,16 @@
+{
+  "testnet": {
+    "chainId": 5042002,
+    "name": "Arc Testnet",
+    "rpcUrl": "https://rpc.testnet.arc.network",
+    "explorerUrl": "https://testnet.arcscan.app",
+    "usdcAddress": "0x3600000000000000000000000000000000000000"
+  },
+  "mainnet": {
+    "chainId": 5042,
+    "name": "Arc",
+    "rpcUrl": "https://rpc.mainnet.arc.io",
+    "explorerUrl": "https://explorer.arc.io",
+    "usdcAddress": "0x3600000000000000000000000000000000000000"
+  }
+}

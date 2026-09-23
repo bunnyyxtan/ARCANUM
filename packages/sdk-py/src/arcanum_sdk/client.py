@@ -129,7 +129,7 @@ class ArcanumClient:
         if simulation.verdict == "ALLOW":
             self._assert_sufficient_balance(amount)
 
-        nonce = self.web3.eth.get_transaction_count(self.agent_signer.address)
+        nonce = self.web3.eth.get_transaction_count(self.agent_signer.address, "pending")
         tx = self.wallet.functions.executeUSDC(
             Web3.to_checksum_address(to),
             amount,
@@ -178,6 +178,8 @@ class ArcanumClient:
                 if status != last_status:
                     last_status = status
                     callback({"escalation_id": escalation_id, "status": status})
+                if status != "PENDING":
+                    return
                 stop_event.wait(self.polling_interval_seconds)
 
         thread = threading.Thread(
@@ -283,7 +285,7 @@ class AsyncArcanumClient:
         if simulation.verdict == "ALLOW":
             await self._assert_sufficient_balance(amount)
 
-        nonce = await self.web3.eth.get_transaction_count(self.agent_signer.address)
+        nonce = await self.web3.eth.get_transaction_count(self.agent_signer.address, "pending")
         tx = await self.wallet.functions.executeUSDC(
             Web3.to_checksum_address(to),
             amount,
@@ -327,6 +329,8 @@ class AsyncArcanumClient:
             if status != last_status:
                 last_status = status
                 await callback({"escalation_id": escalation_id, "status": status})
+            if status != "PENDING":
+                return
             await asyncio.sleep(self.polling_interval_seconds)
 
     async def _assert_ready(self) -> None:
@@ -476,7 +480,9 @@ def _recover_revert_name(web3: Web3, tx_hash: str, receipt: Any) -> str | None:
     try:
         transaction = web3.eth.get_transaction(tx_hash)
         web3.eth.call(_call_input(transaction), block_identifier=receipt["blockNumber"])
-    except Exception as error:
+    # The receipt has already failed. Providers use different exception classes
+    # for this diagnostic replay; decoding a name must not hide that failure.
+    except Exception as error:  # noqa: BLE001
         return _error_name(error)
     return None
 
@@ -487,6 +493,7 @@ async def _recover_revert_name_async(
     try:
         transaction = await web3.eth.get_transaction(tx_hash)
         await web3.eth.call(_call_input(transaction), block_identifier=receipt["blockNumber"])
-    except Exception as error:
+    # This only extracts diagnostics from an already-failed receipt.
+    except Exception as error:  # noqa: BLE001
         return _error_name(error)
     return None

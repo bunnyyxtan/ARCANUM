@@ -8,6 +8,8 @@
     "declarationMap": true,
     "emitDeclarationOnly": false,
     "noEmit": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "outDir": "dist",
     "rootDir": "src"
   },

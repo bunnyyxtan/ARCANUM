@@ -13,7 +13,6 @@
   },
   "dependencies": {
     "@arcanum/sdk": "3.0.0",
-    "@arcanum/shared": "2.0.0",
     "@sentry/nextjs": "^10.74.0",
     "nextra": "^3.3.0",
     "nextra-theme-docs": "^3.3.0",

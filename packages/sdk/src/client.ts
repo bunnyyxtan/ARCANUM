@@ -804,14 +804,6 @@ export class ArcanumClient {
     }
   }
 
-  private async policyEngine(): Promise<Address> {
-    return this.publicClient.readContract({
-      address: this.walletAddress,
-      abi: GuardedWalletAbi,
-      functionName: "policyEngine",
-    });
-  }
-
   private async escalationManager(): Promise<Address> {
     return this.publicClient.readContract({
       address: this.walletAddress,
