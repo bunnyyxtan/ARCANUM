@@ -213,6 +213,7 @@ export function DeployWalletModal({
     isPending: writePending,
   } = useRecoverableWrite(walletFactoryAddress, "createWallet");
   const recordCreatedWallet = trpc.agents.recordCreatedWallet.useMutation();
+  const utils = trpc.useUtils();
   const deployment = deployContractStatus();
   const [form, setForm] = useState<DeployWalletFormState>(initialDeployWalletForm);
   const [txHash, setTxHash] = useState<Hash | null>(null);
@@ -287,6 +288,15 @@ export function DeployWalletModal({
     setPersistenceMessage(null);
     try {
       const persisted = await recordCreatedWallet.mutateAsync(input);
+      if (persisted.dataSource === "supabase") {
+        // The registry behind this dialog caches agents.list for 30s; a saved
+        // wallet must appear there without a page reload.
+        await Promise.all([
+          utils.agents.list.invalidate(),
+          utils.wallets.list.invalidate(),
+          utils.analytics.walletActivity24h.invalidate(),
+        ]);
+      }
       setPersistenceState(persisted.dataSource);
       setPersistenceMessage(
         persisted.dataSource === "supabase"
@@ -517,7 +527,7 @@ export function DeployWalletModal({
         open
         ref={dialogRef}
         aria-modal="true"
-        className="warm-modal-panel flex max-h-[calc(100dvh-16px)] w-full max-w-[480px] flex-col border border-[var(--wl-line-bold)] bg-[var(--wl-bg)] shadow-[0_28px_70px_-18px_rgba(var(--wl-ink-rgb),.45)] sm:max-h-[calc(100dvh-40px)]"
+        className="warm-modal-panel relative m-auto flex max-h-[calc(100dvh-16px)] w-full max-w-[480px] flex-col border border-[var(--wl-line-bold)] bg-[var(--wl-bg)] shadow-[0_28px_70px_-18px_rgba(var(--wl-ink-rgb),.45)] sm:max-h-[calc(100dvh-40px)]"
       >
         <div className="flex shrink-0 items-start justify-between border-b border-[var(--wl-line)] p-4 pb-3 sm:p-6 sm:pb-4">
           <div>
