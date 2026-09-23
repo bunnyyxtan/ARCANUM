@@ -805,22 +805,41 @@ async function flushUnlinkedLedgerEvents(wallet: Row, stagedRows?: Row[]) {
     }
     const staged = payload as Row;
     const kind = str(row, "event_kind");
+    if (
+      ![
+        "transfer_executed",
+        "transfer_escalated",
+        "vendor_added",
+        "vendor_blocked",
+        "vendor_removed",
+        "escalation_approval",
+        "escalation_status",
+      ].includes(kind)
+    ) {
+      throw new Error(`[supabase-sync] staged event ${str(row, "id")} has unsupported kind ${kind}`);
+    }
     if (kind === "escalation_approval") {
-      await applyEscalationApproval(
+      const applied = await applyEscalationApproval(
         str(staged, "escalationId"),
         Number(staged.approvalsCount),
         new Date(str(row, "event_time")),
       );
+      if (!applied) {
+        throw new Error(`[supabase-sync] staged event ${str(row, "id")} awaits its escalation`);
+      }
       await request("DELETE", "unlinked_ledger_events", { filters: { id: str(row, "id") } });
       continue;
     }
     if (kind === "escalation_status") {
-      await applyEscalationStatus(
+      const applied = await applyEscalationStatus(
         str(staged, "escalationId"),
         str(staged, "status") as EscalationStatus,
         str(staged, "txHash") || undefined,
         new Date(str(row, "event_time")),
       );
+      if (!applied) {
+        throw new Error(`[supabase-sync] staged event ${str(row, "id")} awaits its escalation`);
+      }
       await request("DELETE", "unlinked_ledger_events", { filters: { id: str(row, "id") } });
       continue;
     }
@@ -838,6 +857,25 @@ async function flushUnlinkedLedgerEvents(wallet: Row, stagedRows?: Row[]) {
       });
       await request("DELETE", "unlinked_ledger_events", { filters: { id: str(row, "id") } });
       continue;
+    }
+    // Legacy allowed transfers use transfer_executed with this original
+    // payload, without escalation/version enrichment. No other kind (including
+    // a missing kind) is an alias for an allowed transfer.
+    if (
+      kind === "transfer_executed" &&
+      (!/^0x[0-9a-f]{64}$/i.test(str(staged, "txHash")) ||
+        !/^0x[0-9a-f]{40}$/i.test(str(staged, "toAddress")) ||
+        !/^\d+$/.test(str(staged, "amount")) ||
+        typeof staged.logIndex !== "number" ||
+        !Number.isSafeInteger(staged.logIndex) ||
+        staged.logIndex < 0 ||
+        row.block_number === null ||
+        row.block_number === undefined ||
+        !Number.isSafeInteger(Number(row.block_number)) ||
+        Number(row.block_number) < 0 ||
+        !Number.isFinite(new Date(str(row, "event_time")).getTime()))
+    ) {
+      throw new Error(`[supabase-sync] staged event ${str(row, "id")} has invalid transfer payload`);
     }
     const common: TransferInput = {
       walletAddress,

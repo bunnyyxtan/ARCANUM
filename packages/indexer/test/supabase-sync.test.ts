@@ -926,6 +926,103 @@ describe("Supabase synchronization", () => {
     expect(tableRows("unlinked_ledger_events")).toHaveLength(0);
   });
 
+  function stagedTransfer(kind: unknown = "transfer_executed"): Row {
+    return {
+      id: "staged-compat",
+      wallet_address: transfer.walletAddress,
+      chain_id: checkpointIdentity.chain_id,
+      deployment_id: checkpointIdentity.deployment_id,
+      event_kind: kind,
+      block_number: transfer.blockNumber,
+      event_time: transfer.timestamp.toISOString(),
+      payload: {
+        txHash: transfer.txHash,
+        logIndex: transfer.logIndex,
+        toAddress: transfer.toAddress,
+        amount: transfer.amount.toString(),
+      },
+    };
+  }
+
+  it.each(["future_transfer", "vendor_future", "", null, "transfer_allowed"])(
+    "retains unsupported staged kind %s without mirror writes",
+    async (kind) => {
+      const row = stagedTransfer(kind);
+      tableRows("unlinked_ledger_events").push(row);
+      const { syncStagedEvents } = await import("../src/supabase-sync");
+      await expect(syncStagedEvents()).rejects.toThrow("unsupported kind");
+      expect(tableRows("unlinked_ledger_events")).toEqual([row]);
+      expect(tableRows("ledger_events")).toEqual([]);
+      expect(tableRows("vendors")).toEqual([]);
+      expect(tableRows("escalations")).toEqual([]);
+      expect(vi.mocked(fetch).mock.calls.every(([, init]) => init?.method === "GET")).toBe(true);
+    },
+  );
+
+  it("retains legacy transfer_executed payload compatibility without new enrichment", async () => {
+    tableRows("unlinked_ledger_events").push(stagedTransfer());
+    const { syncStagedEvents } = await import("../src/supabase-sync");
+    await syncStagedEvents();
+    expect(tableRows("unlinked_ledger_events")).toEqual([]);
+    expect(tableRows("ledger_events")).toEqual([
+      expect.objectContaining({
+        tx_hash: transfer.txHash.toLowerCase(),
+        log_index: transfer.logIndex,
+        amount_usdc: "1.0",
+        status: "allowed",
+        policy_snapshot: {},
+      }),
+    ]);
+  });
+
+  it.each([
+    { amount: "" },
+    { amount: "-1" },
+    { txHash: "" },
+    { toAddress: "not-an-address" },
+    { logIndex: undefined },
+  ])("retains malformed legacy transfer payload %j", async (patch) => {
+    const row = stagedTransfer();
+    row.payload = { ...(row.payload as Row), ...patch };
+    tableRows("unlinked_ledger_events").push(row);
+    const { syncStagedEvents } = await import("../src/supabase-sync");
+    await expect(syncStagedEvents()).rejects.toThrow("invalid transfer payload");
+    expect(tableRows("unlinked_ledger_events")).toEqual([row]);
+    expect(tableRows("ledger_events")).toEqual([]);
+  });
+
+  it.each(["escalation_approval", "escalation_status"])(
+    "retains %s when its escalation is missing, then applies and deletes on retry",
+    async (kind) => {
+      const row = stagedTransfer(kind);
+      row.payload = {
+        escalationId: "missing-escalation",
+        approvalsCount: 2,
+        status: "released",
+        txHash: transfer.txHash,
+        logIndex: transfer.logIndex,
+      };
+      tableRows("unlinked_ledger_events").push(row);
+      const { syncStagedEvents } = await import("../src/supabase-sync");
+      await expect(syncStagedEvents()).rejects.toThrow("awaits its escalation");
+      expect(tableRows("unlinked_ledger_events")).toEqual([row]);
+      expect(tableRows("ledger_events")).toEqual([]);
+      tableRows("escalations").push({
+        id: "escalation-row",
+        escalation_key: "missing-escalation",
+        status: "pending",
+        approvals_count: 0,
+      });
+      await syncStagedEvents();
+      expect(tableRows("unlinked_ledger_events")).toEqual([]);
+      expect(tableRows("escalations")[0]).toMatchObject(
+        kind === "escalation_approval"
+          ? { approvals_count: 2, status: "pending" }
+          : { status: "released", release_tx_hash: transfer.txHash.toLowerCase() },
+      );
+    },
+  );
+
   it("replays a staged escalation lifecycle in chain order", async () => {
     tables.governed_wallets = [];
     const { syncCheckpoint, syncEscalationApproval, syncEscalationStatus, syncTransferEscalated } =
