@@ -12,6 +12,8 @@ export type LedgerReportContext = {
   rows: LedgerEntry[];
   /** Human description of active filters, e.g. "Status: ESCALATED · Search: openai". */
   filtersLabel: string;
+  /** Explicitly describes whether the export is a visible subset. */
+  scopeLabel: string;
   /** Pre-formatted totals for the exported set. */
   totals: { valueLabel: string; approved: number; rejected: number; escalated: number };
   /** Formats an amount for display, e.g. formatUsd. */
@@ -90,7 +92,7 @@ function shortHash(hash: string): string {
 }
 
 export function buildLedgerReportHtml(context: LedgerReportContext, now = new Date()): string {
-  const { rows, filtersLabel, totals, formatAmount, formatCategory } = context;
+  const { rows, filtersLabel, scopeLabel, totals, formatAmount, formatCategory } = context;
   const generated = `${now.toISOString().replace("T", " ").slice(0, 19)} UTC`;
 
   const bodyRows = rows
@@ -159,7 +161,7 @@ export function buildLedgerReportHtml(context: LedgerReportContext, now = new Da
     <h1>Decision Record Report</h1>
     <div class="meta">
       <span>Generated <b>${escapeHtml(generated)}</b></span>
-      <span>Window <b>Live record · ${rows.length} most recent movement${rows.length === 1 ? "" : "s"}</b></span>
+       <span>Scope <b>${escapeHtml(scopeLabel)}</b></span>
       <span>Filters <b>${escapeHtml(filtersLabel)}</b></span>
     </div>
   </header>

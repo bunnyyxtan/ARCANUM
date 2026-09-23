@@ -5,6 +5,8 @@
     "baseUrl": ".",
     "incremental": true,
     "noEmit": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "paths": {
       "@/*": ["./*"],
       "@/components/*": ["./components/*"],

@@ -32,6 +32,7 @@ type indexedEvents {
   eventName: String!
   blockNumber: BigInt!
   txHash: String!
+  logIndex: Int!
 }
 
 type indexedEventsPage {
@@ -99,4 +100,12 @@ input indexedEventsFilter {
   txHash_ends_with_nocase: String
   txHash_not_starts_with_nocase: String
   txHash_not_ends_with_nocase: String
+  logIndex: Int
+  logIndex_not: Int
+  logIndex_in: [Int]
+  logIndex_not_in: [Int]
+  logIndex_gt: Int
+  logIndex_lt: Int
+  logIndex_gte: Int
+  logIndex_lte: Int
 }

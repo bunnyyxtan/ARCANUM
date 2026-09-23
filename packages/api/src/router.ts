@@ -9,6 +9,7 @@ import { ledgerRouter } from "./routers/ledger";
 import { orgRouter } from "./routers/org";
 import { paymentIntentsRouter } from "./routers/payment-intents";
 import { policiesRouter } from "./routers/policies";
+import { receiptsRouter } from "./routers/receipts";
 import { vendorFlagsRouter } from "./routers/vendor-flags";
 import { vendorsRouter } from "./routers/vendors";
 import { walletsRouter } from "./routers/wallets";
@@ -26,6 +27,7 @@ export const appRouter = router({
   org: orgRouter,
   paymentIntents: paymentIntentsRouter,
   policies: policiesRouter,
+  receipts: receiptsRouter,
   vendorFlags: vendorFlagsRouter,
   vendors: vendorsRouter,
   wallets: walletsRouter,

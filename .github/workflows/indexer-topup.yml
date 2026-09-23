@@ -9,30 +9,58 @@ on:
     - cron: "23 */3 * * *"
   workflow_dispatch:
 
-concurrency:
-  group: indexer-topup
-  cancel-in-progress: false
-
 jobs:
   index:
+    # One run per Arc network, each against its own database. The unsuffixed
+    # secrets belong to the stack behind thearcanum.in, which serves Arc
+    # Mainnet since 2026-09-16 (its testnet rows are archived in the
+    # `testnet_archive` schema). A testnet run is skipped until `_TESTNET`
+    # secrets pointing at a separate database exist.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - network: mainnet
+            database_secret: INDEXER_DATABASE_URL
+            supabase_url_secret: SUPABASE_URL
+            supabase_key_secret: SUPABASE_SERVICE_ROLE_KEY
+          - network: testnet
+            database_secret: INDEXER_DATABASE_URL_TESTNET
+            supabase_url_secret: SUPABASE_URL_TESTNET
+            supabase_key_secret: SUPABASE_SERVICE_ROLE_KEY_TESTNET
+    concurrency:
+      group: indexer-topup-${{ matrix.network }}
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      DATABASE_URL: ${{ secrets[matrix.database_secret] }}
     steps:
+      - name: Skip networks without a configured database
+        if: env.DATABASE_URL == ''
+        run: echo "no ${{ matrix.database_secret }} secret; skipping the ${{ matrix.network }} top-up"
+
       - uses: actions/checkout@v7
+        if: env.DATABASE_URL != ''
 
       - uses: actions/setup-node@v7
+        if: env.DATABASE_URL != ''
         with:
           node-version: 22
           cache: npm
 
       - run: npm ci
+        if: env.DATABASE_URL != ''
 
       - name: Index until the chain tip, then stop
+        if: env.DATABASE_URL != ''
         env:
-          DATABASE_URL: ${{ secrets.INDEXER_DATABASE_URL }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          ARC_TESTNET_RPC: https://arc-testnet.drpc.org
+          ARC_NETWORK: ${{ matrix.network }}
+          SUPABASE_URL: ${{ secrets[matrix.supabase_url_secret] }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets[matrix.supabase_key_secret] }}
+          # The RPC endpoint is chosen in packages/indexer/ponder.config.ts
+          # (public Tenderly gateway, one request per second). A keyed provider
+          # goes in INDEXER_RPC_URL / INDEXER_RPC_REQUESTS_PER_SECOND here.
           # The legacy drizzle Postgres mirror only exists in the local dev
           # database; here the handlers stop after their Supabase sync.
           ARCANUM_DISABLE_PG_MIRROR: "1"

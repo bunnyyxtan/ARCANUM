@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { ARC_CHAIN_ID, ARC_NETWORK } from "@arcanum/shared";
+import { ARC_CHAIN_ID, ARC_NETWORK, validateDeploymentManifest } from "@arcanum/shared";
 import { z } from "zod";
 
 const addressSchema = z.custom<`0x${string}`>(
@@ -63,7 +63,13 @@ export function loadDeployment() {
   const path = findDeploymentFile();
   let parsed: z.infer<typeof deploymentSchema>;
   try {
-    parsed = deploymentSchema.parse(JSON.parse(readFileSync(path, "utf8")));
+    const json: unknown = JSON.parse(readFileSync(path, "utf8"));
+    // The shared validator is what the web app and API apply to the same
+    // file: network name, chain id and USDC must match the configured
+    // network, and a mainnet manifest must carry its broadcast record. The
+    // indexer must not accept a manifest the rest of the stack rejects.
+    validateDeploymentManifest(json, ARC_NETWORK);
+    parsed = deploymentSchema.parse(json);
   } catch (error) {
     throw new Error(`[indexer] invalid deployment manifest ${path}: ${String(error)}`, {
       cause: error,

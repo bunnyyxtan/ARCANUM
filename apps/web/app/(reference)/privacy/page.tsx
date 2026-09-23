@@ -1,3 +1,4 @@
+import { ARC_NETWORK_NAME, IS_ARC_MAINNET } from "@arcanum/shared";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -35,8 +36,8 @@ export default function PrivacyPage() {
                 the ledger.
               </p>
               <p>
-                Events read from Arc Testnet by our systems. That data is public chain data; we copy
-                it so pages load quickly.
+                Events read from {ARC_NETWORK_NAME} by our systems. That data is public chain data;
+                we copy it so pages load quickly.
               </p>
             </>
           ),
@@ -100,9 +101,9 @@ export default function PrivacyPage() {
           body: (
             <>
               <p>
-                Wallet deployments, policies and transfers are written to Arc Testnet. That record
-                is public and permanent. Removing something from ARCANUM removes it from our read
-                model. It does not, and cannot, remove it from the chain.
+                Wallet deployments, policies and transfers are written to {ARC_NETWORK_NAME}. That
+                record is public and permanent. Removing something from ARCANUM removes it from our
+                read model. It does not, and cannot, remove it from the chain.
               </p>
             </>
           ),
@@ -137,13 +138,20 @@ export default function PrivacyPage() {
         },
         {
           number: "08",
-          heading: "Testnet",
+          heading: IS_ARC_MAINNET ? "Mainnet" : "Testnet",
           body: (
             <>
-              <p>
-                ARCANUM currently runs against Arc Testnet. Balances are test funds with no monetary
-                value, and testnet state can be reset by the network itself.
-              </p>
+              {IS_ARC_MAINNET ? (
+                <p>
+                  ARCANUM currently runs against Arc Mainnet. Balances are real USDC. Chain state is
+                  permanent and public, and ARCANUM cannot reset or delete it.
+                </p>
+              ) : (
+                <p>
+                  ARCANUM currently runs against Arc Testnet. Balances are test funds with no
+                  monetary value, and testnet state can be reset by the network itself.
+                </p>
+              )}
             </>
           ),
         },

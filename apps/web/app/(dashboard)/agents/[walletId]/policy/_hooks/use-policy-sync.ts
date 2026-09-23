@@ -5,20 +5,24 @@ import { toast } from "sonner";
 import type { Address } from "viem";
 
 import { errorText } from "@/lib/chain-errors";
-import { isEvmAddress, isSameAddress } from "@/lib/format/address";
+import { isSameAddress } from "@/lib/format/address";
 import { trpc } from "@/lib/trpc";
 
-import { policyDraftFromServerRead, reconcilePolicyDraft } from "../_lib/policy-helpers";
+import {
+  type PolicyWalletRouteOption,
+  policyDraftFromServerRead,
+  policyWalletAddressForRoute,
+  reconcilePolicyDraft,
+} from "../_lib/policy-helpers";
 import type { usePolicyDeployment } from "./use-policy-deployment";
 import type { usePolicyDraft } from "./use-policy-draft";
 
 type Deployment = ReturnType<typeof usePolicyDeployment>;
 type Draft = ReturnType<typeof usePolicyDraft>;
-type WalletOption = { address: string; id: string; label: string };
 
 export function usePolicySync(
   routeWalletId: string,
-  policyWalletOptions: readonly WalletOption[],
+  policyWalletOptions: readonly PolicyWalletRouteOption[],
   selectedGovernedWalletAddress: Address | null,
   draft: Draft,
   deployment: Deployment,
@@ -28,25 +32,15 @@ export function usePolicySync(
   const hydratedWallet = useRef<string | null>(null);
   const hydratedPolicy = useRef<string | null>(null);
   useEffect(() => {
-    if (
-      draft.selectedPolicyWalletAddress &&
-      policyWalletOptions.some((wallet) =>
-        isSameAddress(wallet.address, draft.selectedPolicyWalletAddress),
-      )
-    ) {
+    const routeAddress = policyWalletAddressForRoute(routeWalletId, policyWalletOptions);
+    if (!routeAddress) {
+      if (draft.selectedPolicyWalletAddress) {
+        draft.setSelectedPolicyWalletAddress("");
+      }
       return;
     }
-    const normalizedRouteWalletId = routeWalletId.toLowerCase();
-    const routeMatch = policyWalletOptions.find(
-      (wallet) =>
-        wallet.id.toLowerCase() === normalizedRouteWalletId ||
-        isSameAddress(wallet.address, routeWalletId) ||
-        wallet.label.toLowerCase() === normalizedRouteWalletId,
-    );
-    const routeAddress = isEvmAddress(routeWalletId) ? routeWalletId : "";
-    draft.setSelectedPolicyWalletAddress(
-      routeMatch?.address ?? policyWalletOptions[0]?.address ?? routeAddress,
-    );
+    if (isSameAddress(routeAddress, draft.selectedPolicyWalletAddress)) return;
+    draft.setSelectedPolicyWalletAddress(routeAddress ?? "");
   }, [
     draft.selectedPolicyWalletAddress,
     draft.setSelectedPolicyWalletAddress,

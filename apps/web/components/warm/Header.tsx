@@ -7,7 +7,8 @@ import { type CSSProperties, type ReactNode, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useAccount, useDisconnect } from "wagmi";
 
-import { formatUsdCompact } from "@/lib/format";
+import { copyText } from "@/lib/clipboard";
+import { formatBaseUnits } from "@/lib/escalation-truth";
 import { useLiveAnomalies, useLiveEscalations } from "@/lib/live-data";
 
 import { CommandPalette } from "./CommandPalette";
@@ -23,6 +24,7 @@ const links = [
   { label: "AGENTS", href: "/agents" },
   { label: "VENDORS", href: "/vendors" },
   { label: "LEDGER", href: "/ledger" },
+  { label: "RECEIPTS", href: "/receipts" },
   { label: "ESCALATIONS", href: "/escalations" },
   { label: "ANOMALIES", href: "/anomalies" },
 ] as const;
@@ -41,7 +43,7 @@ export function Header({ children }: HeaderProps) {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState(false);
   const [shortcuts, setShortcuts] = useState(false);
-  const [copiedAddress, setCopiedAddress] = useState(false);
+  const [copiedAddress, setCopiedAddress] = useState<"copied" | "failed" | null>(null);
   const [connectOpen, setConnectOpen] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
 
@@ -49,7 +51,7 @@ export function Header({ children }: HeaderProps) {
     ...pendingEscalations.slice(0, 3).map((item) => ({
       key: `esc:${item.id}`,
       kind: "ESCALATION" as const,
-      text: `${item.agentName} · ${formatUsdCompact(item.amount)} awaiting your approval`,
+      text: `${item.agentName} · ${formatBaseUnits(item.amountBaseUnits)} awaiting your approval`,
       time: item.expiresIn ? `expires ${item.expiresIn}` : "pending",
       href: "/escalations",
     })),
@@ -184,11 +186,11 @@ export function Header({ children }: HeaderProps) {
             )}
           </button>
           {notifications && (
-            <div
-              role="dialog"
+            <dialog
+              open
               aria-label="Recent governance events"
               style={{ animation: "warmIn 260ms cubic-bezier(0.16,1,0.3,1) both" }}
-              className="absolute right-0 top-[calc(100%+10px)] z-30 w-[300px] border border-[var(--wl-line-bold)] bg-[var(--wl-bg-raised)] p-4 shadow-[12px_14px_0_var(--wl-line-faint)]"
+              className="absolute left-auto right-0 top-[calc(100%+10px)] z-30 m-0 w-[300px] border border-[var(--wl-line-bold)] bg-[var(--wl-bg-raised)] p-4 shadow-[12px_14px_0_var(--wl-line-faint)]"
             >
               <div className="flex items-center justify-between border-b border-[var(--wl-line)] pb-3">
                 <p className="font-mono text-[9px] uppercase tracking-[.16em] text-[var(--wl-signal)]">
@@ -257,7 +259,7 @@ export function Header({ children }: HeaderProps) {
                   })}
                 </div>
               )}
-            </div>
+            </dialog>
           )}
         </div>
         <CommandPalette />
@@ -290,21 +292,32 @@ export function Header({ children }: HeaderProps) {
               </p>
               {address && (
                 <div className="mt-1 flex items-center gap-2">
-                  <p className="font-mono text-[10px] text-[var(--wl-secondary)]">
-                    {truncateAddress(address)}
+                  <p
+                    className={`font-mono text-[10px] text-[var(--wl-secondary)] ${copiedAddress === "failed" ? "break-all select-all" : ""}`}
+                  >
+                    {copiedAddress === "failed" ? address : truncateAddress(address)}
                   </p>
                   <button
                     type="button"
-                    onClick={() => {
-                      if (navigator.clipboard) void navigator.clipboard.writeText(address);
-                      setCopiedAddress(true);
-                      window.setTimeout(() => setCopiedAddress(false), 1500);
+                    onClick={async () => {
+                      const copied = await copyText(address);
+                      setCopiedAddress(copied ? "copied" : "failed");
+                      window.setTimeout(() => setCopiedAddress(null), copied ? 1500 : 3000);
                     }}
                     className="font-mono text-[8.5px] tracking-[.1em] text-[var(--wl-signal)] transition-colors hover:text-[var(--wl-signal-deep)]"
                   >
-                    {copiedAddress ? "COPIED" : "COPY"}
+                    {copiedAddress === "copied"
+                      ? "COPIED"
+                      : copiedAddress === "failed"
+                        ? "COPY FAILED"
+                        : "COPY"}
                   </button>
                 </div>
+              )}
+              {copiedAddress === "failed" && (
+                <p role="alert" className="mt-2 text-[10px] leading-[1.4] text-[var(--wl-signal)]">
+                  Clipboard unavailable. Select the address above and copy it manually.
+                </p>
               )}
               <p className="mt-1.5 flex items-center gap-1.5 font-mono text-[9px] tracking-[.1em] text-[var(--wl-green)]">
                 <span className="h-1.5 w-1.5 rounded-full bg-[var(--wl-green)]" />

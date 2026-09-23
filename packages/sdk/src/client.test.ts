@@ -140,11 +140,22 @@ describe("Arcanum SDK surface", () => {
       });
       Reflect.set(client, "publicClient", {
         waitForTransactionReceipt: vi.fn().mockResolvedValue({
+          transactionHash: txHash,
           status: "reverted",
           blockNumber: 10n,
           logs: [],
         }),
-        getTransaction: vi.fn().mockRejectedValue(new Error("transaction unavailable")),
+        getTransaction: vi.fn().mockResolvedValue({
+          hash: txHash,
+          from: paymentIntent.agentSignerAddress,
+          to: paymentIntent.governedWalletAddress,
+          input: encodeExecuteUSDC({
+            to: paymentIntent.vendorAddress,
+            amount: 1n,
+            reason: "test",
+          }),
+          value: 0n,
+        }),
       });
       Reflect.set(client, "assertSignerAndWalletOpen", vi.fn());
       Reflect.set(client, "assertSufficientBalance", vi.fn());
@@ -196,6 +207,7 @@ describe("Arcanum SDK surface", () => {
     const client = Object.create(ArcanumClient.prototype) as ArcanumClient;
     Reflect.set(client, "publicClient", {
       waitForTransactionReceipt: vi.fn().mockResolvedValue({
+        transactionHash: txHash,
         status: "reverted",
         blockNumber: 10n,
       }),

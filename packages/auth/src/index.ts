@@ -17,12 +17,39 @@ export type ArcanumSession = {
 export type AuthSessionData = {
   nonce?: string;
   user?: ArcanumSession;
+  /** Opaque bearer value, sealed HttpOnly cookie only; never return in JSON. */
+  sessionId?: string;
 };
+
+// Keep the application lifetime and the cryptographic seal lifetime as one
+// contract. The browser cookie's max-age is not an authorization boundary:
+// callers can replay a seal without a browser enforcing that attribute.
+export const SESSION_TTL_SECONDS = 60 * 60 * 12;
+export const SESSION_TTL_MS = SESSION_TTL_SECONDS * 1000;
+
+const arcanumSessionSchema = z.object({
+  walletAddress: z.string().min(1),
+  tenantId: z.string().min(1),
+  role: z.enum(["owner", "council", "signer", "viewer"]),
+  expiresAt: z.number().finite(),
+});
 
 export const verifyBodySchema = z.object({
   message: z.string().min(1),
   signature: z.string().min(1),
 });
+
+/**
+ * Validate the application session independently of iron-session's seal.
+ *
+ * A seal can be cryptographically valid after the application session has
+ * expired. This is only a shape/expiry check, NOT authorization. Server
+ * boundaries must also use validateSession to check the revocation store.
+ */
+export function isCurrentSession(session: unknown, now = Date.now()): session is ArcanumSession {
+  const parsed = arcanumSessionSchema.safeParse(session);
+  return parsed.success && parsed.data.expiresAt > now;
+}
 
 export function createNonce() {
   return randomBytes(16).toString("hex");
@@ -73,8 +100,11 @@ export function getSessionOptions() {
           ? false
           : process.env.NODE_ENV !== "development",
       sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7,
+      maxAge: SESSION_TTL_SECONDS,
     },
+    // iron-session defaults to a fourteen-day seal. Set this explicitly so a
+    // manually replayed seal cannot outlive the twelve-hour application session.
+    ttl: SESSION_TTL_SECONDS,
   } satisfies SessionOptions;
 }
 
@@ -184,6 +214,16 @@ function toSession(
     walletAddress,
     tenantId,
     role,
-    expiresAt: Date.now() + 60 * 60 * 24 * 7 * 1000,
+    expiresAt: Date.now() + SESSION_TTL_MS,
   };
 }
+
+export {
+  createTrackedSession,
+  validateSession,
+  revokeSession,
+  revokeAllSessions,
+  SessionStoreUnavailableError,
+  assertSessionStoreReady,
+} from "./sessions";
+export { isSameOriginAuthRequest } from "./origin";

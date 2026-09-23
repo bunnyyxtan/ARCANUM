@@ -12,6 +12,7 @@ import { z } from "zod";
 import {
   isEscalationSigner,
   readEscalationChainState,
+  readWalletOwner,
   verifyEscalationDecisionReceipt,
 } from "../chain";
 import {
@@ -107,7 +108,17 @@ export const escalationsRouter = router({
       }
 
       const caller = ctx.session.walletAddress.toLowerCase();
-      const isOwner = wallet.ownerAddress.toLowerCase() === caller;
+      let isOwner = false;
+      try {
+        const chainOwner = await readWalletOwner(ctx.publicClient, wallet.address as `0x${string}`);
+        isOwner = chainOwner.toLowerCase() === caller;
+      } catch (error) {
+        throw new TRPCError({
+          code: "SERVICE_UNAVAILABLE",
+          message: "The governed wallet owner could not be verified onchain. Try again shortly.",
+          cause: error,
+        });
+      }
       if (!isOwner && !(await isEscalationSigner(chainState.wallet, caller as `0x${string}`))) {
         throw new TRPCError({
           code: "FORBIDDEN",
@@ -121,9 +132,11 @@ export const escalationsRouter = router({
         status:
           chainState.status === "executed"
             ? "released"
-            : chainState.status === "rejected" || chainState.status === "denied"
-              ? "denied"
-              : chainState.status,
+            : chainState.status === "rejected"
+              ? "rejected"
+              : chainState.status === "denied"
+                ? "denied"
+                : chainState.status,
         approvalsCount: chainState.signatures,
       });
 

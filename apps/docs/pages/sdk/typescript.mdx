@@ -7,20 +7,22 @@ contract state, simulates policy decisions, and signs `executeUSDC` with an agen
 npm install arcanum-sdk viem
 ```
 
-The write example below is for Arc Testnet development. Keep private keys outside source
-control; production operators should use managed signer infrastructure or user-controlled
-wallets.
+The write example below targets Arc Mainnet, where the hosted product runs and wallets hold
+real USDC; the contracts are unaudited, so keep pilot caps small. For development, import
+`arcTestnet` and `ARC_TESTNET_RPC_URL` instead and use the testnet factory. Keep private keys
+outside source control; production operators should use managed signer infrastructure or
+user-controlled wallets.
 
 ```ts
 import { ArcanumClient } from "arcanum-sdk"
-import { ARC_TESTNET_RPC_URL, arcTestnet, usdcErc20 } from "arcanum-sdk/chains"
+import { ARC_MAINNET_RPC_URL, arcMainnet, usdcErc20 } from "arcanum-sdk/chains"
 import { privateKeyToAccount } from "viem/accounts"
 
 const arc = new ArcanumClient({
   walletAddress: "0x0000000000000000000000000000000000000001",
   agentSigner: privateKeyToAccount(process.env.AGENT_PRIVATE_KEY as `0x${string}`),
-  chain: arcTestnet,
-  rpcUrl: process.env.ARC_TESTNET_RPC ?? ARC_TESTNET_RPC_URL,
+  chain: arcMainnet,
+  rpcUrl: process.env.ARC_MAINNET_RPC_URL ?? ARC_MAINNET_RPC_URL,
 })
 
 const result = await arc.executeUSDC({
@@ -33,12 +35,53 @@ const result = await arc.executeUSDC({
 
 Payment-intent methods use `reference` as the caller's stable business reference. Version 3
 replaces the former `idempotencyKey` name; do not send both.
-The reference does not make execution idempotent. If receipt waiting times out, retain the
-submitted hash and call `confirm(txHash)`; resubmitting can transfer funds twice.
+The reference does not make execution idempotent. Execution methods throw
+`TransactionRecoveryError` when a submitted payment's outcome is uncertain; this is
+not a denial. Retain its `txHash` and `submission.input`, then call
+`reconcileUSDC(txHash, originalInput)` on the same chain/wallet without a signer.
+`confirm(txHash)` only checks receipt status, not the payment outcome.
+
+Pass `{ onSubmitted: async (submission) => persistSubmission(submission) }` as the
+second argument to `executeUSDC`, `executePaymentIntent`, or
+`executePaymentIntentWithReceipt`. Implement `persistSubmission` in your durable
+store (serialize the bigint amount as a decimal string and restore it with `BigInt`).
+The callback runs before confirmation; its failure still means the transaction may
+have executed. Never automatically retry a payment or invent a fresh reference after
+uncertainty. There is no exactly-once guarantee, including crashes before hash persistence.
+
+The repository CLI requires `--execute --reference <stable-business-reference>` and
+keeps an atomic, fsynced execution journal in `demo-output`. An unresolved journal
+blocks further executions for that chain/wallet, including different references.
+Use `receipts-demo.ts recover --reference <original-reference>` for read-only recovery;
+then retry only `link <receiptId> <txHash>` if evidence attachment is needed.
+Keep the directory on durable shared storage; do not delete markers to bypass the
+guard. A missing saved hash or interrupted filesystem lock needs operator investigation.
+
+## Circle Wallets as the signer
+
+`arcanum-sdk/circle` (Node.js only) turns a Circle developer-controlled wallet into the agent
+signer, so the key never sits on the agent host. It is a viem local account that asks Circle's
+signing API for message and transaction signatures and verifies each answer against the request
+before viem broadcasts anything.
+
+```ts
+import { circleWalletAccount } from "arcanum-sdk/circle"
+
+const agentSigner = circleWalletAccount({
+  apiKey: process.env.CIRCLE_API_KEY as string,
+  entitySecret: process.env.CIRCLE_ENTITY_SECRET as string,
+  walletId: process.env.CIRCLE_WALLET_ID as string,
+  address: process.env.CIRCLE_WALLET_ADDRESS as `0x${string}`,
+})
+```
+
+Authorize the wallet's address with `addSigner` like any signer. Setup and the trust model are in
+the repository's `docs/CIRCLE-WALLETS.md`.
 
 ## API
 
 - `executeUSDC({ to, amount, reason, metadata })`
+- `reconcileUSDC(txHash, originalInput)` (read-only outcome recovery)
 - `createPaymentIntent({ ..., reference })`
 - `simulate({ to, amount })`
 - `getPolicy()`
@@ -53,3 +96,6 @@ submitted hash and call `confirm(txHash)`; resubmitting can transfer funds twice
 `AgentNotAuthorizedError`, and `InsufficientUSDCError` extend `ArcanumError`.
 `TransferRevertedError` means the submitted chain transaction reverted; inspect its cause and
 transaction hash rather than treating it as a policy denial.
+`TransactionRecoveryError` deliberately does not extend `ArcanumError` and has no
+policy verdict. Its `txHash`, `code`, `cause`, and optional `submission` support
+same-hash recovery; an agent must not convert it into “denied” or “not submitted.”

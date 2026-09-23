@@ -1,7 +1,12 @@
 import { syncSupabaseAuthSession } from "@arcanum/api/server";
 import {
   type AuthSessionData,
+  SESSION_TTL_MS,
+  SessionStoreUnavailableError,
+  createTrackedSession,
   getSessionOptions,
+  isSameOriginAuthRequest,
+  revokeSession,
   verifyBodySchema,
   verifySiweLogin,
 } from "@arcanum/auth";
@@ -14,7 +19,13 @@ import { enforceAuthRouteRateLimit } from "../rate-limit";
 import { identitySyncOptional } from "./identity-sync-policy";
 
 export async function POST(request: Request) {
-  const limited = enforceAuthRouteRateLimit(request, "verify");
+  // Captured before async verification/provisioning so logout-all can reject
+  // a login already in flight when its wallet+tenant revocation completed.
+  const loginStartedAt = Date.now();
+  if (!isSameOriginAuthRequest(request)) {
+    return NextResponse.json({ error: "Same-origin request required" }, { status: 403 });
+  }
+  const limited = await enforceAuthRouteRateLimit(request, "verify");
   if (limited) {
     return limited;
   }
@@ -35,6 +46,7 @@ export async function POST(request: Request) {
       expectedChainId: ARC_CHAIN_ID,
       expectedDomain: resolveExpectedSiweDomain(requestHeaders),
     });
+    user.expiresAt = loginStartedAt + SESSION_TTL_MS;
 
     // Supabase holds the profile and workspace this session will be read
     // against. Issuing a cookie without one hands out an authenticated session
@@ -51,12 +63,22 @@ export async function POST(request: Request) {
       );
     }
 
+    // Rotate the existing server record, not just the cookie. Never put the
+    // opaque identifier in the JSON response or any client-side cache.
+    await revokeSession(session);
+    session.sessionId = await createTrackedSession(user);
     session.user = user;
     session.nonce = undefined;
     await session.save();
 
-    return NextResponse.json({ user });
+    return NextResponse.json({ user }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
+    if (error instanceof SessionStoreUnavailableError) {
+      return NextResponse.json(
+        { error: "Authentication unavailable", message: error.message },
+        { status: 503 },
+      );
+    }
     const message = error instanceof Error ? error.message : "SIWE verification failed";
     console.warn(`[arcanum-auth] SIWE verify failed: ${message}`);
     return NextResponse.json(

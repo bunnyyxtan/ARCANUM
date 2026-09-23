@@ -1,3 +1,4 @@
+import { ARC_NETWORK_NAME, IS_ARC_MAINNET } from "@arcanum/shared";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -5,8 +6,7 @@ import { LegalPage } from "@/components/warm/LegalPage";
 
 export const metadata: Metadata = {
   title: "Terms · ARCANUM",
-  description:
-    "Plain-language terms for using ARCANUM while it runs on Arc Testnet: what it is, what it is not, and who is responsible for what.",
+  description: `Plain-language terms for using ARCANUM while it runs on ${ARC_NETWORK_NAME}: what it is, what it is not, and who is responsible for what.`,
 };
 
 const GITHUB_URL = "https://github.com/bunnyyxtan/ARCANUM";
@@ -16,7 +16,7 @@ export default function TermsPage() {
     <LegalPage
       kicker="REFERENCE / TERMS"
       title="The deal."
-      lede="Plain language, because terms you cannot read are not terms you agreed to. This describes how ARCANUM is offered while it runs on testnet. It is a statement of intent, not a contract drafted by lawyers."
+      lede={`Plain language, because terms you cannot read are not terms you agreed to. This describes how ARCANUM is offered while it runs on ${ARC_NETWORK_NAME}. It is a statement of intent, not a contract drafted by lawyers.`}
       updated="6 AUGUST 2026"
       sections={[
         {
@@ -41,14 +41,33 @@ export default function TermsPage() {
         },
         {
           number: "02",
-          heading: "Testnet, not money",
+          heading: IS_ARC_MAINNET ? "Real USDC, unaudited software" : "Testnet, not money",
           body: (
             <>
-              <p>
-                Everything here runs on Arc Testnet with test tokens that have no monetary value.
-                ARCANUM is not a bank, broker, exchange or custodian, and nothing on this site is
-                financial, legal or tax advice.
-              </p>
+              {IS_ARC_MAINNET ? (
+                <>
+                  <p>
+                    Everything here runs on Arc Mainnet with real USDC. USDC is Arc's native gas
+                    token and the same asset exposed through its ERC-20 view.
+                  </p>
+                  <p>
+                    The contracts have unit tests, invariants and static analysis, but no
+                    independent third-party audit. This mainnet deployment is a limited pilot. You
+                    choose your own limits and deposit at your own risk.
+                  </p>
+                  <p>
+                    ARCANUM servers never hold keys or funds. ARCANUM is not a bank, broker,
+                    exchange or custodian, and nothing on this site is financial, legal or tax
+                    advice.
+                  </p>
+                </>
+              ) : (
+                <p>
+                  Everything here runs on Arc Testnet with test tokens that have no monetary value.
+                  ARCANUM is not a bank, broker, exchange or custodian, and nothing on this site is
+                  financial, legal or tax advice.
+                </p>
+              )}
             </>
           ),
         },
@@ -119,20 +138,31 @@ export default function TermsPage() {
               <p>
                 The software is provided as-is, without warranties of any kind. To the fullest
                 extent the law allows, no liability is accepted for loss arising from use of the
-                service, which, on testnet, means loss of tokens that carry no value.
+                service
+                {IS_ARC_MAINNET
+                  ? ", including loss of the real USDC you deposited."
+                  : ", which, on testnet, means loss of tokens that carry no value."}
               </p>
             </>
           ),
         },
         {
           number: "08",
-          heading: "Before real funds",
+          heading: IS_ARC_MAINNET ? "Limited mainnet pilot" : "Before real funds",
           body: (
             <>
-              <p>
-                Full terms will replace this page before ARCANUM supports a network where real value
-                moves. Until then, treat everything here as a pilot you are welcome to test.
-              </p>
+              {IS_ARC_MAINNET ? (
+                <p>
+                  This deployment is a limited pilot where real value moves. Set limits you can
+                  afford to lose, deposit only what you choose to put at risk, and rehearse the
+                  complete flow on Arc Testnet first.
+                </p>
+              ) : (
+                <p>
+                  Full terms will replace this page before ARCANUM supports a network where real
+                  value moves. Until then, treat everything here as a pilot you are welcome to test.
+                </p>
+              )}
             </>
           ),
         },

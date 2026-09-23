@@ -1,16 +1,17 @@
-import type { Agent, Policy, Wallet } from "@arcanum/db/schema";
+import type { Agent, Wallet } from "@arcanum/db/schema";
 import { ARC_NETWORK, deploymentManifestFor } from "@arcanum/shared";
+import { readWalletAuthorityState } from "../chain";
 import type { ApiContext } from "../context";
-import { computePostureScore } from "../posture";
 import { readCallerMembership } from "./auth";
 import type { SupabaseRow } from "./client";
 import {
   type SupabaseWriteResult,
+  readModelUnavailable,
   unavailableWrite,
   unconfiguredWrite,
   warnSupabase,
 } from "./client";
-import { arrayField, stringField } from "./fields";
+import { arrayField, numberField, stringField } from "./fields";
 import {
   agentFromSigner,
   policyFromDoctrineRow,
@@ -18,11 +19,11 @@ import {
   walletFromGovernedWalletRow,
   zeroWallet,
 } from "./mappers";
-import { ownerScope, requiredStringField, rowsForWallets, scopedRows } from "./scope";
-import { selectRows } from "./transport";
+import { ownerScope, requiredStringField, scopedRows } from "./scope";
+import { scopedAnalyticsRpc } from "./scoped-analytics";
+import { sharedRead } from "./snapshot";
+import { selectRows, selectRowsExhaustive } from "./transport";
 
-// A workspace is capped well above the expected fleet size while preventing unbounded reads.
-const MAX_WALLETS_PER_ORG = 500;
 const MAX_DOCTRINE_VERSIONS_PER_WALLET = 500;
 
 /**
@@ -57,13 +58,25 @@ export function agentWithoutDoctrine(agent: Agent): AgentWithDoctrine {
 }
 
 export async function readSupabaseWallets(ctx: ApiContext): Promise<Wallet[]> {
+  const walletFactory = deploymentManifestFor(ARC_NETWORK).walletFactory.toLowerCase();
+  return (await readWalletRows(ctx))
+    .filter(
+      (row) => stringField(row, ["wallet_factory_address"], "").toLowerCase() === walletFactory,
+    )
+    .map(walletFromGovernedWalletRow);
+}
+
+function readWalletRows(ctx: ApiContext): Promise<SupabaseRow[]> {
+  return sharedRead(ctx, "wallet-population", () => discoverWalletRows(ctx));
+}
+
+async function discoverWalletRows(ctx: ApiContext): Promise<SupabaseRow[]> {
   const owner = ownerScope(ctx);
   if (!owner) {
     return [];
   }
 
   const membership = await readCallerMembership(ctx);
-  const walletFactory = deploymentManifestFor(ARC_NETWORK).walletFactory.toLowerCase();
 
   // Everything in the caller's workspace, plus anything the caller owns
   // directly. The union matters in both directions: a teammate owns none of the
@@ -71,20 +84,27 @@ export async function readSupabaseWallets(ctx: ApiContext): Promise<Wallet[]> {
   // wallets the read model never filed under an organisation.
   const [orgRows, ownedRows] = await Promise.all([
     membership
-      ? selectRows(ctx, "governed_wallets", {
-          filters: {
-            organization_id: membership.orgId,
-            wallet_factory_address: walletFactory,
+      ? selectRowsExhaustive(
+          ctx,
+          "governed_wallets",
+          {
+            filters: {
+              organization_id: membership.orgId,
+            },
+            order: "created_at.desc,id.desc",
           },
-          order: "created_at.desc",
-          limit: MAX_WALLETS_PER_ORG,
-        })
+          { cursorColumn: "created_at", label: "governed_wallets.org.read" },
+        )
       : Promise.resolve([] as SupabaseRow[]),
-    selectRows(ctx, "governed_wallets", {
-      filters: { owner_address: owner, wallet_factory_address: walletFactory },
-      order: "created_at.desc",
-      limit: MAX_WALLETS_PER_ORG,
-    }),
+    selectRowsExhaustive(
+      ctx,
+      "governed_wallets",
+      {
+        filters: { owner_address: owner },
+        order: "created_at.desc,id.desc",
+      },
+      { cursorColumn: "created_at", label: "governed_wallets.owner.read" },
+    ),
   ]);
 
   const seen = new Set<string>();
@@ -104,32 +124,15 @@ export async function readSupabaseWallets(ctx: ApiContext): Promise<Wallet[]> {
     stringField(right, ["created_at"]).localeCompare(stringField(left, ["created_at"])),
   );
 
-  return merged.map(walletFromGovernedWalletRow);
+  return merged;
 }
 
 export async function readSupabaseLegacyWalletCount(ctx: ApiContext) {
-  const owner = ownerScope(ctx);
-  if (!owner) {
-    return 0;
-  }
-
-  const membership = await readCallerMembership(ctx);
   const walletFactory = deploymentManifestFor(ARC_NETWORK).walletFactory.toLowerCase();
-  const [orgRows, ownedRows] = await Promise.all([
-    membership
-      ? selectRows(ctx, "governed_wallets", {
-          filters: { organization_id: membership.orgId },
-          limit: MAX_WALLETS_PER_ORG,
-        })
-      : Promise.resolve([] as SupabaseRow[]),
-    selectRows(ctx, "governed_wallets", {
-      filters: { owner_address: owner },
-      limit: MAX_WALLETS_PER_ORG,
-    }),
-  ]);
+  const rows = await readWalletRows(ctx);
 
   const legacyWalletIds = new Set<string>();
-  for (const row of [...orgRows, ...scopedRows(ctx, ownedRows)]) {
+  for (const row of rows) {
     if (stringField(row, ["wallet_factory_address"], "").toLowerCase() !== walletFactory) {
       legacyWalletIds.add(
         stringField(
@@ -215,25 +218,7 @@ async function agentsForWallets(ctx: ApiContext, wallets: Wallet[]): Promise<Age
   if (wallets.length === 0) {
     return [];
   }
-
-  // Fetch only the current doctrine of each wallet the caller owns, rather
-  // than reading whole tables and filtering afterwards. Posture is computed
-  // from that doctrine, so no profile read is needed here.
-  // Doctrines are versioned, so this read is deliberately unbounded: a cap
-  // across all wallets would let one busy wallet's history push another
-  // wallet's current doctrine out of the window.
-  const doctrineRows = await selectRows(ctx, "doctrines", {
-    inFilters: { governed_wallet_id: wallets.map((wallet) => wallet.id) },
-    order: "updated_at.desc",
-  });
-  const doctrinesByWallet = new Map<string, SupabaseRow>();
-  for (const doctrine of doctrineRows) {
-    const walletId = stringField(doctrine, ["governed_wallet_id"]);
-    if (walletId && !doctrinesByWallet.has(walletId)) {
-      doctrinesByWallet.set(walletId, doctrine);
-    }
-  }
-
+  const doctrinesByWallet = await currentDoctrinesForWallets(ctx, wallets);
   return wallets.flatMap((wallet) => {
     const current = doctrinesByWallet.get(wallet.id);
     if (!current) {
@@ -241,12 +226,145 @@ async function agentsForWallets(ctx: ApiContext, wallets: Wallet[]): Promise<Age
     }
 
     const posture = postureFromDoctrineRow(current, wallet.frozen);
-
-    return arrayField(current, ["signers"])
-      .map((signer) => signer.toLowerCase())
-      .filter((signer) => signer.startsWith("0x") && signer !== zeroWallet())
-      .map((signer) => agentFromSigner(wallet, signer, current, posture));
+    return doctrineSigners(current).map((signer) =>
+      agentFromSigner(wallet, signer, current, posture),
+    );
   });
+}
+
+function doctrineSigners(row: SupabaseRow) {
+  return arrayField(row, ["signers"])
+    .map((signer) => signer.toLowerCase())
+    .filter((signer) => signer.startsWith("0x") && signer !== zeroWallet());
+}
+
+export async function readSupabaseAgentCounts(ctx: ApiContext) {
+  const wallets = await readSupabaseWallets(ctx);
+  if (!wallets.length) return { frozen: 0, active: 0 };
+  const doctrines = await currentDoctrinesForWallets(ctx, wallets);
+  const counts = { frozen: 0, active: 0 };
+  for (const wallet of wallets) {
+    const doctrine = doctrines.get(wallet.id);
+    if (doctrine) {
+      counts[wallet.frozen ? "frozen" : "active"] += doctrineSigners(doctrine).length;
+    }
+  }
+  return counts;
+}
+
+function currentDoctrinesForWallets(ctx: ApiContext, wallets: Wallet[]) {
+  const key = `current-doctrines:${JSON.stringify(wallets.map((wallet) => wallet.id))}`;
+  return sharedRead(ctx, key, () => discoverCurrentDoctrines(ctx, wallets));
+}
+
+/** The current-schema RPC returns complete doctrine rows, not legacy projections. */
+function validateCurrentDoctrine(value: unknown): asserts value is SupabaseRow {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("Invalid current doctrine row.");
+  }
+  const row = value as SupabaseRow;
+  for (const key of ["id", "governed_wallet_id"]) {
+    if (
+      typeof row[key] !== "string" ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(row[key])
+    ) {
+      throw new Error(`Invalid current doctrine ${key}.`);
+    }
+  }
+  if (typeof row.version !== "number" || !Number.isSafeInteger(row.version)) {
+    throw new Error("Invalid current doctrine version.");
+  }
+  if (typeof row.updated_at !== "string" || Number.isNaN(new Date(row.updated_at).getTime())) {
+    throw new Error("Invalid current doctrine updated_at.");
+  }
+  for (const key of ["signers", "escalation_council"]) {
+    // SQL NULL is a legitimate empty legacy configuration; absent is not.
+    if (
+      row[key] !== null &&
+      (!Array.isArray(row[key]) ||
+        !(row[key] as unknown[]).every((item) => item === null || typeof item === "string"))
+    ) {
+      throw new Error(`Invalid current doctrine ${key}.`);
+    }
+  }
+  for (const key of [
+    "per_tx_cap_usdc",
+    "daily_cap_usdc",
+    "monthly_cap_usdc",
+    "escalate_above_usdc",
+  ]) {
+    if (row[key] !== null && (typeof row[key] !== "number" || !Number.isFinite(row[key]))) {
+      throw new Error(`Invalid current doctrine ${key}.`);
+    }
+  }
+  if (
+    row.quorum !== null &&
+    (typeof row.quorum !== "number" || !Number.isSafeInteger(row.quorum))
+  ) {
+    throw new Error("Invalid current doctrine quorum.");
+  }
+  if (typeof row.require_vendor_allowlist !== "boolean") {
+    throw new Error("Invalid current doctrine require_vendor_allowlist.");
+  }
+}
+
+async function discoverCurrentDoctrines(ctx: ApiContext, wallets: Wallet[]) {
+  if (!wallets.length) return new Map<string, SupabaseRow>();
+  const aggregate = await scopedAnalyticsRpc(ctx, wallets, "scoped_current_doctrines");
+  if (aggregate.available) {
+    try {
+      if (!Array.isArray(aggregate.data)) throw new Error("Invalid current doctrines.");
+      const ids = new Set(wallets.map((wallet) => wallet.id));
+      const result = new Map<string, SupabaseRow>();
+      for (const row of aggregate.data) {
+        validateCurrentDoctrine(row);
+        const id = stringField(row, ["governed_wallet_id"]);
+        if (!ids.has(id) || result.has(id)) throw new Error("Invalid current doctrine identity.");
+        result.set(id, row);
+      }
+      return result;
+    } catch (error) {
+      throw readModelUnavailable("doctrines.current", error);
+    }
+  }
+  // Fetch only the current doctrine of each wallet the caller owns, rather
+  // than reading whole tables and filtering afterwards. Posture is computed
+  // from that doctrine, so no profile read is needed here.
+  // Doctrines are versioned, so this read is deliberately unbounded: a cap
+  // across all wallets would let one busy wallet's history push another
+  // wallet's current doctrine out of the window.
+  // The exhaustive reader pages by its cursor column, so the wire order must
+  // stay on that column; the current doctrine is picked by chain version in
+  // memory because `updated_at` says when a row was mirrored, not which
+  // policy the wallet enforces.
+  const doctrinesByWallet = new Map<string, SupabaseRow>();
+  await selectRowsExhaustive(
+    ctx,
+    "doctrines",
+    {
+      inFilters: { governed_wallet_id: wallets.map((wallet) => wallet.id) },
+      order: "updated_at.desc,id.desc",
+    },
+    {
+      cursorColumn: "updated_at",
+      label: "doctrines.agents.read",
+      onPage(rows) {
+        for (const doctrine of rows) {
+          const walletId = stringField(doctrine, ["governed_wallet_id"]);
+          if (!walletId) continue;
+          const current = doctrinesByWallet.get(walletId);
+          if (
+            !current ||
+            numberField(doctrine, ["version"], 0) > numberField(current, ["version"], 0)
+          ) {
+            doctrinesByWallet.set(walletId, doctrine);
+          }
+        }
+      },
+    },
+  );
+
+  return doctrinesByWallet;
 }
 
 export async function readSupabasePolicy(ctx: ApiContext, wallet: Wallet | null) {
@@ -256,7 +374,7 @@ export async function readSupabasePolicy(ctx: ApiContext, wallet: Wallet | null)
 
   const rows = await selectRows(ctx, "doctrines", {
     filters: { governed_wallet_id: wallet.id },
-    order: "updated_at.desc",
+    order: "version.desc",
     limit: 1,
   });
 
@@ -265,7 +383,7 @@ export async function readSupabasePolicy(ctx: ApiContext, wallet: Wallet | null)
 
 export async function syncSupabaseSignerState(
   ctx: ApiContext,
-  input: { authorized: boolean; signerAddress: `0x${string}`; wallet: Wallet },
+  input: { signerAddress: `0x${string}`; wallet: Wallet },
 ): Promise<SupabaseWriteResult<{ signers: `0x${string}`[]; status: string }>> {
   const client = ctx.supabase;
   if (!client) {
@@ -275,9 +393,27 @@ export async function syncSupabaseSignerState(
   const signerAddress = input.signerAddress.toLowerCase() as `0x${string}`;
 
   try {
+    // Never treat the requested action as proof that the transaction landed.
+    // The wallet's owner and signer mapping are the authority, and both are
+    // read from chain immediately before changing the eventually-consistent
+    // doctrine mirror.
+    const authority = await readWalletAuthorityState(
+      ctx.publicClient,
+      input.wallet.address as `0x${string}`,
+      signerAddress,
+    );
+    const caller = ctx.session?.walletAddress.toLowerCase();
+    if (!caller || authority.owner.toLowerCase() !== caller) {
+      return {
+        ok: false,
+        reason: "forbidden",
+        message: "Only the current onchain wallet owner can sync signer state.",
+      };
+    }
+
     const rows = await client.selectRows("doctrines", {
       filters: { governed_wallet_id: input.wallet.id },
-      order: "updated_at.desc",
+      order: "version.desc",
       limit: 1,
     });
     const existing = rows[0];
@@ -292,7 +428,7 @@ export async function syncSupabaseSignerState(
     const currentSigners = arrayField(existing, ["signers"])
       .map((address) => address.toLowerCase())
       .filter((address): address is `0x${string}` => address.startsWith("0x"));
-    const nextSigners = input.authorized
+    const nextSigners = authority.signerAuthorized
       ? Array.from(new Set([...currentSigners, signerAddress]))
       : currentSigners.filter((address) => address !== signerAddress);
 
@@ -325,9 +461,38 @@ export async function readSupabasePolicies(ctx: ApiContext, wallet: Wallet | nul
 
   const rows = await selectRows(ctx, "doctrines", {
     filters: { governed_wallet_id: wallet.id },
-    order: "updated_at.desc",
+    order: "version.desc",
     limit: MAX_DOCTRINE_VERSIONS_PER_WALLET,
   });
 
   return rows.map((row) => policyFromDoctrineRow(row, wallet));
+}
+
+/** Count versions, retaining the exposed per-wallet 500-version contract. */
+export async function readSupabasePolicyCount(ctx: ApiContext) {
+  const wallets = await readSupabaseWallets(ctx);
+  if (!wallets.length) return 0;
+  const counts = new Map(wallets.map((wallet) => [wallet.id, 0]));
+  await selectRowsExhaustive(
+    ctx,
+    "doctrines",
+    {
+      inFilters: { governed_wallet_id: wallets.map((wallet) => wallet.id) },
+      order: "updated_at.desc,id.desc",
+    },
+    {
+      cursorColumn: "updated_at",
+      label: "doctrines.count",
+      onPage(rows) {
+        for (const row of rows) {
+          const id = stringField(row, ["governed_wallet_id"]);
+          const count = counts.get(id);
+          if (count !== undefined && count < MAX_DOCTRINE_VERSIONS_PER_WALLET) {
+            counts.set(id, count + 1);
+          }
+        }
+      },
+    },
+  );
+  return [...counts.values()].reduce((sum, count) => sum + count, 0);
 }

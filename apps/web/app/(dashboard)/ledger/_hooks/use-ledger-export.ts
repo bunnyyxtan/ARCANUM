@@ -21,11 +21,17 @@ export type LedgerExport = {
   showNotice: (message: string) => void;
 };
 
+type LedgerExportScope = {
+  page: number;
+  totalCount: number | null;
+};
+
 export function useLedgerExport(
   rows: LedgerEntry[],
   status: StatusFilter,
   flaggedOnly: boolean,
   search: string,
+  scope: LedgerExportScope = { page: 0, totalCount: rows.length },
 ): LedgerExport {
   const [notice, setNotice] = useState("");
   const [exportOpen, setExportOpen] = useState(false);
@@ -62,7 +68,10 @@ export function useLedgerExport(
     if (query) filterParts.push(`Search "${query}"`);
     return {
       rows,
-      filtersLabel: filterParts.join(" · "),
+      filtersLabel: `${filterParts.join(" · ")} · Page ${scope.page + 1} of visible ledger`,
+      scopeLabel: `Visible page ${scope.page + 1}; ${
+        scope.totalCount === null ? `at least ${rows.length}` : scope.totalCount
+      } records in the current tenant ledger`,
       totals: {
         valueLabel: formatUsd(rows.reduce((sum, row) => sum + row.amount, 0)),
         approved: rows.filter((row) => row.status === "approved").length,
@@ -72,7 +81,7 @@ export function useLedgerExport(
       formatAmount: formatUsd,
       formatCategory: categoryLabel,
     };
-  }, [rows, status, flaggedOnly, search]);
+  }, [rows, status, flaggedOnly, search, scope.page, scope.totalCount]);
 
   const exportCsv = () => {
     setExportOpen(false);
@@ -81,7 +90,7 @@ export function useLedgerExport(
       return;
     }
     downloadLedgerCsv(report);
-    showNotice(`CSV exported: ${report.rows.length} movements.`);
+    showNotice(`CSV exported: ${report.rows.length} visible movements (page ${scope.page + 1}).`);
   };
   const exportPrintable = () => {
     setExportOpen(false);

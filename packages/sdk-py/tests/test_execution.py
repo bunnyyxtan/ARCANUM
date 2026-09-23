@@ -1,3 +1,5 @@
+import asyncio
+import threading
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
@@ -97,6 +99,9 @@ async def test_sync_and_async_follow_the_same_execution_state_machine(verdict: s
     assert sync_eth.send_raw_transaction.call_count == expected_submissions
     assert async_eth.send_raw_transaction.await_count == expected_submissions
     assert _execution_step(verdict) == ("DENY" if verdict == "DENY" else "SUBMIT")
+    if expected_submissions:
+        sync_eth.get_transaction_count.assert_called_once_with(ADDRESS, "pending")
+        async_eth.get_transaction_count.assert_awaited_once_with(ADDRESS, "pending")
 
 
 @pytest.mark.parametrize("verdict", ["ALLOW", "ESCALATE", "FREEZE"])
@@ -123,6 +128,50 @@ async def test_confirm_checks_receipt_status_sync_and_async():
         sync.confirm(TX_HASH)
     with pytest.raises(TransferRevertedError):
         await asynchronous.confirm(TX_HASH)
+
+
+@pytest.mark.asyncio
+async def test_escalation_watchers_return_after_reporting_terminal_status():
+    status_call = MagicMock()
+    status_call.call = AsyncMock(return_value=1)  # EXECUTED
+    manager = MagicMock()
+    manager.functions.statusOf.return_value = status_call
+    asynchronous = object.__new__(AsyncArcanumClient)
+    asynchronous.polling_interval_seconds = 0
+    asynchronous.wallet = MagicMock()
+    asynchronous.wallet.functions.escalationManager.return_value.call = AsyncMock(
+        return_value=ADDRESS
+    )
+    asynchronous.web3 = MagicMock()
+    asynchronous.web3.eth.contract.return_value = manager
+    async_callback = AsyncMock()
+
+    await asynchronous.on_escalation_resolved("0x123", async_callback)
+
+    async_callback.assert_awaited_once_with({"escalation_id": "0x123", "status": "EXECUTED"})
+    status_call.call.assert_awaited_once()
+
+    sync_status_call = MagicMock()
+    sync_status_call.call.return_value = 1
+    sync_manager = MagicMock()
+    sync_manager.functions.statusOf.return_value = sync_status_call
+    synchronous = object.__new__(ArcanumClient)
+    synchronous.polling_interval_seconds = 0
+    synchronous.wallet = MagicMock()
+    synchronous.wallet.functions.escalationManager.return_value.call.return_value = ADDRESS
+    synchronous.web3 = MagicMock()
+    synchronous.web3.eth.contract.return_value = sync_manager
+    sync_callback = MagicMock()
+    terminal_reported = threading.Event()
+    sync_callback.side_effect = lambda _status: terminal_reported.set()
+
+    stop = synchronous.on_escalation_resolved("0x123", sync_callback)
+    assert terminal_reported.wait(timeout=1)
+    await asyncio.sleep(0.01)
+    stop()
+
+    sync_callback.assert_called_once_with({"escalation_id": "0x123", "status": "EXECUTED"})
+    sync_status_call.call.assert_called_once()
 
 
 def test_custom_error_name_is_decoded_from_revert_data():

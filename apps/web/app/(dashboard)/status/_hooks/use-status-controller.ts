@@ -5,6 +5,7 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 
 import { indexerMetricLabel } from "../_lib/indexer-metric-label";
+import { formatStatusTimestamp } from "../_lib/status-time";
 
 export type HealthState = "OPERATIONAL" | "DEGRADED" | "CHECKING";
 
@@ -13,58 +14,64 @@ export function useStatusController() {
     retry: false,
     refetchOnWindowFocus: false,
     staleTime: 60_000,
+    refetchInterval: 60_000,
   });
-  const [checkedAt, setCheckedAt] = useState<string | null>(null);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
   const indexer = health.data?.indexer;
   const rpc = health.data?.rpc;
   const supabase = health.data?.supabase;
 
   const runCheck = async () => {
-    const result = await health.refetch();
-    if (result.status === "success") {
-      setCheckedAt(
-        `${new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-          hour12: false,
-        })} UTC`,
-      );
+    setRefreshError(null);
+    try {
+      const result = await health.refetch();
+      if (result.status !== "success") {
+        setRefreshError("Health check failed; showing the last successful result.");
+      }
+    } catch {
+      setRefreshError("Health check failed; showing the last successful result.");
     }
   };
 
   const indexerState: HealthState = health.isLoading
     ? "CHECKING"
-    : indexer?.status === "available"
+    : !health.isError && indexer?.status === "available"
       ? "OPERATIONAL"
       : "DEGRADED";
   const readModelState: HealthState = health.isLoading
     ? "CHECKING"
-    : supabase?.readModel.status === "available"
+    : !health.isError && supabase?.readModel.status === "available"
       ? "OPERATIONAL"
       : "DEGRADED";
   const rpcState: HealthState = health.isLoading
     ? "CHECKING"
-    : rpc?.status === "available"
+    : !health.isError && rpc?.status === "available"
       ? "OPERATIONAL"
       : "DEGRADED";
 
   return {
-    checkedAt: checkedAt ?? (health.isLoading ? "Checking…" : "Not checked yet"),
+    overallState: health.isLoading
+      ? "CHECKING"
+      : !health.isError && health.data?.ok
+        ? "OPERATIONAL"
+        : "DEGRADED",
+    readiness: health.data?.readiness,
+    lastCatchupAt: indexer?.lastCatchupAt ?? null,
+    freshnessSeconds: indexer?.staleAfterSeconds ?? 900,
     indexer: {
       // The headline number is the chain height the read model is level with,
       // so it compares directly with the RPC card. The last event block sits in
       // the label: on a quiet chain it is older, and that is not lag.
       metric: health.isLoading
         ? "…"
-        : (indexer?.lastSeenChainBlock ?? indexer?.lastIndexedBlock) != null
-          ? String(indexer?.lastSeenChainBlock ?? indexer?.lastIndexedBlock)
+        : indexer?.lastSeenChainBlock != null
+          ? String(indexer.lastSeenChainBlock)
           : "-",
       metricLabel: health.isLoading
         ? "CHECKING"
-        : indexer?.status === "stale"
-          ? "STALE / SYNC LAG"
-          : (indexer?.error ?? indexerMetricLabel(indexer)),
+        : indexer?.status === "unavailable" || indexer?.status === "not_configured"
+          ? (indexer.error ?? "INDEXER STATUS UNKNOWN")
+          : indexerMetricLabel(indexer),
       state: indexerState,
     },
     isFetching: health.isFetching,
@@ -90,6 +97,15 @@ export function useStatusController() {
           : (rpc?.error ?? "RPC STATUS UNKNOWN"),
       state: rpcState,
     },
+    checkedAt:
+      health.isLoading && !health.dataUpdatedAt
+        ? "Checking…"
+        : health.dataUpdatedAt
+          ? formatStatusTimestamp(health.dataUpdatedAt)
+          : "No successful check yet",
+    refreshError:
+      refreshError ??
+      (health.isError ? "Health check failed; no successful result is available." : null),
     runCheck,
   };
 }

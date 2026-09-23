@@ -1,5 +1,6 @@
 "use client";
 
+import { useRecoverableWrite } from "@/components/TransactionRecovery";
 import { ARC_NETWORK_NAME, arcChain } from "@arcanum/shared";
 import {
   type MouseEvent as ReactMouseEvent,
@@ -10,7 +11,7 @@ import {
 } from "react";
 import { toast } from "sonner";
 import type { Address, Hash } from "viem";
-import { useAccount, usePublicClient, useSwitchChain, useWriteContract } from "wagmi";
+import { useAccount, usePublicClient, useSwitchChain } from "wagmi";
 
 import { describeChainError, errorText } from "@/lib/chain-errors";
 import { guardedWalletControlAbi } from "@/lib/contracts";
@@ -18,9 +19,14 @@ import { isSameAddress } from "@/lib/format/address";
 import { trpc } from "@/lib/trpc";
 
 import {
+  type PolicyWalletRouteOption,
   allowTrustedMutation,
   buildPolicyEnvelope,
+  clonePolicyDraft,
   draftCategoryNames,
+  policyRouteWriteError,
+  policyWriteIntentMismatch,
+  policyWriteIntentSnapshot,
 } from "../_lib/policy-helpers";
 import type { usePolicyDeployment } from "./use-policy-deployment";
 import type { usePolicyDraft } from "./use-policy-draft";
@@ -52,15 +58,46 @@ export function usePolicyWrite(
   deployment: Deployment,
   state: ReturnType<typeof usePolicyWriteState>,
   refreshPolicyQueries: () => Promise<unknown>,
+  routeWalletId: string,
+  policyWalletOptions: readonly PolicyWalletRouteOption[],
 ) {
   const { address, chainId, isConnected } = useAccount();
   const publicClient = usePublicClient({ chainId: arcChain.id });
   const { switchChainAsync, isPending: switchPending } = useSwitchChain();
-  const { writeContractAsync, isPending: writePending } = useWriteContract();
+  const {
+    writeContractAsync,
+    waitForTransactionReceipt,
+    recoveryBlocked,
+    isPending: writePending,
+  } = useRecoverableWrite(selectedGovernedWalletAddress, "setPolicy");
   const recordDeployedPolicy = trpc.policies.recordDeployed.useMutation();
   const policySubmittingRef = useRef(false);
+  const routeWalletIdRef = useRef(routeWalletId);
+  const policyWalletOptionsRef = useRef(policyWalletOptions);
+  const selectedPolicyWalletAddressRef = useRef(draft.selectedPolicyWalletAddress);
+  const selectedGovernedWalletAddressRef = useRef(selectedGovernedWalletAddress);
+  const draftRef = useRef(draft.policyDraft);
+  const signerAddressRef = useRef(address ?? null);
+  const ownerAddressRef = useRef(deployment.policyWalletOwner ?? null);
+  const authenticatedRef = useRef(isAuthenticated);
+  const connectedRef = useRef(isConnected);
+  const mountedRef = useRef(true);
+  routeWalletIdRef.current = routeWalletId;
+  policyWalletOptionsRef.current = policyWalletOptions;
+  selectedPolicyWalletAddressRef.current = draft.selectedPolicyWalletAddress;
+  selectedGovernedWalletAddressRef.current = selectedGovernedWalletAddress;
+  draftRef.current = draft.policyDraft;
+  signerAddressRef.current = address ?? null;
+  ownerAddressRef.current = deployment.policyWalletOwner ?? null;
+  authenticatedRef.current = isAuthenticated;
+  connectedRef.current = isConnected;
   const ownerMatchesConnectedWallet = Boolean(
     deployment.policyWalletOwner && address && isSameAddress(deployment.policyWalletOwner, address),
+  );
+  const routeWriteError = policyRouteWriteError(
+    routeWalletId,
+    policyWalletOptions,
+    draft.selectedPolicyWalletAddress,
   );
   const policyWriteDisabledReason = !selectedGovernedWalletAddress
     ? walletsLoading
@@ -70,17 +107,28 @@ export function usePolicyWrite(
       ? "Connect wallet first."
       : !isAuthenticated
         ? "Sign in to manage policy."
-        : deployment.policyReadStatus === "checking"
-          ? `Reading active policy from ${ARC_NETWORK_NAME}.`
-          : deployment.policyReadStatus === "error"
-            ? `Unable to read governed wallet policy on ${ARC_NETWORK_NAME}.`
-            : !ownerMatchesConnectedWallet
-              ? "Only the governed wallet owner can update policy."
-              : draft.unsavedCount === 0
-                ? "No policy changes to submit."
-                : draft.validationError
-                  ? draft.validationError
-                  : null;
+        : walletsLoading
+          ? "Loading governed wallets."
+          : routeWriteError
+            ? routeWriteError
+            : deployment.policyReadStatus === "checking"
+              ? `Reading active policy from ${ARC_NETWORK_NAME}.`
+              : deployment.policyReadStatus === "error"
+                ? `Unable to read governed wallet policy on ${ARC_NETWORK_NAME}.`
+                : !ownerMatchesConnectedWallet
+                  ? "Only the governed wallet owner can update policy."
+                  : draft.unsavedCount === 0
+                    ? "No policy changes to submit."
+                    : draft.validationError
+                      ? draft.validationError
+                      : null;
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!state.policyPendingIndexer) return;
@@ -88,13 +136,46 @@ export function usePolicyWrite(
     return () => clearTimeout(timer);
   }, [state.policyPendingIndexer, state.stopPendingIndexer]);
 
-  const ensurePolicyWriteReady = async () => {
+  const currentIntentSnapshot = () => {
+    let envelope: ReturnType<typeof buildPolicyEnvelope> | null = null;
+    try {
+      envelope = buildPolicyEnvelope(draftRef.current);
+    } catch {
+      // The draft fingerprint still records invalid edits for the preflight.
+    }
+    return policyWriteIntentSnapshot({
+      authenticated: authenticatedRef.current,
+      connected: connectedRef.current,
+      draft: draftRef.current,
+      envelope,
+      governedWalletAddress: selectedGovernedWalletAddressRef.current,
+      options: policyWalletOptionsRef.current,
+      ownerAddress: ownerAddressRef.current,
+      routeWalletId: routeWalletIdRef.current,
+      selectedPolicyWalletAddress: selectedPolicyWalletAddressRef.current,
+      signerAddress: signerAddressRef.current,
+    });
+  };
+
+  const ensurePolicyWriteReady = async (intent: ReturnType<typeof policyWriteIntentSnapshot>) => {
     if (policyWriteDisabledReason) throw new Error(policyWriteDisabledReason);
-    if (!selectedGovernedWalletAddress || !publicClient) {
+    const initialMismatch = policyWriteIntentMismatch(
+      intent,
+      currentIntentSnapshot(),
+      mountedRef.current,
+    );
+    if (initialMismatch) throw new Error(initialMismatch);
+    if (!intent.governedWalletAddress || !publicClient) {
       throw new Error(`${ARC_NETWORK_NAME} RPC is unavailable.`);
     }
     if (chainId !== arcChain.id) await switchChainAsync({ chainId: arcChain.id });
-    return selectedGovernedWalletAddress;
+    const latestMismatch = policyWriteIntentMismatch(
+      intent,
+      currentIntentSnapshot(),
+      mountedRef.current,
+    );
+    if (latestMismatch) throw new Error(latestMismatch);
+    return intent.governedWalletAddress as Address;
   };
   const savePolicyOnChain = async (event: ReactMouseEvent<HTMLButtonElement>) => {
     if (!allowTrustedMutation("policies.update", event) || policySubmittingRef.current) return;
@@ -103,8 +184,21 @@ export function usePolicyWrite(
     draft.setPolicyError(null);
     state.setPolicyTxHash(null);
     try {
-      const nextPolicy = buildPolicyEnvelope(draft.policyDraft);
-      const governedWallet = await ensurePolicyWriteReady();
+      const capturedDraft = clonePolicyDraft(draft.policyDraft);
+      const nextPolicy = buildPolicyEnvelope(capturedDraft);
+      const intent = policyWriteIntentSnapshot({
+        authenticated: isAuthenticated,
+        connected: isConnected,
+        draft: capturedDraft,
+        envelope: nextPolicy,
+        governedWalletAddress: selectedGovernedWalletAddress,
+        options: policyWalletOptions,
+        ownerAddress: deployment.policyWalletOwner ?? null,
+        routeWalletId,
+        selectedPolicyWalletAddress: draft.selectedPolicyWalletAddress,
+        signerAddress: address ?? null,
+      });
+      const governedWallet = await ensurePolicyWriteReady(intent);
       const hash = await writeContractAsync({
         address: governedWallet,
         abi: guardedWalletControlAbi,
@@ -113,15 +207,9 @@ export function usePolicyWrite(
         chainId: arcChain.id,
       });
       state.setPolicyTxHash(hash);
-      const receipt = await publicClient
-        ?.waitForTransactionReceipt({ hash, confirmations: 1, timeout: 120_000 })
-        .catch(() => {
-          throw new Error(
-            "The policy transaction was sent but its confirmation did not arrive within 2 minutes. It may still confirm. Check the wallet's activity before retrying.",
-          );
-        });
+      const receipt = await waitForTransactionReceipt({ hash, confirmations: 1, timeout: 120_000 });
       if (receipt?.status !== "success") throw new Error("Policy transaction reverted.");
-      draft.setActivePolicyDraft(draft.policyDraft);
+      draft.setActivePolicyDraft(capturedDraft);
       state.setPolicyPendingIndexer(true);
       let syncFailed: string | null = null;
       let syncTimer: ReturnType<typeof setTimeout> | undefined;
@@ -130,11 +218,11 @@ export function usePolicyWrite(
         const syncPromise = recordDeployedPolicy.mutateAsync({
           walletAddress: governedWallet,
           txHash: hash,
-          perTxCap: draft.policyDraft.perTxCap,
-          dailyCap: draft.policyDraft.dailyCap,
-          monthlyCap: draft.policyDraft.monthlyCap,
-          escalationThreshold: draft.policyDraft.escalationThreshold,
-          allowedCategories: draftCategoryNames(draft.policyDraft),
+          perTxCap: capturedDraft.perTxCap,
+          dailyCap: capturedDraft.dailyCap,
+          monthlyCap: capturedDraft.monthlyCap,
+          escalationThreshold: capturedDraft.escalationThreshold,
+          allowedCategories: draftCategoryNames(capturedDraft),
           requireAllowlist: nextPolicy.requireAllowlist,
           freezeOnBlockedVendor: nextPolicy.freezeOnBlockedVendor,
         });
@@ -191,7 +279,7 @@ export function usePolicyWrite(
 
   return {
     address,
-    policyBusy: state.policySaving || switchPending || writePending,
+    policyBusy: recoveryBlocked || state.policySaving || switchPending || writePending,
     policyNetworkNotice:
       isConnected && chainId !== arcChain.id
         ? `Wallet will be asked to switch to ${ARC_NETWORK_NAME}.`

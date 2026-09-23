@@ -1,10 +1,11 @@
 "use client";
 
+import { useRecoverableWrite } from "@/components/TransactionRecovery";
 import { ARC_NETWORK_NAME, arcChain } from "@arcanum/shared";
 import { type MouseEvent as ReactMouseEvent, useRef } from "react";
 import { toast } from "sonner";
 import type { Address } from "viem";
-import { useAccount, useSwitchChain, useWriteContract } from "wagmi";
+import { useAccount, useSwitchChain } from "wagmi";
 
 import { getArcscanTxUrl } from "@/lib/arcscan";
 import { describeChainError } from "@/lib/chain-errors";
@@ -26,7 +27,12 @@ function allowTrustedMutation(action: string, event: ReactMouseEvent<HTMLElement
 export function useAgentSignerWrite(governedWalletAddress: Address | null, state: SignerState) {
   const { chainId } = useAccount();
   const { switchChainAsync, isPending: switchPending } = useSwitchChain();
-  const { writeContractAsync, isPending: writePending } = useWriteContract();
+  const {
+    writeContractAsync,
+    waitForTransactionReceipt,
+    recoveryBlocked,
+    isPending: writePending,
+  } = useRecoverableWrite(governedWalletAddress, "addSigner", state.usableSignerAddress ?? "");
   const utils = trpc.useUtils();
   const syncSignerState = trpc.agents.syncSignerState.useMutation();
   const submittingRef = useRef(false);
@@ -50,7 +56,9 @@ export function useAgentSignerWrite(governedWalletAddress: Address | null, state
             ? "Only the governed wallet owner can manage the agent signer."
             : chainId !== arcChain.id
               ? `Switch to ${ARC_NETWORK_NAME}.`
-              : null;
+              : recoveryBlocked
+                ? "Resolve pending transactions in Transaction recovery before writing."
+                : null;
   const signerWriteDisabledReason = managementDisabledReason ?? state.signerValidation;
   const submitSignerWrite = async (
     action: "authorize" | "revoke",
@@ -83,7 +91,7 @@ export function useAgentSignerWrite(governedWalletAddress: Address | null, state
       });
       state.setTxHash(hash);
       state.setTxStatus("confirming");
-      const receipt = await state.publicClient.waitForTransactionReceipt({
+      const receipt = await waitForTransactionReceipt({
         hash,
         confirmations: 1,
       });

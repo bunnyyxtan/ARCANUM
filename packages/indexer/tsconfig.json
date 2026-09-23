@@ -4,7 +4,15 @@
     "lib": ["ESNext", "DOM"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "noEmit": true
+    "noEmit": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
   },
-  "include": ["ponder.config.ts", "ponder.schema.ts", "src/**/*.ts", "test/**/*.ts"]
+  "include": [
+    "ponder.config.ts",
+    "ponder.schema.ts",
+    "src/**/*.ts",
+    "test/**/*.ts",
+    "scripts/**/*.ts"
+  ]
 }

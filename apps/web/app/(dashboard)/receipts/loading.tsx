@@ -1,0 +1,18 @@
+export default function ReceiptsLoading() {
+  return (
+    <main className="mx-auto max-w-[1400px] px-5 py-8 md:px-8 md:py-10">
+      <div className="border-b border-[var(--wl-line)] pb-9">
+        <div className="h-3 w-36 animate-pulse rounded bg-[var(--wl-bg-soft)]" />
+        <div className="mt-4 h-14 w-72 animate-pulse rounded bg-[var(--wl-bg-deep)]" />
+      </div>
+      <div className="mt-7 space-y-2 border border-[var(--wl-line)] bg-[var(--wl-bg-raised)] p-5">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div
+            key={i}
+            className="h-24 w-full animate-pulse rounded bg-[var(--wl-bg-soft)] md:h-10"
+          />
+        ))}
+      </div>
+    </main>
+  );
+}

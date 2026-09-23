@@ -22,13 +22,26 @@ export default function StatusPage() {
           isFetching={controller.isFetching}
           runCheck={() => void controller.runCheck()}
         />
+        <section aria-label="Service readiness" className="mt-8 border border-[var(--wl-line)] p-5">
+          <p className="font-mono text-sm">SERVICE {controller.overallState}</p>
+          <p className="mt-2 text-sm">
+            Confirmed catch-up SLO: {controller.freshnessSeconds / 60} minutes. Last catch-up:{" "}
+            {controller.lastCatchupAt ?? "unknown"}. Event activity is not a freshness signal.
+          </p>
+          <p className="mt-2 text-sm">
+            Identity: {controller.readiness?.identity.status ?? "unknown"} · Sessions:{" "}
+            {controller.readiness?.sessions.status ?? "unknown"} · Rate limiting:{" "}
+            {controller.readiness?.rateLimit.status ?? "unknown"} (
+            {controller.readiness?.rateLimit.backend ?? "unknown"})
+          </p>
+        </section>
         <HealthGrid
           indexer={controller.indexer}
           readModel={controller.readModel}
           rpc={controller.rpc}
         />
         <ContractsSection />
-        <StatusGuide checkedAt={controller.checkedAt} />
+        <StatusGuide checkedAt={controller.checkedAt} refreshError={controller.refreshError} />
       </div>
     </main>
   );

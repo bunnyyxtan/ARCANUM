@@ -24,8 +24,16 @@ variables. Never commit `.env.local`, service role keys, or private keys.
 ## Environment
 
 ```txt
-ARC_TESTNET_RPC=https://rpc.testnet.arc.network
-ARC_TESTNET_WS=wss://rpc.testnet.arc.network/ws
+# mainnet (what thearcanum.in runs; wallets hold real USDC) or testnet (the code
+# default, for development). One deployment serves one network and reads the
+# matching packages/contracts/deployments/arc-<network>.json manifest.
+NEXT_PUBLIC_ARC_NETWORK=mainnet
+# Server-side RPC for the selected network. On testnet only, the legacy
+# ARC_TESTNET_RPC name is a fallback when this is unset. The indexer reads its
+# own INDEXER_RPC_URL (default: a Tenderly gateway) and never these names.
+# NEXT_PUBLIC_ARC_MAINNET_RPC_URL overrides the published mainnet RPC default in
+# the browser; NEXT_PUBLIC_ARC_MAINNET_WS_URL sets an optional WebSocket URL.
+ARC_RPC_URL=https://rpc.mainnet.arc.io
 NEXT_PUBLIC_APP_URL=https://thearcanum.in
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-supabase-anon-key>
@@ -35,9 +43,9 @@ ARCANUM_DEPLOYMENT_MODE=self-hosted
 ARCANUM_TELEMETRY=off
 ```
 
-Use managed Supabase backups and point-in-time recovery for production-like
-testnet pilots. The repository does not maintain a local container database
-backup command.
+Use managed Supabase backups and point-in-time recovery for any deployment
+that outlives a demo, on mainnet or testnet. The repository does not maintain a
+local container database backup command.
 
 If you operate a separate self-hosted public deployment, replace
 `NEXT_PUBLIC_APP_URL` with that HTTPS origin. The canonical public Arcanum app

@@ -29,4 +29,4 @@ What you expected to happen instead.
 ## Environment
 
 - Browser and OS:
-- Network: Arc Testnet
+- Network: Arc Mainnet (5042) or Arc Testnet (5042002)

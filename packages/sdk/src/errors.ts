@@ -1,4 +1,38 @@
 import type { Address, Hash } from "viem";
+import type { SubmittedUSDCTransaction } from "./types";
+
+export type TransactionRecoveryCode =
+  | "CONFIRMATION_UNAVAILABLE"
+  | "SUBMISSION_PERSISTENCE_FAILED"
+  | "OUTCOME_MISSING"
+  | "OUTCOME_AMBIGUOUS"
+  | "OUTCOME_INCONSISTENT";
+
+/**
+ * A submitted transaction whose payment outcome is not established.
+ * Deliberately NOT an ArcanumError: unknown is not a policy DENY.
+ */
+export class TransactionRecoveryError extends Error {
+  readonly txHash: Hash;
+  readonly code: TransactionRecoveryCode;
+  readonly submission?: SubmittedUSDCTransaction;
+
+  constructor(
+    txHash: Hash,
+    code: TransactionRecoveryCode,
+    detail: string,
+    options: { cause?: unknown; submission?: SubmittedUSDCTransaction } = {},
+  ) {
+    super(
+      `${detail} Transaction ${txHash} may have executed. Reconcile this same hash; do not resubmit the payment.`,
+      { cause: options.cause },
+    );
+    this.name = "TransactionRecoveryError";
+    this.txHash = txHash;
+    this.code = code;
+    this.submission = options.submission;
+  }
+}
 
 export type ArcanumVerdict = "ALLOW" | "ESCALATE" | "DENY" | "FREEZE";
 
@@ -10,7 +44,11 @@ export type ArcanumErrorCode =
   | "AGENT_SIGNER_REQUIRED"
   | "INSUFFICIENT_USDC"
   | "TRANSFER_REVERTED"
-  | "RPC_ERROR";
+  | "RPC_ERROR"
+  | "API_URL_REQUIRED"
+  | "WALLET_MISMATCH"
+  | "RECEIPT_UNVERIFIED"
+  | "RECEIPT_MISMATCH";
 
 export class ArcanumError extends Error {
   readonly code: ArcanumErrorCode;

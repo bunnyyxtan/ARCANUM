@@ -38,3 +38,12 @@ export function formatUsdCompact(value: NumericInput) {
 export function formatUSDCFromBaseUnits(amount: NumericInput) {
   return formatUsdCompact(usdcNumber(amount));
 }
+
+/** Format the nullable vendor-cap mirror without passing uint256 text through Number. */
+export function formatUSDCBaseUnitsExact(amount: string | null) {
+  if (amount === null || !/^\d+$/.test(amount)) return "UNKNOWN";
+  const baseUnits = BigInt(amount);
+  const whole = baseUnits / 1_000_000n;
+  const fraction = (baseUnits % 1_000_000n).toString().padStart(6, "0").replace(/0+$/, "");
+  return `$${whole.toString()}${fraction ? `.${fraction}` : ""}`;
+}

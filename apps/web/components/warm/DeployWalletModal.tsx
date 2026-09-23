@@ -1,18 +1,20 @@
 "use client";
 
+import { TransactionRecovery, useRecoverableWrite } from "@/components/TransactionRecovery";
 import { ARC_NETWORK_BADGE, ARC_NETWORK_NAME, arcChain } from "@arcanum/shared";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { toast } from "sonner";
-import { parseEventLogs, parseUnits } from "viem";
+import { parseUnits } from "viem";
 import type { Address, Hash } from "viem";
 import { isAddress as isViemAddress } from "viem";
-import { useAccount, usePublicClient, useSwitchChain, useWriteContract } from "wagmi";
+import { useAccount, usePublicClient, useSwitchChain } from "wagmi";
 
 import { getArcscanAddressUrl, getArcscanTxUrl } from "@/lib/arcscan";
 import { useWorkspaceMode } from "@/lib/auth-session";
 import { describeChainError, errorText } from "@/lib/chain-errors";
+import { copyText } from "@/lib/clipboard";
 import {
   type DeployWalletFormState,
   allPolicyCategoriesMask,
@@ -21,8 +23,10 @@ import {
   walletFactoryAbi,
 } from "@/lib/contracts";
 import { contractAddresses } from "@/lib/deployment";
+import { walletCreatedFromVerifiedReceipt } from "@/lib/deployment-proof";
 import { isConfiguredAddress, shortAddress } from "@/lib/format/address";
 import { trpc } from "@/lib/trpc";
+import { useDialogFocus } from "@/lib/use-dialog-focus";
 
 /* ------------------------------------------------------------------ */
 /* Helpers preserved from the old Deploy Governed Wallet modal          */
@@ -127,6 +131,9 @@ function buildWalletPolicy(form: DeployWalletFormState) {
   if (monthlyCap !== 0n && daily24hCap > monthlyCap) {
     throw new Error("Daily cap must be less than or equal to the monthly cap.");
   }
+  if (escalationThreshold > perTxCap) {
+    throw new Error("Escalation threshold must be less than or equal to the per transaction cap.");
+  }
 
   return {
     perTxCap,
@@ -139,15 +146,6 @@ function buildWalletPolicy(form: DeployWalletFormState) {
   };
 }
 
-function walletCreatedFromReceipt(logs: readonly unknown[]) {
-  const parsed = parseEventLogs({
-    abi: walletFactoryAbi,
-    eventName: "WalletCreated",
-    logs: logs as Parameters<typeof parseEventLogs>[0]["logs"],
-  });
-  return parsed[0]?.args.wallet as Address | undefined;
-}
-
 /* ------------------------------------------------------------------ */
 
 function ResultLine({
@@ -156,10 +154,10 @@ function ResultLine({
   value,
 }: Readonly<{ href?: string; label: string; value: string }>) {
   const copyValue = async () => {
-    try {
-      await navigator.clipboard.writeText(value);
+    const copied = await copyText(value);
+    if (copied) {
       toast.success(`${label} COPIED`);
-    } catch {
+    } else {
       toast.error(`${label} COPY FAILED`);
     }
   };
@@ -205,12 +203,18 @@ export function DeployWalletModal({
 }: Readonly<{ onClose: () => void; onWalletCreated?: (result: CreatedWalletResult) => void }>) {
   const { address, chainId, isConnected } = useAccount();
   const workspace = useWorkspaceMode();
+  const walletFactoryAddress = configuredAddress(contractAddresses.walletFactory);
   const publicClient = usePublicClient({ chainId: arcChain.id });
   const { switchChainAsync, isPending: switchPending } = useSwitchChain();
-  const { writeContractAsync, isPending: writePending } = useWriteContract();
+  const {
+    writeContractAsync,
+    waitForTransactionReceipt,
+    recoveryBlocked,
+    isPending: writePending,
+  } = useRecoverableWrite(walletFactoryAddress, "createWallet");
   const recordCreatedWallet = trpc.agents.recordCreatedWallet.useMutation();
+  const utils = trpc.useUtils();
   const deployment = deployContractStatus();
-  const walletFactoryAddress = configuredAddress(contractAddresses.walletFactory);
   const [form, setForm] = useState<DeployWalletFormState>(initialDeployWalletForm);
   const [txHash, setTxHash] = useState<Hash | null>(null);
   const [createdWallet, setCreatedWallet] = useState<Address | null>(null);
@@ -224,6 +228,15 @@ export function DeployWalletModal({
   const [pendingSyncInput, setPendingSyncInput] = useState<CreatedWalletSyncInput | null>(null);
   const [advancedGovernanceOpen, setAdvancedGovernanceOpen] = useState(false);
   const submittingRef = useRef(false);
+  const dialogRef = useDialogFocus<HTMLDialogElement>(true, onClose);
+  const policyValidationError = useMemo(() => {
+    try {
+      buildWalletPolicy(form);
+      return null;
+    } catch (caught) {
+      return caught instanceof Error ? caught.message : "Policy values are invalid.";
+    }
+  }, [form]);
   const readyForTransaction =
     deployment.ready &&
     walletFactoryAddress !== null &&
@@ -232,10 +245,12 @@ export function DeployWalletModal({
     chainId === arcChain.id;
   const isBusy = writePending || switchPending || status === "confirming" || submittingRef.current;
   const primaryDisabled =
+    recoveryBlocked ||
     isBusy ||
     !deployment.ready ||
     !isConnected ||
     !workspace.isAuthenticated ||
+    Boolean(policyValidationError) ||
     (chainId === arcChain.id && !readyForTransaction);
 
   useEffect(() => {
@@ -248,16 +263,6 @@ export function DeployWalletModal({
       councilAddresses: current.councilAddresses || address,
     }));
   }, [address]);
-
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
 
   const updateForm = (key: keyof DeployWalletFormState, value: string | boolean) => {
     setForm((current) => ({ ...current, [key]: value }));
@@ -283,6 +288,15 @@ export function DeployWalletModal({
     setPersistenceMessage(null);
     try {
       const persisted = await recordCreatedWallet.mutateAsync(input);
+      if (persisted.dataSource === "supabase") {
+        // The registry behind this dialog caches agents.list for 30s; a saved
+        // wallet must appear there without a page reload.
+        await Promise.all([
+          utils.agents.list.invalidate(),
+          utils.wallets.list.invalidate(),
+          utils.analytics.walletActivity24h.invalidate(),
+        ]);
+      }
       setPersistenceState(persisted.dataSource);
       setPersistenceMessage(
         persisted.dataSource === "supabase"
@@ -335,6 +349,13 @@ export function DeployWalletModal({
     if (!publicClient) {
       setError(`${ARC_NETWORK_NAME} client is not ready. Please retry.`);
       setStatus("error");
+      return;
+    }
+    try {
+      buildWalletPolicy(form);
+    } catch (caught) {
+      setStatus("error");
+      setError(caught instanceof Error ? caught.message : "Policy values are invalid.");
       return;
     }
     if (submittingRef.current) {
@@ -402,8 +423,12 @@ export function DeployWalletModal({
       });
       setTxHash(hash);
 
-      const receipt = await publicClient.waitForTransactionReceipt({ hash });
-      const wallet = walletCreatedFromReceipt(receipt.logs) ?? predicted;
+      const receipt = await waitForTransactionReceipt({ hash });
+      const wallet = walletCreatedFromVerifiedReceipt(receipt, {
+        factoryAddress: walletFactoryAddress,
+        ownerAddress: address,
+        predictedWallet: predicted,
+      });
       const createdResult: CreatedWalletResult = {
         wallet,
         txHash: hash,
@@ -481,27 +506,29 @@ export function DeployWalletModal({
     if (!createdWallet) {
       return;
     }
-    try {
-      await navigator.clipboard.writeText(createdWallet);
+    const copied = await copyText(createdWallet);
+    if (copied) {
       toast.success("WALLET ADDRESS COPIED");
-    } catch {
+    } else {
       toast.error("WALLET ADDRESS COPY FAILED");
     }
   };
 
   return (
-    <dialog
-      open
-      className="warm-modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-[rgba(var(--wl-ink-rgb),.28)] p-2 sm:p-4"
-      aria-modal="true"
-    >
+    <div className="warm-modal-backdrop fixed inset-0 z-50 flex h-full w-full items-center justify-center bg-[rgba(var(--wl-ink-rgb),.28)] p-2 sm:p-4">
       <button
         type="button"
+        data-dialog-backdrop
         aria-label="Close deploy dialog"
         className="fixed inset-0 -z-10 cursor-default"
         onClick={onClose}
       />
-      <section className="warm-modal-panel flex max-h-[calc(100dvh-16px)] w-full max-w-[480px] flex-col border border-[var(--wl-line-bold)] bg-[var(--wl-bg)] shadow-[0_28px_70px_-18px_rgba(var(--wl-ink-rgb),.45)] sm:max-h-[calc(100dvh-40px)]">
+      <dialog
+        open
+        ref={dialogRef}
+        aria-modal="true"
+        className="warm-modal-panel relative m-auto flex max-h-[calc(100dvh-16px)] w-full max-w-[480px] flex-col border border-[var(--wl-line-bold)] bg-[var(--wl-bg)] shadow-[0_28px_70px_-18px_rgba(var(--wl-ink-rgb),.45)] sm:max-h-[calc(100dvh-40px)]"
+      >
         <div className="flex shrink-0 items-start justify-between border-b border-[var(--wl-line)] p-4 pb-3 sm:p-6 sm:pb-4">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[var(--wl-signal)]">
@@ -521,6 +548,7 @@ export function DeployWalletModal({
           </button>
         </div>
         <div className="min-h-0 space-y-4 overflow-y-auto overscroll-contain p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] text-[12px] leading-relaxed text-[var(--wl-secondary)] sm:p-5">
+          <TransactionRecovery />
           {hasSuccess ? (
             <div
               className={`space-y-4 border bg-[var(--wl-green-tint)] p-4 ${persistenceFailed ? "border-[var(--wl-amber)]" : "border-[var(--wl-green)]"}`}
@@ -748,6 +776,11 @@ export function DeployWalletModal({
                   ) : null}
                 </div>
               ) : null}
+              {policyValidationError ? (
+                <div className="border border-[var(--wl-signal)] bg-[var(--wl-bg-soft)] px-3 py-2 text-[11px] text-[var(--wl-signal)]">
+                  {policyValidationError}
+                </div>
+              ) : null}
               {error ? (
                 <div className="border border-[var(--wl-signal)] bg-[var(--wl-bg-soft)] px-3 py-2 text-[11px] text-[var(--wl-signal)]">
                   {error}
@@ -764,9 +797,11 @@ export function DeployWalletModal({
                       ? "Connect wallet first."
                       : !workspace.isAuthenticated
                         ? "Sign in with Ethereum before deploying."
-                        : chainId !== arcChain.id
-                          ? `Switch wallet network to ${ARC_NETWORK_NAME}.`
-                          : `Create a GuardedWallet on ${ARC_NETWORK_NAME}.`
+                        : policyValidationError
+                          ? policyValidationError
+                          : chainId !== arcChain.id
+                            ? `Switch wallet network to ${ARC_NETWORK_NAME}.`
+                            : `Create a GuardedWallet on ${ARC_NETWORK_NAME}.`
                 }
                 className={`flex h-9 w-full items-center justify-center border font-mono text-[11px] uppercase tracking-[.12em] ${
                   primaryDisabled
@@ -786,8 +821,8 @@ export function DeployWalletModal({
             </>
           )}
         </div>
-      </section>
-    </dialog>
+      </dialog>
+    </div>
   );
 }
 
