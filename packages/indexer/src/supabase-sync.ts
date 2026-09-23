@@ -816,7 +816,9 @@ async function flushUnlinkedLedgerEvents(wallet: Row, stagedRows?: Row[]) {
         "escalation_status",
       ].includes(kind)
     ) {
-      throw new Error(`[supabase-sync] staged event ${str(row, "id")} has unsupported kind ${kind}`);
+      throw new Error(
+        `[supabase-sync] staged event ${str(row, "id")} has unsupported kind ${kind}`,
+      );
     }
     if (kind === "escalation_approval") {
       const applied = await applyEscalationApproval(
@@ -875,7 +877,9 @@ async function flushUnlinkedLedgerEvents(wallet: Row, stagedRows?: Row[]) {
         Number(row.block_number) < 0 ||
         !Number.isFinite(new Date(str(row, "event_time")).getTime()))
     ) {
-      throw new Error(`[supabase-sync] staged event ${str(row, "id")} has invalid transfer payload`);
+      throw new Error(
+        `[supabase-sync] staged event ${str(row, "id")} has invalid transfer payload`,
+      );
     }
     const common: TransferInput = {
       walletAddress,
