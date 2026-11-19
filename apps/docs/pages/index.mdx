@@ -1,6 +1,6 @@
 # Open, non-custodial governance for autonomous AI money on Arc.
 
-Arcanum is Arc-native protocol infrastructure for teams that want AI agents to hold and move USDC with real onchain guardrails. Operators deploy GuardedWallets, define policy envelopes, approve escalations with their own signers, and observe every event through a self-hostable indexer.
+Arcanum is Arc-native protocol infrastructure for teams that want AI agents to hold and move USDC with real onchain guardrails. Operators deploy GuardedWallets, define policy envelopes, approve escalations with their own signers, and observe every event in the Arcanum dashboard and public explorer.
 
 ```ts
 import { ArcanumClient } from "arcanum-sdk"
@@ -29,7 +29,7 @@ managed signer infrastructure or user-controlled wallets.
 - Onchain agent builders can add spend governance without giving a server custody.
 
 <div className="callout green">
-Arcanum's source is public for audit from day one, and the protocol layer is designed to remain verifiable even when every hosted service is offline.
+Arcanum's protocol (contracts, SDKs and the receipt verifier) is open source for audit, and it is designed to remain verifiable even when every hosted service is offline.
 </div>
 
 ## Start here
@@ -37,5 +37,5 @@ Arcanum's source is public for audit from day one, and the protocol layer is des
 1. [Open the hosted app on Arc Mainnet](https://thearcanum.in)
 2. [Run the 10-minute TreasuryRebalancer tutorial](/getting-started)
 3. [Read the architecture commitments](/architecture)
-4. [Self-host the dashboard and indexer](/self-host)
+4. [Read the contracts reference](/contracts)
 5. [Integrate the TypeScript SDK](/sdk/typescript)

@@ -1,0 +1,31 @@
+version: 2
+
+# Version-update pull requests are switched off deliberately.
+#
+# Dependabot was generating lockfiles that did not match the manifests in the
+# same commit: `npm ci` on those branches fails with a missing transitive
+# package before CI reaches lint, typecheck or build. Five such branches sat
+# unmergeable for weeks. Rather than keep stale branches around, dependency
+# upgrades are done in one deliberate batch, with the lockfile regenerated and
+# the full CI suite run against it.
+#
+# `open-pull-requests-limit: 0` stops version-update PRs. Dependabot *security*
+# updates and alerts are not affected by this limit and keep working. To bring
+# scheduled upgrades back, raise the limit (5 was the previous value).
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0

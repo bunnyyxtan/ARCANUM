@@ -10,9 +10,11 @@ Public app and docs: [https://thearcanum.in](https://thearcanum.in)
 
 ```bash
 npm install
-cp apps/web/.env.example apps/web/.env.local
-npm run dev
+npm test
 ```
+
+Contracts need [Foundry](https://getfoundry.sh) v1.5.1; run
+`packages/contracts/scripts/restore-foundry-deps.sh` once before building.
 
 Never commit `.env.local`, private keys, service-role keys, wallet secrets, or
 generated build/cache output.
@@ -25,8 +27,8 @@ same order locally:
 ```bash
 npm run lint --workspaces --if-present       # Biome: formatting and lint
 npm run typecheck --workspaces --if-present  # tsc per workspace
-npm run test --workspaces --if-present       # vitest: auth, api, indexer, sdk
-npm run build                                # Next.js production build
+npm run test --workspaces --if-present       # vitest: shared, sdk
+npm run build                                # SDK build
 ```
 
 A single unformatted line fails the lint step, and lint runs before anything
@@ -49,16 +51,14 @@ where available.
 
 - Keep custody, auth, and data-isolation boundaries explicit.
 - Do not mix broad refactors with feature work.
-- Do not weaken SIWE/session checks, service-role boundaries, or transaction
+- Do not weaken receipt verification, signature checks, or transaction
   confirmation handling.
-- Add or update tests for contract, SDK, API, and security-sensitive changes.
-  A change to `packages/auth`, `packages/api/src/rate-limit.ts`, or
-  `packages/indexer/src/supabase-sync.ts` without a test needs a reason in
-  the PR description.
+- Add or update tests for contract, SDK, and security-sensitive changes. A
+  change to `packages/contracts/src` or `packages/shared/src/receipts` without
+  a test needs a reason in the PR description.
 - Keep docs builder-focused and clear about which network a feature or
   example targets; the hosted product runs on Arc Mainnet, and mainnet wallets
   hold real USDC.
-- Avoid adding hosted-service assumptions to self-hosted paths.
 
 ## Commit Style
 
@@ -67,13 +67,13 @@ workspace as the scope:
 
 ```txt
 feat(sdk): add guarded wallet execute helper
-fix(api): enforce tenant filter on transfer list
+fix(contracts): reject zero-amount escalations
 docs: add dao treasury tutorial
 ```
 
 The subject says what changed. The body says why, and is required for any
 commit that touches authentication, session handling, policy evaluation,
-service-role access, contracts, or a database migration: name the failure
+receipts, or contracts: name the failure
 mode or requirement that motivated the change, and what a reviewer should
 check. Commits that only reformat or rename should say so, so the diff is
 read at the right level of attention.

@@ -4,7 +4,6 @@ export default {
   concepts: "Concepts",
   sdk: "SDK",
   contracts: "Contracts",
-  "self-host": "Run Locally",
   architecture: "Architecture",
   security: "Security",
   integrations: "Integrations",
